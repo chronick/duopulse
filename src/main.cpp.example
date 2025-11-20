@@ -1,0 +1,48 @@
+/**
+ * Example main.cpp - This shows the structure but requires libDaisy for hardware.
+ * 
+ * NOTE: This project requires both DaisySP (DSP library) and libDaisy (hardware library).
+ * The libDaisy library should be added as a submodule or included separately.
+ * 
+ * For a complete setup, you'll need:
+ * - DaisySP (already included as submodule)
+ * - libDaisy (hardware abstraction library)
+ * 
+ * See README.md for full setup instructions.
+ */
+
+// This is a placeholder - actual implementation requires libDaisy
+// Uncomment and configure once libDaisy is added to the project
+
+/*
+#include "daisysp.h"
+#include "daisy_patch.h"
+
+using namespace daisy;
+using namespace daisysp;
+
+DaisyPatch patch;
+
+void AudioCallback(AudioHandle::InputBuffer  in,
+                   AudioHandle::OutputBuffer out,
+                   size_t                    size)
+{
+    for (size_t i = 0; i < size; i++)
+    {
+        out[0][i] = in[0][i];
+        out[1][i] = in[1][i];
+    }
+}
+
+int main(void)
+{
+    patch.Init();
+    patch.StartAudio(AudioCallback);
+    
+    while (1)
+    {
+        System::Delay(1);
+    }
+}
+*/
+

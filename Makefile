@@ -1,0 +1,341 @@
+###############################################################################
+# Makefile for DaisySP Patch.Init Eurorack Firmware
+###############################################################################
+
+# Project Configuration
+PROJECT_NAME := patch-init-firmware
+TARGET := patch
+DAISYSP_PATH ?= ./DaisySP
+LIBDAISY_PATH ?= ./libDaisy
+
+# Build Configuration
+BUILD_DIR := build
+OBJ_DIR := $(BUILD_DIR)/obj
+SRC_DIR := src
+INC_DIR := inc
+TEST_DIR := tests
+
+# Toolchain
+# If GCC_PATH is set, use it; otherwise use system PATH
+ifdef GCC_PATH
+PREFIX := $(GCC_PATH)/arm-none-eabi-
+else
+PREFIX := arm-none-eabi-
+endif
+CC := $(PREFIX)gcc
+CXX := $(PREFIX)g++
+AS := $(PREFIX)as
+AR := $(PREFIX)ar
+OBJCOPY := $(PREFIX)objcopy
+OBJDUMP := $(PREFIX)objdump
+SIZE := $(PREFIX)size
+
+# Compiler Flags
+CXXFLAGS := -std=gnu++14
+CXXFLAGS += -Wall -Wextra -Wno-unused-parameter
+CXXFLAGS += -Wno-missing-attributes -Wno-stringop-overflow
+CXXFLAGS += -fno-exceptions -fno-rtti
+CXXFLAGS += -ffunction-sections -fdata-sections
+CXXFLAGS += -fno-builtin -fno-common
+CXXFLAGS += -fasm -finline -finline-functions-called-once
+CXXFLAGS += -fshort-enums -fno-move-loop-invariants
+CXXFLAGS += -fno-unwind-tables -fno-rtti -Wno-register
+CXXFLAGS += -mcpu=cortex-m7 -mthumb
+CXXFLAGS += -mfloat-abi=hard -mfpu=fpv5-d16
+CXXFLAGS += -O2 -g -ggdb
+
+# Compiler Defines
+CXXFLAGS += -DCORE_CM7
+CXXFLAGS += -DSTM32H750xx
+CXXFLAGS += -DSTM32H750IB
+CXXFLAGS += -DARM_MATH_CM7
+CXXFLAGS += -DUSE_HAL_DRIVER
+CXXFLAGS += -DUSE_FULL_LL_DRIVER
+CXXFLAGS += -DHSE_VALUE=16000000
+CXXFLAGS += -DUSE_FATFS
+CXXFLAGS += -DFILEIO_ENABLE_FATFS_READER
+
+# Include Directories
+INCLUDES := -I$(INC_DIR)
+INCLUDES += -I$(DAISYSP_PATH)/Source
+INCLUDES += -I$(DAISYSP_PATH)/Source/daisysp
+INCLUDES += -I$(LIBDAISY_PATH)
+INCLUDES += -I$(LIBDAISY_PATH)/src
+INCLUDES += -I$(LIBDAISY_PATH)/src/sys
+INCLUDES += -I$(LIBDAISY_PATH)/src/usbd
+INCLUDES += -I$(LIBDAISY_PATH)/src/usbh
+INCLUDES += -I$(LIBDAISY_PATH)/Drivers/CMSIS_5/CMSIS/Core/Include
+INCLUDES += -I$(LIBDAISY_PATH)/Drivers/CMSIS-DSP/Include
+INCLUDES += -I$(LIBDAISY_PATH)/Drivers/CMSIS-Device/ST/STM32H7xx/Include
+INCLUDES += -I$(LIBDAISY_PATH)/Drivers/STM32H7xx_HAL_Driver/Inc
+INCLUDES += -I$(LIBDAISY_PATH)/Drivers/STM32H7xx_HAL_Driver/Inc/Legacy
+INCLUDES += -I$(LIBDAISY_PATH)/Middlewares/ST/STM32_USB_Device_Library/Core/Inc
+INCLUDES += -I$(LIBDAISY_PATH)/Middlewares/ST/STM32_USB_Host_Library/Core/Inc
+INCLUDES += -I$(LIBDAISY_PATH)/Middlewares/ST/STM32_USB_Host_Library/Class/MSC/Inc
+INCLUDES += -I$(LIBDAISY_PATH)/Middlewares/ST/STM32_USB_Host_Library/Class/MIDI/Inc
+INCLUDES += -I$(LIBDAISY_PATH)/Middlewares/Third_Party/FatFs/src
+
+# Source Files
+SRCS := $(wildcard $(SRC_DIR)/*.cpp)
+SRCS += $(wildcard $(SRC_DIR)/*.c)
+
+# Object Files
+OBJS := $(SRCS:$(SRC_DIR)/%.cpp=$(OBJ_DIR)/%.o)
+OBJS := $(OBJS:$(SRC_DIR)/%.c=$(OBJ_DIR)/%.o)
+
+# Libraries
+DAISYSP_LIB := $(DAISYSP_PATH)/build/libdaisysp.a
+LIBDAISY_LIB := $(LIBDAISY_PATH)/build/libdaisy.a
+
+# Linker script (using libDaisy's linker script)
+LDSCRIPT := $(LIBDAISY_PATH)/core/STM32H750IB_flash.lds
+
+# Linker Flags
+LDFLAGS := -T$(LDSCRIPT)
+LDFLAGS += -mcpu=cortex-m7 -mthumb
+LDFLAGS += -mfloat-abi=hard -mfpu=fpv5-d16
+LDFLAGS += -Wl,--gc-sections
+LDFLAGS += -Wl,-Map=$(BUILD_DIR)/$(PROJECT_NAME).map
+LDFLAGS += -Wl,--print-memory-usage
+LDFLAGS += -Wl,--start-group
+LDFLAGS += -L$(DAISYSP_PATH)/build
+LDFLAGS += -L$(LIBDAISY_PATH)/build
+LDFLAGS += -ldaisysp
+LDFLAGS += -ldaisy
+LDFLAGS += -lm -lc -lnosys
+LDFLAGS += -Wl,--end-group
+LDFLAGS += --specs=nano.specs --specs=nosys.specs
+
+# Debug Flags
+ifeq ($(DEBUG),1)
+    CXXFLAGS += -DDEBUG -g3 -O0
+else
+    CXXFLAGS += -DNDEBUG
+endif
+
+# Output Files
+ELF := $(BUILD_DIR)/$(PROJECT_NAME).elf
+BIN := $(BUILD_DIR)/$(PROJECT_NAME).bin
+HEX := $(BUILD_DIR)/$(PROJECT_NAME).hex
+
+###############################################################################
+# Build Targets
+###############################################################################
+
+.PHONY: all clean rebuild daisy-build daisy-update libdaisy-build libdaisy-update program test test-coverage help
+
+# Default target
+all: $(ELF) $(BIN) $(HEX)
+	@echo "Build complete: $(ELF)"
+	@$(SIZE) $(ELF)
+
+# Build DaisySP library if needed
+$(DAISYSP_LIB):
+	@echo "Building DaisySP library..."
+	@cd $(DAISYSP_PATH) && $(MAKE)
+
+# Build libDaisy library if needed
+$(LIBDAISY_LIB):
+	@echo "Building libDaisy library..."
+	@cd $(LIBDAISY_PATH) && $(MAKE)
+
+# Link executable
+$(ELF): $(OBJS) $(DAISYSP_LIB) $(LIBDAISY_LIB) | $(BUILD_DIR)
+	@echo "Linking $(ELF)..."
+	@$(CXX) $(OBJS) $(LDFLAGS) -o $@
+
+# Create binary file
+$(BIN): $(ELF)
+	@echo "Creating binary $(BIN)..."
+	@$(OBJCOPY) -O binary $< $@
+
+# Create hex file
+$(HEX): $(ELF)
+	@echo "Creating hex $(HEX)..."
+	@$(OBJCOPY) -O ihex $< $@
+
+# Compile C++ source files
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp | $(OBJ_DIR)
+	@echo "Compiling $<..."
+	@$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@
+
+# Compile C source files
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.c | $(OBJ_DIR)
+	@echo "Compiling $<..."
+	@$(CC) $(CXXFLAGS) $(INCLUDES) -c $< -o $@
+
+# Create directories
+$(BUILD_DIR):
+	@mkdir -p $(BUILD_DIR)
+
+$(OBJ_DIR): | $(BUILD_DIR)
+	@mkdir -p $(OBJ_DIR)
+
+# Build DaisySP library
+daisy-build: $(DAISYSP_LIB)
+
+# Build libDaisy library
+libdaisy-build: $(LIBDAISY_LIB)
+
+# Update DaisySP submodule
+daisy-update:
+	@echo "Updating DaisySP submodule..."
+	@cd $(DAISYSP_PATH) && git fetch origin && git checkout master && git pull origin master
+	@echo "Rebuilding DaisySP..."
+	@cd $(DAISYSP_PATH) && $(MAKE) clean && $(MAKE)
+
+# Update libDaisy submodule
+libdaisy-update:
+	@echo "Updating libDaisy submodule..."
+	@cd $(LIBDAISY_PATH) && git fetch origin && git checkout master && git pull origin master
+	@cd $(LIBDAISY_PATH) && git submodule update --init --recursive
+	@echo "Rebuilding libDaisy..."
+	@cd $(LIBDAISY_PATH) && $(MAKE) clean && $(MAKE)
+
+# Flash firmware to device (requires DFU mode)
+program: $(BIN)
+	@echo "Flashing firmware to Patch.Init module..."
+	@dfu-util -a 0 -s 0x08000000:leave -D $(BIN)
+
+# Clean build artifacts
+clean:
+	@echo "Cleaning build artifacts..."
+	@rm -rf $(BUILD_DIR)
+	@echo "Clean complete."
+
+# Rebuild (clean + build)
+rebuild: clean all
+
+###############################################################################
+# Test Targets
+###############################################################################
+
+# Host compiler for tests (not ARM)
+HOST_CXX := g++
+HOST_CXXFLAGS := -std=c++17 -Wall -Wextra -g -O0
+HOST_CXXFLAGS += -I$(INC_DIR)
+HOST_CXXFLAGS += -I$(DAISYSP_PATH)/Source
+HOST_CXXFLAGS += -I$(DAISYSP_PATH)/Source/daisysp
+
+# Test source files (host-compiled)
+TEST_SRCS := $(wildcard $(TEST_DIR)/*.cpp)
+TEST_OBJS := $(TEST_SRCS:$(TEST_DIR)/%.cpp=$(BUILD_DIR)/test_%.o)
+TEST_RUNNER := $(BUILD_DIR)/test_runner
+
+# Catch2 path (try common locations - parent directory for include)
+CATCH2_INC := $(shell \
+    if [ -d /opt/homebrew/include/catch2 ]; then \
+        echo /opt/homebrew/include; \
+    elif [ -d /usr/local/include/catch2 ]; then \
+        echo /usr/local/include; \
+    elif [ -d /usr/include/catch2 ]; then \
+        echo /usr/include; \
+    else \
+        echo ""; \
+    fi)
+
+# Check if Catch2 is available
+ifeq ($(CATCH2_INC),)
+    $(warning Catch2 not found. Install Catch2 to run tests:)
+    $(warning   git clone https://github.com/catchorg/Catch2.git && cd Catch2 && cmake -Bbuild -H. -DBUILD_TESTING=OFF && sudo cmake --build build/ --target install)
+endif
+
+# Build and run tests
+test: $(TEST_RUNNER)
+	@if [ -z "$(CATCH2_INC)" ]; then \
+		echo "Error: Catch2 not found. Cannot run tests."; \
+		echo "Install Catch2 or set CATCH2_INC environment variable."; \
+		exit 1; \
+	fi
+	@echo "Running unit tests..."
+	@$(TEST_RUNNER) --success
+
+# Catch2 library path
+CATCH2_LIB := $(shell \
+    if [ -f /opt/homebrew/lib/libCatch2Main.a ]; then \
+        echo /opt/homebrew/lib; \
+    elif [ -f /usr/local/lib/libCatch2Main.a ]; then \
+        echo /usr/local/lib; \
+    elif [ -f /usr/lib/libCatch2Main.a ]; then \
+        echo /usr/lib; \
+    else \
+        echo ""; \
+    fi)
+
+# Build test runner
+$(TEST_RUNNER): $(TEST_OBJS) | $(BUILD_DIR)
+	@if [ -z "$(CATCH2_INC)" ]; then \
+		echo "Error: Catch2 not found. Cannot build tests."; \
+		echo "Install Catch2 or set CATCH2_INC environment variable."; \
+		exit 1; \
+	fi
+	@echo "Linking test runner..."
+	@if [ -n "$(CATCH2_LIB)" ]; then \
+		$(HOST_CXX) $(HOST_CXXFLAGS) $(TEST_OBJS) -L$(CATCH2_LIB) -lCatch2Main -lCatch2 -o $@; \
+	else \
+		$(HOST_CXX) $(HOST_CXXFLAGS) $(TEST_OBJS) -o $@; \
+	fi
+
+# Compile test files
+$(BUILD_DIR)/test_%.o: $(TEST_DIR)/%.cpp | $(BUILD_DIR)
+	@if [ -z "$(CATCH2_INC)" ]; then \
+		echo "Error: Catch2 not found. Cannot compile tests."; \
+		exit 1; \
+	fi
+	@echo "Compiling test $<..."
+	@$(HOST_CXX) $(HOST_CXXFLAGS) -I$(CATCH2_INC) -c $< -o $@
+
+# Test coverage (requires gcov and lcov)
+test-coverage: CXXFLAGS += --coverage
+test-coverage: HOST_CXXFLAGS += --coverage
+test-coverage: clean test
+	@echo "Generating coverage report..."
+	@lcov --capture --directory $(BUILD_DIR) --output-file $(BUILD_DIR)/coverage.info
+	@genhtml $(BUILD_DIR)/coverage.info --output-directory $(BUILD_DIR)/coverage_html
+	@echo "Coverage report: $(BUILD_DIR)/coverage_html/index.html"
+
+###############################################################################
+# Help Target
+###############################################################################
+
+help:
+	@echo "DaisySP Patch.Init Firmware Makefile"
+	@echo ""
+	@echo "Targets:"
+	@echo "  all              - Build firmware (default)"
+	@echo "  clean            - Remove build artifacts"
+	@echo "  rebuild          - Clean and rebuild"
+	@echo "  daisy-build      - Build DaisySP library"
+	@echo "  daisy-update     - Update DaisySP to latest version"
+	@echo "  libdaisy-build   - Build libDaisy library"
+	@echo "  libdaisy-update  - Update libDaisy to latest version"
+	@echo "  program          - Flash firmware to device (DFU mode)"
+	@echo "  test             - Build and run unit tests"
+	@echo "  test-coverage    - Generate test coverage report"
+	@echo "  help             - Show this help message"
+	@echo ""
+	@echo "Variables:"
+	@echo "  DEBUG=1          - Enable debug symbols and disable optimizations"
+	@echo "  BUILD_DIR=dir    - Set build directory (default: build)"
+	@echo "  DAISYSP_PATH=dir - Set DaisySP path (default: ./DaisySP)"
+	@echo "  GCC_PATH=dir     - Set ARM GCC toolchain path (default: use PATH)"
+	@echo ""
+	@echo "Examples:"
+	@echo "  make                    - Build firmware"
+	@echo "  make DEBUG=1           - Build with debug symbols"
+	@echo "  make test               - Run tests"
+	@echo "  make daisy-update       - Update DaisySP"
+	@echo "  make program            - Flash firmware"
+
+###############################################################################
+# Dependency Tracking
+###############################################################################
+
+-include $(OBJS:.o=.d)
+
+$(OBJ_DIR)/%.d: $(SRC_DIR)/%.cpp | $(OBJ_DIR)
+	@$(CXX) $(CXXFLAGS) $(INCLUDES) -MM -MT $(@:.d=.o) $< > $@
+
+$(OBJ_DIR)/%.d: $(SRC_DIR)/%.c | $(OBJ_DIR)
+	@$(CC) $(CXXFLAGS) $(INCLUDES) -MM -MT $(@:.d=.o) $< > $@
+
