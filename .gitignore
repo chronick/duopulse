@@ -10,6 +10,15 @@ bin/
 *.elf
 *.bin
 *.hex
+*.d
+*.lst
+
+# CMake build artifacts
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+*.cmake.user
+.cmake/
 
 # IDE files
 .vscode/
@@ -17,6 +26,18 @@ bin/
 *.swp
 *.swo
 *~
+*.sln
+*.vcxproj
+*.vcxproj.filters
+*.vgdbsettings
+*.filters
+*.props
+*.xml
+.clangd/
+.cache/
+
+# Generated files
+compile_commands.json
 
 # OS files
 .DS_Store

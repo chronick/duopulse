@@ -5,6 +5,8 @@
  * Customize the audio processing logic in the AudioCallback function.
  */
 
+#include <cstddef>  // for size_t
+
 #include "daisysp.h"
 #include "daisy_patch.h"
 
