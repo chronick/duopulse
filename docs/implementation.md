@@ -34,7 +34,7 @@ Online resources:
 ---
 
 ## Phase 1: Hardware Setup & "Hello World"
-Status: TODO
+Status: DONE
 **Goal:** Verify toolchain, correct pin mappings for Patch.Init(), and basic I/O.
 *Note: The current `main.cpp` uses `DaisyPatch` (Big module) instead of `DaisyPatchSM`. This phase fixes that.*
 
@@ -56,7 +56,7 @@ Status: TODO
 ---
 
 ## Phase 2: The Clock & Simple Sequencer
-Status: TODO
+Status: IN PROGRESS
 **Goal:** Implement the rhythmic backbone.
 
 1.  **Internal Clock Engine**:

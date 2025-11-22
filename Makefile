@@ -16,6 +16,15 @@ INC_DIR := inc
 TEST_DIR := tests
 
 # Toolchain
+# Try to locate the official Arm toolchain on macOS if GCC_PATH is not set
+ifndef GCC_PATH
+    # Check for the specific version found on this machine
+    ARM_TOOLCHAIN_DIR := /Applications/ArmGNUToolchain/14.3.rel1/arm-none-eabi/bin
+    ifneq ($(wildcard $(ARM_TOOLCHAIN_DIR)/arm-none-eabi-gcc),)
+        GCC_PATH := $(ARM_TOOLCHAIN_DIR)
+    endif
+endif
+
 # If GCC_PATH is set, use it; otherwise use system PATH
 ifdef GCC_PATH
 PREFIX := $(GCC_PATH)/arm-none-eabi-

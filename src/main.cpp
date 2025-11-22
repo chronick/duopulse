@@ -1,100 +1,133 @@
 /**
- * Main firmware entry point for Patch.Init Eurorack module
- * 
- * This file initializes the hardware and sets up the audio processing callback.
- * Customize the audio processing logic in the AudioCallback function.
+ * Phase 1 demo firmware for Daisy Patch.Init (Patch SM).
+ * - Initializes Patch.SM hardware and audio chain.
+ * - Outputs a constant sine wave on Audio L/R.
+ * - Blinks the User LED at 1 Hz and alternates Gate Outs every second.
+ * - Continuously ramps CV Out 1 from 0V to 5V.
  */
 
-#include <cstddef>  // for size_t
-
+#include "daisy_patch_sm.h"
 #include "daisysp.h"
-#include "daisy_patch.h"
 
 using namespace daisy;
 using namespace daisysp;
+using namespace daisy::patch_sm;
 
-// Hardware object
-DaisyPatch patch;
-
-// DSP objects (add your custom processors here)
-// Example: Oscillator osc;
-// Example: Adsr env;
-
-// Audio callback function
-// This runs in real-time and must complete within the sample period
-void AudioCallback(AudioHandle::InputBuffer  in,
-                   AudioHandle::OutputBuffer out,
-                   size_t                    size)
+namespace
 {
-    // Process audio samples
-    for (size_t i = 0; i < size; i++)
+constexpr float    kTestToneFrequency     = 220.0f;
+constexpr float    kTestToneAmplitude     = 0.25f;
+constexpr uint32_t kLedToggleIntervalMs   = 500;  // 1 Hz blink (500ms on/off)
+constexpr uint32_t kGateToggleIntervalMs  = 1000; // Swap gates once per second
+constexpr uint32_t kCvRampPeriodMs        = 4000; // Full ramp over 4 seconds
+constexpr float    kCvRampMaxVoltage      = 5.0f;
+constexpr size_t   kAudioBlockSize        = 4;
+
+DaisyPatchSM patch;
+Oscillator   testOsc;
+
+uint32_t lastLedToggleMs  = 0;
+uint32_t lastGateToggleMs = 0;
+uint32_t lastCvUpdateMs   = 0;
+
+bool  ledState        = false;
+bool  gateOneIsHigh   = false;
+float cvOutVoltage    = 0.0f;
+
+float CvSlopePerMs()
+{
+    return kCvRampMaxVoltage / static_cast<float>(kCvRampPeriodMs);
+}
+
+void UpdateLed(uint32_t nowMs)
+{
+    if(nowMs - lastLedToggleMs >= kLedToggleIntervalMs)
     {
-        // Read inputs
-        float in_left  = in[0][i];
-        float in_right = in[1][i];
-
-        // Process audio here
-        // Example:
-        // float osc_out = osc.Process();
-        // float env_out = env.Process();
-        // float output = osc_out * env_out;
-
-        // For now, pass through
-        float out_left  = in_left;
-        float out_right = in_right;
-
-        // Write outputs
-        out[0][i] = out_left;
-        out[1][i] = out_right;
+        ledState = !ledState;
+        patch.SetLed(ledState);
+        lastLedToggleMs = nowMs;
     }
 }
 
-// CV processing callback
-// This runs periodically to update CV outputs based on CV inputs
+void UpdateGates(uint32_t nowMs)
+{
+    if(nowMs - lastGateToggleMs >= kGateToggleIntervalMs)
+    {
+        gateOneIsHigh = !gateOneIsHigh;
+        patch.gate_out_1.Write(gateOneIsHigh);
+        patch.gate_out_2.Write(!gateOneIsHigh);
+        lastGateToggleMs = nowMs;
+    }
+}
+
+void UpdateCvOutput(uint32_t nowMs)
+{
+    const uint32_t elapsedMs = nowMs - lastCvUpdateMs;
+    if(elapsedMs == 0)
+    {
+        return;
+    }
+
+    cvOutVoltage += static_cast<float>(elapsedMs) * CvSlopePerMs();
+    while(cvOutVoltage >= kCvRampMaxVoltage)
+    {
+        cvOutVoltage -= kCvRampMaxVoltage;
+    }
+
+    patch.WriteCvOut(CV_OUT_1, cvOutVoltage);
+    lastCvUpdateMs = nowMs;
+}
+} // namespace
+
+void AudioCallback(AudioHandle::InputBuffer  /*in*/,
+                   AudioHandle::OutputBuffer out,
+                   size_t                    size)
+{
+    for(size_t i = 0; i < size; i++)
+    {
+        const float oscSample = testOsc.Process();
+        out[0][i]             = oscSample;
+        out[1][i]             = oscSample;
+    }
+}
+
 void ProcessControls()
 {
-    // Read CV inputs
-    // float cv1 = patch.GetAdcValue(0); // 0.0 to 1.0
-    // float cv2 = patch.GetAdcValue(1); // 0.0 to 1.0
+    patch.ProcessAnalogControls();
 
-    // Process CV and update parameters
-    // Example:
-    // float freq = 20.0f + cv1 * 19980.0f; // 20Hz to 20kHz
-    // osc.SetFreq(freq);
-
-    // Write CV outputs
-    // patch.seed.dac.WriteValue(DacHandle::Channel::ONE, cv1 * 4095);
-    // patch.seed.dac.WriteValue(DacHandle::Channel::TWO, cv2 * 4095);
+    const uint32_t nowMs = System::GetNow();
+    UpdateLed(nowMs);
+    UpdateGates(nowMs);
+    UpdateCvOutput(nowMs);
 }
 
 int main(void)
 {
-    // Initialize hardware
     patch.Init();
+    patch.SetAudioBlockSize(kAudioBlockSize);
+    patch.SetAudioSampleRate(SaiHandle::Config::SampleRate::SAI_48KHZ);
 
-    // Configure audio settings
-    float sample_rate = patch.AudioSampleRate();
+    const float sampleRate = patch.AudioSampleRate();
+    testOsc.Init(sampleRate);
+    testOsc.SetWaveform(Oscillator::WAVE_SIN);
+    testOsc.SetFreq(kTestToneFrequency);
+    testOsc.SetAmp(kTestToneAmplitude);
+
+    patch.SetLed(false);
+    patch.gate_out_1.Write(false);
+    patch.gate_out_2.Write(true); // Ensure alternating starts immediately
+    patch.WriteCvOut(CV_OUT_1, cvOutVoltage);
+
+    const uint32_t nowMs = System::GetNow();
+    lastLedToggleMs      = nowMs;
+    lastGateToggleMs     = nowMs;
+    lastCvUpdateMs       = nowMs;
+
     patch.StartAudio(AudioCallback);
 
-    // Initialize DSP objects
-    // Example:
-    // osc.Init(sample_rate);
-    // osc.SetFreq(440.0f);
-    // osc.SetAmp(0.5f);
-    //
-    // env.Init(sample_rate);
-    // env.SetTime(ADSR_SEG_ATTACK, 0.01f);
-    // env.SetTime(ADSR_SEG_DECAY, 0.1f);
-    // env.SetSustainLevel(0.7f);
-    // env.SetTime(ADSR_SEG_RELEASE, 0.2f);
-
-    // Main loop
-    while (1)
+    while(1)
     {
-        // Process controls (CV, buttons, etc.)
         ProcessControls();
-
-        // Small delay to prevent excessive CPU usage
         System::Delay(1);
     }
 }
