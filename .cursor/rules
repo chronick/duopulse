@@ -190,3 +190,104 @@ public:
 - Document hardware pin assignments
 - Keep README up to date
 
+## Build System (Makefile Commands)
+
+### Primary Build Targets
+- `make` or `make all` - Build firmware (default target)
+  - Compiles source files, links with DaisySP and libDaisy libraries
+  - Generates ELF, BIN, and HEX output files
+  - Displays memory usage summary
+
+- `make clean` - Remove all build artifacts
+  - Cleans the `build/` directory
+  - Use before switching build configurations
+
+- `make rebuild` - Clean and rebuild from scratch
+  - Equivalent to `make clean && make all`
+
+### Library Management
+- `make daisy-build` - Build DaisySP library
+  - Builds `DaisySP/build/libdaisysp.a`
+  - Automatically triggered if library is missing
+
+- `make libdaisy-build` - Build libDaisy library
+  - Builds `libDaisy/build/libdaisy.a`
+  - Automatically triggered if library is missing
+
+- `make daisy-update` - Update DaisySP submodule to latest version
+  - Fetches and pulls latest from master branch
+  - Rebuilds DaisySP library after update
+
+- `make libdaisy-update` - Update libDaisy submodule to latest version
+  - Fetches and pulls latest from master branch
+  - Updates submodules recursively
+  - Rebuilds libDaisy library after update
+
+### Deployment
+- `make program` - Flash firmware to Patch.Init device
+  - Requires device to be in DFU mode
+  - Uses `dfu-util` to flash the binary file
+  - Automatically builds firmware if needed
+
+### Testing
+- `make test` - Build and run unit tests
+  - Compiles tests with host compiler (not ARM)
+  - Requires Catch2 testing framework
+  - Runs all test cases and reports results
+
+- `make test-coverage` - Generate test coverage report
+  - Requires `gcov` and `lcov` tools
+  - Generates HTML coverage report in `build/coverage_html/`
+  - Shows which code is covered by tests
+
+### Help
+- `make help` - Display all available targets and options
+  - Shows usage examples and variable descriptions
+
+### Build Variables
+- `DEBUG=1` - Enable debug build
+  - Adds debug symbols (`-g3`)
+  - Disables optimizations (`-O0`)
+  - Defines `DEBUG` preprocessor macro
+
+- `GCC_PATH=path` - Set ARM GCC toolchain path
+  - Overrides default PATH search for ARM toolchain
+  - Example: `make GCC_PATH=/opt/gcc-arm-none-eabi`
+
+- `DAISYSP_PATH=path` - Override DaisySP directory
+  - Default: `./DaisySP`
+
+- `LIBDAISY_PATH=path` - Override libDaisy directory
+  - Default: `./libDaisy`
+
+- `BUILD_DIR=dir` - Set build output directory
+  - Default: `build`
+
+### Common Workflows
+```bash
+# Initial build
+make
+
+# Debug build
+make DEBUG=1
+
+# Clean rebuild
+make rebuild
+
+# Update dependencies and rebuild
+make libdaisy-update daisy-update
+make rebuild
+
+# Run tests
+make test
+
+# Flash to device (device must be in DFU mode)
+make program
+```
+
+### Build Output Files
+- `build/patch-init-firmware.elf` - ELF executable (for debugging)
+- `build/patch-init-firmware.bin` - Binary file (for flashing)
+- `build/patch-init-firmware.hex` - Intel HEX file (alternative format)
+- `build/patch-init-firmware.map` - Linker map file (memory layout)
+
