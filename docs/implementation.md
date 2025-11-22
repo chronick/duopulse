@@ -2,6 +2,18 @@
 
 This plan outlines the iterative development of the Grids-style sequencer for the Daisy Patch.Init() module. Each phase is designed to be implemented and manually tested in isolation before moving to the next.
 
+**Documentation**
+- Refer to all files in docs/ as needed
+- Refer to doc/spec.md for overall firmware spec
+- Refer to daisysp docs online when necessary.
+
+Online resources:
+- https://forum.electro-smith.com/
+- https://daisy.audio/
+- https://electro-smith.github.io/DaisySP/index.html
+- https://github.com/electro-smith/libDaisy
+- https://github.com/electro-smith/DaisySP
+
 **Constraint Checklist & Confidence Score:**
 1. Hardware: Daisy Patch.Init() (using `DaisyPatchSM`)? Yes.
 2. No Oscilloscope? Yes (Plan relies on LED/Audio feedback).
@@ -14,6 +26,10 @@ This plan outlines the iterative development of the Grids-style sequencer for th
 - Ensure all tests pass by iteratively running tests and fixing issues.
 - Attempt to compile a build frequently after each iteration.
 - When necessary, you may prompt me to flash the firmware and test.
+
+**Naming Conventions**
+- Implement most functionality in src/main.cpp
+- Don't create "phase_one, phase_two" nomenclature, build off what exists now.
 
 ---
 
