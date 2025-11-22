@@ -1,77 +1,78 @@
 /**
- * Phase 1 demo firmware for Daisy Patch.Init (Patch SM).
- * - Initializes Patch.SM hardware and audio chain.
- * - Outputs a constant sine wave on Audio L/R.
- * - Blinks the User LED at 1 Hz and alternates Gate Outs every second.
- * - Continuously ramps CV Out 1 from 0V to 5V.
+ * Phase 2: The Clock & Simple Sequencer
+ * - Internal Clock Engine (Metro)
+ * - Knob 4 controls Tempo (30-200 BPM)
+ * - Gate Outs trigger on beat (10ms pulse)
+ * - Audio L/R outputs a "beep" on beat
+ * - User LED syncs to beat
+ * - Button B7 allows Tap Tempo
  */
 
 #include "daisy_patch_sm.h"
 #include "daisysp.h"
-#include "System/SystemState.h"
+#include "Engine/Sequencer.h"
 
 using namespace daisy;
 using namespace daisysp;
 using namespace daisy::patch_sm;
+using namespace daisysp_idm_grids;
 
 namespace
 {
-constexpr float    kTestToneFrequency     = 220.0f;
-constexpr float    kTestToneAmplitude     = 0.25f;
-constexpr size_t   kAudioBlockSize        = 4;
-
 DaisyPatchSM patch;
-Oscillator   testOsc;
-SystemState  systemState;
+Sequencer    sequencer;
+Switch       tapButton;
 
 } // namespace
 
-void AudioCallback(AudioHandle::InputBuffer  /*in*/,
+void AudioCallback(AudioHandle::InputBuffer  in,
                    AudioHandle::OutputBuffer out,
                    size_t                    size)
 {
     for(size_t i = 0; i < size; i++)
     {
-        const float oscSample = testOsc.Process();
-        out[0][i]             = oscSample;
-        out[1][i]             = oscSample;
+        float sig = sequencer.ProcessAudio();
+        bool gateState = sequencer.IsGateHigh();
+
+        // Write Gates
+        patch.gate_out_1.Write(gateState);
+        patch.gate_out_2.Write(gateState);
+
+        out[0][i] = sig;
+        out[1][i] = sig;
     }
 }
 
 void ProcessControls()
 {
     patch.ProcessAnalogControls();
+    tapButton.Debounce();
 
-    const uint32_t nowMs = System::GetNow();
-    auto state = systemState.Process(nowMs);
-    
-    patch.SetLed(state.ledOn);
-    patch.gate_out_1.Write(state.gate1High);
-    patch.gate_out_2.Write(state.gate2High);
-    patch.WriteCvOut(CV_OUT_1, state.cvOutputVolts);
+    float knobVal = patch.GetAdcValue(CV_4);
+    bool tapTrig = tapButton.RisingEdge();
+    uint32_t now = System::GetNow();
+
+    sequencer.ProcessControl(knobVal, tapTrig, now);
+
+    // User LED Sync
+    patch.SetLed(sequencer.IsGateHigh());
 }
 
 int main(void)
 {
     patch.Init();
-    patch.SetAudioBlockSize(kAudioBlockSize);
+
+    // Initialize Audio
+    patch.SetAudioBlockSize(4);
     patch.SetAudioSampleRate(SaiHandle::Config::SampleRate::SAI_48KHZ);
+    float sampleRate = patch.AudioSampleRate();
 
-    const float sampleRate = patch.AudioSampleRate();
-    testOsc.Init(sampleRate);
-    testOsc.SetWaveform(Oscillator::WAVE_SIN);
-    testOsc.SetFreq(kTestToneFrequency);
-    testOsc.SetAmp(kTestToneAmplitude);
+    // Initialize Sequencer
+    sequencer.Init(sampleRate);
 
-    const uint32_t nowMs = System::GetNow();
-    systemState.Init(nowMs);
-    
-    // Apply initial state immediately
-    auto state = systemState.Process(nowMs);
-    patch.SetLed(state.ledOn);
-    patch.gate_out_1.Write(state.gate1High);
-    patch.gate_out_2.Write(state.gate2High);
-    patch.WriteCvOut(CV_OUT_1, state.cvOutputVolts);
+    // Initialize Controls
+    // Button B7
+    tapButton.Init(DaisyPatchSM::B7, 1000.0f);
 
     patch.StartAudio(AudioCallback);
 
@@ -81,4 +82,3 @@ int main(void)
         System::Delay(1);
     }
 }
-

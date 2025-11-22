@@ -225,10 +225,26 @@ HOST_CXXFLAGS := -std=c++17 -Wall -Wextra -g -O0
 HOST_CXXFLAGS += -I$(INC_DIR)
 HOST_CXXFLAGS += -I$(DAISYSP_PATH)/Source
 HOST_CXXFLAGS += -I$(DAISYSP_PATH)/Source/daisysp
+HOST_CXXFLAGS += -I$(DAISYSP_PATH)/Source/Utility
+HOST_CXXFLAGS += -I$(DAISYSP_PATH)/Source/Control
+HOST_CXXFLAGS += -I$(DAISYSP_PATH)/Source/Synthesis
+HOST_CXXFLAGS += -I$(DAISYSP_PATH)/Source/Effects
+HOST_CXXFLAGS += -I$(DAISYSP_PATH)/Source/Filters
+HOST_CXXFLAGS += -I$(DAISYSP_PATH)/Source/Noise
+HOST_CXXFLAGS += -I$(DAISYSP_PATH)/Source/PhysicalModeling
+HOST_CXXFLAGS += -I$(DAISYSP_PATH)/Source/Dynamics
+HOST_CXXFLAGS += -I$(DAISYSP_PATH)/Source/Drums
 
 # Test source files (host-compiled)
 TEST_SRCS := $(wildcard $(TEST_DIR)/*.cpp)
 TEST_OBJS := $(TEST_SRCS:$(TEST_DIR)/%.cpp=$(BUILD_DIR)/test_%.o)
+
+# DaisySP sources needed for tests (compiled for host)
+TEST_DAISYSP_SRCS := $(DAISYSP_PATH)/Source/Utility/metro.cpp \
+                     $(DAISYSP_PATH)/Source/Control/adsr.cpp \
+                     $(DAISYSP_PATH)/Source/Synthesis/oscillator.cpp
+TEST_DAISYSP_OBJS := $(TEST_DAISYSP_SRCS:$(DAISYSP_PATH)/%.cpp=$(BUILD_DIR)/daisysp_host/%.o)
+
 TEST_RUNNER := $(BUILD_DIR)/test_runner
 
 # Catch2 path (try common locations - parent directory for include)
@@ -272,7 +288,7 @@ CATCH2_LIB := $(shell \
     fi)
 
 # Build test runner
-$(TEST_RUNNER): $(TEST_OBJS) | $(BUILD_DIR)
+$(TEST_RUNNER): $(TEST_OBJS) $(TEST_DAISYSP_OBJS) | $(BUILD_DIR)
 	@if [ -z "$(CATCH2_INC)" ]; then \
 		echo "Error: Catch2 not found. Cannot build tests."; \
 		echo "Install Catch2 or set CATCH2_INC environment variable."; \
@@ -280,9 +296,9 @@ $(TEST_RUNNER): $(TEST_OBJS) | $(BUILD_DIR)
 	fi
 	@echo "Linking test runner..."
 	@if [ -n "$(CATCH2_LIB)" ]; then \
-		$(HOST_CXX) $(HOST_CXXFLAGS) $(TEST_OBJS) -L$(CATCH2_LIB) -lCatch2Main -lCatch2 -o $@; \
+		$(HOST_CXX) $(HOST_CXXFLAGS) $(TEST_OBJS) $(TEST_DAISYSP_OBJS) -L$(CATCH2_LIB) -lCatch2Main -lCatch2 -o $@; \
 	else \
-		$(HOST_CXX) $(HOST_CXXFLAGS) $(TEST_OBJS) -o $@; \
+		$(HOST_CXX) $(HOST_CXXFLAGS) $(TEST_OBJS) $(TEST_DAISYSP_OBJS) -o $@; \
 	fi
 
 # Compile test files
@@ -293,6 +309,12 @@ $(BUILD_DIR)/test_%.o: $(TEST_DIR)/%.cpp | $(BUILD_DIR)
 	fi
 	@echo "Compiling test $<..."
 	@$(HOST_CXX) $(HOST_CXXFLAGS) -I$(CATCH2_INC) -c $< -o $@
+
+# Compile DaisySP host files
+$(BUILD_DIR)/daisysp_host/%.o: $(DAISYSP_PATH)/%.cpp | $(BUILD_DIR)
+	@echo "Compiling host lib $<..."
+	@mkdir -p $(dir $@)
+	@$(HOST_CXX) $(HOST_CXXFLAGS) -c $< -o $@
 
 # Test coverage (requires gcov and lcov)
 test-coverage: CXXFLAGS += --coverage
@@ -347,4 +369,3 @@ $(OBJ_DIR)/%.d: $(SRC_DIR)/%.cpp | $(OBJ_DIR)
 
 $(OBJ_DIR)/%.d: $(SRC_DIR)/%.c | $(OBJ_DIR)
 	@$(CC) $(CXXFLAGS) $(INCLUDES) -MM -MT $(@:.d=.o) $< > $@
-
