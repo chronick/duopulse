@@ -14,12 +14,11 @@ This firmware turns the Daisy Patch.Init() module into a topographic drum sequen
 
 ### Outputs
 *   **Gate Out 1 (Pin B5)**: Trigger for BIA (Voice 1).
-*   **Gate Out 2 (Pin B6)**: Trigger for Tymp Legio (Voice 2).
+*   **Gate Out 2 (Pin B6)**: Trigger for Tymp Legio plus shared snare/hi-hat trigger lane.
 *   **CV Out 1 (Pin C10)**: Master Clock Output (Pulse).
 *   **CV Out 2 (Pin C1 / Front LED)**: Mirrors the rear/User LED state for visual beat feedback on the front panel.
-*   **Audio Out L (Pin B1)**: Trigger Output 3 (configurable envelope/trigger).
-*   **Audio Out R (Pin B2)**: Trigger Output 4 (configurable envelope/trigger).
-    *   *Note*: Audio outputs are typically AC coupled. Triggers will be short pulses. Envelopes must be percussive.
+*   **OUT_L (Audio Out L / Pin B1)**: DC-coupled 0‑5 V accent CV for Kick; rises only on accented Kick steps, stays at 0 V otherwise.
+*   **OUT_R (Audio Out R / Pin B2)**: DC-coupled 0‑5 V hi-hat CV for BIA; outputs 5 V on hi-hat steps, 0 V on snare steps.
 
 ## Functional Architecture
 
@@ -48,21 +47,21 @@ The core is a port/adaptation of the Grids algorithm (Map X, Map Y, Chaos/Densit
 
 ### Output Assignment
 *   **Channel 1 (Kick equivalent)** -> **Gate Out 1** (to BIA).
-*   **Channel 2 (Snare equivalent)** -> **Gate Out 2** (to Tymp Legio).
-*   **Channel 3 (HH equivalent)** -> **Audio Out L** (Trigger/Env). Emits an attack-decay envelope normalized for ±5 V CV swings and shares Gate Out 2’s trig source so hats/percussion parameters move in sync with snare hits.
+*   **Kick Accents** -> **OUT_L (Pin B1)**: Sends a 5 V gate only when the current Kick step is flagged as an accent; remains at 0 V during non-accented kicks to leave dynamics intact.
+*   **Channel 2 (Snare + Hi-hat lane)** -> **Gate Out 2** (to Tymp Legio and any multed destinations). Every snare and hi-hat step produces the same 10 ms trigger here for downstream percussion.
+*   **Hi-hat CV lane** -> **OUT_R (Pin B2)**: Outputs a steady 5 V gate for the duration of each hi-hat step so BIA can receive a DC-coupled control input; drops to 0 V when the sequencer schedules a snare on that lane.
 *   **Clock / Accent** -> **CV Out 1 (C10)** (Clock Pulse).
-*   **Channel 4 (or Accent 2)** -> **Audio Out R** (Trigger/Env). Uses the same AD envelope concept for a second modulation lane; defaults to the shared Gate Out 2 trig unless configuration mode explicitly reroutes it.
 
 ### Configuration Mode (Switch B8 Toggled)
-Allows adjusting the "configurable envelopes" for Audio Outputs L/R.
-*   **Knob 1**: Attack/Decay shape for Out L.
-*   **Knob 2**: Attack/Decay shape for Out R.
-*   **Knob 3**: Probability for Out L.
-*   **Knob 4**: Probability for Out R.
+Allows adjusting the accent and hi-hat behavior for the DC outputs.
+*   **Knob 1**: Accent probability bias for OUT_L (how often kicks receive a 5 V accent).
+*   **Knob 2**: Accent gate length shaping for OUT_L (short pop vs sustained 5 V).
+*   **Knob 3**: Hi-hat probability bias for OUT_R.
+*   **Knob 4**: Hi-hat gate length shaping for OUT_R.
 
 ### Phase Alignment Notes
-*   **Phase 4 scope**: CV 5-8 summing with clamps, Chaos parameterization (Knob 3 + CV 7), and shared-trig AD envelopes on Audio L/R are mandatory deliverables.
-*   **Phase 5 scope**: Configuration mode tweaks the envelope shapes/probabilities without breaking the shared Gate Out 2 routing unless an explicit override is implemented.
+*   **Phase 4 scope**: CV 5-8 summing with clamps, Chaos parameterization (Knob 3 + CV 7), and the new DC-coupled accent (OUT_L) / hi-hat (OUT_R) logic are mandatory deliverables.
+*   **Phase 5 scope**: Configuration mode tweaks accent/hi-hat probabilities and gate shapes without breaking the shared Gate Out 2 routing unless an explicit override is implemented.
 
 ## Clock System
 *   **Internal Clock**: Default. Tempo controlled by Knob 4.
@@ -81,7 +80,7 @@ Allows adjusting the "configurable envelopes" for Audio Outputs L/R.
 4.  **Generate Outputs**:
     *   Set Gate Pins (B5, B6) High/Low.
     *   Set DAC (C10) for Clock Pulse.
-    *   Generate Audio Buffer for Out L/R (Short 1ms-5ms pulses or synthesized envelopes if acting as CV).
+    *   Update OUT_L/OUT_R CV states (0 V or 5 V) based on accent/hi-hat scheduling.
 5.  **LED Feedback**: Pulse User LED on Beat/Downbeat.
 
 ### Libraries
