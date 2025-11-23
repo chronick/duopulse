@@ -7,7 +7,7 @@ This firmware turns the Daisy Patch.Init() module into a topographic drum sequen
 
 ### Inputs
 *   **Knobs 1-4**: Primary performance controls.
-*   **CV Inputs 5-8**: Modulation inputs, hard-mapped to sum with Knobs 1-4 respectively.
+*   **CV Inputs 5-8**: Modulation inputs, hard-mapped to sum with Knobs 1-4 respectively. After summing, clamp the result to the normalized 0.0-1.0 control range to keep the Grid lookups stable even under extreme modulation swings.
 *   **Button (Pin B7)**: Shift / Function modifier.
 *   **Switch (Pin B8)**: Mode toggle (2-position).
 *   **Audio In L/R**: Available for CV modulation (if hardware permits DC coupling) or ignored if not feasible.
@@ -41,12 +41,17 @@ The core is a port/adaptation of the Grids algorithm (Map X, Map Y, Chaos/Densit
 | **Button (B7)** | **Shift** | Hold to access secondary functions (e.g., Reset, Pattern Bank). |
 | **Switch (B8)** | **Mode Toggle** | Switches between **Performance Mode** (Default) and **Configuration Mode**. |
 
+### Chaos Requirements
+*   **Knob 3 + CV 7** modulates a per-step random source. Low values introduce occasional ghost notes; high values perturb both the Map X/Y coordinates and each channel’s trigger probability.
+*   Perturbations are evaluated once per sequencer step (never per audio sample) to retain deterministic audio callbacks.
+*   Chaos modulation must never mute all voices; clamp its maximum influence so core kick/snare accents remain intelligible.
+
 ### Output Assignment
 *   **Channel 1 (Kick equivalent)** -> **Gate Out 1** (to BIA).
 *   **Channel 2 (Snare equivalent)** -> **Gate Out 2** (to Tymp Legio).
-*   **Channel 3 (HH equivalent)** -> **Audio Out L** (Trigger/Env).
+*   **Channel 3 (HH equivalent)** -> **Audio Out L** (Trigger/Env). Emits an attack-decay envelope normalized for ±5 V CV swings and shares Gate Out 2’s trig source so hats/percussion parameters move in sync with snare hits.
 *   **Clock / Accent** -> **CV Out 1 (C10)** (Clock Pulse).
-*   **Channel 4 (or Accent 2)** -> **Audio Out R** (Trigger/Env).
+*   **Channel 4 (or Accent 2)** -> **Audio Out R** (Trigger/Env). Uses the same AD envelope concept for a second modulation lane; defaults to the shared Gate Out 2 trig unless configuration mode explicitly reroutes it.
 
 ### Configuration Mode (Switch B8 Toggled)
 Allows adjusting the "configurable envelopes" for Audio Outputs L/R.
@@ -54,6 +59,10 @@ Allows adjusting the "configurable envelopes" for Audio Outputs L/R.
 *   **Knob 2**: Attack/Decay shape for Out R.
 *   **Knob 3**: Probability for Out L.
 *   **Knob 4**: Probability for Out R.
+
+### Phase Alignment Notes
+*   **Phase 4 scope**: CV 5-8 summing with clamps, Chaos parameterization (Knob 3 + CV 7), and shared-trig AD envelopes on Audio L/R are mandatory deliverables.
+*   **Phase 5 scope**: Configuration mode tweaks the envelope shapes/probabilities without breaking the shared Gate Out 2 routing unless an explicit override is implemented.
 
 ## Clock System
 *   **Internal Clock**: Default. Tempo controlled by Knob 4.

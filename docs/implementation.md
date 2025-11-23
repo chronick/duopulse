@@ -152,14 +152,16 @@ Status: TODO
     *   Ensure values clamp correctly (0.0 - 1.0).
 2.  **Chaos Implementation**:
     *   Implement Knob 3 (Chaos).
-    *   Add random perturbation to the X/Y readout coordinates or trigger probabilities.
-3.  **Audio Output Envelopes**:
-    *   Instead of simple "ticks" on Audio L/R, implement configurable AD envelopes (or simple decay) for Hi-Hats.
+    *   Drive a per-step random source that perturbs both the Map X/Y coordinates and each channel's trigger probability—low settings add ghost notes, high settings push toward glitch while clamping so primary voices never disappear.
+3.  **AD CV Envelopes using Audio L and R**:
+    *   Output CV A/D envelopes for OUT L and OUT R. These are intended to patch to BIA in conjunction with hits and must reuse Gate Out 2 as the trig source so snares, hi-hats, and other percussion all stay phase-aligned.
+    
 
 **Manual Testing Plan:**
-*   **Modulation**: Patch an LFO to CV 5 (Map X). Hear the beat constantly morphing.
-*   **Chaos**: Turn Knob 3 up. Pattern should have "ghost notes" or variations.
-*   **Audio Quality**: Listen to Audio L/R. Should sound like percussive clicks/hats rather than digital pops.
+*   **Modulation Clamp Check**: Patch the Ch Svr attenuator (set to ±8 V) into CV 5, sweep fully, and confirm the summed Map X value never exceeds the musical range (sequencer should smoothly hit both extremes but never fold over).
+*   **Chaos Characterization**: Raise Knob 3 while keeping CV 7 at mid. Expect subtle ghost notes up to noon, then denser fills beyond 2 o'clock without losing the primary kick/snare backbone.
+*   **Envelope Routing**: Mult Gate Out 2 with the Make Noise passive mult—one copy back into the module as normal, one into Ch Svr to scale Audio L/R envelopes before sending them to BIA's Pitch (via ±5 V range) and Morph (attenuate to ±3 V). Listen for synced timbral shifts on every snare/hat hit.
+*   **BIA Reference Setup**: Suggested baseline—BIA in Skin mode, Pitch ~11 o'clock, Spread ~9 o'clock, Morph ~1 o'clock, Fold ~10 o'clock, Attack minimum, Decay ~1 o'clock. With this, Gate 1 keeps a solid kick while the new envelopes modulate Morph/Fold without clipping.
 
 ---
 
@@ -205,6 +207,21 @@ Status: TODO
 **Manual Testing Plan**:
 *   Follow each recipe, documenting audible output and LED/clock behavior.
 *   If any step deviates, log knob positions, external CV, and observed outputs for debugging before release.
+
+### Testing Notes: Recommended BIA & CV Patch
+1.  **Primary Triggering**
+    *   Mult Gate Out 1 with the Make Noise passive mult so one copy drives BIA's trigger and the other can feed an external clock/reset if needed.
+    *   Gate Out 2 feeds Tymp Legio directly; the mult's spare jack can distribute the same trigger to additional voices for cohesion.
+2.  **Envelope Distribution**
+    *   Route Audio Out L (AD envelope) through Ch Svr in ±5 V mode, attenuate to taste, and patch into BIA's Pitch or Harmonic CV for hat/snare articulation.
+    *   Route Audio Out R through Ch Svr in ±8 V mode for deeper swings, then into BIA's Morph or Fold CV; keep the attenuator around 40–50 % to avoid over-folding.
+3.  **BIA Front-Panel Reference**
+    *   Mode: **Skin**, Pitch ~11 o'clock, Decay ~1 o'clock, Attack fully CCW, Spread ~9 o'clock, Harmonics ~10 o'clock, Morph ~1 o'clock, Fold ~10 o'clock.
+    *   This baseline leaves headroom so the AD envelopes clearly sculpt timbre without destabilizing the kick fundamental.
+4.  **Clock & Accent Routing**
+    *   Send CV Out 1 (master clock pulse) to downstream sequencers. If accent is desired, tap the passive mult to feed CV Out 2's LED mirror into external accent inputs.
+5.  **Verification Goal**
+    *   With the above patching, increasing Knob 3 should audibly shift BIA's tone in tandem with density changes, making it easy to confirm Chaos and envelope routing in a single listening pass.
 
 ---
 
