@@ -87,6 +87,8 @@ INCLUDES += -I$(LIBDAISY_PATH)/Middlewares/Third_Party/FatFs/src
 # Source Files
 SRCS := $(wildcard $(SRC_DIR)/*.cpp)
 SRCS += $(wildcard $(SRC_DIR)/*.c)
+SRCS += $(wildcard $(SRC_DIR)/*/*.cpp)
+SRCS += $(wildcard $(SRC_DIR)/*/*.c)
 
 # Object Files
 OBJS := $(SRCS:$(SRC_DIR)/%.cpp=$(OBJ_DIR)/%.o)
@@ -166,11 +168,13 @@ $(HEX): $(ELF)
 # Compile C++ source files
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp | $(OBJ_DIR)
 	@echo "Compiling $<..."
+	@mkdir -p $(dir $@)
 	@$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@
 
 # Compile C source files
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c | $(OBJ_DIR)
 	@echo "Compiling $<..."
+	@mkdir -p $(dir $@)
 	@$(CC) $(CXXFLAGS) $(INCLUDES) -c $< -o $@
 
 # Create directories
@@ -223,6 +227,7 @@ rebuild: clean all
 HOST_CXX := g++
 HOST_CXXFLAGS := -std=c++17 -Wall -Wextra -g -O0
 HOST_CXXFLAGS += -I$(INC_DIR)
+HOST_CXXFLAGS += -I$(SRC_DIR)
 HOST_CXXFLAGS += -I$(DAISYSP_PATH)/Source
 HOST_CXXFLAGS += -I$(DAISYSP_PATH)/Source/daisysp
 HOST_CXXFLAGS += -I$(DAISYSP_PATH)/Source/Utility
@@ -239,10 +244,13 @@ HOST_CXXFLAGS += -I$(DAISYSP_PATH)/Source/Drums
 TEST_SRCS := $(wildcard $(TEST_DIR)/*.cpp)
 TEST_OBJS := $(TEST_SRCS:$(TEST_DIR)/%.cpp=$(BUILD_DIR)/test_%.o)
 
+# Project sources needed for host-side tests
+TEST_APP_SRCS := $(wildcard $(SRC_DIR)/Engine/*.cpp)
+TEST_APP_OBJS := $(patsubst $(SRC_DIR)/%.cpp,$(BUILD_DIR)/test_app_%.o,$(TEST_APP_SRCS))
+
 # DaisySP sources needed for tests (compiled for host)
 TEST_DAISYSP_SRCS := $(DAISYSP_PATH)/Source/Utility/metro.cpp \
-                     $(DAISYSP_PATH)/Source/Control/adsr.cpp \
-                     $(DAISYSP_PATH)/Source/Synthesis/oscillator.cpp
+                     $(DAISYSP_PATH)/Source/Control/adsr.cpp
 TEST_DAISYSP_OBJS := $(TEST_DAISYSP_SRCS:$(DAISYSP_PATH)/%.cpp=$(BUILD_DIR)/daisysp_host/%.o)
 
 TEST_RUNNER := $(BUILD_DIR)/test_runner
@@ -288,7 +296,7 @@ CATCH2_LIB := $(shell \
     fi)
 
 # Build test runner
-$(TEST_RUNNER): $(TEST_OBJS) $(TEST_DAISYSP_OBJS) | $(BUILD_DIR)
+$(TEST_RUNNER): $(TEST_OBJS) $(TEST_APP_OBJS) $(TEST_DAISYSP_OBJS) | $(BUILD_DIR)
 	@if [ -z "$(CATCH2_INC)" ]; then \
 		echo "Error: Catch2 not found. Cannot build tests."; \
 		echo "Install Catch2 or set CATCH2_INC environment variable."; \
@@ -296,9 +304,9 @@ $(TEST_RUNNER): $(TEST_OBJS) $(TEST_DAISYSP_OBJS) | $(BUILD_DIR)
 	fi
 	@echo "Linking test runner..."
 	@if [ -n "$(CATCH2_LIB)" ]; then \
-		$(HOST_CXX) $(HOST_CXXFLAGS) $(TEST_OBJS) $(TEST_DAISYSP_OBJS) -L$(CATCH2_LIB) -lCatch2Main -lCatch2 -o $@; \
+		$(HOST_CXX) $(HOST_CXXFLAGS) $(TEST_OBJS) $(TEST_APP_OBJS) $(TEST_DAISYSP_OBJS) -L$(CATCH2_LIB) -lCatch2Main -lCatch2 -o $@; \
 	else \
-		$(HOST_CXX) $(HOST_CXXFLAGS) $(TEST_OBJS) $(TEST_DAISYSP_OBJS) -o $@; \
+		$(HOST_CXX) $(HOST_CXXFLAGS) $(TEST_OBJS) $(TEST_APP_OBJS) $(TEST_DAISYSP_OBJS) -o $@; \
 	fi
 
 # Compile test files
@@ -313,6 +321,12 @@ $(BUILD_DIR)/test_%.o: $(TEST_DIR)/%.cpp | $(BUILD_DIR)
 # Compile DaisySP host files
 $(BUILD_DIR)/daisysp_host/%.o: $(DAISYSP_PATH)/%.cpp | $(BUILD_DIR)
 	@echo "Compiling host lib $<..."
+	@mkdir -p $(dir $@)
+	@$(HOST_CXX) $(HOST_CXXFLAGS) -c $< -o $@
+
+# Compile project sources for host-side tests
+$(BUILD_DIR)/test_app_%.o: $(SRC_DIR)/%.cpp | $(BUILD_DIR)
+	@echo "Compiling app source $<..."
 	@mkdir -p $(dir $@)
 	@$(HOST_CXX) $(HOST_CXXFLAGS) -c $< -o $@
 
@@ -365,7 +379,9 @@ help:
 -include $(OBJS:.o=.d)
 
 $(OBJ_DIR)/%.d: $(SRC_DIR)/%.cpp | $(OBJ_DIR)
+	@mkdir -p $(dir $@)
 	@$(CXX) $(CXXFLAGS) $(INCLUDES) -MM -MT $(@:.d=.o) $< > $@
 
 $(OBJ_DIR)/%.d: $(SRC_DIR)/%.c | $(OBJ_DIR)
+	@mkdir -p $(dir $@)
 	@$(CC) $(CXXFLAGS) $(INCLUDES) -MM -MT $(@:.d=.o) $< > $@

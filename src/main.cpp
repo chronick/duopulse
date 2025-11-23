@@ -1,11 +1,12 @@
 /**
- * Phase 2: The Clock & Simple Sequencer
- * - Internal Clock Engine (Metro)
- * - Knob 4 controls Tempo (30-200 BPM)
- * - Gate Outs trigger on beat (10ms pulse)
- * - Audio L/R outputs a "beep" on beat
- * - User LED syncs to beat
- * - Button B7 allows Tap Tempo
+ * Phase 3: The "Grids" Core
+ * - Pattern Generator (Map X/Y)
+ * - Knob 1: Map X
+ * - Knob 2: Map Y
+ * - Knob 4: Tempo
+ * - Gate 1: Kick
+ * - Gate 2: Snare
+ * - Audio L/R: Hi-Hat
  */
 
 #include "daisy_patch_sm.h"
@@ -32,12 +33,12 @@ void AudioCallback(AudioHandle::InputBuffer  in,
     for(size_t i = 0; i < size; i++)
     {
         float sig = sequencer.ProcessAudio();
-        bool gateState = sequencer.IsGateHigh();
-
+        
         // Write Gates
-        patch.gate_out_1.Write(gateState);
-        patch.gate_out_2.Write(gateState);
+        patch.gate_out_1.Write(sequencer.IsGateHigh(0)); // Kick
+        patch.gate_out_2.Write(sequencer.IsGateHigh(1)); // Snare
 
+        // Audio Out (HH)
         out[0][i] = sig;
         out[1][i] = sig;
     }
@@ -48,14 +49,17 @@ void ProcessControls()
     patch.ProcessAnalogControls();
     tapButton.Debounce();
 
-    float knobVal = patch.GetAdcValue(CV_4);
+    float knobX = patch.GetAdcValue(CV_1);
+    float knobY = patch.GetAdcValue(CV_2);
+    float knobTempo = patch.GetAdcValue(CV_4);
+    
     bool tapTrig = tapButton.RisingEdge();
     uint32_t now = System::GetNow();
 
-    sequencer.ProcessControl(knobVal, tapTrig, now);
+    sequencer.ProcessControl(knobTempo, knobX, knobY, tapTrig, now);
 
-    // User LED Sync
-    patch.SetLed(sequencer.IsGateHigh());
+    // User LED Sync (Blink on Kick)
+    patch.SetLed(sequencer.IsGateHigh(0));
 }
 
 int main(void)

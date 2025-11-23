@@ -10,7 +10,7 @@ TEST_CASE("Sequencer Initialization", "[sequencer]")
 
     // Default BPM is 120
     REQUIRE(seq.GetBpm() == Catch::Approx(120.0f));
-    REQUIRE_FALSE(seq.IsGateHigh());
+    REQUIRE_FALSE(seq.IsGateHigh(0));
 }
 
 TEST_CASE("Sequencer Knob Control", "[sequencer]")
@@ -18,17 +18,20 @@ TEST_CASE("Sequencer Knob Control", "[sequencer]")
     Sequencer seq;
     seq.Init(48000.0f);
 
+    const float knobX = 0.5f;
+    const float knobY = 0.5f;
+
     // Knob at 0 -> Min Tempo (30)
-    seq.ProcessControl(0.0f, false, 0);
+    seq.ProcessControl(0.0f, knobX, knobY, false, 0);
     REQUIRE(seq.GetBpm() == Catch::Approx(30.0f));
 
     // Knob at 1 -> Max Tempo (200)
-    seq.ProcessControl(1.0f, false, 0);
+    seq.ProcessControl(1.0f, knobX, knobY, false, 0);
     REQUIRE(seq.GetBpm() == Catch::Approx(200.0f));
 
     // Knob at 0.5 -> Mid Tempo (115)
     // 30 + 0.5 * (200 - 30) = 30 + 85 = 115
-    seq.ProcessControl(0.5f, false, 0);
+    seq.ProcessControl(0.5f, knobX, knobY, false, 0);
     REQUIRE(seq.GetBpm() == Catch::Approx(115.0f));
 }
 
@@ -37,21 +40,24 @@ TEST_CASE("Sequencer Tap Tempo", "[sequencer]")
     Sequencer seq;
     seq.Init(48000.0f);
 
+    const float knobX = 0.5f;
+    const float knobY = 0.5f;
+
     // First tap sets the baseline
-    seq.ProcessControl(0.5f, true, 1000);
+    seq.ProcessControl(0.5f, knobX, knobY, true, 1000);
     
     // Second tap 500ms later (120 BPM)
     // 60000 / 500 = 120
-    seq.ProcessControl(0.5f, true, 1500);
+    seq.ProcessControl(0.5f, knobX, knobY, true, 1500);
     REQUIRE(seq.GetBpm() == Catch::Approx(120.0f).margin(1.0f));
 
     // Third tap 1000ms later (60 BPM)
-    seq.ProcessControl(0.5f, true, 2500);
+    seq.ProcessControl(0.5f, knobX, knobY, true, 2500);
     REQUIRE(seq.GetBpm() == Catch::Approx(60.0f).margin(1.0f));
     
     // Test ignore too fast taps (< 100ms)
     float currentBpm = seq.GetBpm();
-    seq.ProcessControl(0.5f, true, 2550); // 50ms later
+    seq.ProcessControl(0.5f, knobX, knobY, true, 2550); // 50ms later
     REQUIRE(seq.GetBpm() == currentBpm); // Should not change
 }
 
@@ -67,7 +73,8 @@ TEST_CASE("Sequencer Audio Generation", "[sequencer]")
     for(int i = 0; i < 30000; i++)
     {
         float sample = seq.ProcessAudio();
-        if(seq.IsGateHigh())
+        (void)sample;
+        if(seq.IsGateHigh(0) || seq.IsGateHigh(1))
         {
             gateTriggered = true;
             break;

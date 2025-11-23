@@ -77,17 +77,15 @@ Status: DONE
 ---
 
 ## Phase 3: The "Grids" Core (Algorithm Port)
-Status: TODO
+Status: DONE
 **Goal:** Port the topographic drum generation logic.
 
-1.  **Data Structure**:
-    *   Import/Create the Grids lookup tables (Map X/Y data). *Note: This is the hardest part, requires porting the compressed data tables.*
-2.  **Coordinate Logic**:
-    *   Implement the logic to read Map X (Knob 1) and Map Y (Knob 2).
-    *   Implement the interpolation/read logic to determine drum density for 3 channels (Kick, Snare, HH).
-3.  **Sequencer Integration**:
-    *   Replace simple metronome with Grids coordinate lookup.
-    *   On clock tick: Read Grid state -> Trigger Outputs.
+1.  **Data Structure**: *(done)*
+    *   Full 25-node Mutable Instruments tables are embedded in `src/Engine/GridsData.*`.
+2.  **Coordinate Logic**: *(done)*
+    *   Knob 1/2 feed directly into bilinear interpolation inside `PatternGenerator`, matching the original Grids behavior and per-channel densities.
+3.  **Sequencer Integration**: *(done)*
+    *   The audio clock now queries the Grids map each step, driving gates/audio via the new pattern generator.
 
 **Manual Testing Plan:**
 *   **Static Pattern**: Set knobs to 12 o'clock. Should hear a specific breakbeat pattern.
