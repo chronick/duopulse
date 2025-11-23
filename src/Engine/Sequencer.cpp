@@ -6,6 +6,15 @@
 namespace daisysp_idm_grids
 {
 
+namespace
+{
+template <typename T>
+inline T Clamp(T value, T minValue, T maxValue)
+{
+    return value < minValue ? minValue : (value > maxValue ? maxValue : value);
+}
+} // namespace
+
 void Sequencer::Init(float sampleRate)
 {
     sampleRate_ = sampleRate;
@@ -25,6 +34,8 @@ void Sequencer::Init(float sampleRate)
     gateDurationSamples_ = static_cast<int>(sampleRate_ * 0.01f);
     gateTimers_[0] = 0;
     gateTimers_[1] = 0;
+    clockDurationSamples_ = static_cast<int>(sampleRate_ * 0.01f);
+    clockTimer_ = 0;
 }
 
 void Sequencer::ProcessControl(float    knobTempo,
@@ -69,6 +80,7 @@ float Sequencer::ProcessAudio()
         bool trigs[3];
         patternGen_.GetTriggers(mapX_, mapY_, stepIndex_, 0.6f, trigs);
 
+        TriggerClock();
         if(trigs[0])
         {
             TriggerGate(0);
@@ -101,7 +113,7 @@ bool Sequencer::IsGateHigh(int channel) const
 
 void Sequencer::SetBpm(float bpm)
 {
-    currentBpm_ = std::clamp(bpm, kMinTempo, kMaxTempo);
+    currentBpm_ = Clamp(bpm, kMinTempo, kMaxTempo);
     metro_.SetFreq(currentBpm_ / 60.0f * 4.0f);
 }
 
@@ -113,6 +125,11 @@ void Sequencer::TriggerGate(int channel)
     }
 }
 
+void Sequencer::TriggerClock()
+{
+    clockTimer_ = clockDurationSamples_;
+}
+
 void Sequencer::ProcessGates()
 {
     for(int& timer : gateTimers_)
@@ -121,6 +138,10 @@ void Sequencer::ProcessGates()
         {
             --timer;
         }
+    }
+    if(clockTimer_ > 0)
+    {
+        --clockTimer_;
     }
 }
 

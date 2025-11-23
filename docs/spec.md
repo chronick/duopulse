@@ -16,6 +16,7 @@ This firmware turns the Daisy Patch.Init() module into a topographic drum sequen
 *   **Gate Out 1 (Pin B5)**: Trigger for BIA (Voice 1).
 *   **Gate Out 2 (Pin B6)**: Trigger for Tymp Legio (Voice 2).
 *   **CV Out 1 (Pin C10)**: Master Clock Output (Pulse).
+*   **CV Out 2 (Pin C1 / Front LED)**: Mirrors the rear/User LED state for visual beat feedback on the front panel.
 *   **Audio Out L (Pin B1)**: Trigger Output 3 (configurable envelope/trigger).
 *   **Audio Out R (Pin B2)**: Trigger Output 4 (configurable envelope/trigger).
     *   *Note*: Audio outputs are typically AC coupled. Triggers will be short pulses. Envelopes must be percussive.

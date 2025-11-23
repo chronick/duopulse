@@ -21,6 +21,7 @@ public:
     float ProcessAudio();
 
     bool IsGateHigh(int channel) const;
+    bool IsClockHigh() const { return clockTimer_ > 0; }
 
     float GetBpm() const { return currentBpm_; }
     void  SetBpm(float bpm);
@@ -41,6 +42,8 @@ private:
 
     int gateTimers_[2] = {0, 0}; // Kick, Snare
     int gateDurationSamples_ = 0;
+    int clockTimer_ = 0;
+    int clockDurationSamples_ = 0;
 
     daisysp::Metro        metro_;
     PatternGenerator      patternGen_;
@@ -48,6 +51,7 @@ private:
     daisysp::Adsr         hhEnv_;
 
     void TriggerGate(int channel);
+    void TriggerClock();
     void ProcessGates();
 };
 

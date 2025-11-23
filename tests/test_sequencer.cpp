@@ -1,5 +1,6 @@
 #include <catch2/catch_all.hpp>
 #include "../src/Engine/Sequencer.h"
+#include "../src/Engine/LedIndicator.h"
 
 using namespace daisysp_idm_grids;
 
@@ -82,5 +83,38 @@ TEST_CASE("Sequencer Audio Generation", "[sequencer]")
     }
     
     REQUIRE(gateTriggered);
+}
+
+TEST_CASE("Led indicator voltage mapping", "[led]")
+{
+    REQUIRE(LedIndicator::VoltageForState(true)
+            == Catch::Approx(LedIndicator::kLedOnVoltage));
+    REQUIRE(LedIndicator::VoltageForState(false)
+            == Catch::Approx(LedIndicator::kLedOffVoltage));
+}
+
+TEST_CASE("Clock pulse toggles with metro", "[sequencer]")
+{
+    Sequencer seq;
+    seq.Init(48000.0f);
+
+    bool clockWentHigh = false;
+    for(int i = 0; i < 60000; ++i)
+    {
+        seq.ProcessAudio();
+        if(seq.IsClockHigh())
+        {
+            clockWentHigh = true;
+            break;
+        }
+    }
+    REQUIRE(clockWentHigh);
+
+    // After enough samples, clock should fall low again.
+    for(int i = 0; i < 2000; ++i)
+    {
+        seq.ProcessAudio();
+    }
+    REQUIRE_FALSE(seq.IsClockHigh());
 }
 

@@ -12,6 +12,7 @@
 #include "daisy_patch_sm.h"
 #include "daisysp.h"
 #include "Engine/Sequencer.h"
+#include "Engine/LedIndicator.h"
 
 using namespace daisy;
 using namespace daisysp;
@@ -58,8 +59,12 @@ void ProcessControls()
 
     sequencer.ProcessControl(knobTempo, knobX, knobY, tapTrig, now);
 
-    // User LED Sync (Blink on Kick)
-    patch.SetLed(sequencer.IsGateHigh(0));
+    // User/front LED Sync (Blink on Kick)
+    bool ledState = sequencer.IsGateHigh(0);
+    patch.SetLed(ledState);
+    patch.WriteCvOut(patch_sm::CV_OUT_2, LedIndicator::VoltageForState(ledState));
+    patch.WriteCvOut(patch_sm::CV_OUT_1,
+                     LedIndicator::VoltageForState(sequencer.IsClockHigh()));
 }
 
 int main(void)
@@ -73,6 +78,11 @@ int main(void)
 
     // Initialize Sequencer
     sequencer.Init(sampleRate);
+
+    // Ensure LEDs start in a known state.
+    patch.SetLed(false);
+    patch.WriteCvOut(patch_sm::CV_OUT_2, LedIndicator::kLedOffVoltage);
+    patch.WriteCvOut(patch_sm::CV_OUT_1, LedIndicator::kLedOffVoltage);
 
     // Initialize Controls
     // Button B7

@@ -65,7 +65,8 @@ Status: DONE
 2.  **Basic Output Triggers**:
     *   Generate short triggers (10ms) on Gate Out 1 & 2 on every beat.
     *   Generate a distinct sound (e.g., high pitch beep) on Audio L/R on the beat.
-    *   Sync User LED to the beat.
+    *   Sync both the rear User LED and the front-panel LED (CV_OUT_2/C1) to the beat.
+    *   Drive **CV_OUT_1 (C10)** with a 1/16-note master clock pulse alongside the gates.
 3.  **Tap Tempo**:
     *   **Button B7** Allows tap tempo if pressed in regular succession.
 
@@ -73,6 +74,8 @@ Status: DONE
 *   **Tempo Control**: Turn Knob 4. Verify LED flash rate changes.
 *   **Trigger Check**: Patch Gate 1 to BIA (Kick). Verify it triggers reliable kicks.
 *   **Audio Check**: Listen to Audio L/R. Should hear a "tick".
+*   **Clock Out**: Patch CV_OUT_1 to an external sequencer—should see a 1/16 pulse in sync with the LED/gates.
+
 
 ---
 
@@ -97,6 +100,48 @@ Status: DONE
     *   Audio L (HH) -> Mixer.
 
 ---
+
+### Manual Test Plan (Patch.Init Hardware)
+
+#### Map X Sweep (Knob 1)
+
+- Leave Knob 2 at noon.
+- Slowly rotate Knob 1 from minimum to maximum.
+- **Expect:**  
+  - Kick placement morphs: starts sparse (lower-left) and evolves through four-on-the-floor to dense/jungle.
+  - Gate 1 reflects these changes.
+  - Gate 2 and hi-hats (HH) also shift but remain musically coherent.
+
+#### Map Y Sweep (Knob 2)
+
+- Set Knob 1 to approximately 0.25.
+- Sweep Knob 2 from minimum to maximum.
+- **Expect:**  
+  - Patterns become busier with higher Y mappings (e.g., Amen/Gabber).
+  - Gate 2 (snare) density follows the sweep.
+  - Hi-hat output thickens.
+
+#### Clock Sync
+
+- Patch an external tempo CV to Knob 4 (tempo).
+- Vary the external CV.
+- **Expect:**  
+  - LED and gates reliably follow the clock without jitter.
+  - Grids map lookup occurs every metro tick.
+
+#### Audio Consistency
+
+- Monitor Audio L/R on a mixer.
+- **Expect:**  
+  - Each hi-hat strike produces a fast-decay envelope (no audible pops).
+  - Rhythmic density in audio matches gate activity.
+
+#### Edge Cases
+
+- Rapidly turn Knob 1 or Knob 2 fully CCW/CW.  
+  **Expect:** No silent zones or runaway trigger floods.
+- Tap the tempo button rapidly.  
+  **Expect:** BPM updates cleanly without pattern glitches.
 
 ## Phase 4: Full Control Mapping & Chaos
 Status: TODO
@@ -135,6 +180,31 @@ Status: TODO
 **Manual Testing Plan:**
 *   **Mode Switch**: Flip switch. Turn knobs. Verify pattern doesn't change, but sound character (decay) of Audio L/R changes.
 *   **Return**: Flip switch back. Knobs resume controlling pattern generation.
+
+---
+
+## Phase 6: Verification & Manual QA
+Status: TODO
+**Goal:** Provide a repeatable "mini manual" for validating drum patterns, clocking, and LED behavior before release.
+
+1.  **Setup Checklist**:
+    *   Firmware flashed via `make program`.
+    *   Outputs patched: Gate 1 → Kick voice, Gate 2 → Snare voice, Audio L → Mixer (HH), CV_OUT_1 → external sequencer/clock divider, CV_OUT_2 LED visible on front panel.
+    *   All knobs at noon; no external CV patched unless specified.
+2.  **Pattern Recipes**:
+    *   **Techno / 4-on-the-floor**: Knob 1 ≈ 12 o'clock, Knob 2 ≈ 9 o'clock. Expect steady kicks on 0/4/8/12 (Gate 1), moderate hats on Audio L, sparse snares.
+    *   **Breakbeat / Hip-Hop**: Knob 1 ≈ 9 o'clock, Knob 2 ≈ 12 o'clock. Expect syncopated kicks and heavy snares (Gate 2) reminiscent of node_11.
+    *   **IDM / Glitch**: Knob 1 ≈ 3 o'clock, Knob 2 ≈ 3 o'clock. Expect dense hats and unpredictable fills. Verify chaos knob (Knob 3) adds further variation when raised.
+3.  **Clock & LED Verification**:
+    *   Patch CV_OUT_1 into an external module and confirm a 1/16 pulse aligned with both rear and front LEDs.
+    *   Change tempo (Knob 4 and tap button). External device must track without drift.
+4.  **Edge Tests**:
+    *   Sweep Knob 1/2 extremes to ensure no silent zones or runaway triggers.
+    *   Bypass the internal clock by feeding a steady tap-tempo input; confirm the pattern remains consistent.
+
+**Manual Testing Plan**:
+*   Follow each recipe, documenting audible output and LED/clock behavior.
+*   If any step deviates, log knob positions, external CV, and observed outputs for debugging before release.
 
 ---
 

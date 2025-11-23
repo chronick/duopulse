@@ -14,6 +14,12 @@ namespace
 constexpr float kCoordScale = 255.0f;
 constexpr float kCellSize = 64.0f;
 
+template <typename T>
+inline T Clamp(T value, T minValue, T maxValue)
+{
+    return value < minValue ? minValue : (value > maxValue ? maxValue : value);
+}
+
 int WrapStepIndex(int step)
 {
     int wrapped = step % PatternGenerator::kPatternLength;
@@ -31,13 +37,13 @@ void PatternGenerator::Init()
 
 void PatternGenerator::GetTriggers(float x, float y, int step, float density, bool* triggers)
 {
-    x = std::clamp(x, 0.0f, 1.0f);
-    y = std::clamp(y, 0.0f, 1.0f);
-    density = std::clamp(density, 0.0f, 1.0f);
+    x = Clamp(x, 0.0f, 1.0f);
+    y = Clamp(y, 0.0f, 1.0f);
+    density = Clamp(density, 0.0f, 1.0f);
     int wrappedStep = WrapStepIndex(step);
 
     int threshold = static_cast<int>(std::round((1.0f - density) * 255.0f));
-    threshold = std::clamp(threshold, 0, 255);
+    threshold = Clamp(threshold, 0, 255);
 
     for(int ch = 0; ch < kNumChannels; ++ch)
     {
@@ -48,9 +54,9 @@ void PatternGenerator::GetTriggers(float x, float y, int step, float density, bo
 
 uint8_t PatternGenerator::ReadMap(float x, float y, int channel, int step) const
 {
-    x = std::clamp(x, 0.0f, 1.0f);
-    y = std::clamp(y, 0.0f, 1.0f);
-    channel = std::clamp(channel, 0, kNumChannels - 1);
+    x = Clamp(x, 0.0f, 1.0f);
+    y = Clamp(y, 0.0f, 1.0f);
+    channel = Clamp(channel, 0, kNumChannels - 1);
     int wrappedStep = WrapStepIndex(step);
 
     const float xAddress = x * kCoordScale;
@@ -59,19 +65,19 @@ uint8_t PatternGenerator::ReadMap(float x, float y, int channel, int step) const
     const int maxNodeIndex = static_cast<int>(grids_data::kDrumMapSide) - 1;
     const int maxCellIndex = maxNodeIndex - 1;
 
-    int cellX = std::clamp(static_cast<int>(xAddress) >> 6, 0, maxCellIndex);
-    int cellY = std::clamp(static_cast<int>(yAddress) >> 6, 0, maxCellIndex);
+    int cellX = Clamp(static_cast<int>(xAddress) >> 6, 0, maxCellIndex);
+    int cellY = Clamp(static_cast<int>(yAddress) >> 6, 0, maxCellIndex);
     int cellX1 = std::min(cellX + 1, maxNodeIndex);
     int cellY1 = std::min(cellY + 1, maxNodeIndex);
 
     float tx = (xAddress - static_cast<float>(cellX << 6)) / kCellSize;
     float ty = (yAddress - static_cast<float>(cellY << 6)) / kCellSize;
-    tx = std::clamp(tx, 0.0f, 1.0f);
-    ty = std::clamp(ty, 0.0f, 1.0f);
+    tx = Clamp(tx, 0.0f, 1.0f);
+    ty = Clamp(ty, 0.0f, 1.0f);
 
     auto sample = [&](int mapX, int mapY) -> float {
-        mapX = std::clamp(mapX, 0, maxNodeIndex);
-        mapY = std::clamp(mapY, 0, maxNodeIndex);
+        mapX = Clamp(mapX, 0, maxNodeIndex);
+        mapY = Clamp(mapY, 0, maxNodeIndex);
         const uint8_t nodeIndex = grids_data::kDrumMap[mapX][mapY];
         const auto& node = grids_data::kNodeData[nodeIndex];
         std::size_t idx = static_cast<std::size_t>(channel) * kPatternLength + wrappedStep;
@@ -86,7 +92,7 @@ uint8_t PatternGenerator::ReadMap(float x, float y, int channel, int step) const
     float top = a + (b - a) * tx;
     float bottom = c + (d - c) * tx;
     float value = top + (bottom - top) * ty;
-    value = std::clamp(value, 0.0f, 255.0f);
+    value = Clamp(value, 0.0f, 255.0f);
 
     return static_cast<uint8_t>(std::round(value));
 }
