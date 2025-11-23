@@ -155,8 +155,8 @@ Status: DONE
     *   Implement Knob 3 (Chaos).
     *   Drive a per-step random source that perturbs both the Map X/Y coordinates and each channel's trigger probability—low settings add ghost notes, high settings push toward glitch while clamping so primary voices never disappear.
 3.  **Accent & Hi-hat CV lanes**:
-    *   OUT_L becomes a DC-coupled 0‑5 V accent lane that only goes high on accented Kick steps; it must stay low on normal kicks even if Gate Out 1 fires.
-    *   OUT_R becomes a DC-coupled 0‑5 V hi-hat CV lane that outputs 5 V on hi-hat steps and 0 V on snare steps so BIA can differentiate articulations.
+    *   OUT_L becomes a DC-coupled accent lane that only goes high on accented Kick steps; it must stay low on normal kicks even if Gate Out 1 fires. Because the codec naturally swings about ±9 V, apply the self-attenuation strategy from `docs/chats/daisy-audio-vs-cv.md` so a “+5 V” target is truly +5 V at the jack.
+    *   OUT_R becomes a DC-coupled hi-hat CV lane that outputs the same self-attenuated +5 V on hi-hat steps and 0 V on snare steps so BIA can differentiate articulations.
     *   Gate Out 2 continues to emit a trigger on both snare and hi-hat steps, keeping downstream percussion locked even while OUT_R only gates the hi-hat CV.
     
 
@@ -168,23 +168,46 @@ Status: DONE
 
 ---
 
+## Phase 4.1: Self-Attenuation Bugfix
+Status: TODO  
+**Goal:** Clamp the codec-driven OUT_L/OUT_R lanes to ±5 V so “gate high” never exceeds the Eurorack-friendly range even though the codec can swing about ±9 V.
+
+1.  **Firmware Scaling**:
+    *   Implement a dedicated scaling helper that maps normalized audio-block values to the ±5 V target before writing to the codec buffers.
+    *   Ensure “gate low” remains a true 0 V (no DC bleed) and that hot values never exceed ±5 V even under CV modulation or Chaos perturbations.
+2.  **Regression Harness**:
+    *   Add a unit-style test (host-side) or simulated routine that feeds max/min gate states through the helper to verify clipping at ±5 V.
+    *   Document the conversion math in-code referencing `docs/chats/daisy-audio-vs-cv.md`.
+3.  **Manual Verification**:
+    *   Patch OUT_L/OUT_R into a multimeter while running dense patterns; confirm gate highs land at the configured ±5 V endpoints and lows rest at 0 V.
+    *   Sweep Config Mode voltage knobs to prove the scaling continues to respect the ±5 V boundary.
+
+---
+
 ## Phase 5: Secondary Modes & Polish
 Status: TODO
 **Goal:** Add "Shift" functions and configuration.
 
 1.  **UI Logic**:
     *   Implement Button (B7) and Switch (B8) reading. 
-    *   State machine: Performance Mode vs. Config Mode.
+    *   State machine: Performance Mode vs. Config Mode. Switching modes must be glitch-free—drum patterns, audio outs, and gates keep running in place while the UI layer remaps the knobs.
     *   Tap-Tempo: Retain support for tap-tempo introduced in Phase 2 while in performance mode.
     *   LED Light feedback: button remains lit while in config mode. In performance mode, blinks on every hit
 2.  **Config Mode**:
-    *   When Switch is toggled: Knobs 1-4 remap to OUT_L/OUT_R parameters (accent probability, accent gate length, hi-hat probability, hi-hat gate length) per the spec.
+    *   When the switch is toggled, Knobs 1-4 remap to OUT_L/OUT_R gate-behavior parameters without muting the currently playing voltages. Gate lanes must always read 0 V when “OFF”.
+    *   Knob 1 + CV5: Program the OUT_L gate-on voltage between –5 V and +5 V (implemented by scaling down the codec swing).
+    *   Knob 2 + CV6: Shape the OUT_L gate duration (short pop ↔ sustained hold) independent of the voltage level.
+    *   Knob 3 + CV7: Program the OUT_R gate-on voltage between –5 V and +5 V.
+    *   Knob 4 + CV8: Shape the OUT_R gate duration.
+    *   Ensure the newly defined voltages persist when returning to Performance Mode so users hear uninterrupted transitions.
 3.  **Save/Load** (Optional/Time Permitting):
     *   Save config to flash.
 
 **Manual Testing Plan:**
-*   **Mode Switch**: Flip switch. Turn knobs. Verify pattern doesn't change, but OUT_L accent frequency/gate length and OUT_R hi-hat behavior respond immediately.
-*   **Return**: Flip switch back. Knobs resume controlling pattern generation.
+*   **Mode Switch**: Flip the switch while a pattern runs. Confirm gates, audio outs, and LED feedback continue uninterrupted.
+*   **Voltage Programming**: In Config Mode, sweep Knob 1 and watch OUT_L jump between –5 V and +5 V on accent steps; repeat with Knob 3 for OUT_R hi-hat gates. Validate with a multimeter that OFF states are pinned to 0 V.
+*   **Gate Shape**: Adjust Knob 2/Knob 4 to hear/observe the change in hold time while the programmed voltages remain intact.
+*   **Return**: Flip back to Performance Mode and verify the newly chosen voltages persist while knobs resume Map X/Y control.
 
 ---
 

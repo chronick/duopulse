@@ -17,8 +17,8 @@ This firmware turns the Daisy Patch.Init() module into a topographic drum sequen
 *   **Gate Out 2 (Pin B6)**: Trigger for Tymp Legio plus shared snare/hi-hat trigger lane.
 *   **CV Out 1 (Pin C10)**: Master Clock Output (Pulse).
 *   **CV Out 2 (Pin C1 / Front LED)**: Mirrors the rear/User LED state for visual beat feedback on the front panel.
-*   **OUT_L (Audio Out L / Pin B1)**: DC-coupled 0‑5 V accent CV for Kick; rises only on accented Kick steps, stays at 0 V otherwise.
-*   **OUT_R (Audio Out R / Pin B2)**: DC-coupled 0‑5 V hi-hat CV for BIA; outputs 5 V on hi-hat steps, 0 V on snare steps.
+*   **OUT_L (Audio Out L / Pin B1)**: DC-coupled accent gate sourced from the codec output. Firmware self-attenuates the nominal ±9 V codec swing down to ±5 V per `docs/chats/daisy-audio-vs-cv.md`, so accented Kick steps land at a user-programmable gate voltage (default +5 V) while non-accented kicks stay at 0 V.
+*   **OUT_R (Audio Out R / Pin B2)**: DC-coupled hi-hat gate with the same ±5 V firmware scaling. Hi-hat steps drive the configured gate voltage (default +5 V), while snare steps force the lane back to 0 V.
 
 ## Functional Architecture
 
@@ -53,15 +53,18 @@ The core is a port/adaptation of the Grids algorithm (Map X, Map Y, Chaos/Densit
 *   **Clock / Accent** -> **CV Out 1 (C10)** (Clock Pulse).
 
 ### Configuration Mode (Switch B8 Toggled)
-Allows adjusting the accent and hi-hat behavior for the DC outputs.
-*   **Knob 1**: Accent probability bias for OUT_L (how often kicks receive a 5 V accent).
-*   **Knob 2**: Accent gate length shaping for OUT_L (short pop vs sustained 5 V).
-*   **Knob 3**: Hi-hat probability bias for OUT_R.
-*   **Knob 4**: Hi-hat gate length shaping for OUT_R.
+Allows editing the codec-based gate behavior for OUT_L/OUT_R without interrupting the drum engine. The sequencer, gates, and currently playing voltages continue to run while the switch is flipped, so audible transitions stay seamless.
+*   **Global rule**: When a gate lane is OFF it must remain at 0 V. When it is ON, firmware maps the control range to ±5 V despite the codec’s larger ±9 V span (see `docs/chats/daisy-audio-vs-cv.md`) so external modules see predictable voltages.
+*   **Mode integrity**: Toggling between Performance and Configuration modes never mutes or reinitializes OUT_L/OUT_R; they keep broadcasting the current values while you edit their parameters.
+*   **Knob 1 + CV 5**: Sets the OUT_L gate-on voltage (–5 V to +5 V). Useful for dialing how hard BIA’s accent input is struck.
+*   **Knob 2 + CV 6**: Sets the OUT_L gate length/shape (short pop vs sustained hold) without altering the gate-on voltage selected above.
+*   **Knob 3 + CV 7**: Sets the OUT_R gate-on voltage (–5 V to +5 V) for the hi-hat CV lane.
+*   **Knob 4 + CV 8**: Sets the OUT_R gate length/shape.
 
 ### Phase Alignment Notes
 *   **Phase 4 scope**: CV 5-8 summing with clamps, Chaos parameterization (Knob 3 + CV 7), and the new DC-coupled accent (OUT_L) / hi-hat (OUT_R) logic are mandatory deliverables.
-*   **Phase 5 scope**: Configuration mode tweaks accent/hi-hat probabilities and gate shapes without breaking the shared Gate Out 2 routing unless an explicit override is implemented.
+*   **Phase 4.1 bugfix**: Add firmware self-attenuation on the codec L/R paths so any “gate high” state lands between –5 V and +5 V regardless of the codec’s wider ±9 V swing; treat regressions here as blocking bugs for later phases.
+*   **Phase 5 scope**: Configuration mode remaps the knobs to OUT_L/OUT_R gate voltages and lengths (±5 V targets, 0 V when off) without breaking the shared Gate Out 2 routing unless an explicit override is implemented.
 
 ## Clock System
 *   **Internal Clock**: Default. Tempo controlled by Knob 4.
@@ -80,7 +83,7 @@ Allows adjusting the accent and hi-hat behavior for the DC outputs.
 4.  **Generate Outputs**:
     *   Set Gate Pins (B5, B6) High/Low.
     *   Set DAC (C10) for Clock Pulse.
-    *   Update OUT_L/OUT_R CV states (0 V or 5 V) based on accent/hi-hat scheduling.
+    *   Update OUT_L/OUT_R codec states by clamping OFF steps to 0 V and mapping ON steps to the configured ±5 V targets set in Configuration Mode, falling back to the +5 V defaults in Performance Mode.
 5.  **LED Feedback**: Pulse User LED on Beat/Downbeat.
 
 ### Libraries
