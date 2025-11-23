@@ -14,6 +14,7 @@ alwaysApply: true
 - Prefer `constexpr` for compile-time constants
 - Use `auto` judiciously for type deduction when it improves readability
 - Avoid `using namespace` in header files
+- Avoid putting substantial code in .h files. If it can go in a .cpp file, it should.
 
 ### Naming Conventions
 - **Classes**: PascalCase (e.g., `AudioProcessor`, `EnvelopeGenerator`)
