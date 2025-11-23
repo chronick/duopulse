@@ -30,6 +30,8 @@ public:
 
     float GetBpm() const { return currentBpm_; }
     void  SetBpm(float bpm);
+    void  SetAccentHoldMs(float milliseconds);
+    void  SetHihatHoldMs(float milliseconds);
 
 private:
     static constexpr float kMinTempo = 30.0f;
@@ -58,11 +60,14 @@ private:
     bool             forcedKickAccent_ = false;
     int              accentTimer_ = 0;
     int              hihatTimer_ = 0;
+    int              accentHoldSamples_ = 0;
+    int              hihatHoldSamples_ = 0;
 
     void TriggerGate(int channel);
     void TriggerClock();
     void ProcessGates();
     int  ComputeAccentThreshold(float density) const;
+    int  HoldMsToSamples(float milliseconds) const;
 };
 
 } // namespace daisysp_idm_grids

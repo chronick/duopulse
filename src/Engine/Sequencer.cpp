@@ -34,6 +34,8 @@ void Sequencer::Init(float sampleRate)
     clockTimer_ = 0;
     accentTimer_ = 0;
     hihatTimer_ = 0;
+    accentHoldSamples_ = gateDurationSamples_;
+    hihatHoldSamples_  = gateDurationSamples_;
 }
 
 void Sequencer::ProcessControl(float    tempoControl,
@@ -118,7 +120,7 @@ std::array<float, 2> Sequencer::ProcessAudio()
             TriggerGate(0);
             if(kickAccent)
             {
-                accentTimer_ = gateDurationSamples_;
+                accentTimer_ = accentHoldSamples_;
             }
             else
             {
@@ -135,7 +137,7 @@ std::array<float, 2> Sequencer::ProcessAudio()
         }
         if(hihatTrig)
         {
-            hihatTimer_ = gateDurationSamples_;
+            hihatTimer_ = hihatHoldSamples_;
         }
         else if(snareTrig)
         {
@@ -217,6 +219,24 @@ void Sequencer::ForceNextStepTriggers(bool kick, bool snare, bool hh, bool kickA
     forcedTriggers_[2] = hh;
     forceNextTriggers_ = true;
     forcedKickAccent_ = kickAccent;
+}
+
+void Sequencer::SetAccentHoldMs(float milliseconds)
+{
+    accentHoldSamples_ = HoldMsToSamples(milliseconds);
+}
+
+void Sequencer::SetHihatHoldMs(float milliseconds)
+{
+    hihatHoldSamples_ = HoldMsToSamples(milliseconds);
+}
+
+int Sequencer::HoldMsToSamples(float milliseconds) const
+{
+    const float clampedMs = milliseconds < 0.5f ? 0.5f : (milliseconds > 2000.0f ? 2000.0f : milliseconds);
+    const float samples   = (clampedMs / 1000.0f) * sampleRate_;
+    int         asInt     = static_cast<int>(samples);
+    return asInt < 1 ? 1 : asInt;
 }
 
 } // namespace daisysp_idm_grids

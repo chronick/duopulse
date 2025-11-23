@@ -152,6 +152,68 @@ StepResult RunForcedStep(Sequencer& seq, bool kick, bool snare, bool hh, bool ki
 }
 } // namespace
 
+namespace
+{
+float SamplesToMs(int samples, float sampleRate)
+{
+    return (static_cast<float>(samples) / sampleRate) * 1000.0f;
+}
+
+float MeasureAccentHoldMs(Sequencer& seq, float sampleRate)
+{
+    seq.ForceNextStepTriggers(true, false, false, true);
+    bool counting = false;
+    bool forcedSilence = false;
+    int  sampleCount = 0;
+    for(int i = 0; i < 200000; ++i)
+    {
+        auto frame = seq.ProcessAudio();
+        if(frame[0] > 0.5f)
+        {
+            counting = true;
+            ++sampleCount;
+            if(!forcedSilence)
+            {
+                seq.ForceNextStepTriggers(false, false, false, false);
+                forcedSilence = true;
+            }
+        }
+        else if(counting)
+        {
+            break;
+        }
+    }
+    return SamplesToMs(sampleCount, sampleRate);
+}
+
+float MeasureHihatHoldMs(Sequencer& seq, float sampleRate)
+{
+    seq.ForceNextStepTriggers(false, false, true, false);
+    bool counting = false;
+    bool forcedSilence = false;
+    int  sampleCount = 0;
+    for(int i = 0; i < 200000; ++i)
+    {
+        auto frame = seq.ProcessAudio();
+        if(frame[1] > 0.5f)
+        {
+            counting = true;
+            ++sampleCount;
+            if(!forcedSilence)
+            {
+                seq.ForceNextStepTriggers(false, false, false, false);
+                forcedSilence = true;
+            }
+        }
+        else if(counting)
+        {
+            break;
+        }
+    }
+    return SamplesToMs(sampleCount, sampleRate);
+}
+} // namespace
+
 TEST_CASE("Kick accent CV occurs only on accented kicks", "[sequencer]")
 {
     Sequencer seq;
@@ -180,5 +242,41 @@ TEST_CASE("Hi-hat CV remains low on snares and high on hats", "[sequencer]")
     auto hihatOnly = RunForcedStep(seq, false, false, true, false);
     REQUIRE(hihatOnly.gate1);
     REQUIRE(hihatOnly.hihatMax > 0.5f);
+}
+
+TEST_CASE("Accent hold duration follows configuration", "[sequencer]")
+{
+    constexpr float sampleRate = 48000.0f;
+    Sequencer       seq;
+    seq.Init(sampleRate);
+    seq.ProcessControl(0.5f, 0.5f, 0.5f, 0.0f, false, 0);
+    seq.SetBpm(30.0f);
+
+    seq.SetAccentHoldMs(20.0f);
+    float shortHold = MeasureAccentHoldMs(seq, sampleRate);
+    seq.SetAccentHoldMs(200.0f);
+    float longHold = MeasureAccentHoldMs(seq, sampleRate);
+
+    REQUIRE(shortHold == Catch::Approx(20.0f).margin(2.0f));
+    REQUIRE(longHold == Catch::Approx(200.0f).margin(5.0f));
+    REQUIRE(longHold > shortHold * 5.0f);
+}
+
+TEST_CASE("Hi-hat hold duration follows configuration", "[sequencer]")
+{
+    constexpr float sampleRate = 48000.0f;
+    Sequencer       seq;
+    seq.Init(sampleRate);
+    seq.ProcessControl(0.5f, 0.5f, 0.5f, 0.0f, false, 0);
+    seq.SetBpm(30.0f);
+
+    seq.SetHihatHoldMs(15.0f);
+    float shortHold = MeasureHihatHoldMs(seq, sampleRate);
+    seq.SetHihatHoldMs(300.0f);
+    float longHold = MeasureHihatHoldMs(seq, sampleRate);
+
+    REQUIRE(shortHold == Catch::Approx(15.0f).margin(2.0f));
+    REQUIRE(longHold == Catch::Approx(300.0f).margin(8.0f));
+    REQUIRE(longHold > shortHold * 8.0f);
 }
 
