@@ -24,34 +24,36 @@ void Sequencer::Init(float sampleRate)
     metro_.Init(2.0f, sampleRate_);
     SetBpm(currentBpm_);
 
-    hhNoise_.Init();
-    hhEnv_.Init(sampleRate_);
-    hhEnv_.SetTime(daisysp::ADSR_SEG_ATTACK, 0.001f);
-    hhEnv_.SetTime(daisysp::ADSR_SEG_DECAY, 0.05f);
-    hhEnv_.SetTime(daisysp::ADSR_SEG_RELEASE, 0.01f);
-    hhEnv_.SetSustainLevel(0.0f);
+    chaos_.Init();
+    chaos_.SetAmount(0.0f);
 
     gateDurationSamples_ = static_cast<int>(sampleRate_ * 0.01f);
     gateTimers_[0] = 0;
     gateTimers_[1] = 0;
     clockDurationSamples_ = static_cast<int>(sampleRate_ * 0.01f);
     clockTimer_ = 0;
+    accentTimer_ = 0;
+    hihatTimer_ = 0;
 }
 
-void Sequencer::ProcessControl(float    knobTempo,
+void Sequencer::ProcessControl(float    tempoControl,
                                float    knobX,
                                float    knobY,
+                               float    chaosAmount,
                                bool     tapButtonTrigger,
                                uint32_t nowMs)
 {
-    mapX_ = knobX;
-    mapY_ = knobY;
+    mapX_ = Clamp(knobX, 0.0f, 1.0f);
+    mapY_ = Clamp(knobY, 0.0f, 1.0f);
+    chaosAmount_ = Clamp(chaosAmount, 0.0f, 1.0f);
+    chaos_.SetAmount(chaosAmount_);
 
-    if(std::abs(knobTempo - lastKnobVal_) > 0.01f)
+    tempoControl = Clamp(tempoControl, 0.0f, 1.0f);
+    if(std::abs(tempoControl - lastTempoControl_) > 0.01f)
     {
-        float newBpm = kMinTempo + (knobTempo * (kMaxTempo - kMinTempo));
+        float newBpm = kMinTempo + (tempoControl * (kMaxTempo - kMinTempo));
         SetBpm(newBpm);
-        lastKnobVal_ = knobTempo;
+        lastTempoControl_ = tempoControl;
     }
 
     if(tapButtonTrigger)
@@ -69,7 +71,7 @@ void Sequencer::ProcessControl(float    knobTempo,
     }
 }
 
-float Sequencer::ProcessAudio()
+std::array<float, 2> Sequencer::ProcessAudio()
 {
     uint8_t tick = metro_.Process();
 
@@ -77,29 +79,75 @@ float Sequencer::ProcessAudio()
     {
         stepIndex_ = (stepIndex_ + 1) % PatternGenerator::kPatternLength;
 
-        bool trigs[3];
-        patternGen_.GetTriggers(mapX_, mapY_, stepIndex_, 0.6f, trigs);
+        bool trigs[3] = {false, false, false};
+        bool kickAccent = false;
+        const auto chaosSample = chaos_.NextSample();
+
+        if(forceNextTriggers_)
+        {
+            for(int i = 0; i < 3; ++i)
+            {
+                trigs[i] = forcedTriggers_[i];
+            }
+            forceNextTriggers_ = false;
+            kickAccent = forcedKickAccent_ && trigs[0];
+            forcedKickAccent_ = false;
+        }
+        else
+        {
+            float jitteredX = Clamp(mapX_ + chaosSample.jitterX, 0.0f, 1.0f);
+            float jitteredY = Clamp(mapY_ + chaosSample.jitterY, 0.0f, 1.0f);
+            float baseDensity = 0.6f + (chaosAmount_ * 0.2f);
+            float density = Clamp(baseDensity + chaosSample.densityBias, 0.05f, 0.95f);
+            patternGen_.GetTriggers(jitteredX, jitteredY, stepIndex_, density, trigs);
+            if(trigs[0])
+            {
+                const uint8_t kickLevel = patternGen_.GetLevel(jitteredX, jitteredY, 0, stepIndex_);
+                kickAccent = kickLevel >= ComputeAccentThreshold(density);
+            }
+        }
 
         TriggerClock();
-        if(trigs[0])
+        const bool kickTrig = trigs[0];
+        const bool snareTrig = trigs[1];
+        const bool hihatTrig = trigs[2];
+        const bool percTrigBase = snareTrig || hihatTrig;
+        bool       percTrig = percTrigBase;
+        if(kickTrig)
         {
             TriggerGate(0);
+            if(kickAccent)
+            {
+                accentTimer_ = gateDurationSamples_;
+            }
+            else
+            {
+                accentTimer_ = 0;
+            }
         }
-        if(trigs[1])
+        if(!percTrig && chaosSample.ghostTrigger)
+        {
+            percTrig = true;
+        }
+        if(percTrig)
         {
             TriggerGate(1);
         }
-        if(trigs[2])
+        if(hihatTrig)
         {
-            hhEnv_.Retrigger(false);
+            hihatTimer_ = gateDurationSamples_;
+        }
+        else if(snareTrig)
+        {
+            hihatTimer_ = 0;
         }
     }
 
     ProcessGates();
 
-    float env = hhEnv_.Process(false);
-    float noise = hhNoise_.Process();
-    return noise * env * 0.5f;
+    float accentCv = accentTimer_ > 0 ? 1.0f : 0.0f;
+    float hihatCv = hihatTimer_ > 0 ? 1.0f : 0.0f;
+    return {accentCv, hihatCv};
 }
 
 bool Sequencer::IsGateHigh(int channel) const
@@ -143,6 +191,32 @@ void Sequencer::ProcessGates()
     {
         --clockTimer_;
     }
+    if(accentTimer_ > 0)
+    {
+        --accentTimer_;
+    }
+    if(hihatTimer_ > 0)
+    {
+        --hihatTimer_;
+    }
+}
+
+int Sequencer::ComputeAccentThreshold(float density) const
+{
+    constexpr int kAccentOffset = 64;
+    int base = static_cast<int>(std::round((1.0f - density) * 255.0f));
+    base = Clamp(base, 0, 255);
+    int accented = base + kAccentOffset;
+    return accented > 255 ? 255 : accented;
+}
+
+void Sequencer::ForceNextStepTriggers(bool kick, bool snare, bool hh, bool kickAccent)
+{
+    forcedTriggers_[0] = kick;
+    forcedTriggers_[1] = snare;
+    forcedTriggers_[2] = hh;
+    forceNextTriggers_ = true;
+    forcedKickAccent_ = kickAccent;
 }
 
 } // namespace daisysp_idm_grids

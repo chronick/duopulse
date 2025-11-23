@@ -52,6 +52,11 @@ void PatternGenerator::GetTriggers(float x, float y, int step, float density, bo
     }
 }
 
+uint8_t PatternGenerator::GetLevel(float x, float y, int channel, int step) const
+{
+    return ReadMap(x, y, channel, step);
+}
+
 uint8_t PatternGenerator::ReadMap(float x, float y, int channel, int step) const
 {
     x = Clamp(x, 0.0f, 1.0f);

@@ -1,18 +1,20 @@
 /**
- * Phase 3: The "Grids" Core
- * - Pattern Generator (Map X/Y)
- * - Knob 1: Map X
- * - Knob 2: Map Y
- * - Knob 4: Tempo
- * - Gate 1: Kick
- * - Gate 2: Snare
- * - Audio L/R: Hi-Hat
+ * Phase 4: Control Mapping & Chaos
+ * - Knobs 1-4 summed with CV 5-8 (clamped 0-1)
+ * - Gate 1: Kick (all hits)
+ * - OUT_L (Audio L): Kick Accent CV (5 V only on accented kicks)
+ * - Gate 2: Snare + Hi-hat triggers
+ * - OUT_R (Audio R): Hi-hat CV (5 V on hats, 0 V on snares)
+ * - CV_OUT_1: Master clock pulse, CV_OUT_2: LED mirror
  */
+
+#include <array>
 
 #include "daisy_patch_sm.h"
 #include "daisysp.h"
 #include "Engine/Sequencer.h"
 #include "Engine/LedIndicator.h"
+#include "Engine/ControlUtils.h"
 
 using namespace daisy;
 using namespace daisysp;
@@ -33,15 +35,15 @@ void AudioCallback(AudioHandle::InputBuffer  in,
 {
     for(size_t i = 0; i < size; i++)
     {
-        float sig = sequencer.ProcessAudio();
-        
+        auto frame = sequencer.ProcessAudio();
+
         // Write Gates
         patch.gate_out_1.Write(sequencer.IsGateHigh(0)); // Kick
         patch.gate_out_2.Write(sequencer.IsGateHigh(1)); // Snare
 
-        // Audio Out (HH)
-        out[0][i] = sig;
-        out[1][i] = sig;
+        // Audio Out (AD envelopes)
+        out[0][i] = frame[0];
+        out[1][i] = frame[1];
     }
 }
 
@@ -50,14 +52,25 @@ void ProcessControls()
     patch.ProcessAnalogControls();
     tapButton.Debounce();
 
-    float knobX = patch.GetAdcValue(CV_1);
-    float knobY = patch.GetAdcValue(CV_2);
-    float knobTempo = patch.GetAdcValue(CV_4);
+    const float knobX = patch.GetAdcValue(CV_1);
+    const float knobY = patch.GetAdcValue(CV_2);
+    const float knobChaos = patch.GetAdcValue(CV_3);
+    const float knobTempo = patch.GetAdcValue(CV_4);
+
+    const float cvX = patch.GetAdcValue(CV_5);
+    const float cvY = patch.GetAdcValue(CV_6);
+    const float cvChaos = patch.GetAdcValue(CV_7);
+    const float cvTempo = patch.GetAdcValue(CV_8);
+
+    const float mapX = MixControl(knobX, cvX);
+    const float mapY = MixControl(knobY, cvY);
+    const float chaos = MixControl(knobChaos, cvChaos);
+    const float tempo = MixControl(knobTempo, cvTempo);
     
     bool tapTrig = tapButton.RisingEdge();
     uint32_t now = System::GetNow();
 
-    sequencer.ProcessControl(knobTempo, knobX, knobY, tapTrig, now);
+    sequencer.ProcessControl(tempo, mapX, mapY, chaos, tapTrig, now);
 
     // User/front LED Sync (Blink on Kick)
     bool ledState = sequencer.IsGateHigh(0);

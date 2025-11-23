@@ -1,89 +1,106 @@
-/**
- * Example Unit Tests
- * 
- * This file demonstrates how to write unit tests for DSP algorithms.
- * Replace with your actual test cases.
- */
-
 #include <catch2/catch_all.hpp>
 #include <cmath>
-#include <limits>
+#include <cstddef>
 
-// Example: Test a simple math utility
-namespace {
-    // Simple utility function for testing
-    float clamp(float value, float min_val, float max_val)
-    {
-        if (value < min_val) return min_val;
-        if (value > max_val) return max_val;
-        return value;
-    }
-}
+#include "Engine/ControlUtils.h"
+#include "Engine/ChaosModulator.h"
+#include "Engine/Sequencer.h"
 
-TEST_CASE("Clamp function works correctly", "[math]")
+using namespace daisysp_idm_grids;
+using Catch::Approx;
+
+TEST_CASE("MixControl clamps combined CV + knob inputs", "[control]")
 {
-    SECTION("Values within range")
-    {
-        REQUIRE(clamp(0.5f, 0.0f, 1.0f) == 0.5f);
-        REQUIRE(clamp(0.0f, 0.0f, 1.0f) == 0.0f);
-        REQUIRE(clamp(1.0f, 0.0f, 1.0f) == 1.0f);
-    }
-
-    SECTION("Values below minimum")
-    {
-        REQUIRE(clamp(-1.0f, 0.0f, 1.0f) == 0.0f);
-        REQUIRE(clamp(-10.0f, 0.0f, 1.0f) == 0.0f);
-    }
-
-    SECTION("Values above maximum")
-    {
-        REQUIRE(clamp(2.0f, 0.0f, 1.0f) == 1.0f);
-        REQUIRE(clamp(10.0f, 0.0f, 1.0f) == 1.0f);
-    }
+    REQUIRE(MixControl(0.3f, 0.4f) == Approx(0.7f).margin(1e-5f));
+    REQUIRE(MixControl(0.9f, 0.5f) == Approx(1.0f).margin(1e-5f));
+    REQUIRE(MixControl(0.1f, -0.5f) == Approx(0.0f).margin(1e-5f));
 }
 
-TEST_CASE("Audio level normalization", "[audio]")
+TEST_CASE("ChaosModulator bounds jitter and ghost notes", "[chaos]")
 {
-    SECTION("Normalize to Eurorack range")
+    ChaosModulator chaos;
+    chaos.Init(42);
+
+    SECTION("Zero chaos produces no perturbation")
     {
-        // Eurorack audio is typically ±5V (±1.0 normalized)
-        float normalized = 0.5f;
-        REQUIRE(normalized >= -1.0f);
-        REQUIRE(normalized <= 1.0f);
+        chaos.SetAmount(0.0f);
+        auto sample = chaos.NextSample();
+        REQUIRE(sample.jitterX == Approx(0.0f));
+        REQUIRE(sample.jitterY == Approx(0.0f));
+        REQUIRE(sample.densityBias == Approx(0.0f));
+        REQUIRE_FALSE(sample.ghostTrigger);
     }
 
-    SECTION("Handle edge cases")
+    SECTION("Full chaos stays within expected ranges")
     {
-        REQUIRE(std::isfinite(0.0f));
-        REQUIRE(std::isfinite(1.0f));
-        REQUIRE(std::isfinite(-1.0f));
+        chaos.SetAmount(1.0f);
+        for(int i = 0; i < 128; ++i)
+        {
+            auto sample = chaos.NextSample();
+            REQUIRE(std::abs(sample.jitterX) <= 0.2001f);
+            REQUIRE(std::abs(sample.jitterY) <= 0.2001f);
+            REQUIRE(std::abs(sample.densityBias) <= 0.3501f);
+        }
     }
 }
 
-TEST_CASE("CV input scaling", "[cv]")
+TEST_CASE("Sequencer produces gates and CV pulses under modulation", "[sequencer]")
 {
-    SECTION("Scale CV input (0-5V) to normalized (0-1)")
+    Sequencer seq;
+    seq.Init(48000.0f);
+    seq.ProcessControl(0.5f, 0.5f, 0.5f, 0.75f, false, 0);
+
+    std::size_t kickSamples = 0;
+    std::size_t snareSamples = 0;
+    std::size_t cvSamples = 0;
+
+    for(int i = 0; i < 96000; ++i)
     {
-        float cv_voltage = 2.5f; // 2.5V
-        float normalized = cv_voltage / 5.0f;
-        REQUIRE(normalized == 0.5f);
+        auto frame = seq.ProcessAudio();
+        if(seq.IsGateHigh(0))
+        {
+            ++kickSamples;
+        }
+        if(seq.IsGateHigh(1))
+        {
+            ++snareSamples;
+        }
+        if(frame[0] > 0.01f || frame[1] > 0.01f)
+        {
+            ++cvSamples;
+        }
     }
 
-    SECTION("Scale bipolar CV (-5V to +5V) to normalized (-1 to +1)")
-    {
-        float cv_voltage = 0.0f; // 0V
-        float normalized = cv_voltage / 5.0f;
-        REQUIRE(normalized == 0.0f);
-
-        cv_voltage = 2.5f; // +2.5V
-        normalized = cv_voltage / 5.0f;
-        REQUIRE(normalized == 0.5f);
-
-        cv_voltage = -2.5f; // -2.5V
-        normalized = cv_voltage / 5.0f;
-        REQUIRE(normalized == -0.5f);
-    }
+    REQUIRE(kickSamples > 0);
+    REQUIRE(snareSamples > 0);
+    REQUIRE(cvSamples > 0);
 }
 
-// Add more test cases for your DSP modules here
+TEST_CASE("Kick accents stay isolated from hi-hat CV", "[sequencer]")
+{
+    Sequencer seq;
+    seq.Init(48000.0f);
+    seq.ProcessControl(0.5f, 0.5f, 0.5f, 0.0f, false, 0);
+
+    seq.ForceNextStepTriggers(true, false, false, true);
+
+    bool accentTriggered = false;
+    bool hihatStayedLow = true;
+    for(int i = 0; i < 48000; ++i)
+    {
+        auto frame = seq.ProcessAudio();
+        if(frame[0] > 0.5f)
+        {
+            accentTriggered = true;
+            break;
+        }
+        if(frame[1] > 0.01f)
+        {
+            hihatStayedLow = false;
+        }
+    }
+
+    REQUIRE(accentTriggered);
+    REQUIRE(hihatStayedLow);
+}
 
