@@ -15,6 +15,7 @@
 #include "Engine/Sequencer.h"
 #include "Engine/LedIndicator.h"
 #include "Engine/ControlUtils.h"
+#include "Engine/GateScaler.h"
 
 using namespace daisy;
 using namespace daisysp;
@@ -27,47 +28,8 @@ DaisyPatchSM patch;
 Sequencer    sequencer;
 Switch       tapButton;
 
-constexpr float kCodecMaxVoltage = 9.0f;  // See docs/chats/daisy-audio-vs-cv.md
-constexpr float kGateVoltageLimit = 5.0f;
-
-struct GateLaneConfig
-{
-    float targetVoltage = kGateVoltageLimit; // Default +5 V
-};
-
-GateLaneConfig accentGate;
-GateLaneConfig hihatGate;
-
-float ClampVoltage(float volts)
-{
-    if(volts > kGateVoltageLimit)
-    {
-        return kGateVoltageLimit;
-    }
-    if(volts < -kGateVoltageLimit)
-    {
-        return -kGateVoltageLimit;
-    }
-    return volts;
-}
-
-float VoltageToCodecSample(float volts)
-{
-    float clamped = ClampVoltage(volts);
-    float normalized = clamped / kCodecMaxVoltage;
-    return -normalized; // Codec polarity is inverted (positive float -> negative voltage)
-}
-
-float GateStateToSample(float gateState, const GateLaneConfig& lane)
-{
-    float gated = daisysp::fclamp(gateState, 0.0f, 1.0f) * lane.targetVoltage;
-    return VoltageToCodecSample(gated);
-}
-
-void SetGateVoltage(GateLaneConfig& lane, float volts)
-{
-    lane.targetVoltage = ClampVoltage(volts);
-}
+GateScaler accentGate;
+GateScaler hihatGate;
 
 } // namespace
 
@@ -84,8 +46,8 @@ void AudioCallback(AudioHandle::InputBuffer  in,
         patch.gate_out_2.Write(sequencer.IsGateHigh(1)); // Snare
 
         // Audio Out (scaled to ±5 V gate targets)
-        out[0][i] = GateStateToSample(frame[0], accentGate);
-        out[1][i] = GateStateToSample(frame[1], hihatGate);
+        out[0][i] = accentGate.Render(frame[0]);
+        out[1][i] = hihatGate.Render(frame[1]);
     }
 }
 
@@ -131,10 +93,10 @@ int main(void)
     patch.SetAudioSampleRate(SaiHandle::Config::SampleRate::SAI_48KHZ);
     float sampleRate = patch.AudioSampleRate();
 
-    // Initialize Sequencer
+    // Initialize Sequencer and gate lanes
     sequencer.Init(sampleRate);
-    SetGateVoltage(accentGate, kGateVoltageLimit);
-    SetGateVoltage(hihatGate, kGateVoltageLimit);
+    accentGate.SetTargetVoltage(GateScaler::kGateVoltageLimit);
+    hihatGate.SetTargetVoltage(GateScaler::kGateVoltageLimit);
 
     // Ensure LEDs start in a known state.
     patch.SetLed(false);
