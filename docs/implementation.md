@@ -145,7 +145,7 @@ Status: DONE
   **Expect:** BPM updates cleanly without pattern glitches.
 
 ## Phase 4: Full Control Mapping & Chaos
-Status: TODO
+Status: DONE
 **Goal:** Complete the control surface as per spec.
 
 1.  **CV Integration**:
