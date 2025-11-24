@@ -1,8 +1,3 @@
----
-description: Plan a specific project task based on the spec.
-globs: docs/specs/*.md, docs/tasks/*.md
----
-
 # Action
 1.  **Read Spec**: Read `docs/specs/main.md` to understand the feature context.
 2.  **Identify Task**: 

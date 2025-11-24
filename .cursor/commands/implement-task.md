@@ -1,7 +1,3 @@
----
-description: Execute the next steps in the active project task.
-globs: docs/tasks/*.md, src/**/*, include/**/*
----
 # Implement Project Task
 
 ## Action
