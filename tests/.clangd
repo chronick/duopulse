@@ -1,0 +1,26 @@
+CompileFlags:
+  Add:
+    - -I../inc
+    - -I../src
+    - -I../DaisySP/Source
+    - -I../DaisySP/Source/daisysp
+    - -I../DaisySP/Source/Utility
+    - -I../DaisySP/Source/Control
+    - -I../DaisySP/Source/Synthesis
+    - -I../DaisySP/Source/Effects
+    - -I../DaisySP/Source/Filters
+    - -I../DaisySP/Source/Noise
+    - -I../DaisySP/Source/PhysicalModeling
+    - -I../DaisySP/Source/Dynamics
+    - -I../DaisySP/Source/Drums
+    - -I/opt/homebrew/include
+    - -I/opt/homebrew/Cellar/catch2/3.11.0/include
+    - -I/usr/local/include
+    - -std=c++17
+    - -Wno-unknown-attributes
+    - -Wno-missing-attributes
+
+Diagnostics:
+  UnusedIncludes: None
+  MissingIncludes: None
+

@@ -2,9 +2,9 @@
 #include <cmath>
 #include <cstddef>
 
-#include "Engine/ControlUtils.h"
-#include "Engine/ChaosModulator.h"
-#include "Engine/Sequencer.h"
+#include "../src/Engine/ControlUtils.h"
+#include "../src/Engine/ChaosModulator.h"
+#include "../src/Engine/Sequencer.h"
 
 using namespace daisysp_idm_grids;
 using Catch::Approx;

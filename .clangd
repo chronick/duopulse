@@ -19,6 +19,8 @@ CompileFlags:
     - -IlibDaisy/Middlewares/ST/STM32_USB_Host_Library/Class/MSC/Inc
     - -IlibDaisy/Middlewares/ST/STM32_USB_Host_Library/Class/MIDI/Inc
     - -IlibDaisy/Middlewares/Third_Party/FatFs/src
+    - -I/opt/homebrew/include
+    - -I/usr/local/include
     - -DCORE_CM7
     - -DSTM32H750xx
     - -DSTM32H750IB
@@ -36,4 +38,9 @@ CompileFlags:
 Diagnostics:
   UnusedIncludes: None
   MissingIncludes: None
+
+Index:
+  Background: Build
+  Exclude:
+    - "**/phase_one_controller.*"
 

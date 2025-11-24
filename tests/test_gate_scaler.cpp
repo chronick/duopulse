@@ -1,6 +1,6 @@
 #include <catch2/catch_all.hpp>
 
-#include "Engine/GateScaler.h"
+#include "../src/Engine/GateScaler.h"
 
 using namespace daisysp_idm_grids;
 using Catch::Approx;
