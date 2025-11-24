@@ -1,6 +1,6 @@
 #include <catch2/catch_all.hpp>
 
-#include "Engine/ConfigMapper.h"
+#include "../src/Engine/ConfigMapper.h"
 
 using namespace daisysp_idm_grids;
 
