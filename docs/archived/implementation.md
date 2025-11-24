@@ -1,3 +1,7 @@
+---
+status: archived
+reason: replaced with lightweight spec-driven development (docs/specs, docs/tasks)
+---
 # Implementation Plan: Grids for Patch.Init()
 
 This plan outlines the iterative development of the Grids-style sequencer for the Daisy Patch.Init() module. Each phase is designed to be implemented and manually tested in isolation before moving to the next.

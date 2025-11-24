@@ -1,0 +1,18 @@
+---
+description: Plan a specific project task based on the spec.
+globs: docs/specs/*.md, docs/tasks/*.md
+---
+
+# Action
+1.  **Read Spec**: Read `docs/specs/main.md` to understand the feature context.
+2.  **Identify Task**: 
+    - If a task name is provided, look for `docs/tasks/*-taskname.md`.
+    - If no task is provided, list `docs/tasks/` and ask the user which one to plan.
+    - If creating a new task, use `docs/tasks/template.md`.
+    - Tasks may change the spec if specified.
+3.  **Populate Task File**:
+    - **Context**: Summarize the relevant spec section.
+    - **Requirements**: List specific requirements from the spec.
+    - **Implementation Plan**: Create a detailed checklist of coding steps. Use markdown syntax for checklists.
+    - **Status**: Set to `active` or `pending`.
+4.  **Review**: Present the plan to the user for approval.
