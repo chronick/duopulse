@@ -1,96 +1,89 @@
-# Firmware Specification: Grids-like Performance Drum Controller for Patch.Init()
+# Firmware Specification: Opinionated Drum Sequencer for Patch.Init()
 
 ## Overview
-This firmware turns the Daisy Patch.Init() module into a topographic drum sequencer and performance controller, inspired by Mutable Instruments Grids. It is tailored for a specific Eurorack skiff containing BIA, Tymp Legio, and other performance modules.
+This firmware transforms the Daisy Patch.Init() module into an opinionated, performance-oriented drum sequencer. It departs from a direct Grids port to focus on playable, expressive control over drum patterns using the specific constraints of the Patch.Init hardware. The core design philosophy emphasizes smooth transitions, evolving rhythms, and "soft takeover" controls to prevent parameter jumps.
 
 ## Hardware Configuration (Daisy Patch SM)
 
 ### Inputs
-*   **Knobs 1-4**: Primary performance controls.
-*   **CV Inputs 5-8**: Modulation inputs, hard-mapped to sum with Knobs 1-4 respectively. After summing, clamp the result to the normalized 0.0-1.0 control range to keep the Grid lookups stable even under extreme modulation swings.
-*   **Button (Pin B7)**: Shift / Function modifier.
-*   **Switch (Pin B8)**: Mode toggle (2-position).
-*   **Audio In L/R**: Available for CV modulation (if hardware permits DC coupling) or ignored if not feasible.
+*   **Knobs 1-4**: Multifunction performance controls (depend on Switch state).
+*   **CV Inputs 5-8**: Modulation inputs for Knobs 1-4 respectively. CV adds to the knob position, clamped to safe ranges.
+*   **Button (Pin B7)**: Shift / Modifier (Exact function TBD).
+*   **Switch (Pin B8)**: Mode toggle (2-position: OFF = Base Mode, ON = Config Mode).
+*   **Gate In 1 (Pin B3)**: Clock Input (Rising Edge).
+*   **Gate In 2 (Pin B4)**: Pattern Reset (Rising Edge).
+*   **Audio In L/R**: Ignored.
 
 ### Outputs
-*   **Gate Out 1 (Pin B5)**: Trigger for BIA (Voice 1).
-*   **Gate Out 2 (Pin B6)**: Trigger for Tymp Legio plus shared snare/hi-hat trigger lane.
-*   **CV Out 1 (Pin C10)**: Master Clock Output (Pulse).
-*   **CV Out 2 (Pin C1 / Front LED)**: Mirrors the rear/User LED state for visual beat feedback on the front panel.
-*   **OUT_L (Audio Out L / Pin B1)**: DC-coupled accent gate sourced from the codec output. Firmware self-attenuates the nominal ±9 V codec swing down to ±5 V per `docs/chats/daisy-audio-vs-cv.md`, so accented Kick steps land at a user-programmable gate voltage (default +5 V) while non-accented kicks stay at 0 V.
-*   **OUT_R (Audio Out R / Pin B2)**: DC-coupled hi-hat gate with the same ±5 V firmware scaling. Hi-hat steps drive the configured gate voltage (default +5 V), while snare steps force the lane back to 0 V.
+*   **Audio Out 1 (L / Pin B1)**: Kick/Low-End Output (Trigger/Gate/CV).
+*   **Audio Out 2 (R / Pin B2)**: Snare/High-End Output (Trigger/Gate/CV).
+*   **Gate Out 1 (Pin B5)**: Kick Trigger (Digital 5V).
+*   **Gate Out 2 (Pin B6)**: Snare/Hihat Trigger (Digital 5V).
+*   **CV Out 1 (Pin C10)**: TBD (Default: Clock Out?).
+*   **CV Out 2 (Pin C1 / Front LED)**: LED Visual Feedback.
 
 ## Functional Architecture
 
-### Core Engine: Topographic Drum Sequencer
-The core is a port/adaptation of the Grids algorithm (Map X, Map Y, Chaos/Density).
-*   **Map X**: Morphs rhythm structure (e.g., Kick/Snare relationship).
-*   **Map Y**: Morphs rhythm density/fill type (e.g., Hihat patterns).
-*   **Chaos/Random**: Adds probability and variations to the patterns.
+The system operates in two distinct modes controlled by the **Switch**. State variables for each mode are persisted when switching, ensuring no parameters are lost.
 
-### Control Mapping (Default Mode)
-"Default mode always denoted by drum hits on light" (LED indication).
+**Soft Takeover**: When switching modes or startup, turning a knob does not immediately jump the parameter. The parameter "seeks" the knob position progressively to ensure smooth transitions.
 
-| Control | Parameter | Description |
+### Base Mode (Switch OFF)
+The primary performance mode, optimized for in-set manipulation of the drum voices.
+
+| Control | Function | Description |
 | :--- | :--- | :--- |
-| **Knob 1** + **CV 5** | **Map X** | Morphs drum style (Techno -> Tribal -> Glitch -> IDM). |
-| **Knob 2** + **CV 6** | **Map Y** | Controls fill density and variations. |
-| **Knob 3** + **CV 7** | **Chaos / Chaos Amt** | Introduces randomness/stutter to the pattern. |
-| **Knob 4** + **CV 8** | **BPM / Clock Div** | Controls internal clock tempo (if master) or Clock Divider (if slaved). |
-| **Button (B7)** | **Shift** | Hold to access secondary functions (e.g., Reset, Pattern Bank). |
-| **Switch (B8)** | **Mode Toggle** | Switches between **Performance Mode** (Default) and **Configuration Mode**. |
+| **Knob 1** | **Kick/Tom Density** | Controls the "frequency" or "content" of the low-end track. Moves from sparse to dense/busy. |
+| **Knob 2** | **Snare/Hat Density** | Controls the "frequency" or "content" of the high-end track. Moves from sparse to dense/busy. |
+| **Knob 3** | **Kick/Tom Variation** | Controls dynamics and chaos for the low-end. Low values = steady velocity. High values = velocity variation + chaos (random ghost notes/fills). |
+| **Knob 4** | **Snare/Hat Variation** | Controls dynamics and chaos for the high-end. Low values = steady velocity. High values = velocity variation + chaos. |
 
-### Chaos Requirements
-*   **Knob 3 + CV 7** modulates a per-step random source. Low values introduce occasional ghost notes; high values perturb both the Map X/Y coordinates and each channel’s trigger probability.
-*   Perturbations are evaluated once per sequencer step (never per audio sample) to retain deterministic audio callbacks.
-*   Chaos modulation must never mute all voices; clamp its maximum influence so core kick/snare accents remain intelligible.
+*   **CV Inputs** 1-4 modulate their respective Knobs 1-4.
 
-### Output Assignment
-*   **Channel 1 (Kick equivalent)** -> **Gate Out 1** (to BIA).
-*   **Kick Accents** -> **OUT_L (Pin B1)**: Sends a 5 V gate only when the current Kick step is flagged as an accent; remains at 0 V during non-accented kicks to leave dynamics intact.
-*   **Channel 2 (Snare + Hi-hat lane)** -> **Gate Out 2** (to Tymp Legio and any multed destinations). Every snare and hi-hat step produces the same 10 ms trigger here for downstream percussion.
-*   **Hi-hat CV lane** -> **OUT_R (Pin B2)**: Outputs a steady 5 V gate for the duration of each hi-hat step so BIA can receive a DC-coupled control input; drops to 0 V when the sequencer schedules a snare on that lane.
-*   **Clock / Accent** -> **CV Out 1 (C10)** (Clock Pulse).
+### Config Mode (Switch ON)
+Setup, Style, and Routing configuration.
 
-### Configuration Mode (Switch B8 Toggled)
-Allows editing the codec-based gate behavior for OUT_L/OUT_R without interrupting the drum engine. The sequencer, gates, and currently playing voltages continue to run while the switch is flipped, so audible transitions stay seamless.
-*   **Global rule**: When a gate lane is OFF it must remain at 0 V. When it is ON, firmware maps the control range to ±5 V despite the codec’s larger ±9 V span (see `docs/chats/daisy-audio-vs-cv.md`) so external modules see predictable voltages.
-*   **Mode integrity**: Toggling between Performance and Configuration modes never mutes or reinitializes OUT_L/OUT_R; they keep broadcasting the current values while you edit their parameters.
-*   **Knob 1 + CV 5**: Sets the OUT_L gate-on voltage (–5 V to +5 V). Useful for dialing how hard BIA’s accent input is struck.
-*   **Knob 2 + CV 6**: Sets the OUT_L gate length/shape (short pop vs sustained hold) without altering the gate-on voltage selected above.
-*   **Knob 3 + CV 7**: Sets the OUT_R gate-on voltage (–5 V to +5 V) for the hi-hat CV lane.
-*   **Knob 4 + CV 8**: Sets the OUT_R gate length/shape.
+| Control | Function | Description |
+| :--- | :--- | :--- |
+| **Knob 1** | **Style / Time Sig** | Selects the overall rhythmic feel and time signature (e.g., 4/4 Techno -> Breakbeat -> IDM). |
+| **Knob 2** | **Pattern Length** | Sets pattern loop length: 1, 2, 4, 8, or 16 bars. |
+| **Knob 3** | **Voice Emphasis** | Controls voice allocation/routing balance (Low/High Emphasis). See below. |
+| **Knob 4** | **Tempo** | Sets internal clock tempo (ignored if external clock present). |
 
-### Phase Alignment Notes
-*   **Phase 4 scope**: CV 5-8 summing with clamps, Chaos parameterization (Knob 3 + CV 7), and the new DC-coupled accent (OUT_L) / hi-hat (OUT_R) logic are mandatory deliverables.
-*   **Phase 4.1 bugfix**: Add firmware self-attenuation on the codec L/R paths so any “gate high” state lands between –5 V and +5 V regardless of the codec’s wider ±9 V swing; treat regressions here as blocking bugs for later phases.
-*   **Phase 5 scope**: Configuration mode remaps the knobs to OUT_L/OUT_R gate voltages and lengths (±5 V targets, 0 V when off) without breaking the shared Gate Out 2 routing unless an explicit override is implemented.
+### Voice Emphasis (Config Knob 3)
+This control adjusts how internal generator tracks are mapped to the two physical outputs, allowing the user to tailor the sequencer to the connected modules (e.g., BIA vs. Tymp Legio).
 
-## Clock System
-*   **Internal Clock**: Default. Tempo controlled by Knob 4.
-*   **External Clock**: (Optional) If Gate In 1/2 are available, one could be used as Clock In.
-    *   *Assumption*: System acts as Master Clock outputting to C10.
-*  **Button B7** In addition to shift, Button B7 should support tap tempo if tapped in a particular way.
+*   **Low Emphasis (CCW)**: Prioritizes low-end complexity on Output 1. May mix Tom tracks or additional low-perc elements into the Kick channel.
+*   **Balanced (Center)**: Standard mapping. Kick -> Out 1, Snare/Hat -> Out 2.
+*   **High Emphasis (CW)**: Prioritizes high-end complexity on Output 2. Ensures rich Snare/Hat/Percussion patterns on Out 2, possibly simplifying the Kick track or moving mid-range elements to Out 2.
+
+### Signal Flow & Audio Logic
+1.  **Clocking**:
+    *   If **Gate In 1** receives pulses, system syncs to External Clock.
+    *   Otherwise, runs on Internal Clock (set by Config Knob 4).
+2.  **Sequencer Engine**:
+    *   Generates triggers based on **Style** (Config K1) and **Density** (Base K1/K2).
+    *   Applies **Variation/Chaos** (Base K3/K4) to modify velocity and probability.
+    *   Applies **Voice Emphasis** (Config K3) to route triggers to channels.
+3.  **Output Generation**:
+    *   **Audio Outs**: Generates DC-coupled pulses/gates.
+        *   Voltage Level corresponds to Velocity/Accent level.
+        *   Config Mode attenuation controls (from previous spec) are removed in favor of Emphasis/Style, assuming fixed 5V or max range output unless re-added. *Correction: User removed explicit attenuation knobs from Config, assuming standard Eurorack levels or fixed scaling.*
+    *   **Gate Outs**: Digital mirror of the main triggers (always 0V/5V).
 
 ## Implementation Details
 
-### Signal Flow
-1.  **Read Inputs**: ADC poll for Knobs 1-4 and CV 5-8.
-2.  **Process Controls**: Apply scaling and summing (Knob + CV). Handle Button/Switch logic.
-3.  **Grids Algorithm**:
-    *   Update phase based on Clock.
-    *   Compute drum states (Gate On/Off) based on X, Y, Chaos.
-4.  **Generate Outputs**:
-    *   Set Gate Pins (B5, B6) High/Low.
-    *   Set DAC (C10) for Clock Pulse.
-    *   Update OUT_L/OUT_R codec states by clamping OFF steps to 0 V and mapping ON steps to the configured ±5 V targets set in Configuration Mode, falling back to the +5 V defaults in Performance Mode.
-5.  **LED Feedback**: Pulse User LED on Beat/Downbeat.
+### Data Structures
+*   **Pattern Bank**: ~32 patterns stored as bitmaps or step sequences.
+*   **State Machine**:
+    *   `CurrentMode` (Base/Config).
+    *   `Params_Base` (KickDensity, SnareDensity, KickVar, SnareVar).
+    *   `Params_Config` (Style, Length, Emphasis, Tempo).
+    *   `SoftPickup` state for each knob.
 
-### Libraries
-*   `libDaisy`: Hardware abstraction.
-*   `DaisySP`: DSP generation (Envelopes, Oscillators if needed).
-*   *Grids Port*: Need to implement or port the relevant Grids logic (likely lookups and interpolation).
-
-## Future Considerations
-*   **In L/R**: Could be used as additional modulation sources if mapped to specific parameters (e.g., global accent).
-
+## Changelog
+*   **2025-11-24**:
+    *   Refined control scheme for "in-set" performance.
+    *   **Base Mode**: Now split into Low-End (K1/K3) and High-End (K2/K4) pairs controlling Density and Variation/Chaos.
+    *   **Config Mode**: Moved Style and Length to Config K1/K2. Added **Voice Emphasis** on K3.
+    *   Defined Emphasis logic (Low vs High priority routing).

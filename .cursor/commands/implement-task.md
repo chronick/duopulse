@@ -13,6 +13,7 @@
 4.  **Update Task**:
     - Check off the item `[x]` in the task file.
     - Add notes or findings if relevant.
+    - Store progress and next steps as a comment in #comments
 
 # Notes
 Tasks will typically be executed one per session.

@@ -126,7 +126,6 @@ std::array<float, 2> Sequencer::ProcessAudio()
     {
         // Handle Loop Length
         int effectiveLoopSteps = loopLengthBars_ * 16;
-        // Cap at pattern max length (32) for now as we only have 2 bars of data
         if (effectiveLoopSteps > PatternGenerator::kPatternLength) 
             effectiveLoopSteps = PatternGenerator::kPatternLength;
             
@@ -137,26 +136,35 @@ std::array<float, 2> Sequencer::ProcessAudio()
         chaosHigh_.SetAmount(highVariation_);
         
         bool trigs[3] = {false, false, false};
-        bool kickAccent = false;
         
         const auto chaosSampleLow = chaosLow_.NextSample();
         const auto chaosSampleHigh = chaosHigh_.NextSample();
 
+        bool kickTrig = false;
+        bool snareTrig = false;
+        bool hhTrig = false;
+        
+        float kickVel = 0.0f;
+        float snareVel = 0.0f;
+        float hhVel = 0.0f;
+
         if(forceNextTriggers_)
         {
-            for(int i = 0; i < 3; ++i)
-            {
-                trigs[i] = forcedTriggers_[i];
-            }
+            kickTrig = forcedTriggers_[0];
+            snareTrig = forcedTriggers_[1];
+            hhTrig = forcedTriggers_[2];
+            
+            // For forced triggers, assume standard velocity or accent
+            kickVel = forcedKickAccent_ ? 1.0f : 0.8f;
+            snareVel = 0.8f;
+            hhVel = 0.8f;
+
             forceNextTriggers_ = false;
-            kickAccent = forcedKickAccent_ && trigs[0];
             forcedKickAccent_ = false;
         }
         else
         {
             // Apply Chaos to Style (Map X).
-            // Use average jitter from both sources for Style, or just one. 
-            // Using average keeps the style drift somewhat related to overall chaos.
             float avgJitterX = (chaosSampleLow.jitterX + chaosSampleHigh.jitterX) * 0.5f;
             float jitteredStyle = Clamp(style_ + avgJitterX, 0.0f, 1.0f);
             
@@ -166,61 +174,74 @@ std::array<float, 2> Sequencer::ProcessAudio()
             
             patternGen_.GetTriggers(jitteredStyle, stepIndex_, lowDensMod, highDensMod, trigs);
             
-            if(trigs[0])
-            {
-                // For accent, we need the raw level. PatternGenerator::GetLevel takes x/y.
-                // We must match the mapping used in GetTriggers (x=style, y=0.5).
-                float mapY = 0.5f; 
-                const uint8_t kickLevel = patternGen_.GetLevel(jitteredStyle, mapY, 0, stepIndex_);
-                kickAccent = kickLevel >= ComputeAccentThreshold(lowDensMod);
-            }
+            kickTrig = trigs[0];
+            snareTrig = trigs[1];
+            hhTrig = trigs[2];
+
+            // Get Levels for Velocity (Map Y fixed at 0.5)
+            float mapY = 0.5f;
+            kickVel = static_cast<float>(patternGen_.GetLevel(jitteredStyle, mapY, 0, stepIndex_)) / 255.0f;
+            snareVel = static_cast<float>(patternGen_.GetLevel(jitteredStyle, mapY, 1, stepIndex_)) / 255.0f;
+            hhVel = static_cast<float>(patternGen_.GetLevel(jitteredStyle, mapY, 2, stepIndex_)) / 255.0f;
+        }
+
+        // Apply Ghost Triggers to HH/Perc stream (High Variation)
+        if(!hhTrig && chaosSampleHigh.ghostTrigger)
+        {
+            hhTrig = true;
+            // Ghost triggers are usually quieter
+            hhVel = 0.3f + (static_cast<float>(rand() % 100) / 200.0f); 
         }
 
         TriggerClock();
-        const bool kickTrig = trigs[0];
-        const bool snareTrig = trigs[1];
-        const bool hihatTrig = trigs[2];
-        const bool percTrigBase = snareTrig || hihatTrig;
-        bool       percTrig = percTrigBase;
         
-        if(kickTrig)
+        // --- Routing Logic ---
+        
+        // Gate 0 (Low/Kick)
+        bool gate0 = kickTrig;
+        float vel0 = kickTrig ? kickVel : 0.0f;
+        
+        // Gate 1 (High/Snare)
+        bool gate1 = snareTrig;
+        float vel1 = snareTrig ? snareVel : 0.0f;
+        
+        // Route HH/Perc based on Emphasis
+        if(hhTrig)
         {
-            TriggerGate(0);
-            if(kickAccent)
+            if(emphasis_ < 0.5f)
             {
-                accentTimer_ = accentHoldSamples_;
+                // Route to Low (add tom/perc flavor to kick channel)
+                gate0 = true;
+                vel0 = std::max(vel0, hhVel);
             }
             else
             {
-                accentTimer_ = 0;
+                // Route to High (add hh/perc flavor to snare channel)
+                gate1 = true;
+                vel1 = std::max(vel1, hhVel);
             }
         }
-        
-        // Ghost triggers on Snare/Perc channel driven by High Variation
-        if(!percTrig && chaosSampleHigh.ghostTrigger)
+
+        if(gate0)
         {
-            percTrig = true;
+            TriggerGate(0);
+            accentTimer_ = accentHoldSamples_;
+            outputLevels_[0] = vel0;
         }
         
-        if(percTrig)
+        if(gate1)
         {
             TriggerGate(1);
-        }
-        if(hihatTrig)
-        {
             hihatTimer_ = hihatHoldSamples_;
-        }
-        else if(snareTrig)
-        {
-            hihatTimer_ = 0;
+            outputLevels_[1] = vel1;
         }
     }
 
     ProcessGates();
 
-    float accentCv = accentTimer_ > 0 ? 1.0f : 0.0f;
-    float hihatCv = hihatTimer_ > 0 ? 1.0f : 0.0f;
-    return {accentCv, hihatCv};
+    float out1 = accentTimer_ > 0 ? outputLevels_[0] : 0.0f;
+    float out2 = hihatTimer_ > 0 ? outputLevels_[1] : 0.0f;
+    return {out1, out2};
 }
 
 bool Sequencer::IsGateHigh(int channel) const
@@ -272,15 +293,6 @@ void Sequencer::ProcessGates()
     {
         --hihatTimer_;
     }
-}
-
-int Sequencer::ComputeAccentThreshold(float density) const
-{
-    constexpr int kAccentOffset = 64;
-    int base = static_cast<int>(std::round((1.0f - density) * 255.0f));
-    base = Clamp(base, 0, 255);
-    int accented = base + kAccentOffset;
-    return accented > 255 ? 255 : accented;
 }
 
 void Sequencer::ForceNextStepTriggers(bool kick, bool snare, bool hh, bool kickAccent)

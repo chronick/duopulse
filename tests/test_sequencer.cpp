@@ -230,7 +230,7 @@ float MeasureHihatHoldMs(Sequencer& seq, float sampleRate)
 }
 } // namespace
 
-TEST_CASE("Kick accent CV occurs only on accented kicks", "[sequencer]")
+TEST_CASE("Kick CV outputs level based on accent", "[sequencer]")
 {
     Sequencer seq;
     seq.Init(48000.0f);
@@ -240,14 +240,15 @@ TEST_CASE("Kick accent CV occurs only on accented kicks", "[sequencer]")
 
     auto accented = RunForcedStep(seq, true, false, false, true);
     REQUIRE(accented.gate0);
-    REQUIRE(accented.accentMax > 0.5f);
+    REQUIRE(accented.accentMax > 0.9f);
 
     auto normal = RunForcedStep(seq, true, false, false, false);
     REQUIRE(normal.gate0);
-    REQUIRE(normal.accentMax < 0.01f);
+    REQUIRE(normal.accentMax > 0.5f);
+    REQUIRE(normal.accentMax < 0.9f);
 }
 
-TEST_CASE("Hi-hat CV remains low on snares and high on hats", "[sequencer]")
+TEST_CASE("High CV outputs on Snare and HiHat", "[sequencer]")
 {
     Sequencer seq;
     seq.Init(48000.0f);
@@ -255,7 +256,7 @@ TEST_CASE("Hi-hat CV remains low on snares and high on hats", "[sequencer]")
 
     auto snareOnly = RunForcedStep(seq, false, true, false, false);
     REQUIRE(snareOnly.gate1);
-    REQUIRE(snareOnly.hihatMax < 0.01f);
+    REQUIRE(snareOnly.hihatMax > 0.5f);
 
     auto hihatOnly = RunForcedStep(seq, false, false, true, false);
     REQUIRE(hihatOnly.gate1);

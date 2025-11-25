@@ -65,8 +65,8 @@ Implementation of the new "Opinionated Drum Sequencer" spec defined in `docs/spe
 - [x] Implement Reset trigger handling.
 
 ### 4. Implement Voice Emphasis
-- [ ] Create a mixing/routing stage in `Sequencer::ProcessAudio` or a new `OutputMixer` class.
-- [ ] Logic:
+- [x] Create a mixing/routing stage in `Sequencer::ProcessAudio` or a new `OutputMixer` class.
+- [x] Logic:
     - If Emphasis < 0.5: Route Tom/Perc to Out 1 (Kick).
     - If Emphasis > 0.5: Route Tom/Perc to Out 2 (Snare).
     - (Or similar blending logic as per spec).
@@ -91,3 +91,4 @@ Implementation of the new "Opinionated Drum Sequencer" spec defined in `docs/spe
 
 # Comments
 - 2025-11-25: Completed PatternGenerator updates for Style/Density/Chaos mapping. Implemented independent ChaosModulators for Low/High variation. Implemented SetLoopLength and Reset logic. Next up: Voice Emphasis.
+- 2025-11-25: Implemented Voice Emphasis routing. HH/Perc now routes to Low (Kick) or High (Snare) based on Emphasis control. Audio Outs now output velocity-scaled pulses for all triggered events on their respective channels.

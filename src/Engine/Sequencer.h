@@ -83,11 +83,13 @@ private:
     int              hihatTimer_ = 0;
     int              accentHoldSamples_ = 0;
     int              hihatHoldSamples_ = 0;
+    
+    // Output Levels (Velocity)
+    float            outputLevels_[2] = {0.0f, 0.0f};
 
     void TriggerGate(int channel);
     void TriggerClock();
     void ProcessGates();
-    int  ComputeAccentThreshold(float density) const;
     int  HoldMsToSamples(float milliseconds) const;
 };
 
