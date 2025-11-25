@@ -39,6 +39,10 @@ void Sequencer::Init(float sampleRate)
     accentHoldSamples_ = gateDurationSamples_;
     hihatHoldSamples_  = gateDurationSamples_;
     
+    usingExternalClock_ = false;
+    externalClockTimeout_ = 0;
+    mustTick_ = false;
+    
     // Initialize parameters
     lowDensity_ = 0.5f;
     highDensity_ = 0.5f;
@@ -118,9 +122,37 @@ void Sequencer::TriggerReset()
     metro_.Reset();
 }
 
+void Sequencer::TriggerExternalClock()
+{
+    // 2 seconds timeout for external clock
+    externalClockTimeout_ = static_cast<int>(sampleRate_ * 2.0f);
+    usingExternalClock_ = true;
+    mustTick_ = true;
+}
+
 std::array<float, 2> Sequencer::ProcessAudio()
 {
-    uint8_t tick = metro_.Process();
+    uint8_t tick = 0;
+
+    if(usingExternalClock_)
+    {
+        if(mustTick_)
+        {
+            tick = 1;
+            mustTick_ = false;
+        }
+        
+        externalClockTimeout_--;
+        if(externalClockTimeout_ <= 0)
+        {
+            usingExternalClock_ = false;
+            metro_.Reset(); // Sync internal clock when fallback happens
+        }
+    }
+    else
+    {
+        tick = metro_.Process();
+    }
 
     if(tick)
     {

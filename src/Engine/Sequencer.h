@@ -30,6 +30,7 @@ public:
     // System Triggers
     void TriggerTapTempo(uint32_t nowMs);
     void TriggerReset();
+    void TriggerExternalClock(); // Call on rising edge of external clock
 
     std::array<float, 2> ProcessAudio();
     void ForceNextStepTriggers(bool kick, bool snare, bool hh, bool kickAccent = false);
@@ -71,6 +72,11 @@ private:
     int gateDurationSamples_ = 0;
     int clockTimer_ = 0;
     int clockDurationSamples_ = 0;
+
+    // External Clock Logic
+    bool usingExternalClock_ = false;
+    int  externalClockTimeout_ = 0;
+    bool mustTick_ = false;
 
     daisysp::Metro   metro_;
     PatternGenerator patternGen_;
