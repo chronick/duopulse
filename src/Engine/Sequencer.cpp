@@ -24,8 +24,10 @@ void Sequencer::Init(float sampleRate)
     metro_.Init(2.0f, sampleRate_);
     SetBpm(currentBpm_);
 
-    chaos_.Init();
-    chaos_.SetAmount(0.0f);
+    chaosLow_.Init(0x4b1d2f3c);
+    chaosHigh_.Init(0xd3f2a1b9); // Different seed
+    chaosLow_.SetAmount(0.0f);
+    chaosHigh_.SetAmount(0.0f);
 
     gateDurationSamples_ = static_cast<int>(sampleRate_ * 0.01f);
     gateTimers_[0] = 0;
@@ -36,41 +38,84 @@ void Sequencer::Init(float sampleRate)
     hihatTimer_ = 0;
     accentHoldSamples_ = gateDurationSamples_;
     hihatHoldSamples_  = gateDurationSamples_;
+    
+    // Initialize parameters
+    lowDensity_ = 0.5f;
+    highDensity_ = 0.5f;
+    lowVariation_ = 0.0f;
+    highVariation_ = 0.0f;
+    style_ = 0.0f;
+    loopLengthBars_ = 4;
+    emphasis_ = 0.5f;
 }
 
-void Sequencer::ProcessControl(float    tempoControl,
-                               float    knobX,
-                               float    knobY,
-                               float    chaosAmount,
-                               bool     tapButtonTrigger,
-                               uint32_t nowMs)
+void Sequencer::SetLowDensity(float value)
 {
-    mapX_ = Clamp(knobX, 0.0f, 1.0f);
-    mapY_ = Clamp(knobY, 0.0f, 1.0f);
-    chaosAmount_ = Clamp(chaosAmount, 0.0f, 1.0f);
-    chaos_.SetAmount(chaosAmount_);
+    lowDensity_ = Clamp(value, 0.0f, 1.0f);
+}
 
-    tempoControl = Clamp(tempoControl, 0.0f, 1.0f);
+void Sequencer::SetHighDensity(float value)
+{
+    highDensity_ = Clamp(value, 0.0f, 1.0f);
+}
+
+void Sequencer::SetLowVariation(float value)
+{
+    lowVariation_ = Clamp(value, 0.0f, 1.0f);
+}
+
+void Sequencer::SetHighVariation(float value)
+{
+    highVariation_ = Clamp(value, 0.0f, 1.0f);
+}
+
+void Sequencer::SetStyle(float value)
+{
+    style_ = Clamp(value, 0.0f, 1.0f);
+}
+
+void Sequencer::SetLength(int bars)
+{
+    // Restrict bars to typical powers of 2 or simple integers
+    if (bars < 1) bars = 1;
+    if (bars > 16) bars = 16;
+    loopLengthBars_ = bars;
+}
+
+void Sequencer::SetEmphasis(float value)
+{
+    emphasis_ = Clamp(value, 0.0f, 1.0f);
+}
+
+void Sequencer::SetTempoControl(float value)
+{
+    float tempoControl = Clamp(value, 0.0f, 1.0f);
     if(std::abs(tempoControl - lastTempoControl_) > 0.01f)
     {
         float newBpm = kMinTempo + (tempoControl * (kMaxTempo - kMinTempo));
         SetBpm(newBpm);
         lastTempoControl_ = tempoControl;
     }
+}
 
-    if(tapButtonTrigger)
+void Sequencer::TriggerTapTempo(uint32_t nowMs)
+{
+    if(lastTapTime_ != 0)
     {
-        if(lastTapTime_ != 0)
+        uint32_t interval = nowMs - lastTapTime_;
+        if(interval > 100 && interval < 2000)
         {
-            uint32_t interval = nowMs - lastTapTime_;
-            if(interval > 100 && interval < 2000)
-            {
-                float newBpm = 60000.0f / static_cast<float>(interval);
-                SetBpm(newBpm);
-            }
+            float newBpm = 60000.0f / static_cast<float>(interval);
+            SetBpm(newBpm);
         }
-        lastTapTime_ = nowMs;
     }
+    lastTapTime_ = nowMs;
+}
+
+void Sequencer::TriggerReset()
+{
+    stepIndex_ = -1; // Next tick will be 0
+    metro_.Reset();
 }
 
 std::array<float, 2> Sequencer::ProcessAudio()
@@ -79,11 +124,23 @@ std::array<float, 2> Sequencer::ProcessAudio()
 
     if(tick)
     {
-        stepIndex_ = (stepIndex_ + 1) % PatternGenerator::kPatternLength;
+        // Handle Loop Length
+        int effectiveLoopSteps = loopLengthBars_ * 16;
+        // Cap at pattern max length (32) for now as we only have 2 bars of data
+        if (effectiveLoopSteps > PatternGenerator::kPatternLength) 
+            effectiveLoopSteps = PatternGenerator::kPatternLength;
+            
+        stepIndex_ = (stepIndex_ + 1) % effectiveLoopSteps;
 
+        // Apply variation to independent modulators
+        chaosLow_.SetAmount(lowVariation_);
+        chaosHigh_.SetAmount(highVariation_);
+        
         bool trigs[3] = {false, false, false};
         bool kickAccent = false;
-        const auto chaosSample = chaos_.NextSample();
+        
+        const auto chaosSampleLow = chaosLow_.NextSample();
+        const auto chaosSampleHigh = chaosHigh_.NextSample();
 
         if(forceNextTriggers_)
         {
@@ -97,15 +154,25 @@ std::array<float, 2> Sequencer::ProcessAudio()
         }
         else
         {
-            float jitteredX = Clamp(mapX_ + chaosSample.jitterX, 0.0f, 1.0f);
-            float jitteredY = Clamp(mapY_ + chaosSample.jitterY, 0.0f, 1.0f);
-            float baseDensity = 0.6f + (chaosAmount_ * 0.2f);
-            float density = Clamp(baseDensity + chaosSample.densityBias, 0.05f, 0.95f);
-            patternGen_.GetTriggers(jitteredX, jitteredY, stepIndex_, density, trigs);
+            // Apply Chaos to Style (Map X).
+            // Use average jitter from both sources for Style, or just one. 
+            // Using average keeps the style drift somewhat related to overall chaos.
+            float avgJitterX = (chaosSampleLow.jitterX + chaosSampleHigh.jitterX) * 0.5f;
+            float jitteredStyle = Clamp(style_ + avgJitterX, 0.0f, 1.0f);
+            
+            // Apply independent density bias
+            float lowDensMod = Clamp(lowDensity_ + chaosSampleLow.densityBias, 0.05f, 0.95f);
+            float highDensMod = Clamp(highDensity_ + chaosSampleHigh.densityBias, 0.05f, 0.95f);
+            
+            patternGen_.GetTriggers(jitteredStyle, stepIndex_, lowDensMod, highDensMod, trigs);
+            
             if(trigs[0])
             {
-                const uint8_t kickLevel = patternGen_.GetLevel(jitteredX, jitteredY, 0, stepIndex_);
-                kickAccent = kickLevel >= ComputeAccentThreshold(density);
+                // For accent, we need the raw level. PatternGenerator::GetLevel takes x/y.
+                // We must match the mapping used in GetTriggers (x=style, y=0.5).
+                float mapY = 0.5f; 
+                const uint8_t kickLevel = patternGen_.GetLevel(jitteredStyle, mapY, 0, stepIndex_);
+                kickAccent = kickLevel >= ComputeAccentThreshold(lowDensMod);
             }
         }
 
@@ -115,6 +182,7 @@ std::array<float, 2> Sequencer::ProcessAudio()
         const bool hihatTrig = trigs[2];
         const bool percTrigBase = snareTrig || hihatTrig;
         bool       percTrig = percTrigBase;
+        
         if(kickTrig)
         {
             TriggerGate(0);
@@ -127,10 +195,13 @@ std::array<float, 2> Sequencer::ProcessAudio()
                 accentTimer_ = 0;
             }
         }
-        if(!percTrig && chaosSample.ghostTrigger)
+        
+        // Ghost triggers on Snare/Perc channel driven by High Variation
+        if(!percTrig && chaosSampleHigh.ghostTrigger)
         {
             percTrig = true;
         }
+        
         if(percTrig)
         {
             TriggerGate(1);
@@ -240,5 +311,3 @@ int Sequencer::HoldMsToSamples(float milliseconds) const
 }
 
 } // namespace daisysp_idm_grids
-
-

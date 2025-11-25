@@ -35,6 +35,40 @@ void PatternGenerator::Init()
 {
 }
 
+void PatternGenerator::GetTriggers(float style, int step, float lowDensity, float highDensity, bool* triggers)
+{
+    // Opinionated mapping: Style traverses the X axis of the map, Y is fixed at center.
+    // This hits a good variety of patterns (breakbeat at center, etc.)
+    // TODO: Consider a more complex path (e.g. diagonal) if more variety is needed.
+    float x = style;
+    float y = 0.5f;
+
+    x = Clamp(x, 0.0f, 1.0f);
+    y = Clamp(y, 0.0f, 1.0f);
+    lowDensity = Clamp(lowDensity, 0.0f, 1.0f);
+    highDensity = Clamp(highDensity, 0.0f, 1.0f);
+    int wrappedStep = WrapStepIndex(step);
+
+    // Calculate thresholds
+    int lowThreshold = static_cast<int>(std::round((1.0f - lowDensity) * 255.0f));
+    lowThreshold = Clamp(lowThreshold, 0, 255);
+    
+    int highThreshold = static_cast<int>(std::round((1.0f - highDensity) * 255.0f));
+    highThreshold = Clamp(highThreshold, 0, 255);
+
+    // Kick (Channel 0) -> Low Density
+    uint8_t kickVal = ReadMap(x, y, 0, wrappedStep);
+    triggers[0] = kickVal >= lowThreshold;
+
+    // Snare (Channel 1) -> High Density
+    uint8_t snareVal = ReadMap(x, y, 1, wrappedStep);
+    triggers[1] = snareVal >= highThreshold;
+
+    // HH (Channel 2) -> High Density
+    uint8_t hhVal = ReadMap(x, y, 2, wrappedStep);
+    triggers[2] = hhVal >= highThreshold;
+}
+
 void PatternGenerator::GetTriggers(float x, float y, int step, float density, bool* triggers)
 {
     x = Clamp(x, 0.0f, 1.0f);

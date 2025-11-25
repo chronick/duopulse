@@ -16,12 +16,21 @@ public:
     ~Sequencer() = default;
 
     void Init(float sampleRate);
-    void ProcessControl(float tempoControl,
-                        float mapX,
-                        float mapY,
-                        float chaosAmount,
-                        bool tapButtonTrigger,
-                        uint32_t nowMs);
+    
+    // Parameter Setters
+    void SetLowDensity(float value);
+    void SetHighDensity(float value);
+    void SetLowVariation(float value);
+    void SetHighVariation(float value);
+    void SetStyle(float value);
+    void SetLength(int bars);
+    void SetEmphasis(float value);
+    void SetTempoControl(float value); // 0.0 - 1.0
+
+    // System Triggers
+    void TriggerTapTempo(uint32_t nowMs);
+    void TriggerReset();
+
     std::array<float, 2> ProcessAudio();
     void ForceNextStepTriggers(bool kick, bool snare, bool hh, bool kickAccent = false);
 
@@ -43,9 +52,20 @@ private:
     uint32_t lastTapTime_ = 0;
 
     int   stepIndex_ = 0;
-    float mapX_ = 0.0f;
-    float mapY_ = 0.0f;
-    float chaosAmount_ = 0.0f;
+    
+    // Parameters
+    float lowDensity_ = 0.5f;
+    float highDensity_ = 0.5f;
+    float lowVariation_ = 0.0f;
+    float highVariation_ = 0.0f;
+    float style_ = 0.0f;
+    int   loopLengthBars_ = 4;
+    float emphasis_ = 0.5f;
+
+    // Internal
+    float mapX_ = 0.0f; // Derived from Style
+    float mapY_ = 0.0f; // Derived from Style/Fixed
+    // chaosAmount_ removed, using independent modulators
 
     int gateTimers_[2] = {0, 0}; // Kick, Snare
     int gateDurationSamples_ = 0;
@@ -54,7 +74,8 @@ private:
 
     daisysp::Metro   metro_;
     PatternGenerator patternGen_;
-    ChaosModulator   chaos_;
+    ChaosModulator   chaosLow_;
+    ChaosModulator   chaosHigh_;
     bool             forceNextTriggers_ = false;
     bool             forcedTriggers_[3] = {false, false, false};
     bool             forcedKickAccent_ = false;

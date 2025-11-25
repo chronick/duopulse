@@ -116,26 +116,29 @@ void ProcessControls()
     {
         UpdateAccentLaneFromControls(channel1, channel2);
         UpdateHihatLaneFromControls(channel3, channel4);
-        sequencer.ProcessControl(performanceState.tempo,
-                                 performanceState.mapX,
-                                 performanceState.mapY,
-                                 performanceState.chaos,
-                                 false,
-                                 now);
+        sequencer.SetTempoControl(performanceState.tempo);
+        sequencer.SetStyle(performanceState.mapX);
+        sequencer.SetLowVariation(performanceState.chaos);
+        sequencer.SetHighVariation(performanceState.chaos);
+        // mapY ignored as per new interface
     }
     else
     {
         bool tapTrig = tapButton.RisingEdge();
+        if(tapTrig)
+        {
+            sequencer.TriggerTapTempo(now);
+        }
+
         performanceState.mapX   = channel1;
         performanceState.mapY   = channel2;
         performanceState.chaos  = channel3;
         performanceState.tempo  = channel4;
-        sequencer.ProcessControl(performanceState.tempo,
-                                 performanceState.mapX,
-                                 performanceState.mapY,
-                                 performanceState.chaos,
-                                 tapTrig,
-                                 now);
+        
+        sequencer.SetTempoControl(performanceState.tempo);
+        sequencer.SetStyle(performanceState.mapX);
+        sequencer.SetLowVariation(performanceState.chaos);
+        sequencer.SetHighVariation(performanceState.chaos);
     }
 
     // User/front LED Sync
