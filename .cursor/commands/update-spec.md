@@ -24,6 +24,7 @@ This command updates the project specifications found in the `specs/` or `docs/s
     -   Create new task file(s) in `docs/tasks/backlog/` to implement the differences between the current codebase and the new spec.
     -   Use `docs/tasks/template.md` as a base.
     -   Naming convention: `XX-task-name.md` (increment the prefix).
+    -   **Important!** Always increment 1 + highest task value out of all `tasks/**/*.md` files.
     -   Fill in the `Context`, `Requirements`, and a detailed `Implementation Plan`.
 
 4.  **Review**:
