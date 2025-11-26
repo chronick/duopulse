@@ -18,8 +18,10 @@ public:
 
     /**
      * @brief Process the raw hardware reading.
+     * Uses Value Scaling (Ableton style) when locked to smoothly interpolate
+     * towards limits.
      * @param raw_value The current normalized value from the hardware knob (0.0 - 1.0).
-     * @return The effective value (soft pickup logic applied).
+     * @return The effective value.
      */
     float Process(float raw_value);
 
@@ -40,15 +42,23 @@ public:
     void Lock();
     
     /**
-     * @brief Check if the knob is currently locked (waiting for pickup).
+     * @brief Check if the knob is currently locked (scaling mode).
      */
     bool IsLocked() const;
+
+    /**
+     * @brief Check if the knob was moved in the last Process call.
+     * Resets after call.
+     */
+    bool HasMoved();
 
 private:
     float value_; 
     bool locked_;
-    const float kPickupThreshold = 0.05f; // 5% tolerance
+    bool first_process_;
+    float last_raw_;
+    bool moved_;
+    const float kPickupThreshold = 0.05f; // 5% tolerance for immediate unlock
 };
 
 }
-
