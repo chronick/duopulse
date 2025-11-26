@@ -1,0 +1,17 @@
+[project]
+name = "manual-generator"
+version = "0.1.0"
+description = "Generates PDF/HTML manual from markdown spec"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "markdown",
+    "jinja2",
+    "weasyprint",
+    "beautifulsoup4", 
+]
+
+[tool.uv]
+dev-dependencies = []
+
+

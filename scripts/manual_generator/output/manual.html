@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Module Manual</title>
+    <link rel="stylesheet" href="static/style.css">
+</head>
+<body>
+    <div class="manual-container">
+        
+        <div class="cover-page">
+            <img src="images/patch_init_front_square.webp" alt="Module Front Panel" class="cover-image">
+            <h1 class="manual-title">Module Manual</h1>
+            <div class="manual-subtitle">Firmware Specification & User Guide</div>
+        </div>
+        
+        
+        <div class="content">
+            <h1 id="firmware-specification-opinionated-drum-sequencer-for-patchinit">Firmware Specification: Opinionated Drum Sequencer for Patch.Init()</h1>
+<h2 id="overview">Overview</h2>
+<p>This firmware transforms the Daisy Patch.Init() module into an opinionated, performance-oriented drum sequencer. It departs from a direct Grids port to focus on playable, expressive control over drum patterns using the specific constraints of the Patch.Init hardware. The core design philosophy emphasizes smooth transitions, evolving rhythms, and "soft takeover" controls to prevent parameter jumps.</p>
+<h2 id="hardware-configuration-daisy-patch-sm">Hardware Configuration (Daisy Patch SM)</h2>
+<h3 id="inputs">Inputs</h3>
+<ul>
+<li><strong>Knobs 1-4</strong>: Multifunction performance controls (depend on Switch state).</li>
+<li><strong>CV Inputs 5-8</strong>: Modulation inputs for Knobs 1-4 respectively. CV adds to the knob position, clamped to safe ranges.</li>
+<li><strong>Button (Pin B7)</strong>: Shift / Modifier (Exact function TBD).</li>
+<li><strong>Switch (Pin B8)</strong>: Mode toggle (2-position: OFF = Base Mode, ON = Config Mode).</li>
+<li><strong>Gate In 1 (Pin B3)</strong>: Clock Input (Rising Edge).</li>
+<li><strong>Gate In 2 (Pin B4)</strong>: Pattern Reset (Rising Edge).</li>
+<li><strong>Audio In L/R</strong>: Ignored.</li>
+</ul>
+<h3 id="outputs">Outputs</h3>
+<ul>
+<li><strong>Audio Out 1 (L / Pin B1)</strong>: Kick/Low-End Output (Trigger/Gate/CV).</li>
+<li><strong>Audio Out 2 (R / Pin B2)</strong>: Snare/High-End Output (Trigger/Gate/CV).</li>
+<li><strong>Gate Out 1 (Pin B5)</strong>: Kick Trigger (Digital 5V).</li>
+<li><strong>Gate Out 2 (Pin B6)</strong>: Snare/Hihat Trigger (Digital 5V).</li>
+<li><strong>CV Out 1 (Pin C10)</strong>: TBD (Default: Clock Out?).</li>
+<li><strong>CV Out 2 (Pin C1 / Front LED)</strong>: LED Visual Feedback.</li>
+</ul>
+<h2 id="functional-architecture">Functional Architecture</h2>
+<p>The system operates in two distinct modes controlled by the <strong>Switch</strong>. State variables for each mode are persisted when switching, ensuring no parameters are lost.</p>
+<p><strong>Soft Takeover</strong>: When switching modes or startup, turning a knob does not immediately jump the parameter. The parameter "seeks" the knob position progressively to ensure smooth transitions.</p>
+<h3 id="base-mode-switch-off">Base Mode (Switch OFF)</h3>
+<p>The primary performance mode, optimized for in-set manipulation of the drum voices.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Control</th>
+<th style="text-align: left;">Function</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Knob 1</strong></td>
+<td style="text-align: left;"><strong>Kick/Tom Density</strong></td>
+<td style="text-align: left;">Controls the "frequency" or "content" of the low-end track. Moves from sparse to dense/busy.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Knob 2</strong></td>
+<td style="text-align: left;"><strong>Snare/Hat Density</strong></td>
+<td style="text-align: left;">Controls the "frequency" or "content" of the high-end track. Moves from sparse to dense/busy.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Knob 3</strong></td>
+<td style="text-align: left;"><strong>Kick/Tom Variation</strong></td>
+<td style="text-align: left;">Controls dynamics and chaos for the low-end. Low values = steady velocity. High values = velocity variation + chaos (random ghost notes/fills).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Knob 4</strong></td>
+<td style="text-align: left;"><strong>Snare/Hat Variation</strong></td>
+<td style="text-align: left;">Controls dynamics and chaos for the high-end. Low values = steady velocity. High values = velocity variation + chaos.</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong>CV Inputs</strong> 1-4 modulate their respective Knobs 1-4.</li>
+</ul>
+<h3 id="config-mode-switch-on">Config Mode (Switch ON)</h3>
+<p>Setup, Style, and Routing configuration.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Control</th>
+<th style="text-align: left;">Function</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Knob 1</strong></td>
+<td style="text-align: left;"><strong>Style / Time Sig</strong></td>
+<td style="text-align: left;">Selects the overall rhythmic feel and time signature (e.g., 4/4 Techno -&gt; Breakbeat -&gt; IDM).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Knob 2</strong></td>
+<td style="text-align: left;"><strong>Pattern Length</strong></td>
+<td style="text-align: left;">Sets pattern loop length: 1, 2, 4, 8, or 16 bars.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Knob 3</strong></td>
+<td style="text-align: left;"><strong>Voice Emphasis</strong></td>
+<td style="text-align: left;">Controls voice allocation/routing balance (Low/High Emphasis). See below.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Knob 4</strong></td>
+<td style="text-align: left;"><strong>Tempo</strong></td>
+<td style="text-align: left;">Sets internal clock tempo (ignored if external clock present).</td>
+</tr>
+</tbody>
+</table>
+<h3 id="voice-emphasis-config-knob-3">Voice Emphasis (Config Knob 3)</h3>
+<p>This control adjusts how internal generator tracks are mapped to the two physical outputs, allowing the user to tailor the sequencer to the connected modules (e.g., BIA vs. Tymp Legio).</p>
+<ul>
+<li><strong>Low Emphasis (CCW)</strong>: Prioritizes low-end complexity on Output 1. May mix Tom tracks or additional low-perc elements into the Kick channel.</li>
+<li><strong>Balanced (Center)</strong>: Standard mapping. Kick -&gt; Out 1, Snare/Hat -&gt; Out 2.</li>
+<li><strong>High Emphasis (CW)</strong>: Prioritizes high-end complexity on Output 2. Ensures rich Snare/Hat/Percussion patterns on Out 2, possibly simplifying the Kick track or moving mid-range elements to Out 2.</li>
+</ul>
+<h3 id="signal-flow-audio-logic">Signal Flow &amp; Audio Logic</h3>
+<ol>
+<li><strong>Clocking</strong>:<ul>
+<li>If <strong>Gate In 1</strong> receives pulses, system syncs to External Clock.</li>
+<li>Otherwise, runs on Internal Clock (set by Config Knob 4).</li>
+</ul>
+</li>
+<li><strong>Sequencer Engine</strong>:<ul>
+<li>Generates triggers based on <strong>Style</strong> (Config K1) and <strong>Density</strong> (Base K1/K2).</li>
+<li>Applies <strong>Variation/Chaos</strong> (Base K3/K4) to modify velocity and probability.</li>
+<li>Applies <strong>Voice Emphasis</strong> (Config K3) to route triggers to channels.</li>
+</ul>
+</li>
+<li><strong>Output Generation</strong>:<ul>
+<li><strong>Audio Outs</strong>: Generates DC-coupled pulses/gates.<ul>
+<li>Voltage Level corresponds to Velocity/Accent level.</li>
+<li>Config Mode attenuation controls (from previous spec) are removed in favor of Emphasis/Style, assuming fixed 5V or max range output unless re-added. <em>Correction: User removed explicit attenuation knobs from Config, assuming standard Eurorack levels or fixed scaling.</em></li>
+</ul>
+</li>
+<li><strong>Gate Outs</strong>: Digital mirror of the main triggers (always 0V/5V).</li>
+</ul>
+</li>
+</ol>
+<h2 id="implementation-details">Implementation Details</h2>
+<h3 id="data-structures">Data Structures</h3>
+<ul>
+<li><strong>Pattern Bank</strong>: ~32 patterns stored as bitmaps or step sequences.</li>
+<li><strong>State Machine</strong>:<ul>
+<li><code>CurrentMode</code> (Base/Config).</li>
+<li><code>Params_Base</code> (KickDensity, SnareDensity, KickVar, SnareVar).</li>
+<li><code>Params_Config</code> (Style, Length, Emphasis, Tempo).</li>
+<li><code>SoftPickup</code> state for each knob.</li>
+</ul>
+</li>
+</ul>
+<h2 id="changelog">Changelog</h2>
+<ul>
+<li><strong>2025-11-24</strong>:<ul>
+<li>Refined control scheme for "in-set" performance.</li>
+<li><strong>Base Mode</strong>: Now split into Low-End (K1/K3) and High-End (K2/K4) pairs controlling Density and Variation/Chaos.</li>
+<li><strong>Config Mode</strong>: Moved Style and Length to Config K1/K2. Added <strong>Voice Emphasis</strong> on K3.</li>
+<li>Defined Emphasis logic (Low vs High priority routing).</li>
+</ul>
+</li>
+</ul>
+        </div>
+    </div>
+</body>
+</html>
+

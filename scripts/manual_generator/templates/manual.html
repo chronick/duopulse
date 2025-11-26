@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    <link rel="stylesheet" href="{{ css_path }}">
+</head>
+<body>
+    <div class="manual-container">
+        {% if cover_image %}
+        <div class="cover-page">
+            <img src="{{ cover_image }}" alt="Module Front Panel" class="cover-image">
+            <h1 class="manual-title">{{ title }}</h1>
+            <div class="manual-subtitle">Firmware Specification & User Guide</div>
+        </div>
+        {% endif %}
+        
+        <div class="content">
+            {{ content | safe }}
+        </div>
+    </div>
+</body>
+</html>
+
+
