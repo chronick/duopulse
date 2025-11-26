@@ -1,5 +1,5 @@
 ---
-id: chronick/daisysp-idm-grids02"
+id: chronick/daisysp-idm-grids-03"
 title: "Phase 3: The Grids Core (Algorithm Port)"
 status: "completed"
 created_date: "2025-11-24"

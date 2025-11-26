@@ -1,5 +1,5 @@
 ---
-id: chronick/daisysp-idm-grids-06
+id: chronick/daisysp-idm-grids-07
 title: "Opinionated Drum Sequencer Implementation"
 status: "QA"
 created_date: "2025-11-25"

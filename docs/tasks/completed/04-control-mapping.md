@@ -1,5 +1,5 @@
 ---
-id: chronick/daisysp-idm-grids03"
+id: chronick/daisysp-idm-grids-04"
 title: "Phase 4: Full Control Mapping & Chaos"
 status: "completed"
 created_date: "2025-11-24"

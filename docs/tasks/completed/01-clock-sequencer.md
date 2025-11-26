@@ -1,5 +1,5 @@
 ---
-id: chronick/daisysp-idm-grids01"
+id: chronick/daisysp-idm-grids-01"
 title: "Phase 2: The Clock & Simple Sequencer"
 status: "completed"
 created_date: "2025-11-24"

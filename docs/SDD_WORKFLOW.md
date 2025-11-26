@@ -1,56 +1,56 @@
 # Spec-Driven Development (SDD) Workflow
 
-This project uses a lightweight Spec-Driven Development workflow.
+This project uses a rigorous Spec-Driven Development workflow to ensure quality and traceability.
 
 ## Structure
 
 - **`docs/specs/main.md`**: The single source of truth for the project specification. All features must be defined here before implementation.
-- **`docs/tasks/`**: Contains task files for each unit of work (phase, feature, or bugfix).
+- **`docs/tasks/`**: Contains task files for each unit of work.
+  - **`active/`**: Tasks currently being worked on (limit to 1-2).
+  - **`backlog/`**: Pending tasks scheduled for the future.
+  - **`completed/`**: Finished and verified tasks.
+  - **`template.md`**: Template for new tasks.
   - Format: `XX-task-name.md` (e.g., `01-setup-infrastructure.md`).
-  - Metadata: Frontmatter with status, id, etc.
 
-## Workflow
+## Workflow Commands
 
-1.  **Update Spec**: Modify `docs/specs/main.md` to reflect the desired state of the system.
-2.  **Create Task**: Create a new file in `docs/tasks/` (copy `docs/tasks/template.md`).
-3.  **Plan**: Break down the task into implementation steps.
-4.  **Implement**: Execute the steps, updating code and the task file.
-5.  **Verify**: Ensure requirements are met.
-6.  **Complete**: Update task status to `completed`.
+### 1. Update Spec (`@update-spec`)
 
-## Cursor "Commands"
+Use this when you want to change behavior or add features.
 
-Use these phrases to trigger specific AI behaviors:
+**Process:**
+1.  **Branch**: Agent creates `spec/<feature-name>`.
+2.  **Spec**: Agent updates `docs/specs/main.md` with new requirements.
+3.  **Tasks**: Agent generates implementation tasks in `docs/tasks/backlog/`.
+4.  **Review**: User reviews the spec diff and task list.
+5.  **Merge**: Agent commits, merges to `main`, and deletes the branch.
 
-### `plan-project-task`
+### 2. Implement Task (`@implement-task`)
 
-**Trigger**: User says "plan-project-task" (optionally with a task name/ID).
+Use this to execute the planned work.
 
-**AI Action**:
-1.  Read `docs/specs/main.md`.
-2.  List files in `docs/tasks/` to identify the current or next task.
-3.  If a task is specified or implied, read that task file.
-4.  If the task is new or empty, populate it with:
-    - Context from the Spec.
-    - Specific requirements.
-    - A detailed implementation plan (checklist).
-5.  Ask for user approval of the plan.
+**Process:**
+1.  **Discover**: 
+    -   Agent checks `docs/tasks/active/`.
+    -   If empty, Agent checks `docs/tasks/backlog/`, picks the next priority task, and moves it to `docs/tasks/active/`.
+2.  **Loop**: For each step in the task's Implementation Plan:
+    -   Implement code & tests.
+    -   Verify (`make`, `make test`).
+    -   **Commit**: `git commit -m "..."`.
+    -   Update task file (mark checked).
+3.  **Complete**: 
+    -   Agent marks task as `completed`.
+    -   Agent moves task to `docs/tasks/completed/`.
+    -   Agent commits.
 
-### `implement-task`
+## Git Hygiene
 
-**Trigger**: User says "implement-task" (optionally with a task name/ID).
-
-**AI Action**:
-1.  Read the specified (or active) task file in `docs/tasks/`.
-2.  Check the "Implementation Plan" section.
-3.  Execute the next unchecked items in the plan.
-    - This involves reading code, writing code, and running tests.
-4.  Update the task file (mark items as checked) as progress is made.
-5.  If blocked or finished with a logical chunk, stop and report status.
+-   **Spec Updates**: Done on short-lived `spec/*` branches.
+-   **Implementation**: Can be done on `main` (if strictly following tasks) or `feat/*` branches.
+-   **Commits**: Frequent, atomic commits after each successful step in a task.
 
 ## Statuses
 - `pending`: Task defined but not started.
-- `active`: Currently being worked on.
+- `in_progress`: Currently being worked on.
 - `completed`: Finished and verified.
 - `cancelled`: Abandoned.
-

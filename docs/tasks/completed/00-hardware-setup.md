@@ -1,5 +1,5 @@
 ---
-id: chronick/daisysp-idm-grids0"
+id: chronick/daisysp-idm-grids-00"
 title: "Phase 1: Hardware Setup & Hello World"
 status: "completed"
 created_date: "2025-11-24"
