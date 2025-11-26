@@ -54,6 +54,10 @@ struct ControlState
 ControlState controlState;
 SoftKnob     softKnobs[4];
 
+// UX State
+uint32_t lastInteractionTime = 0;
+float    activeParameterValue = 0.0f;
+
 int MapToLength(float value)
 {
     // 1, 2, 4, 8, 16 bars
@@ -133,36 +137,43 @@ void ProcessControls()
     const float cv4 = patch.GetAdcValue(CV_8);
 
     // Process Soft Knobs & Update State
-    // We update the currently active parameters in the state struct
+    // We check for interaction to drive the LED
+    bool interacted = false;
+    
     if(controlState.configMode)
     {
         controlState.style    = softKnobs[0].Process(knob1);
+        if (softKnobs[0].HasMoved()) { interacted = true; activeParameterValue = controlState.style; }
+        
         controlState.length   = softKnobs[1].Process(knob2);
+        if (softKnobs[1].HasMoved()) { interacted = true; activeParameterValue = controlState.length; }
+        
         controlState.emphasis = softKnobs[2].Process(knob3);
+        if (softKnobs[2].HasMoved()) { interacted = true; activeParameterValue = controlState.emphasis; }
+        
         controlState.tempo    = softKnobs[3].Process(knob4);
+        if (softKnobs[3].HasMoved()) { interacted = true; activeParameterValue = controlState.tempo; }
     }
     else
     {
         controlState.lowDensity    = softKnobs[0].Process(knob1);
+        if (softKnobs[0].HasMoved()) { interacted = true; activeParameterValue = controlState.lowDensity; }
+        
         controlState.highDensity   = softKnobs[1].Process(knob2);
+        if (softKnobs[1].HasMoved()) { interacted = true; activeParameterValue = controlState.highDensity; }
+        
         controlState.lowVariation  = softKnobs[2].Process(knob3);
+        if (softKnobs[2].HasMoved()) { interacted = true; activeParameterValue = controlState.lowVariation; }
+        
         controlState.highVariation = softKnobs[3].Process(knob4);
+        if (softKnobs[3].HasMoved()) { interacted = true; activeParameterValue = controlState.highVariation; }
+    }
+    
+    if (interacted) {
+        lastInteractionTime = System::GetNow();
     }
 
     // Calculate Final Parameters (Pot + CV) and Apply to Sequencer
-    // Base Parameters
-    // Note: In Config mode, Base parameters remain at their last values (plus current CV)
-    // or should CV also redirect? 
-    // Spec says: "Knobs control...". It implies CVs might follow? 
-    // Usually in Eurorack, CVs are hardwired to function. 
-    // But the inputs are labeled "CV_1" etc.
-    // Let's assume CVs *always* map to the *active* function of the Knob?
-    // Or do CVs stay fixed?
-    // "Knob/CV pairs drive Grids parameters..." (Old spec).
-    // "Opinionated Drum Sequencer" doesn't explicitly say CVs change meaning.
-    // But usually Knob+CV are a pair.
-    // So I will apply CV to the CURRENTLY ACTIVE parameter.
-    
     if(controlState.configMode)
     {
         // Config Mode
@@ -179,11 +190,6 @@ void ProcessControls()
     else
     {
         // Base Mode
-        // Tap Tempo only in Base mode? Or always?
-        // "Config Mode: Knobs control... Tempo".
-        // "Base Mode... Knobs control Density...".
-        // So in Base Mode, Tempo is not controlled by Knob 4.
-        
         // Tap Tempo
         bool tapTrig = tapButton.RisingEdge();
         if(tapTrig)
@@ -203,18 +209,36 @@ void ProcessControls()
     }
 
     // Reset Trigger
-    // Gate In 2 (Input 2 on the Patch SM is Gate In 2? Need to verify pinout mapping in libDaisy)
-    // DaisyPatchSM::gate_in_2 is B8? No.
-    // Let's check DaisyPatchSM header or assume standard.
     if(patch.gate_in_2.Trig())
     {
         sequencer.TriggerReset();
     }
 
     // User/front LED Sync
-    const bool ledState = controlState.configMode ? true : sequencer.IsGateHigh(0);
-    patch.SetLed(ledState);
-    patch.WriteCvOut(patch_sm::CV_OUT_2, LedIndicator::VoltageForState(ledState));
+    // If interaction active (< 1s), show parameter value brightness
+    if (System::GetNow() - lastInteractionTime < 1000)
+    {
+        // Use full 5V range for brightness.
+        // Assuming activeParameterValue is 0.0-1.0.
+        // CV_OUT_2 drives the LED.
+        patch.WriteCvOut(patch_sm::CV_OUT_2, activeParameterValue * 5.0f);
+        // Also update digital LED state for redundancy if underlying impl differs?
+        // SetLed takes boolean, so it's ON/OFF.
+        // We probably shouldn't toggle it here if we want smooth analog brightness.
+        // But if we don't SetLed(true), does it override DAC?
+        // Usually SetLed writes to the GPIO connected to the LED.
+        // If that GPIO is also the DAC, they might conflict or be the same.
+        // On Patch SM, LED is on C1 (DAC 2).
+        // Calling WriteCvOut is correct for brightness.
+    }
+    else
+    {
+        // Default Behavior
+        const bool ledState = controlState.configMode ? true : sequencer.IsGateHigh(0);
+        patch.SetLed(ledState); // Digital control
+        patch.WriteCvOut(patch_sm::CV_OUT_2, LedIndicator::VoltageForState(ledState));
+    }
+
     patch.WriteCvOut(patch_sm::CV_OUT_1,
                      LedIndicator::VoltageForState(sequencer.IsClockHigh()));
 }
@@ -230,7 +254,7 @@ int main(void)
 
     // Initialize Sequencer and gate lanes
     sequencer.Init(sampleRate);
-    // Set default gate voltages and hold times (no longer controlled by knobs)
+    // Set default gate voltages and hold times
     accentGate.SetTargetVoltage(GateScaler::kGateVoltageLimit);
     hihatGate.SetTargetVoltage(GateScaler::kGateVoltageLimit);
     sequencer.SetAccentHoldMs(10.0f);
@@ -255,6 +279,9 @@ int main(void)
     softKnobs[1].Init(controlState.highDensity);
     softKnobs[2].Init(controlState.lowVariation);
     softKnobs[3].Init(controlState.highVariation);
+    
+    // Initialize interaction state
+    lastInteractionTime = 0; // Ensures we start in default mode
 
     patch.StartAudio(AudioCallback);
 
