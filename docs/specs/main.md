@@ -21,12 +21,16 @@ This firmware transforms the Daisy Patch.Init() module into an opinionated, perf
 *   **Gate Out 2 (Pin B6)**: Snare/Hihat Trigger (Digital 5V).
 *   **CV Out 1 (Pin C10)**: TBD (Default: Clock Out?).
 *   **CV Out 2 (Pin C1 / Front LED)**: LED Visual Feedback.
+    *   **Behavior**:
+        *   **Default**: Pulses on beats (Base Mode) or Solid ON (Config Mode).
+        *   **Interaction**: When any knob is turned, the LED brightness reflects the *actual parameter value* being modified (dim to bright).
+        *   **Timeout**: After 1 second of inactivity, reverts to Default behavior.
 
 ## Functional Architecture
 
 The system operates in two distinct modes controlled by the **Switch**. State variables for each mode are persisted when switching, ensuring no parameters are lost.
 
-**Soft Takeover**: When switching modes or startup, turning a knob does not immediately jump the parameter. The parameter "seeks" the knob position progressively to ensure smooth transitions.
+**Soft Takeover**: When switching modes or startup, turning a knob does not immediately jump the parameter. The system uses "Value Scaling" (similar to Ableton Live): as the user turns the knob, the parameter value actively interpolates towards the physical knob position, scaling the remaining range to ensure smooth convergence without needing to "cross" the current value first.
 
 ### Base Mode (Switch OFF)
 The primary performance mode, optimized for in-set manipulation of the drum voices.
@@ -82,6 +86,9 @@ This control adjusts how internal generator tracks are mapped to the two physica
     *   `SoftPickup` state for each knob.
 
 ## Changelog
+*   **2025-11-26**:
+    *   **Soft Takeover**: Updated behavior to "Value Scaling" for immediate, smooth response without parameter jumps.
+    *   **Visual Feedback**: Added interaction behavior to CV Out 2 LED (reflects knob value on turn, 1s timeout).
 *   **2025-11-24**:
     *   Refined control scheme for "in-set" performance.
     *   **Base Mode**: Now split into Low-End (K1/K3) and High-End (K2/K4) pairs controlling Density and Variation/Chaos.
