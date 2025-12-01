@@ -3,8 +3,9 @@
 #include "Engine/SoftKnob.h"
 
 using namespace daisysp_idm_grids;
+using Catch::Approx;
 
-TEST_CASE("SoftKnob Value Scaling", "[SoftKnob]") {
+TEST_CASE("SoftKnob Gradual Interpolation", "[SoftKnob]") {
     SoftKnob knob;
     knob.Init(0.5f);
 
@@ -21,70 +22,67 @@ TEST_CASE("SoftKnob Value Scaling", "[SoftKnob]") {
         REQUIRE(knob.IsLocked() == true);
     }
 
-    SECTION("Scaling Upwards") {
+    SECTION("Gradual Interpolation Upwards") {
         // Value = 0.5, Knob = 0.1
         knob.Process(0.1f); 
         
         // Move Knob UP to 0.2 (+0.1)
-        // Range Knob: 0.1 -> 1.0 (0.9)
-        // Range Value: 0.5 -> 1.0 (0.5)
-        // Scale: 0.5 / 0.9 = 0.555...
+        // Gradual interpolation: move 10% toward physical position
+        // Distance = 0.2 - 0.5 = -0.3
+        // New value = 0.5 + (-0.3 * 0.1) = 0.5 - 0.03 = 0.47
         
         float out = knob.Process(0.2f);
-        REQUIRE(out > 0.5f);
-        REQUIRE(out == Catch::Approx(0.5f + (0.1f * (0.5f/0.9f))).margin(0.0001f));
+        REQUIRE(out < 0.5f); // Moving toward physical position (which is below value)
+        REQUIRE(out == Approx(0.47f).margin(0.01f));
         REQUIRE(knob.IsLocked() == true);
     }
 
-    SECTION("Scaling Downwards") {
-        // Value = 0.5, Knob = 0.2
-        knob.Process(0.2f);
+    SECTION("Gradual Interpolation Downwards") {
+        // Value = 0.5, Knob = 0.8
+        knob.Process(0.8f);
 
-        // Move Knob DOWN to 0.1 (-0.1)
-        // Range Knob: 0.2 -> 0.0 (0.2)
-        // Range Value: 0.5 -> 0.0 (0.5)
-        // Scale: 0.5 / 0.2 = 2.5
+        // Move Knob DOWN to 0.7 (-0.1)
+        // Distance = 0.7 - 0.5 = 0.2
+        // New value = 0.5 + (0.2 * 0.1) = 0.52
         
-        float out = knob.Process(0.1f);
-        REQUIRE(out < 0.5f);
-        REQUIRE(out == Catch::Approx(0.5f - (0.1f * 2.5f)).margin(0.0001f));
-        
-        // Should be unlocked if we hit limit or crossover?
-        // Here we just moved part way (0.25 vs 0.1).
-        REQUIRE(knob.GetValue() == 0.25f);
+        float out = knob.Process(0.7f);
+        REQUIRE(out > 0.5f); // Moving toward physical position (which is above value)
+        REQUIRE(out == Approx(0.52f).margin(0.01f));
+        REQUIRE(knob.IsLocked() == true);
     }
 
-    SECTION("Scaling Convergence") {
-        // Value = 0.5, Knob = 0.4
-        knob.Process(0.4f);
+    SECTION("Convergence Over Multiple Cycles") {
+        // Value = 0.5, start far from physical
+        knob.Process(0.0f);
         
-        // Move Knob towards limit. Value should scale.
-        // 0.4 -> 0.6.
-        // Dist_K = 0.6. Dist_V = 0.5. Scale = 0.8333...
-        // Delta = 0.2. V_delta = 0.1666...
-        // V_new = 0.666...
-        // Raw = 0.6.
-        // Gap = 0.0666... > 0.05. Still locked.
+        // Keep physical at 0.0, value should gradually decrease
+        float prev = 0.5f;
+        for(int i = 0; i < 5; i++) {
+            float out = knob.Process(0.0f);
+            REQUIRE(out < prev); // Should decrease each time
+            prev = out;
+        }
         
+        // After 5 cycles: 0.5 * (0.9^5) ≈ 0.295
+        REQUIRE(prev == Approx(0.5f * 0.9f * 0.9f * 0.9f * 0.9f * 0.9f).margin(0.02f));
+        REQUIRE(knob.IsLocked() == true); // Still locked, not converged yet
+    }
+
+    SECTION("Cross Detection Unlocks Immediately") {
+        // Value = 0.5, Knob starts at 0.3 (below value)
+        knob.Process(0.3f);
+        REQUIRE(knob.IsLocked() == true);
+        
+        // Move knob to 0.6 (above value) - crosses the value!
         float out = knob.Process(0.6f);
-        REQUIRE(out == Catch::Approx(0.666666f).margin(0.001f));
-        REQUIRE(knob.IsLocked() == true);
-        
-        // Move further to 0.8
-        // Total Delta from 0.4 is 0.4. V_delta = 0.333...
-        // V_new = 0.5 + 0.333 = 0.8333...
-        // Raw = 0.8.
-        // Gap = 0.0333... < 0.05. Unlock!
-        
-        out = knob.Process(0.8f);
-        REQUIRE(out == 0.8f); // Snapped
-        REQUIRE(knob.IsLocked() == false);
+        REQUIRE(knob.IsLocked() == false); // Should unlock immediately
+        REQUIRE(out == 0.6f); // Should snap to physical
     }
 
-    SECTION("Unlock on Match") {
+    SECTION("Unlock on Match within Threshold") {
         knob.Init(0.5f);
-        knob.Process(0.49f); // Within pickup threshold?
-        // If threshold check is still 0.05
+        // If physical is within 2% of value, unlock immediately
+        knob.Process(0.49f);
         REQUIRE(knob.IsLocked() == false);
         REQUIRE(knob.GetValue() == 0.49f);
     }
@@ -92,8 +90,7 @@ TEST_CASE("SoftKnob Value Scaling", "[SoftKnob]") {
     SECTION("Interaction Detection") {
         knob.Init(0.5f);
         knob.Process(0.1f);
-        REQUIRE(knob.HasMoved() == false); // First process doesn't count as move? Or does it? 
-        // Technically we haven't moved the knob yet, just established position.
+        REQUIRE(knob.HasMoved() == false); // First process doesn't count as move
         
         knob.Process(0.11f); // Move
         REQUIRE(knob.HasMoved() == true);
@@ -101,5 +98,35 @@ TEST_CASE("SoftKnob Value Scaling", "[SoftKnob]") {
         
         knob.Process(0.11f); // No Move
         REQUIRE(knob.HasMoved() == false);
+    }
+
+    SECTION("Lock prevents jumps on mode switch") {
+        knob.Init(0.5f);
+        // Simulate: mode switch, knob physical position is 0.1
+        knob.Process(0.1f);
+        knob.Process(0.1f);
+        
+        // Value should still be close to 0.5, not jumped to 0.1
+        REQUIRE(knob.GetValue() > 0.4f);
+        
+        // Now switch modes - relock
+        knob.Lock();
+        REQUIRE(knob.IsLocked() == true);
+        
+        // Physical position changes to 0.9 after mode switch
+        knob.Process(0.9f);
+        // Should not jump - value stays locked
+        REQUIRE(knob.GetValue() > 0.4f);
+    }
+
+    SECTION("SetInterpolationRate changes convergence speed") {
+        knob.Init(0.5f);
+        knob.SetInterpolationRate(0.5f); // 50% per cycle instead of 10%
+        
+        knob.Process(0.0f);
+        float out = knob.Process(0.0f);
+        
+        // With 50% rate: 0.5 * 0.5 = 0.25
+        REQUIRE(out == Approx(0.25f).margin(0.01f));
     }
 }

@@ -99,7 +99,8 @@ The implementation builds on the existing codebase (`Sequencer`, `PatternGenerat
 
 ### Phase 6: Soft Pickup Enhancement
 
-- [ ] **Enhance SoftKnob gradual interpolation** — Implement 10% per cycle interpolation toward target. Cross-detection for immediate catchup. Prevent jumps on mode/shift switch. Reference: `docs/specs/main.md` section "Soft Takeover [duopulse-soft-pickup]".
+- [x] **Enhance SoftKnob gradual interpolation** — Implement 10% per cycle interpolation toward target. Cross-detection for immediate catchup. Prevent jumps on mode/shift switch. Reference: `docs/specs/main.md` section "Soft Takeover [duopulse-soft-pickup]".
+  - *Completed 2025-12-01*: Rewrote SoftKnob with 10% per cycle interpolation, cross-detection for immediate unlock, configurable rate via SetInterpolationRate(). Tests updated.
 
 - [ ] **Create 16-slot parameter storage** — 4 knobs × 4 mode/shift combinations, each with independent soft pickup state. Reference: Implementation Roadmap Phase 5.
 

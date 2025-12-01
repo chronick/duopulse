@@ -5,6 +5,15 @@
 
 namespace daisysp_idm_grids {
 
+/**
+ * DuoPulse v2 Soft Takeover Knob
+ * 
+ * Prevents parameter jumps when switching between modes/shift states.
+ * Uses gradual interpolation: 10% per cycle toward physical position.
+ * Cross-detection enables immediate catchup when physical crosses stored value.
+ * 
+ * Reference: docs/specs/main.md section "Soft Takeover [duopulse-soft-pickup]"
+ */
 class SoftKnob {
 public:
     SoftKnob();
@@ -18,8 +27,8 @@ public:
 
     /**
      * @brief Process the raw hardware reading.
-     * Uses Value Scaling (Ableton style) when locked to smoothly interpolate
-     * towards limits.
+     * Uses gradual interpolation (10% per cycle) when locked.
+     * Cross-detection enables immediate catchup.
      * @param raw_value The current normalized value from the hardware knob (0.0 - 1.0).
      * @return The effective value.
      */
@@ -52,13 +61,23 @@ public:
      */
     bool HasMoved();
 
+    /**
+     * @brief Set interpolation rate (0.0-1.0).
+     * Default is 0.1 (10% per cycle).
+     */
+    void SetInterpolationRate(float rate);
+
 private:
     float value_; 
     bool locked_;
     bool first_process_;
     float last_raw_;
     bool moved_;
-    const float kPickupThreshold = 0.05f; // 5% tolerance for immediate unlock
+    float interpolation_rate_;
+    
+    static constexpr float kPickupThreshold = 0.02f;   // 2% tolerance for immediate unlock
+    static constexpr float kDefaultInterpRate = 0.1f;  // 10% per cycle
+    static constexpr float kMovementThreshold = 0.002f; // Noise filter threshold
 };
 
 }
