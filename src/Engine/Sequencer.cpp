@@ -734,11 +734,33 @@ void Sequencer::GetSkeletonTriggers(int step, float anchorDens, float shimmerDen
     anchorTrig = ShouldStepFire(pattern.anchorIntensity, wrappedStep, anchorDens);
     shimmerTrig = ShouldStepFire(pattern.shimmerIntensity, wrappedStep, shimmerDens);
 
+    // Get intensity levels for potential ghost note generation
+    uint8_t anchorIntensity = GetStepIntensity(pattern.anchorIntensity, wrappedStep);
+    uint8_t shimmerIntensity = GetStepIntensity(pattern.shimmerIntensity, wrappedStep);
+    IntensityLevel anchorLevel = GetIntensityLevel(anchorIntensity);
+    IntensityLevel shimmerLevel = GetIntensityLevel(shimmerIntensity);
+
+    // FLUX probabilistic ghost note generation
+    // If a ghost-level step (intensity 1-4) didn't fire via density, FLUX can trigger it
+    if(!anchorTrig && anchorLevel == IntensityLevel::Ghost && flux_ > 0.0f)
+    {
+        if(ShouldTriggerGhost(flux_, NextHumanizeRandom()))
+        {
+            anchorTrig = true;
+        }
+    }
+    if(!shimmerTrig && shimmerLevel == IntensityLevel::Ghost && flux_ > 0.0f)
+    {
+        if(ShouldTriggerGhost(flux_, NextHumanizeRandom()))
+        {
+            shimmerTrig = true;
+        }
+    }
+
     // Get velocity from step intensity
     if(anchorTrig)
     {
-        uint8_t intensity = GetStepIntensity(pattern.anchorIntensity, wrappedStep);
-        anchorVel = IntensityToVelocity(intensity);
+        anchorVel = IntensityToVelocity(anchorIntensity);
 
         // Apply accent parameter - boosts velocity for accent-eligible steps
         if(IsAccentEligible(pattern.accentMask, wrappedStep))
@@ -746,6 +768,12 @@ void Sequencer::GetSkeletonTriggers(int step, float anchorDens, float shimmerDen
             // Accent parameter scales the boost (0.5 = neutral, 1.0 = max accent)
             float accentBoost = (anchorAccent_ - 0.5f) * 0.4f; // ±0.2 range
             anchorVel = Clamp(anchorVel + accentBoost, 0.3f, 1.0f);
+        }
+
+        // Apply FLUX velocity jitter (up to ±20%)
+        if(flux_ > 0.0f)
+        {
+            anchorVel = ApplyVelocityJitter(anchorVel, flux_, NextHumanizeRandom());
         }
     }
     else
@@ -755,14 +783,19 @@ void Sequencer::GetSkeletonTriggers(int step, float anchorDens, float shimmerDen
 
     if(shimmerTrig)
     {
-        uint8_t intensity = GetStepIntensity(pattern.shimmerIntensity, wrappedStep);
-        shimmerVel = IntensityToVelocity(intensity);
+        shimmerVel = IntensityToVelocity(shimmerIntensity);
 
         // Apply accent parameter
         if(IsAccentEligible(pattern.accentMask, wrappedStep))
         {
             float accentBoost = (shimmerAccent_ - 0.5f) * 0.4f;
             shimmerVel = Clamp(shimmerVel + accentBoost, 0.3f, 1.0f);
+        }
+
+        // Apply FLUX velocity jitter
+        if(flux_ > 0.0f)
+        {
+            shimmerVel = ApplyVelocityJitter(shimmerVel, flux_, NextHumanizeRandom());
         }
     }
     else

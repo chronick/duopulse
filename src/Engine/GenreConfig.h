@@ -147,6 +147,8 @@ inline int CalculateSwingDelaySamples(float swingPercent, int stepDurationSample
 constexpr float kFluxFillThreshold    = 0.5f;  // FLUX level where fills start appearing
 constexpr float kFluxMaxFillProb      = 0.3f;  // Max 30% fill probability at FLUX=1
 constexpr float kFluxGhostMultiplier  = 0.5f;  // Ghost note probability scales with FLUX
+constexpr float kFluxMaxGhostProb     = 0.5f;  // Max 50% ghost note probability at FLUX=1
+constexpr float kFluxMaxVelJitter     = 0.2f;  // Max 20% velocity jitter at FLUX=1
 
 /**
  * Calculate fill trigger probability based on FLUX level.
@@ -197,6 +199,59 @@ inline float CalculateFillVelocity(float flux, float randomValue)
     if(vel > 0.9f)
         vel = 0.9f;
     return vel;
+}
+
+/**
+ * Calculate ghost note probability based on FLUX.
+ * Ghost notes start appearing at low FLUX and scale up to 50% at max.
+ * 
+ * @param flux FLUX parameter (0-1)
+ * @return Ghost probability (0-0.5)
+ */
+inline float CalculateGhostProbability(float flux)
+{
+    // Linear scale from 0 at flux=0 to 50% at flux=1
+    return flux * kFluxMaxGhostProb;
+}
+
+/**
+ * Check if a ghost note should trigger this step.
+ * 
+ * @param flux FLUX parameter (0-1)
+ * @param randomValue Random value 0-1 for probability check
+ * @return True if ghost should trigger
+ */
+inline bool ShouldTriggerGhost(float flux, float randomValue)
+{
+    float prob = CalculateGhostProbability(flux);
+    return randomValue < prob;
+}
+
+/**
+ * Apply velocity jitter based on FLUX.
+ * Higher FLUX = more velocity variation.
+ * 
+ * @param velocity Base velocity (0-1)
+ * @param flux FLUX parameter (0-1)
+ * @param randomValue Random value 0-1 for jitter
+ * @return Jittered velocity (0.3-1.0)
+ */
+inline float ApplyVelocityJitter(float velocity, float flux, float randomValue)
+{
+    if(flux <= 0.0f || velocity <= 0.0f)
+        return velocity;
+
+    // Jitter range scales with FLUX: up to ±10% at max (±0.1 of velocity)
+    float jitterRange = flux * kFluxMaxVelJitter;
+    float jitter = (randomValue - 0.5f) * 2.0f * jitterRange; // Map to ±jitterRange
+    float result = velocity + jitter;
+
+    // Clamp to valid range
+    if(result < 0.3f)
+        result = 0.3f;
+    if(result > 1.0f)
+        result = 1.0f;
+    return result;
 }
 
 // === Humanize Timing Jitter ===

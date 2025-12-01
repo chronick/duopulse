@@ -63,7 +63,8 @@ The implementation builds on the existing codebase (`Sequencer`, `PatternGenerat
 - [x] **Implement density threshold system** — Density controls threshold against pattern intensity. Low density = only high-intensity steps. High density = all steps including ghosts. Reference: `docs/specs/main.md` section "Pattern Generation [duopulse-patterns]".
   - *Completed 2025-12-01*: Added `GetSkeletonTriggers()` method using `ShouldStepFire()` with density threshold. Pattern index from `grid_` parameter. Legacy Grids system kept for backward compat via `SetUseSkeletonPatterns()`.
 
-- [ ] **Implement FLUX probabilistic variation** — FLUX adds fill chance (30% max), ghost chance (50% max), velocity jitter (20%), timing jitter (IDM only). Reference: `docs/specs/main.md` section "Pattern Generation [duopulse-patterns]".
+- [x] **Implement FLUX probabilistic variation** — FLUX adds fill chance (30% max), ghost chance (50% max), velocity jitter (20%), timing jitter (IDM only). Reference: `docs/specs/main.md` section "Pattern Generation [duopulse-patterns]".
+  - *Completed 2025-12-01*: Added `CalculateGhostProbability()`, `ShouldTriggerGhost()`, `ApplyVelocityJitter()`. Ghost-level steps (1-4 intensity) can fire via FLUX even below density threshold.
 
 - [ ] **Implement FUSE energy tilt** — CCW boosts anchor density, CW boosts shimmer density. Reference: `docs/specs/main.md` section "Control System [duopulse-controls]".
 
