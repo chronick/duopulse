@@ -134,26 +134,32 @@ The implementation builds on the existing codebase (`Sequencer`, `PatternGenerat
 - [x] **Unit tests for phrase modulation** — Test fill zones, build zones, phrase progress calculations.
   - *Completed 2025-12-01*: Added tests for CalculatePhrasePosition, fill/build zone scaling, GetPhraseFillBoost, GetPhraseAccentMultiplier.
 
+- [x] **Clean up legacy code** — Remove old Grids-based PatternGenerator, GridsData, legacy interface (SetLowDensity, SetHighDensity, etc.), and update tests to use new DuoPulse v2 interface.
+  - *Completed 2025-12-01*: Deleted PatternGenerator.h/cpp, GridsData.h/cpp. Removed legacy interface (SetLowDensity, SetHighDensity, SetLowVariation, SetHighVariation, SetStyle, SetEmphasis). Removed legacy aliases and useSkeletonPatterns flag. Updated tests to use SetAnchorDensity, SetShimmerDensity, SetFlux, SetTerrain.
+
 - [ ] **Pattern tuning by ear** — Iterate on 16 skeleton patterns for musical feel. Tune density curves, accent intensities, swing ranges.
 
 - [ ] **Hardware integration testing** — Verify all control mappings, CV input modulation, gate outputs, swung clock.
 
-## Files to Modify
+## Files Modified
 
 - `src/main.cpp` — Control routing, shift layer, fill trigger, CV routing
-- `src/Engine/Sequencer.h` — New interface, phrase position, swing, orbit
-- `src/Engine/Sequencer.cpp` — Implementation of all new features
-- `src/Engine/PatternGenerator.h` — New hybrid structure
-- `src/Engine/PatternGenerator.cpp` — New generation algorithm, 16 patterns
-- `src/Engine/SoftKnob.h` — Enhanced gradual interpolation
-- `src/Engine/SoftKnob.cpp` — Interpolation implementation
+- `src/Engine/Sequencer.h` — DuoPulse v2 interface, phrase position, swing, orbit
+- `src/Engine/Sequencer.cpp` — All new features implementation
+- `src/Engine/SoftKnob.h/cpp` — Enhanced gradual interpolation
 - `src/Engine/ChaosModulator.h/cpp` — Integration with FLUX
 - `tests/test_sequencer.cpp` — New test cases
 
-## Files to Create (Optional)
+## Files Created
 
-- `src/Engine/GenreConfig.h` — Swing ranges and genre parameters
-- `src/Engine/PatternData.h` — Skeleton pattern tables (or inline)
+- `src/Engine/GenreConfig.h` — Swing ranges, phrase modulation, contour modes
+- `src/Engine/PatternSkeleton.h` — 32-step pattern structure with helpers
+- `src/Engine/PatternData.h` — 16 skeleton patterns for all genres
+
+## Files Deleted (Legacy Cleanup)
+
+- `src/Engine/PatternGenerator.h/cpp` — Replaced by PatternSkeleton
+- `src/Engine/GridsData.h/cpp` — No longer needed
 
 ## Estimated Effort
 

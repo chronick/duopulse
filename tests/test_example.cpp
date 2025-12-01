@@ -49,9 +49,8 @@ TEST_CASE("Sequencer produces gates and CV pulses under modulation", "[sequencer
     Sequencer seq;
     seq.Init(48000.0f);
     seq.SetTempoControl(0.5f);
-    seq.SetStyle(0.5f);
-    seq.SetLowVariation(0.75f);
-    seq.SetHighVariation(0.75f);
+    seq.SetTerrain(0.5f);      // Was SetStyle
+    seq.SetFlux(0.75f);        // Was SetLowVariation/SetHighVariation
 
     std::size_t kickSamples = 0;
     std::size_t snareSamples = 0;
@@ -84,9 +83,8 @@ TEST_CASE("Kick accents stay isolated from hi-hat CV", "[sequencer]")
     Sequencer seq;
     seq.Init(48000.0f);
     seq.SetTempoControl(0.5f);
-    seq.SetStyle(0.5f);
-    seq.SetLowVariation(0.0f);
-    seq.SetHighVariation(0.0f);
+    seq.SetTerrain(0.5f);      // Was SetStyle
+    seq.SetFlux(0.0f);         // Was SetLowVariation/SetHighVariation
 
     seq.ForceNextStepTriggers(true, false, false, true);
 

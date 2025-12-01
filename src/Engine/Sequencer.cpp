@@ -19,8 +19,6 @@ void Sequencer::Init(float sampleRate)
 {
     sampleRate_ = sampleRate;
 
-    patternGen_.Init();
-
     metro_.Init(2.0f, sampleRate_);
     SetBpm(currentBpm_);
 
@@ -86,7 +84,6 @@ void Sequencer::Init(float sampleRate)
     shimmerContourCV_ = 0.0f;
 
     // Initialize pattern system
-    useSkeletonPatterns_ = true;
     currentPatternIndex_ = 0;
 
     // Initialize clock division
@@ -211,19 +208,6 @@ int Sequencer::GetClockDivisionFactor() const
     return -4;     // ×4: output four times per step
 }
 
-// Legacy interface
-void Sequencer::SetLowVariation(float value)
-{
-    // Map to flux (both variations combined into single flux control)
-    SetFlux(value);
-}
-
-void Sequencer::SetHighVariation(float value)
-{
-    // Map to flux (both variations combined into single flux control)
-    SetFlux(value);
-}
-
 void Sequencer::SetTempoControl(float value)
 {
     float tempoControl = Clamp(value, 0.0f, 1.0f);
@@ -291,8 +275,8 @@ std::array<float, 2> Sequencer::ProcessAudio()
     {
         // Handle Loop Length
         int effectiveLoopSteps = loopLengthBars_ * 16;
-        if(effectiveLoopSteps > PatternGenerator::kPatternLength)
-            effectiveLoopSteps = PatternGenerator::kPatternLength;
+        if(effectiveLoopSteps > kPatternSteps)
+            effectiveLoopSteps = kPatternSteps;
 
         stepIndex_ = (stepIndex_ + 1) % effectiveLoopSteps;
 
@@ -305,8 +289,6 @@ std::array<float, 2> Sequencer::ProcessAudio()
         float effectiveFlux = Clamp(flux_ + ghostBoost, 0.0f, 1.0f);
         chaosLow_.SetAmount(effectiveFlux);
         chaosHigh_.SetAmount(effectiveFlux);
-        
-        bool trigs[3] = {false, false, false};
         
         const auto chaosSampleLow = chaosLow_.NextSample();
         const auto chaosSampleHigh = chaosHigh_.NextSample();
@@ -335,52 +317,23 @@ std::array<float, 2> Sequencer::ProcessAudio()
         }
         else
         {
-            // Apply Chaos to density
-            float avgJitterX = (chaosSampleLow.jitterX + chaosSampleHigh.jitterX) * 0.5f;
-
             // Apply fuse as density tilt: fuse < 0.5 boosts anchor, > 0.5 boosts shimmer
             float fuseBias     = (fuse_ - 0.5f) * 0.3f; // ±15% tilt
             float anchorDensMod  = Clamp(anchorDensity_ - fuseBias + chaosSampleLow.densityBias, 0.05f, 0.95f);
             float shimmerDensMod = Clamp(shimmerDensity_ + fuseBias + chaosSampleHigh.densityBias, 0.05f, 0.95f);
 
-            if(useSkeletonPatterns_)
-            {
-                // Use new PatternSkeleton system with density threshold
-                GetSkeletonTriggers(stepIndex_, anchorDensMod, shimmerDensMod,
-                                    kickTrig, snareTrig, kickVel, snareVel);
-                
-                // No separate HH in skeleton patterns - it's combined into shimmer
-                hhTrig = false;
-                hhVel = 0.0f;
+            // Use PatternSkeleton system with density threshold
+            GetSkeletonTriggers(stepIndex_, anchorDensMod, shimmerDensMod,
+                                kickTrig, snareTrig, kickVel, snareVel);
+            
+            // No separate HH in skeleton patterns - it's combined into shimmer
+            hhTrig = false;
+            hhVel = 0.0f;
 
-                // Apply phrase-based accent multiplier (strongest on downbeats)
-                float accentMult = GetPhraseAccentMultiplier(phrasePos_);
-                kickVel  = Clamp(kickVel * accentMult, 0.0f, 1.0f);
-                snareVel = Clamp(snareVel * accentMult, 0.0f, 1.0f);
-            }
-            else
-            {
-                // Legacy: Use Grids-based PatternGenerator
-                float jitteredTerrain = Clamp(terrain_ + avgJitterX, 0.0f, 1.0f);
-
-                patternGen_.GetTriggers(jitteredTerrain, stepIndex_, anchorDensMod, shimmerDensMod, trigs);
-                
-                kickTrig = trigs[0];
-                snareTrig = trigs[1];
-                hhTrig = trigs[2];
-
-                // Get Levels for Velocity (Map Y fixed at 0.5)
-                float mapY = 0.5f;
-                kickVel  = static_cast<float>(patternGen_.GetLevel(jitteredTerrain, mapY, 0, stepIndex_)) / 255.0f;
-                snareVel = static_cast<float>(patternGen_.GetLevel(jitteredTerrain, mapY, 1, stepIndex_)) / 255.0f;
-                hhVel    = static_cast<float>(patternGen_.GetLevel(jitteredTerrain, mapY, 2, stepIndex_)) / 255.0f;
-
-                // Apply phrase-based accent multiplier (strongest on downbeats)
-                float accentMult = GetPhraseAccentMultiplier(phrasePos_);
-                kickVel  = Clamp(kickVel * accentMult, 0.0f, 1.0f);
-                snareVel = Clamp(snareVel * accentMult, 0.0f, 1.0f);
-                hhVel    = Clamp(hhVel * accentMult, 0.0f, 1.0f);
-            }
+            // Apply phrase-based accent multiplier (strongest on downbeats)
+            float accentMult = GetPhraseAccentMultiplier(phrasePos_);
+            kickVel  = Clamp(kickVel * accentMult, 0.0f, 1.0f);
+            snareVel = Clamp(snareVel * accentMult, 0.0f, 1.0f);
         }
 
         // Apply Ghost Triggers to HH/Perc stream (High Variation)

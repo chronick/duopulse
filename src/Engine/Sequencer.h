@@ -3,7 +3,6 @@
 #include <array>
 
 #include "daisysp.h"
-#include "PatternGenerator.h"
 #include "PatternSkeleton.h"
 #include "PatternData.h"
 #include "ChaosModulator.h"
@@ -47,14 +46,6 @@ public:
     void SetHumanize(float value);       // K3+Shift: Micro-timing jitter (0-1)
     void SetClockDiv(float value);       // K4+Shift: Clock output div/mult (0-1)
 
-    // Legacy interface (for backward compatibility)
-    void SetLowDensity(float value)  { SetAnchorDensity(value); }
-    void SetHighDensity(float value) { SetShimmerDensity(value); }
-    void SetLowVariation(float value);   // Maps to flux
-    void SetHighVariation(float value);  // Maps to flux
-    void SetStyle(float value) { SetTerrain(value); }
-    void SetEmphasis(float value) { SetGrid(value); }
-
     // System Triggers
     void TriggerTapTempo(uint32_t nowMs);
     void TriggerReset();
@@ -74,9 +65,6 @@ public:
     void  SetAccentHoldMs(float milliseconds);
     void  SetHihatHoldMs(float milliseconds);
 
-    // Pattern system control
-    void SetUseSkeletonPatterns(bool use) { useSkeletonPatterns_ = use; }
-    bool GetUseSkeletonPatterns() const { return useSkeletonPatterns_; }
     int  GetCurrentPatternIndex() const { return currentPatternIndex_; }
 
 private:
@@ -145,13 +133,7 @@ private:
     float anchorContourCV_  = 0.0f;
     float shimmerContourCV_ = 0.0f;
 
-    // Legacy aliases (for internal use during transition)
-    float& lowDensity_    = anchorDensity_;
-    float& highDensity_   = shimmerDensity_;
-    float& style_         = terrain_;
-    float& emphasis_      = grid_;
-
-    int gateTimers_[2] = {0, 0}; // Kick, Snare
+    int gateTimers_[2] = {0, 0}; // Anchor, Shimmer
     int gateDurationSamples_ = 0;
     int clockTimer_ = 0;
     int clockDurationSamples_ = 0;
@@ -165,7 +147,6 @@ private:
     bool mustTick_ = false;
 
     daisysp::Metro   metro_;
-    PatternGenerator patternGen_;
     ChaosModulator   chaosLow_;
     ChaosModulator   chaosHigh_;
     bool             forceNextTriggers_ = false;
@@ -179,9 +160,8 @@ private:
     // Output Levels (Velocity)
     float            outputLevels_[2] = {0.0f, 0.0f};
 
-    // Pattern system selection
-    bool useSkeletonPatterns_ = true;  // Use new PatternSkeleton system (default for DuoPulse v2)
-    int  currentPatternIndex_ = 0;     // Currently selected pattern (0-15)
+    // Current pattern index (0-15)
+    int  currentPatternIndex_ = 0;
 
     void  TriggerGate(int channel);
     void  TriggerClock();

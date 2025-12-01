@@ -239,7 +239,7 @@ TEST_CASE("Kick CV outputs level based on accent", "[sequencer]")
     seq.Init(48000.0f);
     // Initialize defaults to mimic behavior
     seq.SetTempoControl(0.5f);
-    seq.SetStyle(0.5f);
+    seq.SetTerrain(0.5f);  // Was SetStyle
 
     auto accented = RunForcedStep(seq, true, false, false, true);
     REQUIRE(accented.gate0);
@@ -309,10 +309,10 @@ TEST_CASE("External Clock Integration", "[sequencer]")
     seq.TriggerExternalClock(); // Trigger step 0
     
     // Step 0 should have audio output if density is high?
-    seq.SetLowDensity(1.0f);
-    seq.SetHighDensity(1.0f);
+    seq.SetAnchorDensity(1.0f);   // Was SetLowDensity
+    seq.SetShimmerDensity(1.0f);  // Was SetHighDensity
     
-    // ProcessAudio calls patternGen.GetTriggers()
+    // ProcessAudio uses PatternSkeleton triggers
     // We need to ensure we catch the audio.
     bool sawAudio = false;
     for(int i=0; i<100; i++) {
