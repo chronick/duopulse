@@ -55,6 +55,9 @@ constexpr int kKnobsPerMode = 4;
 constexpr int kNumModes     = 4;
 constexpr int kTotalKnobs   = kKnobsPerMode * kNumModes; // 16
 
+// Shift/Tap timing thresholds
+constexpr uint32_t kShiftThresholdMs = 150; // Hold >150ms = shift, tap <150ms = fill/tap-tempo
+
 struct ControlState
 {
     // === Performance Mode Primary (Switch DOWN, no shift) ===
@@ -111,8 +114,14 @@ ControlState controlState;
 SoftKnob     softKnobs[kTotalKnobs]; // 16 slots: 4 knobs × 4 mode/shift combinations
 
 // UX State
-uint32_t lastInteractionTime = 0;
+uint32_t lastInteractionTime  = 0;
 float    activeParameterValue = 0.0f;
+
+// Shift Button State (B7)
+uint32_t buttonPressTime   = 0;     // When button was pressed (ms)
+bool     buttonWasPressed  = false; // Previous button state
+bool     shiftEngaged      = false; // True once hold threshold passed
+bool     fillTriggered     = false; // Prevent double-trigger on release
 
 int MapToLength(float value)
 {
@@ -209,11 +218,47 @@ void ProcessControls()
     // Mode Switching (config mode from switch)
     bool newConfigMode = modeSwitch.Pressed();
     controlState.configMode = newConfigMode;
-    
-    // TODO: Shift detection will be added in next task (tap vs hold on B7)
-    // For now, shift is always false
-    controlState.shiftActive = false;
-    
+
+    // Shift Detection (B7 button: tap <150ms vs hold >150ms)
+    bool     buttonPressed = tapButton.Pressed();
+    uint32_t now           = System::GetNow();
+
+    if(buttonPressed && !buttonWasPressed)
+    {
+        // Button just pressed - start timing
+        buttonPressTime = now;
+        shiftEngaged    = false;
+        fillTriggered   = false;
+    }
+    else if(buttonPressed && buttonWasPressed)
+    {
+        // Button held - check if we've crossed shift threshold
+        if(!shiftEngaged && (now - buttonPressTime) >= kShiftThresholdMs)
+        {
+            shiftEngaged             = true;
+            controlState.shiftActive = true;
+        }
+    }
+    else if(!buttonPressed && buttonWasPressed)
+    {
+        // Button just released
+        if(!shiftEngaged && !fillTriggered)
+        {
+            // Short tap (<150ms) - trigger fill or tap tempo
+            fillTriggered = true;
+            if(!controlState.configMode)
+            {
+                // Performance mode: short tap = tap tempo
+                sequencer.TriggerTapTempo(now);
+            }
+            // Config mode: short tap could trigger something else (future)
+        }
+        // Always clear shift on release
+        controlState.shiftActive = false;
+        shiftEngaged             = false;
+    }
+    buttonWasPressed = buttonPressed;
+
     // If mode changed, load new targets into soft knobs
     ControlMode currentMode = controlState.GetCurrentMode();
     if(currentMode != previousMode)
@@ -297,16 +342,7 @@ void ProcessControls()
     sequencer.SetEmphasis(controlState.grid); // grid -> emphasis mapping (temporary)
     sequencer.SetTempoControl(controlState.tempo);
 
-    // Tap Tempo (only in performance mode, button B7)
-    // TODO: Shift detection will change this - tap tempo only on short press
-    if(!controlState.configMode)
-    {
-        bool tapTrig = tapButton.RisingEdge();
-        if(tapTrig)
-        {
-            sequencer.TriggerTapTempo(System::GetNow());
-        }
-    }
+    // Tap Tempo is now handled in shift detection above (short tap <150ms)
 
     // Reset Trigger
     if(patch.gate_in_2.Trig())
