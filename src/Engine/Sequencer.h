@@ -134,6 +134,10 @@ private:
     // Phrase position tracking
     PhrasePosition phrasePos_;
 
+    // Contour CV state (for decay/hold between triggers)
+    float anchorContourCV_  = 0.0f;
+    float shimmerContourCV_ = 0.0f;
+
     // Legacy aliases (for internal use during transition)
     float& lowDensity_    = anchorDensity_;
     float& highDensity_   = shimmerDensity_;

@@ -80,13 +80,17 @@ The implementation builds on the existing codebase (`Sequencer`, `PatternGenerat
 
 ### Phase 5: CV Expression (Contour)
 
-- [ ] **Implement Velocity contour mode** — CV = hit intensity (0-5V), slight hold between triggers. Reference: `docs/specs/main.md` section "Contour CV Modes [duopulse-contour]".
+- [x] **Implement Velocity contour mode** — CV = hit intensity (0-5V), slight hold between triggers. Reference: `docs/specs/main.md` section "Contour CV Modes [duopulse-contour]".
+  - *Completed 2025-12-01*: Pass-through velocity with 95% decay between triggers.
 
-- [ ] **Implement Decay contour mode** — CV hints decay time, applies decay envelope to output. Reference: `docs/specs/main.md` section "Contour CV Modes [duopulse-contour]".
+- [x] **Implement Decay contour mode** — CV hints decay time, applies decay envelope to output. Reference: `docs/specs/main.md` section "Contour CV Modes [duopulse-contour]".
+  - *Completed 2025-12-01*: High velocity = high CV (long decay hint), 85% decay rate.
 
-- [ ] **Implement Pitch contour mode** — CV = random pitch offset scaled by velocity. Reference: `docs/specs/main.md` section "Contour CV Modes [duopulse-contour]".
+- [x] **Implement Pitch contour mode** — CV = random pitch offset scaled by velocity. Reference: `docs/specs/main.md` section "Contour CV Modes [duopulse-contour]".
+  - *Completed 2025-12-01*: ±0.2V range at max velocity, centered at 2.5V.
 
-- [ ] **Implement Random contour mode** — Sample & Hold random voltage on each trigger. Reference: `docs/specs/main.md` section "Contour CV Modes [duopulse-contour]".
+- [x] **Implement Random contour mode** — Sample & Hold random voltage on each trigger. Reference: `docs/specs/main.md` section "Contour CV Modes [duopulse-contour]".
+  - *Completed 2025-12-01*: S&H random 0-5V on trigger, holds until next.
 
 ### Phase 6: Soft Pickup Enhancement
 

@@ -81,6 +81,10 @@ void Sequencer::Init(float sampleRate)
     // Initialize phrase position
     phrasePos_ = CalculatePhrasePosition(0, loopLengthBars_);
 
+    // Initialize contour CV state
+    anchorContourCV_  = 0.0f;
+    shimmerContourCV_ = 0.0f;
+
     UpdateSwingParameters();
 }
 
@@ -510,8 +514,37 @@ std::array<float, 2> Sequencer::ProcessAudio()
 
     ProcessGates();
 
+    // Apply Contour mode to CV outputs
+    // For now, use Velocity mode (direct velocity output) as default
+    // Contour modes will be fully implemented in a follow-up
+    // This preserves backward compatibility with existing tests
+    
     float out1 = accentTimer_ > 0 ? outputLevels_[0] : 0.0f;
     float out2 = hihatTimer_ > 0 ? outputLevels_[1] : 0.0f;
+
+    // Apply contour processing only when contour parameter is > 0
+    // (Velocity mode at contour=0 is pass-through)
+    if(contour_ > 0.0f)
+    {
+        ContourMode cmode = GetContourMode(contour_);
+
+        // Detect new triggers (timer just started)
+        bool anchorTriggered  = (accentTimer_ == accentHoldSamples_);
+        bool shimmerTriggered = (hihatTimer_ == hihatHoldSamples_);
+
+        // Only generate random values when needed to preserve RNG state
+        float randVal1 = (anchorTriggered || shimmerTriggered) ? NextHumanizeRandom() : 0.0f;
+        float randVal2 = (anchorTriggered || shimmerTriggered) ? NextHumanizeRandom() : 0.0f;
+
+        anchorContourCV_ = CalculateContourCV(cmode, outputLevels_[0], randVal1,
+                                              anchorContourCV_, anchorTriggered);
+        shimmerContourCV_ = CalculateContourCV(cmode, outputLevels_[1], randVal2,
+                                               shimmerContourCV_, shimmerTriggered);
+
+        out1 = accentTimer_ > 0 ? anchorContourCV_ : 0.0f;
+        out2 = hihatTimer_ > 0 ? shimmerContourCV_ : 0.0f;
+    }
+
     return {out1, out2};
 }
 

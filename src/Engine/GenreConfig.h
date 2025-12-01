@@ -425,5 +425,90 @@ inline float GetPhraseGhostBoost(const PhrasePosition& pos)
     return boost;
 }
 
+// === Contour CV Modes ===
+
+/**
+ * Contour modes control CV output shape for expression.
+ * Parameter ranges: 0-25% Velocity, 25-50% Decay, 50-75% Pitch, 75-100% Random
+ */
+enum class ContourMode : uint8_t
+{
+    Velocity = 0, // CV = hit intensity (0-5V)
+    Decay    = 1, // CV = envelope decay hint
+    Pitch    = 2, // CV = pitch offset per hit
+    Random   = 3  // CV = S&H random per trigger
+};
+
+/**
+ * Get contour mode from contour parameter (0-1).
+ */
+inline ContourMode GetContourMode(float contour)
+{
+    if(contour < 0.25f)
+        return ContourMode::Velocity;
+    if(contour < 0.50f)
+        return ContourMode::Decay;
+    if(contour < 0.75f)
+        return ContourMode::Pitch;
+    return ContourMode::Random;
+}
+
+/**
+ * Calculate CV output value based on contour mode.
+ * 
+ * @param mode Contour mode
+ * @param velocity Trigger velocity (0-1)
+ * @param randomValue Random value (0-1) for Pitch/Random modes
+ * @param currentCV Current CV value (for decay smoothing)
+ * @param triggered True if trigger fired this step
+ * @return CV output value (0-1, scaled to 0-5V externally)
+ */
+inline float CalculateContourCV(ContourMode mode,
+                                float       velocity,
+                                float       randomValue,
+                                float       currentCV,
+                                bool        triggered)
+{
+    switch(mode)
+    {
+        case ContourMode::Velocity:
+            // CV = hit intensity, holds between triggers with slight decay
+            if(triggered)
+                return velocity;
+            // Slow decay between triggers (retain ~90% per step)
+            return currentCV * 0.95f;
+
+        case ContourMode::Decay:
+            // CV hints decay time - high velocity = long decay (high CV)
+            // Accent = high CV (long decay), Ghost = low CV (short decay)
+            if(triggered)
+                return velocity * 0.8f + 0.2f; // Map 0-1 to 0.2-1.0 for usable range
+            // Decay the CV over time
+            return currentCV * 0.85f;
+
+        case ContourMode::Pitch:
+            // Random pitch offset scaled by velocity
+            if(triggered)
+            {
+                // Center around 0.5 (2.5V = no offset)
+                // Range scaled by velocity (louder = wider range)
+                float range  = velocity * 0.4f; // ±0.2 at max velocity
+                float offset = (randomValue - 0.5f) * range;
+                return 0.5f + offset;
+            }
+            // Hold between triggers
+            return currentCV;
+
+        case ContourMode::Random:
+            // Sample & Hold random voltage on each trigger
+            if(triggered)
+                return randomValue;
+            // Hold until next trigger
+            return currentCV;
+    }
+
+    return 0.0f;
+}
+
 } // namespace daisysp_idm_grids
 
