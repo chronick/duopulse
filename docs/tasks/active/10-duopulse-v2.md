@@ -141,6 +141,186 @@ The implementation builds on the existing codebase (`Sequencer`, `PatternGenerat
 
 - [ ] **Hardware integration testing** — Verify all control mappings, CV input modulation, gate outputs, swung clock.
 
+---
+
+## Manual Testing Notes
+
+### Equipment Needed
+- Patch.Init module in Eurorack case
+- Oscilloscope or CV meter (for verifying CV outputs)
+- Audio interface or mixer (for monitoring gate outputs)
+- External clock source (for testing external clock mode)
+- CV sources (LFO, envelope, manual CV) for testing CV inputs
+- Downstream drum modules or sampler to hear actual percussion sounds
+
+### Test 1: Basic Boot & Operation
+1. **Power on** — Module should boot with LED off initially
+2. **LED default state** — In Performance Mode (switch DOWN), LED should pulse on anchor triggers
+3. **Internal clock** — Should hear triggers at default 120 BPM
+4. **Both outputs active** — Gate Out 1 (Anchor) and Gate Out 2 (Shimmer) should both fire
+
+### Test 2: Control Modes (4 modes × 4 knobs = 16 parameters)
+
+#### Performance Mode Primary (Switch DOWN, no shift)
+| Knob | Parameter | Test |
+|------|-----------|------|
+| K1 | Anchor Density | CCW = sparse kicks, CW = busy kicks |
+| K2 | Shimmer Density | CCW = sparse snares, CW = busy snares |
+| K3 | FLUX | CCW = clean pattern, CW = ghost notes + fills |
+| K4 | FUSE | CCW = anchor-heavy, Center = balanced, CW = shimmer-heavy |
+
+#### Performance Mode Shift (Switch DOWN + B7 held >150ms)
+| Knob | Parameter | Test |
+|------|-----------|------|
+| K1+Shift | Anchor Accent | CCW = even dynamics, CW = punchy accents |
+| K2+Shift | Shimmer Accent | CCW = even dynamics, CW = punchy accents |
+| K3+Shift | ORBIT | 0-33% = Interlock (call-response), 33-67% = Free, 67-100% = Shadow (echo) |
+| K4+Shift | CONTOUR | 0-25% = Velocity CV, 25-50% = Decay CV, 50-75% = Pitch CV, 75-100% = Random S&H |
+
+#### Config Mode Primary (Switch UP, no shift)
+| Knob | Parameter | Test |
+|------|-----------|------|
+| K1 | TERRAIN | 0-25% = Techno (straight), 25-50% = Tribal (shuffle), 50-75% = Trip-Hop (lazy), 75-100% = IDM (broken) |
+| K2 | LENGTH | 1, 2, 4, 8, 16 bars (verify with scope) |
+| K3 | GRID | Patterns 0-15 (audibly different characters) |
+| K4 | TEMPO | 90-160 BPM range |
+
+#### Config Mode Shift (Switch UP + B7 held >150ms)
+| Knob | Parameter | Test |
+|------|-----------|------|
+| K1+Shift | SWING TASTE | Fine-tune swing within genre range |
+| K2+Shift | GATE TIME | 5ms (short) to 50ms (long) gate duration |
+| K3+Shift | HUMANIZE | 0% = machine-tight, 100% = ±10ms jitter |
+| K4+Shift | CLOCK DIV | ÷4, ÷2, ×1, ×2, ×4 on clock output |
+
+### Test 3: Shift Layer & Tap Tempo
+1. **Tap tempo** — Short tap (<150ms) on B7 in Performance Mode triggers tap tempo
+2. **Shift detection** — Hold B7 >150ms, shift LED should brighten, knobs control shift parameters
+3. **Shift release** — Release B7, returns to primary layer
+4. **Mode memory** — Each mode/shift combo remembers its own knob positions (soft takeover)
+
+### Test 4: CV Input Modulation (Always Performance)
+| CV Input | Modulates | Test |
+|----------|-----------|------|
+| CV 5 | Anchor Density | Patch LFO, verify density modulation regardless of mode |
+| CV 6 | Shimmer Density | Same test |
+| CV 7 | FLUX | High CV = fills/chaos, verify in Config Mode too |
+| CV 8 | FUSE | Modulate balance between voices |
+
+**Critical**: CV modulation should work in ALL modes (Performance + Config).
+
+### Test 5: External Clock
+1. Patch external clock to Gate In 1
+2. Module should sync to external clock
+3. Remove external clock for 2 seconds — should fall back to internal
+4. Re-patch external clock — should re-sync
+
+### Test 6: Reset Input
+1. Patch gate/trigger to Gate In 2
+2. Should reset to step 0 on rising edge
+3. Test with slow and fast triggers
+
+### Test 7: Swing Verification (per genre)
+| Terrain | Genre | Expected Swing Range |
+|---------|-------|---------------------|
+| 0-25% | Techno | 52-57% (nearly straight) |
+| 25-50% | Tribal | 56-62% (mild shuffle) |
+| 50-75% | Trip-Hop | 60-68% (lazy, behind-beat) |
+| 75-100% | IDM | 54-65% + timing jitter |
+
+**Test**: Use oscilloscope to measure off-beat delay vs. on-beat.
+
+### Test 8: Orbit Voice Relationship
+1. **Interlock (0-33%)** — Shimmer should fill gaps when anchor silent, reduce when anchor fires
+2. **Free (33-67%)** — Both voices independent, can overlap
+3. **Shadow (67-100%)** — Shimmer echoes anchor with 1-step delay at 70% velocity
+
+### Test 9: Contour CV Output Modes
+| Mode | Audio Out 1/2 Behavior | Test |
+|------|------------------------|------|
+| Velocity | CV = hit intensity, holds between triggers | Patch to VCA, verify dynamic response |
+| Decay | High velocity = high CV (decay hint) | Patch to envelope decay input |
+| Pitch | Random offset ±0.2V scaled by velocity | Patch to VCO, hear pitch variation |
+| Random | S&H random 0-5V each trigger | Patch to filter cutoff |
+
+### Test 10: Clock Division Output (CV Out 1)
+| Clock Div Setting | Expected Output |
+|-------------------|-----------------|
+| ÷4 (K4+Shift CCW) | One pulse per bar |
+| ÷2 | One pulse per half-bar |
+| ×1 (center) | One pulse per 16th note step |
+| ×2 | Two pulses per step (if implemented) |
+| ×4 | Four pulses per step (if implemented) |
+
+**Note**: Multiplication (×2, ×4) marked as future enhancement - may not be implemented.
+
+### Test 11: LED Feedback
+| State | Expected LED Behavior |
+|-------|----------------------|
+| Performance Mode | Pulses on anchor trigger |
+| Config Mode | Solid ON |
+| Shift Held | Brighter |
+| Knob Turn | Shows parameter value for 1 second |
+| High FLUX (>70%) | Rapid flash at 20Hz |
+
+### Test 12: Soft Takeover
+1. Set K1 to 50% in Performance Mode
+2. Switch to Config Mode (K1 now controls Terrain)
+3. Move K1 — value should interpolate gradually, not jump
+4. Cross the stored value — should "catch up" and track directly
+5. Switch back to Performance — K1 should interpolate back to 50%
+
+### Test 13: Pattern Character by Genre (GRID knob)
+| Index | Pattern | Character |
+|-------|---------|-----------|
+| 0-3 | Techno | Four-on-floor, minimal, driving, pounding |
+| 4-7 | Tribal | Clave, interlocking, polyrhythmic, circular |
+| 8-11 | Trip-Hop | Sparse, lazy, heavy, groove |
+| 12-15 | IDM | Broken, glitch, irregular, chaos |
+
+**Listen for**: Distinct character per pattern, appropriate for genre.
+
+### Test 14: Phrase Awareness (Long Pattern)
+1. Set LENGTH to 4 bars
+2. Listen through complete phrase
+3. **Bar 1-2**: Steady pattern
+4. **Bar 3**: Building (more ghost notes, syncopation)
+5. **Bar 4 (last 8 steps)**: Fill zone (increased activity)
+6. **Loop point**: Clear phrase reset
+
+### Test 15: Full Integration Patch
+1. Patch Gate Out 1 → Kick drum
+2. Patch Gate Out 2 → Snare drum
+3. Patch Audio Out 1 → Kick VCA CV
+4. Patch Audio Out 2 → Snare VCA CV
+5. Patch CV Out 1 → Clock for another module
+6. Set Terrain to Trip-Hop (50-75%)
+7. Set FLUX to moderate (40-60%)
+8. Set ORBIT to Interlock (0-33%)
+9. **Verify**: Musical groove with call-response interaction
+
+### Known Limitations / Future Enhancements
+- Clock multiplication (×2, ×4) requires sub-step timing — not implemented
+- Pattern tuning needs ear-based iteration on the 16 skeletons
+- Contour CV modes apply to both voices equally (no per-voice contour)
+
+### Pass/Fail Checklist
+- [ ] All 16 knob mappings work in correct modes
+- [ ] CV inputs modulate performance params in ALL modes
+- [ ] Shift layer activates/deactivates correctly
+- [ ] Tap tempo works (short tap)
+- [ ] External clock syncs properly
+- [ ] Reset input returns to step 0
+- [ ] Swing varies by genre
+- [ ] Orbit modes create audible voice interaction
+- [ ] Contour modes produce expected CV shapes
+- [ ] Clock division works (÷4, ÷2, ×1)
+- [ ] LED feedback reflects all states
+- [ ] Soft takeover prevents jumps
+- [ ] Patterns have distinct genre character
+- [ ] Phrase awareness creates musical arc
+- [ ] No crashes, lockups, or unexpected behavior
+
 ## Files Modified
 
 - `src/main.cpp` — Control routing, shift layer, fill trigger, CV routing
