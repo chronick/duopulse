@@ -31,9 +31,11 @@ The implementation builds on the existing codebase (`Sequencer`, `PatternGenerat
 
 ### Phase 2: Sequencer Engine Updates
 
-- [ ] **Expand Sequencer interface** — Add new setters: `SetAnchorDensity`, `SetShimmerDensity`, `SetFlux`, `SetFuse`, `SetAnchorAccent`, `SetShimmerAccent`, `SetOrbit`, `SetContour`, `SetTerrain`, `SetSwingTaste`, `SetGateTime`, `SetHumanize`, `SetClockDiv`. All apply immediately. Reference: `docs/specs/main.md` section "Parameter Change Behavior [duopulse-immediate]".
+- [x] **Expand Sequencer interface** — Add new setters: `SetAnchorDensity`, `SetShimmerDensity`, `SetFlux`, `SetFuse`, `SetAnchorAccent`, `SetShimmerAccent`, `SetOrbit`, `SetContour`, `SetTerrain`, `SetSwingTaste`, `SetGateTime`, `SetHumanize`, `SetClockDiv`. All apply immediately. Reference: `docs/specs/main.md` section "Parameter Change Behavior [duopulse-immediate]".
+  - *Completed 2025-12-01*: Full DuoPulse v2 interface with 16 setters. Legacy aliases for backward compat.
 
-- [ ] **Update tempo range** — Change kMinTempo from 30 to 90, kMaxTempo from 200 to 160. Reference: `docs/specs/main.md` Technical Specifications.
+- [x] **Update tempo range** — Change kMinTempo from 30 to 90, kMaxTempo from 200 to 160. Reference: `docs/specs/main.md` Technical Specifications.
+  - *Completed 2025-12-01*: Updated in Sequencer.h. Tests updated accordingly.
 
 - [ ] **Implement genre-aware swing** — Create SwingRange struct with min/max per genre (Techno 52-57%, Tribal 56-62%, Trip-Hop 60-68%, IDM 54-65%+jitter). Calculate effective swing from terrain + swingTaste. Reference: `docs/specs/main.md` section "Genre-Aware Swing [duopulse-swing]".
 

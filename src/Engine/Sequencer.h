@@ -16,16 +16,41 @@ public:
     ~Sequencer() = default;
 
     void Init(float sampleRate);
-    
-    // Parameter Setters
-    void SetLowDensity(float value);
-    void SetHighDensity(float value);
-    void SetLowVariation(float value);
-    void SetHighVariation(float value);
-    void SetStyle(float value);
-    void SetLength(int bars);
-    void SetEmphasis(float value);
-    void SetTempoControl(float value); // 0.0 - 1.0
+
+    // === DuoPulse v2 Parameter Setters ===
+    // All setters apply immediately (no queuing)
+
+    // Performance Mode Primary
+    void SetAnchorDensity(float value);  // K1: Anchor hit frequency (0-1)
+    void SetShimmerDensity(float value); // K2: Shimmer hit frequency (0-1)
+    void SetFlux(float value);           // K3: Global variation/fills/ghosts (0-1)
+    void SetFuse(float value);           // K4: Cross-lane energy tilt (0-1, center=balanced)
+
+    // Performance Mode Shift
+    void SetAnchorAccent(float value);   // K1+Shift: Anchor accent intensity (0-1)
+    void SetShimmerAccent(float value);  // K2+Shift: Shimmer accent intensity (0-1)
+    void SetOrbit(float value);          // K3+Shift: Voice relationship (0-1: Interlock/Free/Shadow)
+    void SetContour(float value);        // K4+Shift: CV output shape (0-1: Vel/Decay/Pitch/Random)
+
+    // Config Mode Primary
+    void SetTerrain(float value);        // K1: Genre character (0-1: Techno/Tribal/TripHop/IDM)
+    void SetLength(int bars);            // K2: Loop length (1,2,4,8,16 bars)
+    void SetGrid(float value);           // K3: Pattern family selection (0-1 maps to 1-16)
+    void SetTempoControl(float value);   // K4: BPM control (0-1 maps to 90-160)
+
+    // Config Mode Shift
+    void SetSwingTaste(float value);     // K1+Shift: Fine-tune swing within genre (0-1)
+    void SetGateTime(float value);       // K2+Shift: Trigger duration (0-1 maps to 5-50ms)
+    void SetHumanize(float value);       // K3+Shift: Micro-timing jitter (0-1)
+    void SetClockDiv(float value);       // K4+Shift: Clock output div/mult (0-1)
+
+    // Legacy interface (for backward compatibility)
+    void SetLowDensity(float value)  { SetAnchorDensity(value); }
+    void SetHighDensity(float value) { SetShimmerDensity(value); }
+    void SetLowVariation(float value);   // Maps to flux
+    void SetHighVariation(float value);  // Maps to flux
+    void SetStyle(float value) { SetTerrain(value); }
+    void SetEmphasis(float value) { SetGrid(value); }
 
     // System Triggers
     void TriggerTapTempo(uint32_t nowMs);
@@ -44,29 +69,51 @@ public:
     void  SetHihatHoldMs(float milliseconds);
 
 private:
-    static constexpr float kMinTempo = 30.0f;
-    static constexpr float kMaxTempo = 200.0f;
+    // Tempo range per spec: 90-160 BPM
+    static constexpr float kMinTempo = 90.0f;
+    static constexpr float kMaxTempo = 160.0f;
+
+    // Gate time range: 5-50ms
+    static constexpr float kMinGateMs = 5.0f;
+    static constexpr float kMaxGateMs = 50.0f;
 
     float    sampleRate_ = 48000.0f;
     float    currentBpm_ = 120.0f;
     float    lastTempoControl_ = -1.0f;
     uint32_t lastTapTime_ = 0;
 
-    int   stepIndex_ = 0;
-    
-    // Parameters
-    float lowDensity_ = 0.5f;
-    float highDensity_ = 0.5f;
-    float lowVariation_ = 0.0f;
-    float highVariation_ = 0.0f;
-    float style_ = 0.0f;
-    int   loopLengthBars_ = 4;
-    float emphasis_ = 0.5f;
+    int stepIndex_ = 0;
 
-    // Internal
-    float mapX_ = 0.0f; // Derived from Style
-    float mapY_ = 0.0f; // Derived from Style/Fixed
-    // chaosAmount_ removed, using independent modulators
+    // === DuoPulse v2 Parameters ===
+    
+    // Performance Primary
+    float anchorDensity_  = 0.5f; // Hit frequency for anchor
+    float shimmerDensity_ = 0.5f; // Hit frequency for shimmer
+    float flux_           = 0.0f; // Variation/fills/ghosts
+    float fuse_           = 0.5f; // Cross-lane energy tilt
+
+    // Performance Shift
+    float anchorAccent_  = 0.5f; // Accent intensity for anchor
+    float shimmerAccent_ = 0.5f; // Accent intensity for shimmer
+    float orbit_         = 0.5f; // Voice relationship mode
+    float contour_       = 0.0f; // CV output shape
+
+    // Config Primary
+    float terrain_     = 0.0f; // Genre character
+    int   loopLengthBars_ = 4; // Loop length
+    float grid_        = 0.0f; // Pattern family
+
+    // Config Shift
+    float swingTaste_ = 0.5f; // Swing fine-tune
+    float gateTime_   = 0.2f; // Gate duration (normalized 0-1)
+    float humanize_   = 0.0f; // Micro-timing jitter
+    float clockDiv_   = 0.5f; // Clock division
+
+    // Legacy aliases (for internal use during transition)
+    float& lowDensity_    = anchorDensity_;
+    float& highDensity_   = shimmerDensity_;
+    float& style_         = terrain_;
+    float& emphasis_      = grid_;
 
     int gateTimers_[2] = {0, 0}; // Kick, Snare
     int gateDurationSamples_ = 0;

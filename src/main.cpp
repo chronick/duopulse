@@ -317,30 +317,30 @@ void ProcessControls()
     float finalFlux           = Clamp01(controlState.flux + (cv3 - 0.5f));
     float finalFuse           = Clamp01(controlState.fuse + (cv4 - 0.5f));
 
-    // Apply performance parameters to sequencer
-    // TODO: Sequencer interface will be expanded in Phase 2.
-    // For now, map to existing interface:
-    //   anchorDensity  -> SetLowDensity (Anchor = voice 1 = low/kick)
-    //   shimmerDensity -> SetHighDensity (Shimmer = voice 2 = high/snare)
-    //   flux           -> SetLowVariation + SetHighVariation (variation for both)
-    //   fuse           -> Applied as density bias (TODO: implement properly)
-    
-    // Apply FUSE as density tilt: CCW boosts anchor, CW boosts shimmer
-    float fuseBias = (finalFuse - 0.5f) * 0.3f; // ±15% tilt
-    float tiltedAnchorDensity  = Clamp01(finalAnchorDensity - fuseBias);
-    float tiltedShimmerDensity = Clamp01(finalShimmerDensity + fuseBias);
+    // Apply all DuoPulse v2 parameters to sequencer using new interface
+    // Performance parameters (CV-modulated)
+    sequencer.SetAnchorDensity(finalAnchorDensity);
+    sequencer.SetShimmerDensity(finalShimmerDensity);
+    sequencer.SetFlux(finalFlux);
+    sequencer.SetFuse(finalFuse);
 
-    sequencer.SetLowDensity(tiltedAnchorDensity);
-    sequencer.SetHighDensity(tiltedShimmerDensity);
-    sequencer.SetLowVariation(finalFlux);
-    sequencer.SetHighVariation(finalFlux);
+    // Performance shift parameters (knob-only, no CV modulation)
+    sequencer.SetAnchorAccent(controlState.anchorAccent);
+    sequencer.SetShimmerAccent(controlState.shimmerAccent);
+    sequencer.SetOrbit(controlState.orbit);
+    sequencer.SetContour(controlState.contour);
 
-    // Apply config parameters (when in config mode, knobs directly control these)
-    // These always apply, but only config mode knobs adjust them
-    sequencer.SetStyle(controlState.terrain);
+    // Config primary parameters
+    sequencer.SetTerrain(controlState.terrain);
     sequencer.SetLength(MapToLength(controlState.length));
-    sequencer.SetEmphasis(controlState.grid); // grid -> emphasis mapping (temporary)
+    sequencer.SetGrid(controlState.grid);
     sequencer.SetTempoControl(controlState.tempo);
+
+    // Config shift parameters
+    sequencer.SetSwingTaste(controlState.swingTaste);
+    sequencer.SetGateTime(controlState.gateTime);
+    sequencer.SetHumanize(controlState.humanize);
+    sequencer.SetClockDiv(controlState.clockDiv);
 
     // Tap Tempo is now handled in shift detection above (short tap <150ms)
 

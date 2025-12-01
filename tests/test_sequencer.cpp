@@ -22,19 +22,20 @@ TEST_CASE("Sequencer Knob Control", "[sequencer]")
 
     const float knobX = 0.5f;
 
-    // Knob at 0 -> Min Tempo (30)
+    // DuoPulse v2 tempo range: 90-160 BPM
+    // Knob at 0 -> Min Tempo (90)
     seq.SetTempoControl(0.0f);
-    seq.SetStyle(knobX);
-    REQUIRE(seq.GetBpm() == Catch::Approx(30.0f));
+    seq.SetTerrain(knobX);
+    REQUIRE(seq.GetBpm() == Catch::Approx(90.0f));
 
-    // Knob at 1 -> Max Tempo (200)
+    // Knob at 1 -> Max Tempo (160)
     seq.SetTempoControl(1.0f);
-    REQUIRE(seq.GetBpm() == Catch::Approx(200.0f));
+    REQUIRE(seq.GetBpm() == Catch::Approx(160.0f));
 
-    // Knob at 0.5 -> Mid Tempo (115)
-    // 30 + 0.5 * (200 - 30) = 30 + 85 = 115
+    // Knob at 0.5 -> Mid Tempo (125)
+    // 90 + 0.5 * (160 - 90) = 90 + 35 = 125
     seq.SetTempoControl(0.5f);
-    REQUIRE(seq.GetBpm() == Catch::Approx(115.0f));
+    REQUIRE(seq.GetBpm() == Catch::Approx(125.0f));
 }
 
 TEST_CASE("Sequencer Tap Tempo", "[sequencer]")
@@ -44,16 +45,17 @@ TEST_CASE("Sequencer Tap Tempo", "[sequencer]")
 
     // First tap sets the baseline
     seq.TriggerTapTempo(1000);
-    
+
     // Second tap 500ms later (120 BPM)
     // 60000 / 500 = 120
     seq.TriggerTapTempo(1500);
     REQUIRE(seq.GetBpm() == Catch::Approx(120.0f).margin(1.0f));
 
-    // Third tap 1000ms later (60 BPM)
+    // Third tap 1000ms later would be 60 BPM, but DuoPulse v2 clamps to 90-160
+    // So it should clamp to 90 BPM
     seq.TriggerTapTempo(2500);
-    REQUIRE(seq.GetBpm() == Catch::Approx(60.0f).margin(1.0f));
-    
+    REQUIRE(seq.GetBpm() == Catch::Approx(90.0f).margin(1.0f)); // Clamped to min
+
     // Test ignore too fast taps (< 100ms)
     float currentBpm = seq.GetBpm();
     seq.TriggerTapTempo(2550); // 50ms later
@@ -258,6 +260,9 @@ TEST_CASE("High CV outputs on Snare and HiHat", "[sequencer]")
     REQUIRE(snareOnly.gate1);
     REQUIRE(snareOnly.hihatMax > 0.5f);
 
+    // HiHat routing is based on grid parameter:
+    // grid < 0.5 routes HH to gate0 (anchor), grid >= 0.5 routes to gate1 (shimmer)
+    seq.SetGrid(1.0f); // Route HH to shimmer channel (gate1)
     auto hihatOnly = RunForcedStep(seq, false, false, true, false);
     REQUIRE(hihatOnly.gate1);
     REQUIRE(hihatOnly.hihatMax > 0.5f);

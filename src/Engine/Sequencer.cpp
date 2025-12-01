@@ -43,52 +43,125 @@ void Sequencer::Init(float sampleRate)
     externalClockTimeout_ = 0;
     mustTick_ = false;
     
-    // Initialize parameters
-    lowDensity_ = 0.5f;
-    highDensity_ = 0.5f;
-    lowVariation_ = 0.0f;
-    highVariation_ = 0.0f;
-    style_ = 0.0f;
+    // Initialize DuoPulse v2 parameters
+    anchorDensity_  = 0.5f;
+    shimmerDensity_ = 0.5f;
+    flux_           = 0.0f;
+    fuse_           = 0.5f;
+    anchorAccent_   = 0.5f;
+    shimmerAccent_  = 0.5f;
+    orbit_          = 0.5f;
+    contour_        = 0.0f;
+    terrain_        = 0.0f;
     loopLengthBars_ = 4;
-    emphasis_ = 0.5f;
+    grid_           = 0.0f;
+    swingTaste_     = 0.5f;
+    gateTime_       = 0.2f;
+    humanize_       = 0.0f;
+    clockDiv_       = 0.5f;
 }
 
-void Sequencer::SetLowDensity(float value)
+// === DuoPulse v2 Setters ===
+
+// Performance Primary
+void Sequencer::SetAnchorDensity(float value)
 {
-    lowDensity_ = Clamp(value, 0.0f, 1.0f);
+    anchorDensity_ = Clamp(value, 0.0f, 1.0f);
 }
 
-void Sequencer::SetHighDensity(float value)
+void Sequencer::SetShimmerDensity(float value)
 {
-    highDensity_ = Clamp(value, 0.0f, 1.0f);
+    shimmerDensity_ = Clamp(value, 0.0f, 1.0f);
 }
 
-void Sequencer::SetLowVariation(float value)
+void Sequencer::SetFlux(float value)
 {
-    lowVariation_ = Clamp(value, 0.0f, 1.0f);
+    flux_ = Clamp(value, 0.0f, 1.0f);
 }
 
-void Sequencer::SetHighVariation(float value)
+void Sequencer::SetFuse(float value)
 {
-    highVariation_ = Clamp(value, 0.0f, 1.0f);
+    fuse_ = Clamp(value, 0.0f, 1.0f);
 }
 
-void Sequencer::SetStyle(float value)
+// Performance Shift
+void Sequencer::SetAnchorAccent(float value)
 {
-    style_ = Clamp(value, 0.0f, 1.0f);
+    anchorAccent_ = Clamp(value, 0.0f, 1.0f);
+}
+
+void Sequencer::SetShimmerAccent(float value)
+{
+    shimmerAccent_ = Clamp(value, 0.0f, 1.0f);
+}
+
+void Sequencer::SetOrbit(float value)
+{
+    orbit_ = Clamp(value, 0.0f, 1.0f);
+}
+
+void Sequencer::SetContour(float value)
+{
+    contour_ = Clamp(value, 0.0f, 1.0f);
+}
+
+// Config Primary
+void Sequencer::SetTerrain(float value)
+{
+    terrain_ = Clamp(value, 0.0f, 1.0f);
 }
 
 void Sequencer::SetLength(int bars)
 {
-    // Restrict bars to typical powers of 2 or simple integers
-    if (bars < 1) bars = 1;
-    if (bars > 16) bars = 16;
+    if(bars < 1)
+        bars = 1;
+    if(bars > 16)
+        bars = 16;
     loopLengthBars_ = bars;
 }
 
-void Sequencer::SetEmphasis(float value)
+void Sequencer::SetGrid(float value)
 {
-    emphasis_ = Clamp(value, 0.0f, 1.0f);
+    grid_ = Clamp(value, 0.0f, 1.0f);
+}
+
+// Config Shift
+void Sequencer::SetSwingTaste(float value)
+{
+    swingTaste_ = Clamp(value, 0.0f, 1.0f);
+}
+
+void Sequencer::SetGateTime(float value)
+{
+    gateTime_ = Clamp(value, 0.0f, 1.0f);
+    // Update gate duration in samples
+    float gateMs         = kMinGateMs + (gateTime_ * (kMaxGateMs - kMinGateMs));
+    gateDurationSamples_ = static_cast<int>(sampleRate_ * gateMs / 1000.0f);
+    if(gateDurationSamples_ < 1)
+        gateDurationSamples_ = 1;
+}
+
+void Sequencer::SetHumanize(float value)
+{
+    humanize_ = Clamp(value, 0.0f, 1.0f);
+}
+
+void Sequencer::SetClockDiv(float value)
+{
+    clockDiv_ = Clamp(value, 0.0f, 1.0f);
+}
+
+// Legacy interface
+void Sequencer::SetLowVariation(float value)
+{
+    // Map to flux (both variations combined into single flux control)
+    SetFlux(value);
+}
+
+void Sequencer::SetHighVariation(float value)
+{
+    // Map to flux (both variations combined into single flux control)
+    SetFlux(value);
 }
 
 void Sequencer::SetTempoControl(float value)
@@ -163,9 +236,9 @@ std::array<float, 2> Sequencer::ProcessAudio()
             
         stepIndex_ = (stepIndex_ + 1) % effectiveLoopSteps;
 
-        // Apply variation to independent modulators
-        chaosLow_.SetAmount(lowVariation_);
-        chaosHigh_.SetAmount(highVariation_);
+        // Apply flux to chaos modulators (flux controls variation for both voices)
+        chaosLow_.SetAmount(flux_);
+        chaosHigh_.SetAmount(flux_);
         
         bool trigs[3] = {false, false, false};
         
@@ -196,15 +269,16 @@ std::array<float, 2> Sequencer::ProcessAudio()
         }
         else
         {
-            // Apply Chaos to Style (Map X).
-            float avgJitterX = (chaosSampleLow.jitterX + chaosSampleHigh.jitterX) * 0.5f;
-            float jitteredStyle = Clamp(style_ + avgJitterX, 0.0f, 1.0f);
-            
-            // Apply independent density bias
-            float lowDensMod = Clamp(lowDensity_ + chaosSampleLow.densityBias, 0.05f, 0.95f);
-            float highDensMod = Clamp(highDensity_ + chaosSampleHigh.densityBias, 0.05f, 0.95f);
-            
-            patternGen_.GetTriggers(jitteredStyle, stepIndex_, lowDensMod, highDensMod, trigs);
+            // Apply Chaos to Terrain (Map X).
+            float avgJitterX     = (chaosSampleLow.jitterX + chaosSampleHigh.jitterX) * 0.5f;
+            float jitteredTerrain = Clamp(terrain_ + avgJitterX, 0.0f, 1.0f);
+
+            // Apply fuse as density tilt: fuse < 0.5 boosts anchor, > 0.5 boosts shimmer
+            float fuseBias     = (fuse_ - 0.5f) * 0.3f; // ±15% tilt
+            float anchorDensMod  = Clamp(anchorDensity_ - fuseBias + chaosSampleLow.densityBias, 0.05f, 0.95f);
+            float shimmerDensMod = Clamp(shimmerDensity_ + fuseBias + chaosSampleHigh.densityBias, 0.05f, 0.95f);
+
+            patternGen_.GetTriggers(jitteredTerrain, stepIndex_, anchorDensMod, shimmerDensMod, trigs);
             
             kickTrig = trigs[0];
             snareTrig = trigs[1];
@@ -212,9 +286,9 @@ std::array<float, 2> Sequencer::ProcessAudio()
 
             // Get Levels for Velocity (Map Y fixed at 0.5)
             float mapY = 0.5f;
-            kickVel = static_cast<float>(patternGen_.GetLevel(jitteredStyle, mapY, 0, stepIndex_)) / 255.0f;
-            snareVel = static_cast<float>(patternGen_.GetLevel(jitteredStyle, mapY, 1, stepIndex_)) / 255.0f;
-            hhVel = static_cast<float>(patternGen_.GetLevel(jitteredStyle, mapY, 2, stepIndex_)) / 255.0f;
+            kickVel  = static_cast<float>(patternGen_.GetLevel(jitteredTerrain, mapY, 0, stepIndex_)) / 255.0f;
+            snareVel = static_cast<float>(patternGen_.GetLevel(jitteredTerrain, mapY, 1, stepIndex_)) / 255.0f;
+            hhVel    = static_cast<float>(patternGen_.GetLevel(jitteredTerrain, mapY, 2, stepIndex_)) / 255.0f;
         }
 
         // Apply Ghost Triggers to HH/Perc stream (High Variation)
@@ -237,10 +311,10 @@ std::array<float, 2> Sequencer::ProcessAudio()
         bool gate1 = snareTrig;
         float vel1 = snareTrig ? snareVel : 0.0f;
         
-        // Route HH/Perc based on Emphasis
+        // Route HH/Perc based on Grid (pattern selection also affects routing)
         if(hhTrig)
         {
-            if(emphasis_ < 0.5f)
+            if(grid_ < 0.5f)
             {
                 // Route to Low (add tom/perc flavor to kick channel)
                 gate0 = true;
