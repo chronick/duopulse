@@ -78,6 +78,9 @@ void Sequencer::Init(float sampleRate)
     // Initialize humanize RNG with step index for variety
     humanizeRngState_ = 0x12345678;
 
+    // Initialize phrase position
+    phrasePos_ = CalculatePhrasePosition(0, loopLengthBars_);
+
     UpdateSwingParameters();
 }
 
@@ -253,14 +256,20 @@ std::array<float, 2> Sequencer::ProcessAudio()
     {
         // Handle Loop Length
         int effectiveLoopSteps = loopLengthBars_ * 16;
-        if (effectiveLoopSteps > PatternGenerator::kPatternLength) 
+        if(effectiveLoopSteps > PatternGenerator::kPatternLength)
             effectiveLoopSteps = PatternGenerator::kPatternLength;
-            
+
         stepIndex_ = (stepIndex_ + 1) % effectiveLoopSteps;
 
+        // Update phrase position tracking
+        phrasePos_ = CalculatePhrasePosition(stepIndex_, loopLengthBars_);
+
         // Apply flux to chaos modulators (flux controls variation for both voices)
-        chaosLow_.SetAmount(flux_);
-        chaosHigh_.SetAmount(flux_);
+        // Add phrase-based ghost boost
+        float ghostBoost    = GetPhraseGhostBoost(phrasePos_);
+        float effectiveFlux = Clamp(flux_ + ghostBoost, 0.0f, 1.0f);
+        chaosLow_.SetAmount(effectiveFlux);
+        chaosHigh_.SetAmount(effectiveFlux);
         
         bool trigs[3] = {false, false, false};
         
@@ -311,6 +320,12 @@ std::array<float, 2> Sequencer::ProcessAudio()
             kickVel  = static_cast<float>(patternGen_.GetLevel(jitteredTerrain, mapY, 0, stepIndex_)) / 255.0f;
             snareVel = static_cast<float>(patternGen_.GetLevel(jitteredTerrain, mapY, 1, stepIndex_)) / 255.0f;
             hhVel    = static_cast<float>(patternGen_.GetLevel(jitteredTerrain, mapY, 2, stepIndex_)) / 255.0f;
+
+            // Apply phrase-based accent multiplier (strongest on downbeats)
+            float accentMult = GetPhraseAccentMultiplier(phrasePos_);
+            kickVel  = Clamp(kickVel * accentMult, 0.0f, 1.0f);
+            snareVel = Clamp(snareVel * accentMult, 0.0f, 1.0f);
+            hhVel    = Clamp(hhVel * accentMult, 0.0f, 1.0f);
         }
 
         // Apply Ghost Triggers to HH/Perc stream (High Variation)
@@ -321,22 +336,25 @@ std::array<float, 2> Sequencer::ProcessAudio()
             hhVel = 0.3f + (static_cast<float>(rand() % 100) / 200.0f);
         }
 
-        // --- CV-Driven Fills (FLUX) ---
-        // High FLUX values add fill triggers to both voices
-        if(flux_ >= kFluxFillThreshold)
+        // --- CV-Driven Fills (FLUX + Phrase Position) ---
+        // High FLUX values add fill triggers, boosted in fill/build zones
+        float phraseFillBoost = GetPhraseFillBoost(phrasePos_, terrain_);
+        float effectiveFillFlux = Clamp(flux_ + phraseFillBoost, 0.0f, 1.0f);
+
+        if(effectiveFillFlux >= kFluxFillThreshold)
         {
             // Check for anchor fill (kick fills)
-            if(!kickTrig && ShouldTriggerFill(flux_, NextHumanizeRandom()))
+            if(!kickTrig && ShouldTriggerFill(effectiveFillFlux, NextHumanizeRandom()))
             {
                 kickTrig = true;
-                kickVel  = CalculateFillVelocity(flux_, NextHumanizeRandom());
+                kickVel  = CalculateFillVelocity(effectiveFillFlux, NextHumanizeRandom());
             }
 
             // Check for shimmer fill (snare fills)
-            if(!snareTrig && ShouldTriggerFill(flux_, NextHumanizeRandom()))
+            if(!snareTrig && ShouldTriggerFill(effectiveFillFlux, NextHumanizeRandom()))
             {
                 snareTrig = true;
-                snareVel  = CalculateFillVelocity(flux_, NextHumanizeRandom());
+                snareVel  = CalculateFillVelocity(effectiveFillFlux, NextHumanizeRandom());
             }
         }
 

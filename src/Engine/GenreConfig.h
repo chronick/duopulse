@@ -303,5 +303,127 @@ inline float GetInterlockModifier(bool anchorFired, float orbit)
     return anchorFired ? (-0.3f * strength) : (0.3f * strength);
 }
 
+// === Phrase Structure ===
+
+/**
+ * Phrase position tracking for musical awareness.
+ * The sequencer tracks its position to modulate pattern behavior.
+ */
+struct PhrasePosition
+{
+    int   currentBar     = 0;     // 0 to (loopLengthBars - 1)
+    int   stepInBar      = 0;     // 0 to 15
+    int   stepInPhrase   = 0;     // 0 to (loopLengthBars * 16 - 1)
+    float phraseProgress = 0.0f;  // 0.0 to 1.0 (normalized position in loop)
+    bool  isLastBar      = false; // Approaching loop point
+    bool  isFillZone     = false; // In fill zone (last steps of phrase)
+    bool  isBuildZone    = false; // In build zone (leading up to fill)
+    bool  isDownbeat     = true;  // Step 0 of any bar
+};
+
+/**
+ * Calculate phrase position from step index and loop length.
+ */
+inline PhrasePosition CalculatePhrasePosition(int stepIndex, int loopLengthBars)
+{
+    PhrasePosition pos;
+    int totalSteps = loopLengthBars * 16;
+
+    pos.stepInPhrase  = stepIndex % totalSteps;
+    pos.stepInBar     = pos.stepInPhrase % 16;
+    pos.currentBar    = pos.stepInPhrase / 16;
+    pos.phraseProgress = static_cast<float>(pos.stepInPhrase) / static_cast<float>(totalSteps);
+    pos.isLastBar     = (pos.currentBar == loopLengthBars - 1);
+    pos.isDownbeat    = (pos.stepInBar == 0);
+
+    // Fill zone and build zone scale with pattern length
+    // Fill zone: last 4 steps per bar of loop length (min 4, max 32)
+    // Build zone: last 8 steps per bar of loop length (min 8, max 64)
+    int fillZoneSteps  = loopLengthBars * 4;
+    int buildZoneSteps = loopLengthBars * 8;
+    if(fillZoneSteps < 4)
+        fillZoneSteps = 4;
+    if(fillZoneSteps > 32)
+        fillZoneSteps = 32;
+    if(buildZoneSteps < 8)
+        buildZoneSteps = 8;
+    if(buildZoneSteps > 64)
+        buildZoneSteps = 64;
+
+    int stepsFromEnd = totalSteps - pos.stepInPhrase;
+    pos.isFillZone  = (stepsFromEnd <= fillZoneSteps);
+    pos.isBuildZone = (stepsFromEnd <= buildZoneSteps);
+
+    return pos;
+}
+
+/**
+ * Get fill probability boost based on phrase position.
+ * Returns 0.0-0.5 boost to add to base fill probability.
+ * 
+ * @param pos Phrase position
+ * @param terrain Genre (affects how pronounced the boost is)
+ * @return Fill probability boost (0-0.5)
+ */
+inline float GetPhraseFillBoost(const PhrasePosition& pos, float terrain)
+{
+    if(!pos.isFillZone && !pos.isBuildZone)
+        return 0.0f;
+
+    // Base boost: 30% in build zone, 50% in fill zone
+    float boost = pos.isFillZone ? 0.5f : 0.3f;
+
+    // Genre scaling (per spec)
+    // Techno: 50% (subtle), Tribal: 120%, Trip-Hop: 70%, IDM: 150%
+    float genreScale = 1.0f;
+    if(terrain < 0.25f)
+        genreScale = 0.5f;  // Techno: subtle
+    else if(terrain < 0.50f)
+        genreScale = 1.2f;  // Tribal: pronounced
+    else if(terrain < 0.75f)
+        genreScale = 0.7f;  // Trip-Hop: sparse
+    else
+        genreScale = 1.5f;  // IDM: extreme
+
+    return boost * genreScale;
+}
+
+/**
+ * Get accent intensity based on phrase position.
+ * Downbeats (especially bar 1, step 0) get extra accent.
+ * 
+ * @param pos Phrase position
+ * @return Accent multiplier (0.8-1.2)
+ */
+inline float GetPhraseAccentMultiplier(const PhrasePosition& pos)
+{
+    if(pos.currentBar == 0 && pos.stepInBar == 0)
+        return 1.2f; // Strongest on phrase start
+    if(pos.isDownbeat)
+        return 1.1f; // Bar downbeats
+    if(pos.isFillZone)
+        return 1.0f + (0.1f * pos.phraseProgress); // Building toward end
+    return 1.0f;
+}
+
+/**
+ * Get ghost note probability boost based on phrase position.
+ * Ghost notes increase toward phrase end for anticipation.
+ * 
+ * @param pos Phrase position
+ * @return Ghost probability boost (0-0.3)
+ */
+inline float GetPhraseGhostBoost(const PhrasePosition& pos)
+{
+    // Linear increase toward phrase end
+    float boost = pos.phraseProgress * 0.2f;
+
+    // Extra boost in build zone
+    if(pos.isBuildZone)
+        boost += 0.1f;
+
+    return boost;
+}
+
 } // namespace daisysp_idm_grids
 

@@ -67,6 +67,7 @@ public:
     float GetBpm() const { return currentBpm_; }
     float GetSwingPercent() const { return currentSwing_; }
     Genre GetCurrentGenre() const { return GetGenreFromTerrain(terrain_); }
+    const PhrasePosition& GetPhrasePosition() const { return phrasePos_; }
     void  SetBpm(float bpm);
     void  SetAccentHoldMs(float milliseconds);
     void  SetHihatHoldMs(float milliseconds);
@@ -129,6 +130,9 @@ private:
 
     // Humanize state
     uint32_t humanizeRngState_ = 0x12345678; // Simple RNG for humanize jitter
+
+    // Phrase position tracking
+    PhrasePosition phrasePos_;
 
     // Legacy aliases (for internal use during transition)
     float& lowDensity_    = anchorDensity_;

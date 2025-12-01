@@ -66,13 +66,17 @@ The implementation builds on the existing codebase (`Sequencer`, `PatternGenerat
 
 ### Phase 4: Phrase Structure
 
-- [ ] **Implement PhrasePosition tracking** — Track currentBar, stepInBar, stepInPhrase, phraseProgress, isLastBar, isFillZone, isBuildZone, isDownbeat. Reference: `docs/specs/main.md` section "Phrase Structure [duopulse-phrase]".
+- [x] **Implement PhrasePosition tracking** — Track currentBar, stepInBar, stepInPhrase, phraseProgress, isLastBar, isFillZone, isBuildZone, isDownbeat. Reference: `docs/specs/main.md` section "Phrase Structure [duopulse-phrase]".
+  - *Completed 2025-12-01*: Full phrase tracking with fill/build zones scaling by pattern length.
 
-- [ ] **Implement phrase modulation parameters** — Modulate fill probability, ghost probability, syncopation, accent intensity, velocity variance based on phrase position. Reference: `docs/specs/main.md` section "Phrase Structure [duopulse-phrase]".
+- [x] **Implement phrase modulation parameters** — Modulate fill probability, ghost probability, syncopation, accent intensity, velocity variance based on phrase position. Reference: `docs/specs/main.md` section "Phrase Structure [duopulse-phrase]".
+  - *Completed 2025-12-01*: Fill/ghost boost + accent multiplier based on phrase position and genre.
 
-- [ ] **Implement genre-specific phrase scaling** — Techno: 50% (subtle), Tribal: 120% (pronounced), Trip-Hop: 70% (sparse), IDM: 150% (extreme). Reference: `docs/specs/main.md` section "Phrase Structure [duopulse-phrase]".
+- [x] **Implement genre-specific phrase scaling** — Techno: 50% (subtle), Tribal: 120% (pronounced), Trip-Hop: 70% (sparse), IDM: 150% (extreme). Reference: `docs/specs/main.md` section "Phrase Structure [duopulse-phrase]".
+  - *Completed 2025-12-01*: Genre scaling in GetPhraseFillBoost() matches spec percentages.
 
-- [ ] **Implement pattern length zone scaling** — Fill zone and build zone lengths scale with pattern length (1-16 bars). Reference: `docs/specs/main.md` section "Phrase Structure [duopulse-phrase]".
+- [x] **Implement pattern length zone scaling** — Fill zone and build zone lengths scale with pattern length (1-16 bars). Reference: `docs/specs/main.md` section "Phrase Structure [duopulse-phrase]".
+  - *Completed 2025-12-01*: Fill zone = 4 steps/bar, build zone = 8 steps/bar, capped at 32/64.
 
 ### Phase 5: CV Expression (Contour)
 
