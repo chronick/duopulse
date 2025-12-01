@@ -1,0 +1,62 @@
+#!/usr/bin/env sh
+set -eu
+
+INDEX="docs/tasks/index.md"
+
+feature_filter=""
+if [ $# -ge 1 ]; then
+  feature_filter="$1"
+fi
+
+if [ ! -f "$INDEX" ]; then
+  echo "No tasks index at $INDEX" >&2
+  exit 1
+fi
+
+awk -v feature="$feature_filter" -F'|' '
+  NR <= 2 { next }  # skip header lines
+  {
+    # columns: 1="", 2=id, 3=feature, 4=description, 5=status, 6=created_at, 7=updated_at, 8=file, 9=""
+    id=$2; f=$3; desc=$4; status=$5; created=$6; updated=$7; file=$8;
+    gsub(/^ +| +$/, "", id);
+    gsub(/^ +| +$/, "", f);
+    gsub(/^ +| +$/, "", desc);
+    gsub(/^ +| +$/, "", status);
+    gsub(/^ +| +$/, "", created);
+    gsub(/^ +| +$/, "", updated);
+    gsub(/^ +| +$/, "", file);
+
+    if (status == "open" && (feature == "" || f == feature)) {
+      print id "\n" f "\n" desc "\n" status "\n" created "\n" updated "\n" file;
+      exit;
+    }
+  }
+' "$INDEX" | {
+  if read -r id &&
+     read -r f &&
+     read -r desc &&
+     read -r status &&
+     read -r created &&
+     read -r updated &&
+     read -r file; then
+
+    echo "Next task:"
+    echo "  id:          $id"
+    echo "  feature:     $f"
+    echo "  description: $desc"
+    echo "  status:      $status"
+    echo "  created_at:  $created"
+    echo "  updated_at:  $updated"
+    echo "  file:        $file"
+    echo
+    echo "Suggested: open '$file' and run the SDD 'implement task' command in your AI editor."
+  else
+    if [ -n "$feature_filter" ]; then
+      echo "No open tasks found for feature '$feature_filter'."
+    else
+      echo "No open tasks found."
+    fi
+    exit 1
+  fi
+}
+

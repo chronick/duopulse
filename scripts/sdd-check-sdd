@@ -1,0 +1,57 @@
+#!/usr/bin/env sh
+set -eu
+
+INDEX="docs/tasks/index.md"
+
+feature_filter=""
+if [ $# -ge 1 ]; then
+  feature_filter="$1"
+fi
+
+if [ ! -f "$INDEX" ]; then
+  echo "No tasks index at $INDEX – treating as no tasks."
+  exit 0
+fi
+
+if [ -n "$feature_filter" ]; then
+  open_count="$(
+    awk -v feature="$feature_filter" -F'|' '
+      NR>2 {
+        f=$3; status=$5;
+        gsub(/^ +| +$/, "", f);
+        gsub(/^ +| +$/, "", status);
+        if (f == feature && status == "open") c++;
+      }
+      END { print (c == "" ? 0 : c) }
+    ' "$INDEX"
+  )"
+else
+  open_count="$(
+    awk -F'|' '
+      NR>2 {
+        status=$5;
+        gsub(/^ +| +$/, "", status);
+        if (status == "open") c++;
+      }
+      END { print (c == "" ? 0 : c) }
+    ' "$INDEX"
+  )"
+fi
+
+if [ "$open_count" -gt 0 ]; then
+  if [ -n "$feature_filter" ]; then
+    echo "SDD check failed: $open_count open task(s) remain for feature '$feature_filter' in $INDEX."
+  else
+    echo "SDD check failed: $open_count open task(s) remain in $INDEX."
+  fi
+  echo "Use './scripts/sdd-next-task${feature_filter:+ $feature_filter}' to see the next task."
+  exit 1
+else
+  if [ -n "$feature_filter" ]; then
+    echo "SDD check passed: no open tasks for feature '$feature_filter'."
+  else
+    echo "SDD check passed: no open tasks in $INDEX."
+  fi
+  exit 0
+fi
+
