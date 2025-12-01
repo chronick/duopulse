@@ -49,7 +49,8 @@ The implementation builds on the existing codebase (`Sequencer`, `PatternGenerat
 - [x] **Implement Humanize micro-timing jitter** — Add random ±0-10ms jitter to trigger timing based on humanize parameter. IDM terrain adds up to 30% extra. Reference: `docs/specs/main.md` section "Humanize Timing [duopulse-humanize]".
   - *Completed 2025-12-01*: Xorshift RNG for jitter, combined with swing delay. IDM adds 30% extra.
 
-- [ ] **Implement fill system** — High FLUX values (via knob or CV) increase fill probability. Fill zones at phrase boundaries get additional boost. Reference: `docs/specs/main.md` section "CV-Driven Fills [duopulse-fills]".
+- [x] **Implement fill system** — High FLUX values (via knob or CV) increase fill probability. Fill zones at phrase boundaries get additional boost. Reference: `docs/specs/main.md` section "CV-Driven Fills [duopulse-fills]".
+  - *Completed 2025-12-01*: Fills trigger at FLUX>50%, up to 30% probability at FLUX=100%.
 
 ### Phase 3: Pattern Generator Rewrite
 

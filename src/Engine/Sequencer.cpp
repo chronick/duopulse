@@ -321,6 +321,25 @@ std::array<float, 2> Sequencer::ProcessAudio()
             hhVel = 0.3f + (static_cast<float>(rand() % 100) / 200.0f);
         }
 
+        // --- CV-Driven Fills (FLUX) ---
+        // High FLUX values add fill triggers to both voices
+        if(flux_ >= kFluxFillThreshold)
+        {
+            // Check for anchor fill (kick fills)
+            if(!kickTrig && ShouldTriggerFill(flux_, NextHumanizeRandom()))
+            {
+                kickTrig = true;
+                kickVel  = CalculateFillVelocity(flux_, NextHumanizeRandom());
+            }
+
+            // Check for shimmer fill (snare fills)
+            if(!snareTrig && ShouldTriggerFill(flux_, NextHumanizeRandom()))
+            {
+                snareTrig = true;
+                snareVel  = CalculateFillVelocity(flux_, NextHumanizeRandom());
+            }
+        }
+
         // --- Orbit Voice Relationship Logic ---
         OrbitMode orbitMode = GetOrbitMode(orbit_);
 

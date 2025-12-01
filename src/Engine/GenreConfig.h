@@ -128,6 +128,77 @@ inline int CalculateSwingDelaySamples(float swingPercent, int stepDurationSample
     return static_cast<int>(delayFraction * static_cast<float>(stepDurationSamples));
 }
 
+// === CV-Driven Fills (FLUX) ===
+
+/**
+ * FLUX controls fill probability and pattern variation.
+ * Higher FLUX = more fills, ghost notes, and chaos.
+ * 
+ * FLUX Level | Behavior
+ * -----------|----------
+ * 0-20%      | Clean, minimal pattern
+ * 20-50%     | Some ghost notes, subtle variation
+ * 50-70%     | Active fills, velocity swells
+ * 70-90%     | Busy, lots of ghost notes and fills
+ * 90-100%    | Maximum chaos, fill on every opportunity
+ */
+
+// Fill probability thresholds
+constexpr float kFluxFillThreshold    = 0.5f;  // FLUX level where fills start appearing
+constexpr float kFluxMaxFillProb      = 0.3f;  // Max 30% fill probability at FLUX=1
+constexpr float kFluxGhostMultiplier  = 0.5f;  // Ghost note probability scales with FLUX
+
+/**
+ * Calculate fill trigger probability based on FLUX level.
+ * Fills start appearing at 50% FLUX and scale up to 30% probability at 100%.
+ * 
+ * @param flux FLUX parameter (0-1)
+ * @return Fill probability (0-0.3)
+ */
+inline float CalculateFillProbability(float flux)
+{
+    if(flux < kFluxFillThreshold)
+        return 0.0f;
+
+    // Linear scale from threshold to max
+    float fillAmount = (flux - kFluxFillThreshold) / (1.0f - kFluxFillThreshold);
+    return fillAmount * kFluxMaxFillProb;
+}
+
+/**
+ * Check if a fill should trigger this step.
+ * 
+ * @param flux FLUX parameter (0-1)
+ * @param randomValue Random value 0-1 for probability check
+ * @return True if fill should trigger
+ */
+inline bool ShouldTriggerFill(float flux, float randomValue)
+{
+    float prob = CalculateFillProbability(flux);
+    return randomValue < prob;
+}
+
+/**
+ * Calculate velocity for a fill trigger.
+ * Fills have varied velocity based on FLUX intensity.
+ * 
+ * @param flux FLUX parameter (0-1)
+ * @param randomValue Random value 0-1 for velocity variation
+ * @return Velocity (0.4-0.9)
+ */
+inline float CalculateFillVelocity(float flux, float randomValue)
+{
+    // Base velocity 0.4-0.7, higher FLUX = higher possible velocity
+    float baseVel = 0.4f + (flux * 0.3f);
+    float variation = (randomValue - 0.5f) * 0.2f; // ±0.1 variation
+    float vel = baseVel + variation;
+    if(vel < 0.3f)
+        vel = 0.3f;
+    if(vel > 0.9f)
+        vel = 0.9f;
+    return vel;
+}
+
 // === Humanize Timing Jitter ===
 
 // Max jitter range in milliseconds
