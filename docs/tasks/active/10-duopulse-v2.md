@@ -57,7 +57,8 @@ The implementation builds on the existing codebase (`Sequencer`, `PatternGenerat
 - [x] **Define new PatternSkeleton structure** — 32-step patterns with anchor/shimmer skeletons, accent mask, genre affinity. Reference: `docs/specs/main.md` section "Pattern Generation [duopulse-patterns]".
   - *Completed 2025-12-01*: Created `PatternSkeleton.h` with packed 4-bit intensity format, helper functions (GetStepIntensity, ShouldStepFire, etc.), GenreAffinity bitfield, and IntensityLevel classification.
 
-- [ ] **Create 16 skeleton patterns** — Optimized for 2-voice output. Include techno four-on-floor, minimal, driving, tribal interlocking, breakbeat, trip-hop sparse, IDM irregular patterns. Reference: Implementation Roadmap Phase 3.
+- [x] **Create 16 skeleton patterns** — Optimized for 2-voice output. Include techno four-on-floor, minimal, driving, tribal interlocking, breakbeat, trip-hop sparse, IDM irregular patterns. Reference: Implementation Roadmap Phase 3.
+  - *Completed 2025-12-01*: Created `PatternData.h` with 16 patterns: 4 Techno (four-on-floor, minimal, driving, pounding), 4 Tribal (clave, interlocking, poly, circular), 4 Trip-Hop (sparse, lazy, heavy, groove), 4 IDM (broken, glitch, irregular, chaos).
 
 - [ ] **Implement density threshold system** — Density controls threshold against pattern intensity. Low density = only high-intensity steps. High density = all steps including ghosts. Reference: `docs/specs/main.md` section "Pattern Generation [duopulse-patterns]".
 
