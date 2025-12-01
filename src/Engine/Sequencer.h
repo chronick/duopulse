@@ -127,6 +127,9 @@ private:
     bool  lastAnchorTrig_ = false;     // Whether anchor triggered on previous step
     float lastAnchorVel_  = 0.0f;      // Velocity of previous anchor trigger
 
+    // Humanize state
+    uint32_t humanizeRngState_ = 0x12345678; // Simple RNG for humanize jitter
+
     // Legacy aliases (for internal use during transition)
     float& lowDensity_    = anchorDensity_;
     float& highDensity_   = shimmerDensity_;
@@ -158,12 +161,13 @@ private:
     // Output Levels (Velocity)
     float            outputLevels_[2] = {0.0f, 0.0f};
 
-    void TriggerGate(int channel);
-    void TriggerClock();
-    void ProcessGates();
-    void ProcessSwingDelay();
-    void UpdateSwingParameters();
-    int  HoldMsToSamples(float milliseconds) const;
+    void  TriggerGate(int channel);
+    void  TriggerClock();
+    void  ProcessGates();
+    void  ProcessSwingDelay();
+    void  UpdateSwingParameters();
+    int   HoldMsToSamples(float milliseconds) const;
+    float NextHumanizeRandom(); // Returns 0-1 for humanize jitter
 };
 
 } // namespace daisysp_idm_grids

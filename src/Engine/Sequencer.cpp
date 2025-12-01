@@ -75,6 +75,9 @@ void Sequencer::Init(float sampleRate)
     lastAnchorTrig_ = false;
     lastAnchorVel_  = 0.0f;
 
+    // Initialize humanize RNG with step index for variety
+    humanizeRngState_ = 0x12345678;
+
     UpdateSwingParameters();
 }
 
@@ -398,21 +401,39 @@ std::array<float, 2> Sequencer::ProcessAudio()
             }
         }
 
-        // --- Swing Application ---
+        // --- Swing + Humanize Application ---
         // Off-beats (odd steps) get delayed according to swing amount
         // Anchor receives 70% of swing, Shimmer receives 100%
+        // Humanize adds random jitter to all triggers
         bool isOffBeat = IsOffBeat(stepIndex_);
 
+        // Calculate humanize jitter (applied to all triggers)
+        float effectiveHumanize = CalculateEffectiveHumanize(humanize_, terrain_);
+        int   humanizeJitter    = 0;
+        if(effectiveHumanize > 0.0f && (gate0 || gate1))
+        {
+            float randomVal  = NextHumanizeRandom();
+            humanizeJitter   = CalculateHumanizeJitterSamples(effectiveHumanize, sampleRate_, randomVal);
+        }
+
+        // Calculate total delay (swing + humanize jitter)
+        // Note: humanize jitter can be negative (early), but we clamp to 0 minimum
+        int totalDelay = 0;
         if(isOffBeat && swingDelaySamples_ > 0)
         {
-            // Queue triggers for swing delay
-            // Anchor gets reduced swing (70%)
-            int anchorSwingDelay  = (swingDelaySamples_ * 70) / 100;
-            int shimmerSwingDelay = swingDelaySamples_;
+            totalDelay = swingDelaySamples_ + humanizeJitter;
+        }
+        else
+        {
+            totalDelay = humanizeJitter;
+        }
+        if(totalDelay < 0)
+            totalDelay = 0;
 
-            // Use the larger delay for the counter
-            // (both will fire at the shimmer timing, anchor slightly early within that window)
-            swingDelayCounter_ = shimmerSwingDelay;
+        if(totalDelay > 0)
+        {
+            // Queue triggers for delayed firing
+            swingDelayCounter_ = totalDelay;
 
             if(gate0)
             {
@@ -424,11 +445,11 @@ std::array<float, 2> Sequencer::ProcessAudio()
                 pendingShimmerTrig_ = true;
                 pendingShimmerVel_  = vel1;
             }
-            pendingClockTrig_ = true; // Clock also swings
+            pendingClockTrig_ = true; // Clock also follows timing
         }
         else
         {
-            // On-beat or no swing - fire immediately
+            // No delay - fire immediately
             TriggerClock();
 
             if(gate0)
@@ -590,6 +611,15 @@ void Sequencer::ProcessSwingDelay()
             }
         }
     }
+}
+
+float Sequencer::NextHumanizeRandom()
+{
+    // Simple xorshift RNG for humanize jitter
+    humanizeRngState_ ^= humanizeRngState_ << 13;
+    humanizeRngState_ ^= humanizeRngState_ >> 17;
+    humanizeRngState_ ^= humanizeRngState_ << 5;
+    return static_cast<float>(humanizeRngState_ & 0xFFFF) / 65535.0f;
 }
 
 } // namespace daisysp_idm_grids

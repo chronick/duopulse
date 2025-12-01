@@ -46,7 +46,8 @@ The implementation builds on the existing codebase (`Sequencer`, `PatternGenerat
 - [x] **Implement Orbit voice relationship modes** — Interlock (0-33%): shimmer fills gaps. Free (33-67%): independent. Shadow (67-100%): shimmer echoes anchor with delay. Reference: `docs/specs/main.md` section "Orbit Voice Relationships [duopulse-orbit]".
   - *Completed 2025-12-01*: Interlock modifies shimmer prob ±30%, Shadow echoes at 70% velocity.
 
-- [ ] **Implement Humanize micro-timing jitter** — Add random ±0-10ms jitter to trigger timing based on humanize parameter. IDM terrain adds up to 30% extra. Reference: `docs/specs/main.md` section "Humanize Timing [duopulse-humanize]".
+- [x] **Implement Humanize micro-timing jitter** — Add random ±0-10ms jitter to trigger timing based on humanize parameter. IDM terrain adds up to 30% extra. Reference: `docs/specs/main.md` section "Humanize Timing [duopulse-humanize]".
+  - *Completed 2025-12-01*: Xorshift RNG for jitter, combined with swing delay. IDM adds 30% extra.
 
 - [ ] **Implement fill system** — High FLUX values (via knob or CV) increase fill probability. Fill zones at phrase boundaries get additional boost. Reference: `docs/specs/main.md` section "CV-Driven Fills [duopulse-fills]".
 

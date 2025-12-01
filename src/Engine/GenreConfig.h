@@ -128,6 +128,67 @@ inline int CalculateSwingDelaySamples(float swingPercent, int stepDurationSample
     return static_cast<int>(delayFraction * static_cast<float>(stepDurationSamples));
 }
 
+// === Humanize Timing Jitter ===
+
+// Max jitter range in milliseconds
+constexpr float kMaxHumanizeJitterMs = 10.0f;
+
+// IDM terrain adds extra humanize on top of the knob setting
+constexpr float kIdmExtraHumanize = 0.30f; // 30% extra
+
+/**
+ * Calculate effective humanize amount including IDM bonus.
+ * 
+ * @param humanize Base humanize parameter (0-1)
+ * @param terrain Genre selector (0-1)
+ * @return Effective humanize (0-1.3 for IDM)
+ */
+inline float CalculateEffectiveHumanize(float humanize, float terrain)
+{
+    float effective = humanize;
+
+    // IDM (terrain >= 0.75) adds extra humanize
+    if(terrain >= 0.75f)
+    {
+        // Scale extra humanize based on how deep into IDM territory we are
+        float idmDepth   = (terrain - 0.75f) / 0.25f; // 0 at 0.75, 1 at 1.0
+        float extraBonus = kIdmExtraHumanize * idmDepth;
+        effective += extraBonus;
+    }
+
+    return effective;
+}
+
+/**
+ * Calculate jitter delay in samples.
+ * Returns a random value in range [-maxJitter, +maxJitter].
+ * 
+ * @param humanize Effective humanize amount (0-1.3)
+ * @param sampleRate Audio sample rate
+ * @param randomSeed Random value (0-1) for jitter calculation
+ * @return Jitter in samples (can be negative for early triggers)
+ */
+inline int CalculateHumanizeJitterSamples(float humanize, float sampleRate, float randomValue)
+{
+    if(humanize <= 0.0f)
+        return 0;
+
+    // Max jitter at humanize = 1.0 is ±10ms
+    // randomValue is 0-1, map to -1 to +1
+    float normalizedRandom = (randomValue * 2.0f) - 1.0f;
+
+    // Jitter range scales with humanize
+    float jitterMs = normalizedRandom * kMaxHumanizeJitterMs * humanize;
+
+    // Clamp to ±13ms (allowing for IDM's extra 30%)
+    if(jitterMs > 13.0f)
+        jitterMs = 13.0f;
+    if(jitterMs < -13.0f)
+        jitterMs = -13.0f;
+
+    return static_cast<int>((jitterMs / 1000.0f) * sampleRate);
+}
+
 // === Orbit Voice Relationship Modes ===
 
 enum class OrbitMode : uint8_t
