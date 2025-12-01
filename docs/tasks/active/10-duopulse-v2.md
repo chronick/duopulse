@@ -20,7 +20,8 @@ The implementation builds on the existing codebase (`Sequencer`, `PatternGenerat
 
 ### Phase 1: Control System Overhaul
 
-- [ ] **Update ControlState structure** — Add all 16 parameters (4 modes × 4 knobs) to ControlState in `main.cpp`. Rename existing parameters to new vocabulary (anchorDensity, shimmerDensity, flux, fuse, etc.). Reference: `docs/specs/main.md` section "Control System [duopulse-controls]".
+- [x] **Update ControlState structure** — Add all 16 parameters (4 modes × 4 knobs) to ControlState in `main.cpp`. Rename existing parameters to new vocabulary (anchorDensity, shimmerDensity, flux, fuse, etc.). Reference: `docs/specs/main.md` section "Control System [duopulse-controls]".
+  - *Completed 2025-12-01*: Added ControlMode enum, 16-parameter ControlState, expanded SoftKnob array to 16 slots, CV always modulates performance params.
 
 - [ ] **Implement shift layer detection** — Track button hold duration to distinguish tap (<150ms = fill trigger) from hold (>150ms = shift active). Manage 4 separate SoftKnob sets for each mode/shift combination. Reference: `docs/specs/main.md` section "Control System [duopulse-controls]".
 

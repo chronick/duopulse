@@ -1,10 +1,18 @@
 /**
- * Phase 5: Performance vs Config Mode
- * - Performance mode: Knob/CV pairs drive Grids parameters + tempo (tap-tempo enabled)
- * - Config mode: Knob/CV pairs re-map to accent/hi-hat gate voltage and hold times
- * - Mode switch (B8) toggles Performance/Config without interrupting the sequencer
- * - LED + CV_OUT_2 stay solid while in Config mode, blink on kicks otherwise
- * - OUT_L / OUT_R use GateScaler to keep codec-driven gates within ±5 V
+ * DuoPulse v2: 2-Voice Percussive Sequencer
+ * 
+ * Control System (4 modes × 4 knobs = 16 parameters):
+ * 
+ * Performance Mode (Switch DOWN):
+ *   Primary:     K1=Anchor Density, K2=Shimmer Density, K3=Flux, K4=Fuse
+ *   Shift (B7):  K1=Anchor Accent, K2=Shimmer Accent, K3=Orbit, K4=Contour
+ * 
+ * Config Mode (Switch UP):
+ *   Primary:     K1=Terrain, K2=Length, K3=Grid, K4=Tempo
+ *   Shift (B7):  K1=Swing Taste, K2=Gate Time, K3=Humanize, K4=Clock Div
+ * 
+ * CV inputs 5-8 always modulate performance parameters (Anchor Density, Shimmer 
+ * Density, Flux, Fuse) regardless of mode.
  */
 
 #include <array>
@@ -34,25 +42,73 @@ GateScaler hihatGate;
 
 bool lastGateIn1 = false;
 
+// Control Mode indices for soft knob array
+enum class ControlMode : uint8_t
+{
+    PerformancePrimary = 0, // Switch DOWN, no shift
+    PerformanceShift   = 1, // Switch DOWN, shift held
+    ConfigPrimary      = 2, // Switch UP, no shift
+    ConfigShift        = 3  // Switch UP, shift held
+};
+
+constexpr int kKnobsPerMode = 4;
+constexpr int kNumModes     = 4;
+constexpr int kTotalKnobs   = kKnobsPerMode * kNumModes; // 16
+
 struct ControlState
 {
-    // Base Mode Parameters
-    float lowDensity    = 0.5f;
-    float highDensity   = 0.5f;
-    float lowVariation  = 0.0f;
-    float highVariation = 0.0f;
+    // === Performance Mode Primary (Switch DOWN, no shift) ===
+    float anchorDensity  = 0.5f; // K1: Hit frequency for Anchor lane
+    float shimmerDensity = 0.5f; // K2: Hit frequency for Shimmer lane
+    float flux           = 0.0f; // K3: Global variation, fills, ghost notes
+    float fuse           = 0.5f; // K4: Cross-lane energy exchange (center = balanced)
 
-    // Config Mode Parameters
-    float style    = 0.0f;
-    float length   = 0.5f; // Maps to ~4 bars
-    float emphasis = 0.5f;
-    float tempo    = 0.5f;
+    // === Performance Mode Shift (Switch DOWN + B7 held) ===
+    float anchorAccent  = 0.5f; // K1+Shift: Accent intensity for Anchor
+    float shimmerAccent = 0.5f; // K2+Shift: Accent intensity for Shimmer
+    float orbit         = 0.5f; // K3+Shift: Voice relationship (Interlock/Free/Shadow)
+    float contour       = 0.0f; // K4+Shift: CV output shape (Velocity/Decay/Pitch/Random)
 
-    bool configMode = false;
+    // === Config Mode Primary (Switch UP, no shift) ===
+    float terrain = 0.0f; // K1: Genre/style character (Techno/Tribal/Trip-Hop/IDM)
+    float length  = 0.5f; // K2: Loop length in bars (1,2,4,8,16)
+    float grid    = 0.0f; // K3: Pattern family selection (1-16)
+    float tempo   = 0.5f; // K4: Internal BPM (90-160)
+
+    // === Config Mode Shift (Switch UP + B7 held) ===
+    float swingTaste = 0.5f; // K1+Shift: Fine-tune swing within genre range
+    float gateTime   = 0.2f; // K2+Shift: Trigger duration (5-50ms, default ~14ms)
+    float humanize   = 0.0f; // K3+Shift: Micro-timing jitter amount
+    float clockDiv   = 0.5f; // K4+Shift: Clock output divider/multiplier (default ×1)
+
+    // === Mode State ===
+    bool configMode  = false; // Switch UP = config mode
+    bool shiftActive = false; // B7 held = shift active
+
+    // Helper to get current mode
+    ControlMode GetCurrentMode() const
+    {
+        if(configMode)
+        {
+            return shiftActive ? ControlMode::ConfigShift
+                               : ControlMode::ConfigPrimary;
+        }
+        else
+        {
+            return shiftActive ? ControlMode::PerformanceShift
+                               : ControlMode::PerformancePrimary;
+        }
+    }
+
+    // Get soft knob base index for current mode (0, 4, 8, or 12)
+    int GetSoftKnobBaseIndex() const
+    {
+        return static_cast<int>(GetCurrentMode()) * kKnobsPerMode;
+    }
 };
 
 ControlState controlState;
-SoftKnob     softKnobs[4];
+SoftKnob     softKnobs[kTotalKnobs]; // 16 slots: 4 knobs × 4 mode/shift combinations
 
 // UX State
 uint32_t lastInteractionTime = 0;
@@ -96,32 +152,80 @@ void AudioCallback(AudioHandle::InputBuffer  in,
     }
 }
 
+// Helper to get pointer to parameter by mode and knob index
+float* GetParameterPtr(ControlState& state, ControlMode mode, int knobIndex)
+{
+    switch(mode)
+    {
+        case ControlMode::PerformancePrimary:
+            switch(knobIndex)
+            {
+                case 0: return &state.anchorDensity;
+                case 1: return &state.shimmerDensity;
+                case 2: return &state.flux;
+                case 3: return &state.fuse;
+            }
+            break;
+        case ControlMode::PerformanceShift:
+            switch(knobIndex)
+            {
+                case 0: return &state.anchorAccent;
+                case 1: return &state.shimmerAccent;
+                case 2: return &state.orbit;
+                case 3: return &state.contour;
+            }
+            break;
+        case ControlMode::ConfigPrimary:
+            switch(knobIndex)
+            {
+                case 0: return &state.terrain;
+                case 1: return &state.length;
+                case 2: return &state.grid;
+                case 3: return &state.tempo;
+            }
+            break;
+        case ControlMode::ConfigShift:
+            switch(knobIndex)
+            {
+                case 0: return &state.swingTaste;
+                case 1: return &state.gateTime;
+                case 2: return &state.humanize;
+                case 3: return &state.clockDiv;
+            }
+            break;
+    }
+    return nullptr; // Should never reach here
+}
+
 void ProcessControls()
 {
     patch.ProcessAnalogControls();
     tapButton.Debounce();
     modeSwitch.Debounce();
 
-    // Mode Switching
+    // Track previous mode for soft knob target loading
+    ControlMode previousMode = controlState.GetCurrentMode();
+
+    // Mode Switching (config mode from switch)
     bool newConfigMode = modeSwitch.Pressed();
-    if(newConfigMode != controlState.configMode)
+    controlState.configMode = newConfigMode;
+    
+    // TODO: Shift detection will be added in next task (tap vs hold on B7)
+    // For now, shift is always false
+    controlState.shiftActive = false;
+    
+    // If mode changed, load new targets into soft knobs
+    ControlMode currentMode = controlState.GetCurrentMode();
+    if(currentMode != previousMode)
     {
-        controlState.configMode = newConfigMode;
-        if(controlState.configMode)
+        int baseIdx = controlState.GetSoftKnobBaseIndex();
+        for(int i = 0; i < kKnobsPerMode; i++)
         {
-            // Switching to Config Mode: Load Config targets
-            softKnobs[0].SetValue(controlState.style);
-            softKnobs[1].SetValue(controlState.length);
-            softKnobs[2].SetValue(controlState.emphasis);
-            softKnobs[3].SetValue(controlState.tempo);
-        }
-        else
-        {
-            // Switching to Base Mode: Load Base targets
-            softKnobs[0].SetValue(controlState.lowDensity);
-            softKnobs[1].SetValue(controlState.highDensity);
-            softKnobs[2].SetValue(controlState.lowVariation);
-            softKnobs[3].SetValue(controlState.highVariation);
+            float* param = GetParameterPtr(controlState, currentMode, i);
+            if(param)
+            {
+                softKnobs[baseIdx + i].SetValue(*param);
+            }
         }
     }
 
@@ -136,76 +240,72 @@ void ProcessControls()
     const float cv3 = patch.GetAdcValue(CV_7);
     const float cv4 = patch.GetAdcValue(CV_8);
 
-    // Process Soft Knobs & Update State
-    // We check for interaction to drive the LED
-    bool interacted = false;
-    
-    if(controlState.configMode)
+    // Process Soft Knobs for current mode & Update State
+    bool  interacted = false;
+    int   baseIdx    = controlState.GetSoftKnobBaseIndex();
+    float knobValues[kKnobsPerMode] = {knob1, knob2, knob3, knob4};
+
+    for(int i = 0; i < kKnobsPerMode; i++)
     {
-        controlState.style    = softKnobs[0].Process(knob1);
-        if (softKnobs[0].HasMoved()) { interacted = true; activeParameterValue = controlState.style; }
-        
-        controlState.length   = softKnobs[1].Process(knob2);
-        if (softKnobs[1].HasMoved()) { interacted = true; activeParameterValue = controlState.length; }
-        
-        controlState.emphasis = softKnobs[2].Process(knob3);
-        if (softKnobs[2].HasMoved()) { interacted = true; activeParameterValue = controlState.emphasis; }
-        
-        controlState.tempo    = softKnobs[3].Process(knob4);
-        if (softKnobs[3].HasMoved()) { interacted = true; activeParameterValue = controlState.tempo; }
+        float* param = GetParameterPtr(controlState, currentMode, i);
+        if(param)
+        {
+            *param = softKnobs[baseIdx + i].Process(knobValues[i]);
+            if(softKnobs[baseIdx + i].HasMoved())
+            {
+                interacted           = true;
+                activeParameterValue = *param;
+            }
+        }
     }
-    else
+
+    if(interacted)
     {
-        controlState.lowDensity    = softKnobs[0].Process(knob1);
-        if (softKnobs[0].HasMoved()) { interacted = true; activeParameterValue = controlState.lowDensity; }
-        
-        controlState.highDensity   = softKnobs[1].Process(knob2);
-        if (softKnobs[1].HasMoved()) { interacted = true; activeParameterValue = controlState.highDensity; }
-        
-        controlState.lowVariation  = softKnobs[2].Process(knob3);
-        if (softKnobs[2].HasMoved()) { interacted = true; activeParameterValue = controlState.lowVariation; }
-        
-        controlState.highVariation = softKnobs[3].Process(knob4);
-        if (softKnobs[3].HasMoved()) { interacted = true; activeParameterValue = controlState.highVariation; }
-    }
-    
-    if (interacted) {
         lastInteractionTime = System::GetNow();
     }
 
-    // Calculate Final Parameters (Pot + CV) and Apply to Sequencer
-    if(controlState.configMode)
-    {
-        // Config Mode
-        float finalStyle    = MixControl(controlState.style, cv1);
-        float finalLength   = MixControl(controlState.length, cv2);
-        float finalEmphasis = MixControl(controlState.emphasis, cv3);
-        float finalTempo    = MixControl(controlState.tempo, cv4);
+    // CV Always Modulates Performance Parameters (regardless of mode)
+    // CV centered at 0.5 (2.5V), additive modulation clamped 0-1
+    // Note: cv values are 0-1, where 0.5 = 2.5V = neutral
+    float finalAnchorDensity  = Clamp01(controlState.anchorDensity + (cv1 - 0.5f));
+    float finalShimmerDensity = Clamp01(controlState.shimmerDensity + (cv2 - 0.5f));
+    float finalFlux           = Clamp01(controlState.flux + (cv3 - 0.5f));
+    float finalFuse           = Clamp01(controlState.fuse + (cv4 - 0.5f));
 
-        sequencer.SetStyle(finalStyle);
-        sequencer.SetLength(MapToLength(finalLength));
-        sequencer.SetEmphasis(finalEmphasis);
-        sequencer.SetTempoControl(finalTempo);
-    }
-    else
+    // Apply performance parameters to sequencer
+    // TODO: Sequencer interface will be expanded in Phase 2.
+    // For now, map to existing interface:
+    //   anchorDensity  -> SetLowDensity (Anchor = voice 1 = low/kick)
+    //   shimmerDensity -> SetHighDensity (Shimmer = voice 2 = high/snare)
+    //   flux           -> SetLowVariation + SetHighVariation (variation for both)
+    //   fuse           -> Applied as density bias (TODO: implement properly)
+    
+    // Apply FUSE as density tilt: CCW boosts anchor, CW boosts shimmer
+    float fuseBias = (finalFuse - 0.5f) * 0.3f; // ±15% tilt
+    float tiltedAnchorDensity  = Clamp01(finalAnchorDensity - fuseBias);
+    float tiltedShimmerDensity = Clamp01(finalShimmerDensity + fuseBias);
+
+    sequencer.SetLowDensity(tiltedAnchorDensity);
+    sequencer.SetHighDensity(tiltedShimmerDensity);
+    sequencer.SetLowVariation(finalFlux);
+    sequencer.SetHighVariation(finalFlux);
+
+    // Apply config parameters (when in config mode, knobs directly control these)
+    // These always apply, but only config mode knobs adjust them
+    sequencer.SetStyle(controlState.terrain);
+    sequencer.SetLength(MapToLength(controlState.length));
+    sequencer.SetEmphasis(controlState.grid); // grid -> emphasis mapping (temporary)
+    sequencer.SetTempoControl(controlState.tempo);
+
+    // Tap Tempo (only in performance mode, button B7)
+    // TODO: Shift detection will change this - tap tempo only on short press
+    if(!controlState.configMode)
     {
-        // Base Mode
-        // Tap Tempo
         bool tapTrig = tapButton.RisingEdge();
         if(tapTrig)
         {
             sequencer.TriggerTapTempo(System::GetNow());
         }
-
-        float finalLowDens  = MixControl(controlState.lowDensity, cv1);
-        float finalHighDens = MixControl(controlState.highDensity, cv2);
-        float finalLowVar   = MixControl(controlState.lowVariation, cv3);
-        float finalHighVar  = MixControl(controlState.highVariation, cv4);
-
-        sequencer.SetLowDensity(finalLowDens);
-        sequencer.SetHighDensity(finalHighDens);
-        sequencer.SetLowVariation(finalLowVar);
-        sequencer.SetHighVariation(finalHighVar);
     }
 
     // Reset Trigger
@@ -274,11 +374,27 @@ int main(void)
                     Switch::TYPE_TOGGLE,
                     Switch::POLARITY_INVERTED);
 
-    // Initialize Soft Knobs to Base Mode defaults
-    softKnobs[0].Init(controlState.lowDensity);
-    softKnobs[1].Init(controlState.highDensity);
-    softKnobs[2].Init(controlState.lowVariation);
-    softKnobs[3].Init(controlState.highVariation);
+    // Initialize all 16 Soft Knobs (4 knobs × 4 mode/shift combinations)
+    // Performance Primary (indices 0-3)
+    softKnobs[0].Init(controlState.anchorDensity);
+    softKnobs[1].Init(controlState.shimmerDensity);
+    softKnobs[2].Init(controlState.flux);
+    softKnobs[3].Init(controlState.fuse);
+    // Performance Shift (indices 4-7)
+    softKnobs[4].Init(controlState.anchorAccent);
+    softKnobs[5].Init(controlState.shimmerAccent);
+    softKnobs[6].Init(controlState.orbit);
+    softKnobs[7].Init(controlState.contour);
+    // Config Primary (indices 8-11)
+    softKnobs[8].Init(controlState.terrain);
+    softKnobs[9].Init(controlState.length);
+    softKnobs[10].Init(controlState.grid);
+    softKnobs[11].Init(controlState.tempo);
+    // Config Shift (indices 12-15)
+    softKnobs[12].Init(controlState.swingTaste);
+    softKnobs[13].Init(controlState.gateTime);
+    softKnobs[14].Init(controlState.humanize);
+    softKnobs[15].Init(controlState.clockDiv);
     
     // Initialize interaction state
     lastInteractionTime = 0; // Ensures we start in default mode
