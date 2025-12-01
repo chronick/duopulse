@@ -4,6 +4,8 @@
 
 #include "daisysp.h"
 #include "PatternGenerator.h"
+#include "PatternSkeleton.h"
+#include "PatternData.h"
 #include "ChaosModulator.h"
 #include "GenreConfig.h"
 
@@ -71,6 +73,11 @@ public:
     void  SetBpm(float bpm);
     void  SetAccentHoldMs(float milliseconds);
     void  SetHihatHoldMs(float milliseconds);
+
+    // Pattern system control
+    void SetUseSkeletonPatterns(bool use) { useSkeletonPatterns_ = use; }
+    bool GetUseSkeletonPatterns() const { return useSkeletonPatterns_; }
+    int  GetCurrentPatternIndex() const { return currentPatternIndex_; }
 
 private:
     // Tempo range per spec: 90-160 BPM
@@ -169,6 +176,10 @@ private:
     // Output Levels (Velocity)
     float            outputLevels_[2] = {0.0f, 0.0f};
 
+    // Pattern system selection
+    bool useSkeletonPatterns_ = true;  // Use new PatternSkeleton system (default for DuoPulse v2)
+    int  currentPatternIndex_ = 0;     // Currently selected pattern (0-15)
+
     void  TriggerGate(int channel);
     void  TriggerClock();
     void  ProcessGates();
@@ -176,6 +187,12 @@ private:
     void  UpdateSwingParameters();
     int   HoldMsToSamples(float milliseconds) const;
     float NextHumanizeRandom(); // Returns 0-1 for humanize jitter
+
+    // PatternSkeleton-based trigger generation
+    // Returns true if triggered, sets velocity output
+    void GetSkeletonTriggers(int step, float anchorDens, float shimmerDens,
+                             bool& anchorTrig, bool& shimmerTrig,
+                             float& anchorVel, float& shimmerVel);
 };
 
 } // namespace daisysp_idm_grids

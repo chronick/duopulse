@@ -85,6 +85,10 @@ void Sequencer::Init(float sampleRate)
     anchorContourCV_  = 0.0f;
     shimmerContourCV_ = 0.0f;
 
+    // Initialize pattern system
+    useSkeletonPatterns_ = true;
+    currentPatternIndex_ = 0;
+
     UpdateSwingParameters();
 }
 
@@ -151,6 +155,8 @@ void Sequencer::SetLength(int bars)
 void Sequencer::SetGrid(float value)
 {
     grid_ = Clamp(value, 0.0f, 1.0f);
+    // Update pattern index when grid changes
+    currentPatternIndex_ = GetPatternIndex(grid_);
 }
 
 // Config Shift
@@ -304,32 +310,52 @@ std::array<float, 2> Sequencer::ProcessAudio()
         }
         else
         {
-            // Apply Chaos to Terrain (Map X).
-            float avgJitterX     = (chaosSampleLow.jitterX + chaosSampleHigh.jitterX) * 0.5f;
-            float jitteredTerrain = Clamp(terrain_ + avgJitterX, 0.0f, 1.0f);
+            // Apply Chaos to density
+            float avgJitterX = (chaosSampleLow.jitterX + chaosSampleHigh.jitterX) * 0.5f;
 
             // Apply fuse as density tilt: fuse < 0.5 boosts anchor, > 0.5 boosts shimmer
             float fuseBias     = (fuse_ - 0.5f) * 0.3f; // ±15% tilt
             float anchorDensMod  = Clamp(anchorDensity_ - fuseBias + chaosSampleLow.densityBias, 0.05f, 0.95f);
             float shimmerDensMod = Clamp(shimmerDensity_ + fuseBias + chaosSampleHigh.densityBias, 0.05f, 0.95f);
 
-            patternGen_.GetTriggers(jitteredTerrain, stepIndex_, anchorDensMod, shimmerDensMod, trigs);
-            
-            kickTrig = trigs[0];
-            snareTrig = trigs[1];
-            hhTrig = trigs[2];
+            if(useSkeletonPatterns_)
+            {
+                // Use new PatternSkeleton system with density threshold
+                GetSkeletonTriggers(stepIndex_, anchorDensMod, shimmerDensMod,
+                                    kickTrig, snareTrig, kickVel, snareVel);
+                
+                // No separate HH in skeleton patterns - it's combined into shimmer
+                hhTrig = false;
+                hhVel = 0.0f;
 
-            // Get Levels for Velocity (Map Y fixed at 0.5)
-            float mapY = 0.5f;
-            kickVel  = static_cast<float>(patternGen_.GetLevel(jitteredTerrain, mapY, 0, stepIndex_)) / 255.0f;
-            snareVel = static_cast<float>(patternGen_.GetLevel(jitteredTerrain, mapY, 1, stepIndex_)) / 255.0f;
-            hhVel    = static_cast<float>(patternGen_.GetLevel(jitteredTerrain, mapY, 2, stepIndex_)) / 255.0f;
+                // Apply phrase-based accent multiplier (strongest on downbeats)
+                float accentMult = GetPhraseAccentMultiplier(phrasePos_);
+                kickVel  = Clamp(kickVel * accentMult, 0.0f, 1.0f);
+                snareVel = Clamp(snareVel * accentMult, 0.0f, 1.0f);
+            }
+            else
+            {
+                // Legacy: Use Grids-based PatternGenerator
+                float jitteredTerrain = Clamp(terrain_ + avgJitterX, 0.0f, 1.0f);
 
-            // Apply phrase-based accent multiplier (strongest on downbeats)
-            float accentMult = GetPhraseAccentMultiplier(phrasePos_);
-            kickVel  = Clamp(kickVel * accentMult, 0.0f, 1.0f);
-            snareVel = Clamp(snareVel * accentMult, 0.0f, 1.0f);
-            hhVel    = Clamp(hhVel * accentMult, 0.0f, 1.0f);
+                patternGen_.GetTriggers(jitteredTerrain, stepIndex_, anchorDensMod, shimmerDensMod, trigs);
+                
+                kickTrig = trigs[0];
+                snareTrig = trigs[1];
+                hhTrig = trigs[2];
+
+                // Get Levels for Velocity (Map Y fixed at 0.5)
+                float mapY = 0.5f;
+                kickVel  = static_cast<float>(patternGen_.GetLevel(jitteredTerrain, mapY, 0, stepIndex_)) / 255.0f;
+                snareVel = static_cast<float>(patternGen_.GetLevel(jitteredTerrain, mapY, 1, stepIndex_)) / 255.0f;
+                hhVel    = static_cast<float>(patternGen_.GetLevel(jitteredTerrain, mapY, 2, stepIndex_)) / 255.0f;
+
+                // Apply phrase-based accent multiplier (strongest on downbeats)
+                float accentMult = GetPhraseAccentMultiplier(phrasePos_);
+                kickVel  = Clamp(kickVel * accentMult, 0.0f, 1.0f);
+                snareVel = Clamp(snareVel * accentMult, 0.0f, 1.0f);
+                hhVel    = Clamp(hhVel * accentMult, 0.0f, 1.0f);
+            }
         }
 
         // Apply Ghost Triggers to HH/Perc stream (High Variation)
@@ -690,6 +716,59 @@ float Sequencer::NextHumanizeRandom()
     humanizeRngState_ ^= humanizeRngState_ >> 17;
     humanizeRngState_ ^= humanizeRngState_ << 5;
     return static_cast<float>(humanizeRngState_ & 0xFFFF) / 65535.0f;
+}
+
+void Sequencer::GetSkeletonTriggers(int step, float anchorDens, float shimmerDens,
+                                    bool& anchorTrig, bool& shimmerTrig,
+                                    float& anchorVel, float& shimmerVel)
+{
+    // Get the current pattern
+    const PatternSkeleton& pattern = GetPattern(currentPatternIndex_);
+
+    // Wrap step to pattern length (32 steps)
+    int wrappedStep = step % kPatternSteps;
+
+    // Apply density threshold to determine if each step fires
+    // Low density = only high-intensity steps fire
+    // High density = all steps including ghosts fire
+    anchorTrig = ShouldStepFire(pattern.anchorIntensity, wrappedStep, anchorDens);
+    shimmerTrig = ShouldStepFire(pattern.shimmerIntensity, wrappedStep, shimmerDens);
+
+    // Get velocity from step intensity
+    if(anchorTrig)
+    {
+        uint8_t intensity = GetStepIntensity(pattern.anchorIntensity, wrappedStep);
+        anchorVel = IntensityToVelocity(intensity);
+
+        // Apply accent parameter - boosts velocity for accent-eligible steps
+        if(IsAccentEligible(pattern.accentMask, wrappedStep))
+        {
+            // Accent parameter scales the boost (0.5 = neutral, 1.0 = max accent)
+            float accentBoost = (anchorAccent_ - 0.5f) * 0.4f; // ±0.2 range
+            anchorVel = Clamp(anchorVel + accentBoost, 0.3f, 1.0f);
+        }
+    }
+    else
+    {
+        anchorVel = 0.0f;
+    }
+
+    if(shimmerTrig)
+    {
+        uint8_t intensity = GetStepIntensity(pattern.shimmerIntensity, wrappedStep);
+        shimmerVel = IntensityToVelocity(intensity);
+
+        // Apply accent parameter
+        if(IsAccentEligible(pattern.accentMask, wrappedStep))
+        {
+            float accentBoost = (shimmerAccent_ - 0.5f) * 0.4f;
+            shimmerVel = Clamp(shimmerVel + accentBoost, 0.3f, 1.0f);
+        }
+    }
+    else
+    {
+        shimmerVel = 0.0f;
+    }
 }
 
 } // namespace daisysp_idm_grids
