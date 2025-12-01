@@ -5,6 +5,7 @@
 #include "daisysp.h"
 #include "PatternGenerator.h"
 #include "ChaosModulator.h"
+#include "GenreConfig.h"
 
 namespace daisysp_idm_grids
 {
@@ -64,6 +65,8 @@ public:
     bool IsClockHigh() const { return clockTimer_ > 0; }
 
     float GetBpm() const { return currentBpm_; }
+    float GetSwingPercent() const { return currentSwing_; }
+    Genre GetCurrentGenre() const { return GetGenreFromTerrain(terrain_); }
     void  SetBpm(float bpm);
     void  SetAccentHoldMs(float milliseconds);
     void  SetHihatHoldMs(float milliseconds);
@@ -109,6 +112,17 @@ private:
     float humanize_   = 0.0f; // Micro-timing jitter
     float clockDiv_   = 0.5f; // Clock division
 
+    // Swing state
+    float currentSwing_       = 0.5f;  // Current effective swing (0.5 = straight)
+    int   swingDelaySamples_  = 0;     // Delay to apply to off-beat steps
+    int   swingDelayCounter_  = 0;     // Countdown for delayed triggers
+    bool  pendingAnchorTrig_  = false; // Anchor trigger waiting for swing delay
+    bool  pendingShimmerTrig_ = false; // Shimmer trigger waiting for swing delay
+    float pendingAnchorVel_   = 0.0f;  // Velocity for pending anchor
+    float pendingShimmerVel_  = 0.0f;  // Velocity for pending shimmer
+    bool  pendingClockTrig_   = false; // Clock trigger waiting for swing delay
+    int   stepDurationSamples_ = 0;    // Duration of one 16th note in samples
+
     // Legacy aliases (for internal use during transition)
     float& lowDensity_    = anchorDensity_;
     float& highDensity_   = shimmerDensity_;
@@ -143,6 +157,8 @@ private:
     void TriggerGate(int channel);
     void TriggerClock();
     void ProcessGates();
+    void ProcessSwingDelay();
+    void UpdateSwingParameters();
     int  HoldMsToSamples(float milliseconds) const;
 };
 

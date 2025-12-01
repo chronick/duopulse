@@ -2,6 +2,7 @@
 #include <catch2/catch_all.hpp>
 #include "../src/Engine/Sequencer.h"
 #include "../src/Engine/LedIndicator.h"
+#include "../src/Engine/GenreConfig.h"
 
 using namespace daisysp_idm_grids;
 
@@ -334,5 +335,107 @@ TEST_CASE("External Clock Integration", "[sequencer]")
     }
     // We can't easily assert sawAudio here because step 1 might be silent depending on pattern.
     // But we can assert that the sequencer doesn't crash and accepts the trigger.
+}
+
+// === Genre-Aware Swing Tests ===
+
+TEST_CASE("Genre detection from terrain", "[swing]")
+{
+    REQUIRE(GetGenreFromTerrain(0.0f) == Genre::Techno);
+    REQUIRE(GetGenreFromTerrain(0.24f) == Genre::Techno);
+    REQUIRE(GetGenreFromTerrain(0.25f) == Genre::Tribal);
+    REQUIRE(GetGenreFromTerrain(0.49f) == Genre::Tribal);
+    REQUIRE(GetGenreFromTerrain(0.50f) == Genre::TripHop);
+    REQUIRE(GetGenreFromTerrain(0.74f) == Genre::TripHop);
+    REQUIRE(GetGenreFromTerrain(0.75f) == Genre::IDM);
+    REQUIRE(GetGenreFromTerrain(1.0f) == Genre::IDM);
+}
+
+TEST_CASE("Swing ranges per genre", "[swing]")
+{
+    // Techno: 52-57%
+    SwingRange techno = GetSwingRange(Genre::Techno);
+    REQUIRE(techno.minSwing == Catch::Approx(0.52f));
+    REQUIRE(techno.maxSwing == Catch::Approx(0.57f));
+    REQUIRE(techno.jitter == Catch::Approx(0.0f));
+
+    // Tribal: 56-62%
+    SwingRange tribal = GetSwingRange(Genre::Tribal);
+    REQUIRE(tribal.minSwing == Catch::Approx(0.56f));
+    REQUIRE(tribal.maxSwing == Catch::Approx(0.62f));
+
+    // Trip-Hop: 60-68%
+    SwingRange tripHop = GetSwingRange(Genre::TripHop);
+    REQUIRE(tripHop.minSwing == Catch::Approx(0.60f));
+    REQUIRE(tripHop.maxSwing == Catch::Approx(0.68f));
+
+    // IDM: 54-65% + jitter
+    SwingRange idm = GetSwingRange(Genre::IDM);
+    REQUIRE(idm.minSwing == Catch::Approx(0.54f));
+    REQUIRE(idm.maxSwing == Catch::Approx(0.65f));
+    REQUIRE(idm.jitter == Catch::Approx(0.03f));
+}
+
+TEST_CASE("Swing calculation from terrain and taste", "[swing]")
+{
+    // Techno at low taste -> 52%
+    REQUIRE(CalculateSwing(0.0f, 0.0f) == Catch::Approx(0.52f));
+    // Techno at high taste -> 57%
+    REQUIRE(CalculateSwing(0.0f, 1.0f) == Catch::Approx(0.57f));
+    // Techno at mid taste -> 54.5%
+    REQUIRE(CalculateSwing(0.0f, 0.5f) == Catch::Approx(0.545f));
+
+    // Trip-Hop at high taste -> 68% (max swing)
+    REQUIRE(CalculateSwing(0.6f, 1.0f) == Catch::Approx(0.68f));
+}
+
+TEST_CASE("Off-beat detection", "[swing]")
+{
+    // Even steps are on-beats (0, 2, 4, 6...)
+    REQUIRE_FALSE(IsOffBeat(0));
+    REQUIRE_FALSE(IsOffBeat(2));
+    REQUIRE_FALSE(IsOffBeat(4));
+    REQUIRE_FALSE(IsOffBeat(14));
+
+    // Odd steps are off-beats (1, 3, 5, 7...)
+    REQUIRE(IsOffBeat(1));
+    REQUIRE(IsOffBeat(3));
+    REQUIRE(IsOffBeat(5));
+    REQUIRE(IsOffBeat(15));
+}
+
+TEST_CASE("Swing delay calculation", "[swing]")
+{
+    // At 50% swing (straight), no delay
+    REQUIRE(CalculateSwingDelaySamples(0.50f, 1000) == 0);
+
+    // At 60% swing, delay is 10% of step duration
+    REQUIRE(CalculateSwingDelaySamples(0.60f, 1000) == 100);
+
+    // At 66% swing (triplet), delay is 16% of step duration
+    REQUIRE(CalculateSwingDelaySamples(0.66f, 1000) == 160);
+}
+
+TEST_CASE("Sequencer swing integration", "[swing]")
+{
+    Sequencer seq;
+    seq.Init(48000.0f);
+
+    // Default terrain (0) = Techno, default taste (0.5) = mid-range
+    // Expected swing: 52% + 0.5 * (57% - 52%) = 54.5%
+    REQUIRE(seq.GetSwingPercent() == Catch::Approx(0.545f).margin(0.01f));
+    REQUIRE(seq.GetCurrentGenre() == Genre::Techno);
+
+    // Set to Trip-Hop with high taste
+    seq.SetTerrain(0.6f);
+    seq.SetSwingTaste(1.0f);
+    REQUIRE(seq.GetCurrentGenre() == Genre::TripHop);
+    REQUIRE(seq.GetSwingPercent() == Catch::Approx(0.68f).margin(0.01f));
+
+    // Set to IDM with low taste
+    seq.SetTerrain(0.9f);
+    seq.SetSwingTaste(0.0f);
+    REQUIRE(seq.GetCurrentGenre() == Genre::IDM);
+    REQUIRE(seq.GetSwingPercent() == Catch::Approx(0.54f).margin(0.01f));
 }
 

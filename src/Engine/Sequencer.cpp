@@ -59,6 +59,18 @@ void Sequencer::Init(float sampleRate)
     gateTime_       = 0.2f;
     humanize_       = 0.0f;
     clockDiv_       = 0.5f;
+
+    // Initialize swing state
+    currentSwing_       = 0.5f;
+    swingDelaySamples_  = 0;
+    swingDelayCounter_  = 0;
+    pendingAnchorTrig_  = false;
+    pendingShimmerTrig_ = false;
+    pendingAnchorVel_   = 0.0f;
+    pendingShimmerVel_  = 0.0f;
+    pendingClockTrig_   = false;
+    stepDurationSamples_ = 0;
+    UpdateSwingParameters();
 }
 
 // === DuoPulse v2 Setters ===
@@ -109,6 +121,7 @@ void Sequencer::SetContour(float value)
 void Sequencer::SetTerrain(float value)
 {
     terrain_ = Clamp(value, 0.0f, 1.0f);
+    UpdateSwingParameters();
 }
 
 void Sequencer::SetLength(int bars)
@@ -129,6 +142,7 @@ void Sequencer::SetGrid(float value)
 void Sequencer::SetSwingTaste(float value)
 {
     swingTaste_ = Clamp(value, 0.0f, 1.0f);
+    UpdateSwingParameters();
 }
 
 void Sequencer::SetGateTime(float value)
@@ -299,49 +313,84 @@ std::array<float, 2> Sequencer::ProcessAudio()
             hhVel = 0.3f + (static_cast<float>(rand() % 100) / 200.0f); 
         }
 
-        TriggerClock();
-        
         // --- Routing Logic ---
-        
-        // Gate 0 (Low/Kick)
-        bool gate0 = kickTrig;
-        float vel0 = kickTrig ? kickVel : 0.0f;
-        
-        // Gate 1 (High/Snare)
-        bool gate1 = snareTrig;
-        float vel1 = snareTrig ? snareVel : 0.0f;
-        
+
+        // Gate 0 (Anchor/Low/Kick)
+        bool  gate0 = kickTrig;
+        float vel0  = kickTrig ? kickVel : 0.0f;
+
+        // Gate 1 (Shimmer/High/Snare)
+        bool  gate1 = snareTrig;
+        float vel1  = snareTrig ? snareVel : 0.0f;
+
         // Route HH/Perc based on Grid (pattern selection also affects routing)
         if(hhTrig)
         {
             if(grid_ < 0.5f)
             {
-                // Route to Low (add tom/perc flavor to kick channel)
+                // Route to Anchor (add tom/perc flavor to kick channel)
                 gate0 = true;
-                vel0 = std::max(vel0, hhVel);
+                vel0  = std::max(vel0, hhVel);
             }
             else
             {
-                // Route to High (add hh/perc flavor to snare channel)
+                // Route to Shimmer (add hh/perc flavor to snare channel)
                 gate1 = true;
-                vel1 = std::max(vel1, hhVel);
+                vel1  = std::max(vel1, hhVel);
             }
         }
 
-        if(gate0)
+        // --- Swing Application ---
+        // Off-beats (odd steps) get delayed according to swing amount
+        // Anchor receives 70% of swing, Shimmer receives 100%
+        bool isOffBeat = IsOffBeat(stepIndex_);
+
+        if(isOffBeat && swingDelaySamples_ > 0)
         {
-            TriggerGate(0);
-            accentTimer_ = accentHoldSamples_;
-            outputLevels_[0] = vel0;
+            // Queue triggers for swing delay
+            // Anchor gets reduced swing (70%)
+            int anchorSwingDelay  = (swingDelaySamples_ * 70) / 100;
+            int shimmerSwingDelay = swingDelaySamples_;
+
+            // Use the larger delay for the counter
+            // (both will fire at the shimmer timing, anchor slightly early within that window)
+            swingDelayCounter_ = shimmerSwingDelay;
+
+            if(gate0)
+            {
+                pendingAnchorTrig_ = true;
+                pendingAnchorVel_  = vel0;
+            }
+            if(gate1)
+            {
+                pendingShimmerTrig_ = true;
+                pendingShimmerVel_  = vel1;
+            }
+            pendingClockTrig_ = true; // Clock also swings
         }
-        
-        if(gate1)
+        else
         {
-            TriggerGate(1);
-            hihatTimer_ = hihatHoldSamples_;
-            outputLevels_[1] = vel1;
+            // On-beat or no swing - fire immediately
+            TriggerClock();
+
+            if(gate0)
+            {
+                TriggerGate(0);
+                accentTimer_     = accentHoldSamples_;
+                outputLevels_[0] = vel0;
+            }
+
+            if(gate1)
+            {
+                TriggerGate(1);
+                hihatTimer_      = hihatHoldSamples_;
+                outputLevels_[1] = vel1;
+            }
         }
     }
+
+    // Process swing delayed triggers (must run every sample)
+    ProcessSwingDelay();
 
     ProcessGates();
 
@@ -363,6 +412,11 @@ void Sequencer::SetBpm(float bpm)
 {
     currentBpm_ = Clamp(bpm, kMinTempo, kMaxTempo);
     metro_.SetFreq(currentBpm_ / 60.0f * 4.0f);
+    // Only update swing if sample rate is initialized (avoid issues during Init)
+    if(sampleRate_ > 0.0f)
+    {
+        UpdateSwingParameters();
+    }
 }
 
 void Sequencer::TriggerGate(int channel)
@@ -426,6 +480,58 @@ int Sequencer::HoldMsToSamples(float milliseconds) const
     const float samples   = (clampedMs / 1000.0f) * sampleRate_;
     int         asInt     = static_cast<int>(samples);
     return asInt < 1 ? 1 : asInt;
+}
+
+void Sequencer::UpdateSwingParameters()
+{
+    // Calculate current swing percentage from terrain (genre) and taste
+    currentSwing_ = CalculateSwing(terrain_, swingTaste_);
+
+    // Calculate step duration in samples (16th note at current BPM)
+    // BPM = beats per minute, 4 16th notes per beat
+    // stepDuration = 60 / (BPM * 4) seconds = sampleRate * 60 / (BPM * 4) samples
+    if(currentBpm_ > 0.0f)
+    {
+        stepDurationSamples_ = static_cast<int>(sampleRate_ * 60.0f / (currentBpm_ * 4.0f));
+    }
+
+    // Calculate swing delay for off-beats
+    swingDelaySamples_ = CalculateSwingDelaySamples(currentSwing_, stepDurationSamples_);
+}
+
+void Sequencer::ProcessSwingDelay()
+{
+    // Process any pending swung triggers
+    if(swingDelayCounter_ > 0)
+    {
+        swingDelayCounter_--;
+
+        // When counter reaches 0, fire the pending triggers
+        if(swingDelayCounter_ == 0)
+        {
+            if(pendingAnchorTrig_)
+            {
+                TriggerGate(0);
+                accentTimer_     = accentHoldSamples_;
+                outputLevels_[0] = pendingAnchorVel_;
+                pendingAnchorTrig_ = false;
+            }
+
+            if(pendingShimmerTrig_)
+            {
+                TriggerGate(1);
+                hihatTimer_      = hihatHoldSamples_;
+                outputLevels_[1] = pendingShimmerVel_;
+                pendingShimmerTrig_ = false;
+            }
+
+            if(pendingClockTrig_)
+            {
+                TriggerClock();
+                pendingClockTrig_ = false;
+            }
+        }
+    }
 }
 
 } // namespace daisysp_idm_grids

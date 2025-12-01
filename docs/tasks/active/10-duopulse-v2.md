@@ -37,9 +37,11 @@ The implementation builds on the existing codebase (`Sequencer`, `PatternGenerat
 - [x] **Update tempo range** — Change kMinTempo from 30 to 90, kMaxTempo from 200 to 160. Reference: `docs/specs/main.md` Technical Specifications.
   - *Completed 2025-12-01*: Updated in Sequencer.h. Tests updated accordingly.
 
-- [ ] **Implement genre-aware swing** — Create SwingRange struct with min/max per genre (Techno 52-57%, Tribal 56-62%, Trip-Hop 60-68%, IDM 54-65%+jitter). Calculate effective swing from terrain + swingTaste. Reference: `docs/specs/main.md` section "Genre-Aware Swing [duopulse-swing]".
+- [x] **Implement genre-aware swing** — Create SwingRange struct with min/max per genre (Techno 52-57%, Tribal 56-62%, Trip-Hop 60-68%, IDM 54-65%+jitter). Calculate effective swing from terrain + swingTaste. Reference: `docs/specs/main.md` section "Genre-Aware Swing [duopulse-swing]".
+  - *Completed 2025-12-01*: Added GenreConfig.h with swing ranges. Anchor gets 70% swing, Shimmer 100%.
 
-- [ ] **Implement swung clock output** — Clock output (CV Out 1) respects swing timing. Fire clock triggers at swing-adjusted positions. Reference: `docs/specs/main.md` section "Genre-Aware Swing [duopulse-swing]".
+- [x] **Implement swung clock output** — Clock output (CV Out 1) respects swing timing. Fire clock triggers at swing-adjusted positions. Reference: `docs/specs/main.md` section "Genre-Aware Swing [duopulse-swing]".
+  - *Completed 2025-12-01*: Clock triggers queued with swing delay alongside voice triggers.
 
 - [ ] **Implement Orbit voice relationship modes** — Interlock (0-33%): shimmer fills gaps. Free (33-67%): independent. Shadow (67-100%): shimmer echoes anchor with delay. Reference: `docs/specs/main.md` section "Orbit Voice Relationships [duopulse-orbit]".
 
