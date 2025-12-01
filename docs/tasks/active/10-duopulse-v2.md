@@ -107,7 +107,8 @@ The implementation builds on the existing codebase (`Sequencer`, `PatternGenerat
 
 ### Phase 7: LED Feedback
 
-- [ ] **Implement LED state machine** — Performance mode: pulse on anchor. Config mode: solid. Shift: brighter. Knob interaction: show value for 1s. Fill active: rapid flash. Reference: `docs/specs/main.md` section "LED Visual Feedback [duopulse-led]".
+- [x] **Implement LED state machine** — Performance mode: pulse on anchor. Config mode: solid. Shift: brighter. Knob interaction: show value for 1s. Fill active: rapid flash. Reference: `docs/specs/main.md` section "LED Visual Feedback [duopulse-led]".
+  - *Completed 2025-12-01*: Updated main.cpp LED logic with all states: anchor pulse, config solid, shift brightness, 1s knob feedback, high FLUX rapid flash (50ms/20Hz).
 
 ### Phase 8: Gate Time Control
 

@@ -350,30 +350,58 @@ void ProcessControls()
         sequencer.TriggerReset();
     }
 
-    // User/front LED Sync
-    // If interaction active (< 1s), show parameter value brightness
-    if (System::GetNow() - lastInteractionTime < 1000)
+    // User/front LED Sync per DuoPulse v2 spec:
+    // - Performance mode: pulse on anchor trigger
+    // - Config mode: solid ON
+    // - Shift held: double brightness (brighter)
+    // - Knob interaction: show value for 1s
+    // - Fill active (high FLUX): rapid flash
+    
+    float ledVoltage = 0.0f;
+    bool  ledDigital = false;
+
+    if(System::GetNow() - lastInteractionTime < 1000)
     {
-        // Use full 5V range for brightness.
-        // Assuming activeParameterValue is 0.0-1.0.
-        // CV_OUT_2 drives the LED.
-        patch.WriteCvOut(patch_sm::CV_OUT_2, activeParameterValue * 5.0f);
-        // Also update digital LED state for redundancy if underlying impl differs?
-        // SetLed takes boolean, so it's ON/OFF.
-        // We probably shouldn't toggle it here if we want smooth analog brightness.
-        // But if we don't SetLed(true), does it override DAC?
-        // Usually SetLed writes to the GPIO connected to the LED.
-        // If that GPIO is also the DAC, they might conflict or be the same.
-        // On Patch SM, LED is on C1 (DAC 2).
-        // Calling WriteCvOut is correct for brightness.
+        // Knob interaction: show parameter value as brightness for 1 second
+        ledVoltage = activeParameterValue * 5.0f;
+        ledDigital = (activeParameterValue > 0.3f);
+    }
+    else if(finalFlux > 0.7f)
+    {
+        // High FLUX (fill active): rapid flash (50ms rate = 20Hz)
+        // Use system time to create rapid flash
+        bool flashState = ((now / 50) % 2) == 0;
+        ledVoltage      = flashState ? 5.0f : 0.0f;
+        ledDigital      = flashState;
     }
     else
     {
-        // Default Behavior
-        const bool ledState = controlState.configMode ? true : sequencer.IsGateHigh(0);
-        patch.SetLed(ledState); // Digital control
-        patch.WriteCvOut(patch_sm::CV_OUT_2, LedIndicator::VoltageForState(ledState));
+        // Default behavior based on mode
+        if(controlState.configMode)
+        {
+            // Config mode: solid ON
+            ledVoltage = 5.0f;
+            ledDigital = true;
+        }
+        else
+        {
+            // Performance mode: pulse on anchor trigger
+            ledDigital = sequencer.IsGateHigh(0);
+            ledVoltage = ledDigital ? 5.0f : 0.0f;
+        }
+
+        // Shift held: increase brightness
+        if(controlState.shiftActive)
+        {
+            // Already at 5V, but we could flash or use a different pattern
+            // For now, ensure LED is bright when shift is held
+            ledVoltage = std::max(ledVoltage, 3.0f);
+            ledDigital = true;
+        }
     }
+
+    patch.SetLed(ledDigital);
+    patch.WriteCvOut(patch_sm::CV_OUT_2, ledVoltage);
 
     patch.WriteCvOut(patch_sm::CV_OUT_1,
                      LedIndicator::VoltageForState(sequencer.IsClockHigh()));
