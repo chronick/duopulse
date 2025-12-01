@@ -26,7 +26,8 @@ The implementation builds on the existing codebase (`Sequencer`, `PatternGenerat
 - [x] **Implement shift layer detection** — Track button hold duration to distinguish tap (<150ms = fill trigger) from hold (>150ms = shift active). Manage 4 separate SoftKnob sets for each mode/shift combination. Reference: `docs/specs/main.md` section "Control System [duopulse-controls]".
   - *Completed 2025-12-01*: Added timing state vars, shift detection logic. Short tap = tap tempo, hold = shift layer.
 
-- [ ] **Update CV routing for always-performance** — CV inputs 5-8 always modulate performance parameters (Anchor Density, Shimmer Density, Flux, Fuse) regardless of current mode. Additive modulation centered at 2.5V. Reference: `docs/specs/main.md` section "CV Input Behavior [duopulse-cv]".
+- [x] **Update CV routing for always-performance** — CV inputs 5-8 always modulate performance parameters (Anchor Density, Shimmer Density, Flux, Fuse) regardless of current mode. Additive modulation centered at 2.5V. Reference: `docs/specs/main.md` section "CV Input Behavior [duopulse-cv]".
+  - *Completed 2025-12-01*: Implemented in Task 1 - CV always modulates performance params with 0.5 center.
 
 ### Phase 2: Sequencer Engine Updates
 
