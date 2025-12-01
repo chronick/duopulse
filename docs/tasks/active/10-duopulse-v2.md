@@ -122,13 +122,17 @@ The implementation builds on the existing codebase (`Sequencer`, `PatternGenerat
 
 ### Phase 10: Testing & Tuning
 
-- [ ] **Unit tests for swing calculation** — Test genre ranges, taste interpolation, swing application to off-beats.
+- [x] **Unit tests for swing calculation** — Test genre ranges, taste interpolation, swing application to off-beats.
+  - *Completed 2025-12-01*: Already implemented. Tests cover genre detection, swing ranges, CalculateSwing, IsOffBeat, CalculateSwingDelaySamples.
 
-- [ ] **Unit tests for Orbit modes** — Test interlock, free, shadow behaviors.
+- [x] **Unit tests for Orbit modes** — Test interlock, free, shadow behaviors.
+  - *Completed 2025-12-01*: Already implemented. Tests cover GetOrbitMode, GetInterlockModifier.
 
-- [ ] **Unit tests for Contour CV modes** — Test velocity, decay, pitch, random outputs.
+- [x] **Unit tests for Contour CV modes** — Test velocity, decay, pitch, random outputs.
+  - *Completed 2025-12-01*: Added tests for GetContourMode and CalculateContourCV in all 4 modes.
 
-- [ ] **Unit tests for phrase modulation** — Test fill zones, build zones, phrase progress calculations.
+- [x] **Unit tests for phrase modulation** — Test fill zones, build zones, phrase progress calculations.
+  - *Completed 2025-12-01*: Added tests for CalculatePhrasePosition, fill/build zone scaling, GetPhraseFillBoost, GetPhraseAccentMultiplier.
 
 - [ ] **Pattern tuning by ear** — Iterate on 16 skeleton patterns for musical feel. Tune density curves, accent intensities, swing ranges.
 

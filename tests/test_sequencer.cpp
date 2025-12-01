@@ -473,3 +473,182 @@ TEST_CASE("Interlock modifier calculation", "[orbit]")
     REQUIRE(GetInterlockModifier(false, 0.165f) == Catch::Approx(0.15f).margin(0.02f));
 }
 
+// === Phrase Position Tests ===
+
+TEST_CASE("Phrase position calculation", "[phrase]")
+{
+    // 4-bar loop, step 0
+    PhrasePosition pos = CalculatePhrasePosition(0, 4);
+    REQUIRE(pos.currentBar == 0);
+    REQUIRE(pos.stepInBar == 0);
+    REQUIRE(pos.stepInPhrase == 0);
+    REQUIRE(pos.phraseProgress == Catch::Approx(0.0f));
+    REQUIRE(pos.isLastBar == false);
+    REQUIRE(pos.isDownbeat == true);
+    REQUIRE(pos.isFillZone == false);
+    REQUIRE(pos.isBuildZone == false);
+
+    // 4-bar loop, step 16 (start of bar 2)
+    pos = CalculatePhrasePosition(16, 4);
+    REQUIRE(pos.currentBar == 1);
+    REQUIRE(pos.stepInBar == 0);
+    REQUIRE(pos.isDownbeat == true);
+    REQUIRE(pos.isLastBar == false);
+
+    // 4-bar loop, step 48 (start of bar 4 - last bar)
+    pos = CalculatePhrasePosition(48, 4);
+    REQUIRE(pos.currentBar == 3);
+    REQUIRE(pos.isLastBar == true);
+
+    // 4-bar loop, step 63 (last step - should be in fill zone)
+    pos = CalculatePhrasePosition(63, 4);
+    REQUIRE(pos.stepInPhrase == 63);
+    REQUIRE(pos.phraseProgress == Catch::Approx(63.0f / 64.0f).margin(0.01f));
+    REQUIRE(pos.isFillZone == true);
+    REQUIRE(pos.isBuildZone == true);
+}
+
+TEST_CASE("Fill and build zone scaling", "[phrase]")
+{
+    // 1-bar loop: fill zone = last 4 steps, build zone = last 8 steps
+    PhrasePosition pos1 = CalculatePhrasePosition(12, 1); // Step 12 of 16
+    REQUIRE(pos1.isFillZone == true);  // 4 steps from end
+    REQUIRE(pos1.isBuildZone == true);
+
+    PhrasePosition pos2 = CalculatePhrasePosition(8, 1); // Step 8 of 16
+    REQUIRE(pos2.isFillZone == false);
+    REQUIRE(pos2.isBuildZone == true); // 8 steps from end
+
+    PhrasePosition pos3 = CalculatePhrasePosition(7, 1); // Step 7 of 16
+    REQUIRE(pos3.isBuildZone == false);
+
+    // 8-bar loop: fill zone = last 32 steps (capped), build zone = last 64 steps (capped)
+    PhrasePosition pos4 = CalculatePhrasePosition(128 - 16, 8); // 16 steps from end
+    REQUIRE(pos4.isFillZone == true);  // Within 32-step fill zone
+    REQUIRE(pos4.isBuildZone == true);
+
+    PhrasePosition pos5 = CalculatePhrasePosition(128 - 33, 8); // 33 steps from end (just outside fill zone)
+    REQUIRE(pos5.isFillZone == false);
+    REQUIRE(pos5.isBuildZone == true); // Still in build zone (64 steps)
+}
+
+TEST_CASE("Phrase fill boost calculation", "[phrase]")
+{
+    // Not in fill or build zone
+    PhrasePosition notInZone;
+    notInZone.isFillZone = false;
+    notInZone.isBuildZone = false;
+    REQUIRE(GetPhraseFillBoost(notInZone, 0.0f) == 0.0f);
+
+    // In build zone (not fill)
+    PhrasePosition buildZone;
+    buildZone.isFillZone = false;
+    buildZone.isBuildZone = true;
+    float boost = GetPhraseFillBoost(buildZone, 0.0f); // Techno
+    REQUIRE(boost == Catch::Approx(0.3f * 0.5f).margin(0.01f)); // 30% * 50% genre scale
+
+    // In fill zone, IDM terrain
+    PhrasePosition fillZone;
+    fillZone.isFillZone = true;
+    fillZone.isBuildZone = true;
+    boost = GetPhraseFillBoost(fillZone, 0.9f); // IDM
+    REQUIRE(boost == Catch::Approx(0.5f * 1.5f).margin(0.01f)); // 50% * 150% genre scale
+}
+
+TEST_CASE("Phrase accent multiplier", "[phrase]")
+{
+    // Phrase start (bar 0, step 0) - strongest accent
+    PhrasePosition phraseStart;
+    phraseStart.currentBar = 0;
+    phraseStart.stepInBar = 0;
+    phraseStart.isFillZone = false;
+    phraseStart.phraseProgress = 0.0f;
+    REQUIRE(GetPhraseAccentMultiplier(phraseStart) == Catch::Approx(1.2f));
+
+    // Bar downbeat (not phrase start)
+    PhrasePosition barDownbeat;
+    barDownbeat.currentBar = 2;
+    barDownbeat.stepInBar = 0;
+    barDownbeat.isFillZone = false;
+    barDownbeat.isDownbeat = true;
+    REQUIRE(GetPhraseAccentMultiplier(barDownbeat) == Catch::Approx(1.1f));
+
+    // Regular step
+    PhrasePosition regular;
+    regular.currentBar = 1;
+    regular.stepInBar = 3;
+    regular.isFillZone = false;
+    regular.isDownbeat = false;
+    REQUIRE(GetPhraseAccentMultiplier(regular) == Catch::Approx(1.0f));
+}
+
+// === Contour CV Mode Tests ===
+
+TEST_CASE("Contour mode detection", "[contour]")
+{
+    REQUIRE(GetContourMode(0.0f) == ContourMode::Velocity);
+    REQUIRE(GetContourMode(0.24f) == ContourMode::Velocity);
+    REQUIRE(GetContourMode(0.25f) == ContourMode::Decay);
+    REQUIRE(GetContourMode(0.49f) == ContourMode::Decay);
+    REQUIRE(GetContourMode(0.50f) == ContourMode::Pitch);
+    REQUIRE(GetContourMode(0.74f) == ContourMode::Pitch);
+    REQUIRE(GetContourMode(0.75f) == ContourMode::Random);
+    REQUIRE(GetContourMode(1.0f) == ContourMode::Random);
+}
+
+TEST_CASE("Contour CV calculation - Velocity mode", "[contour]")
+{
+    // On trigger, CV = velocity
+    float cv = CalculateContourCV(ContourMode::Velocity, 0.8f, 0.5f, 0.0f, true);
+    REQUIRE(cv == Catch::Approx(0.8f));
+
+    // Between triggers, decays slowly
+    cv = CalculateContourCV(ContourMode::Velocity, 0.0f, 0.5f, 0.8f, false);
+    REQUIRE(cv == Catch::Approx(0.8f * 0.95f).margin(0.01f));
+}
+
+TEST_CASE("Contour CV calculation - Decay mode", "[contour]")
+{
+    // On trigger, CV maps velocity to decay hint
+    float cv = CalculateContourCV(ContourMode::Decay, 1.0f, 0.5f, 0.0f, true);
+    REQUIRE(cv == Catch::Approx(1.0f).margin(0.01f)); // Max velocity = max CV
+
+    cv = CalculateContourCV(ContourMode::Decay, 0.0f, 0.5f, 0.0f, true);
+    REQUIRE(cv == Catch::Approx(0.2f).margin(0.01f)); // Min velocity = 0.2 CV
+
+    // Decays between triggers
+    cv = CalculateContourCV(ContourMode::Decay, 0.0f, 0.5f, 1.0f, false);
+    REQUIRE(cv == Catch::Approx(0.85f).margin(0.01f));
+}
+
+TEST_CASE("Contour CV calculation - Pitch mode", "[contour]")
+{
+    // On trigger, CV centered at 0.5 with velocity-scaled random offset
+    // With random = 0.5, offset = 0 (centered)
+    float cv = CalculateContourCV(ContourMode::Pitch, 1.0f, 0.5f, 0.0f, true);
+    REQUIRE(cv == Catch::Approx(0.5f).margin(0.01f));
+
+    // With random = 1.0 and max velocity, offset = +0.2
+    cv = CalculateContourCV(ContourMode::Pitch, 1.0f, 1.0f, 0.0f, true);
+    REQUIRE(cv == Catch::Approx(0.7f).margin(0.01f));
+
+    // With random = 0.0 and max velocity, offset = -0.2
+    cv = CalculateContourCV(ContourMode::Pitch, 1.0f, 0.0f, 0.0f, true);
+    REQUIRE(cv == Catch::Approx(0.3f).margin(0.01f));
+
+    // Holds between triggers
+    cv = CalculateContourCV(ContourMode::Pitch, 0.0f, 0.5f, 0.7f, false);
+    REQUIRE(cv == Catch::Approx(0.7f));
+}
+
+TEST_CASE("Contour CV calculation - Random mode", "[contour]")
+{
+    // On trigger, CV = random value
+    float cv = CalculateContourCV(ContourMode::Random, 0.5f, 0.75f, 0.0f, true);
+    REQUIRE(cv == Catch::Approx(0.75f));
+
+    // Holds between triggers
+    cv = CalculateContourCV(ContourMode::Random, 0.0f, 0.5f, 0.75f, false);
+    REQUIRE(cv == Catch::Approx(0.75f));
+}
+
