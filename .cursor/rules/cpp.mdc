@@ -1,0 +1,216 @@
+---
+globs: **/*.cpp,**/*.h,src/**/*
+alwaysApply: false
+---
+# Cursor Rules for DaisySP Patch.Init Eurorack Firmware
+
+## Project Overview
+
+This is a custom firmware project for the Electro-Smith Patch.Init Eurorack module using DaisySP DSP library. The Patch.Init is a Eurorack module with:
+- 2x CV inputs/outputs (±5V)
+- 2x audio inputs/outputs
+- GPIO for buttons, LEDs, encoders
+- STM32H7 microcontroller
+
+### Project Structure
+- `src/` - Source code (main.cpp, Engine/, System/)
+- `inc/` - Header files
+- `tests/` - Unit tests (Catch2 framework)
+- `docs/` - Documentation (specs, tasks, chats)
+- `DaisySP/` - DaisySP library (git submodule)
+- `libDaisy/` - libDaisy hardware abstraction (git submodule)
+- `build/` - Build artifacts
+
+### Build System
+Use `make` to build the firmware. Run `make help` to see all available targets and options.
+
+## C++ Coding Standards
+
+### General Guidelines
+- Use C++17 standard features
+- Follow RAII principles for resource management
+- Prefer smart pointers over raw pointers
+- Use `const` wherever possible
+- Prefer `constexpr` for compile-time constants
+- Use `auto` judiciously for type deduction when it improves readability
+- Avoid `using namespace` in header files
+- Avoid putting substantial code in .h files. If it can go in a .cpp file, it should.
+
+### Naming Conventions
+- **Classes**: PascalCase (e.g., `AudioProcessor`, `EnvelopeGenerator`)
+- **Functions/Methods**: camelCase (e.g., `processAudio()`, `setFrequency()`)
+- **Variables**: camelCase (e.g., `audioBuffer`, `sampleRate`)
+- **Constants**: UPPER_SNAKE_CASE (e.g., `MAX_BUFFER_SIZE`, `SAMPLE_RATE`)
+- **Private members**: camelCase with trailing underscore (e.g., `frequency_`, `buffer_`)
+- **Enums**: PascalCase for type, UPPER_SNAKE_CASE for values (e.g., `enum State { IDLE, RUNNING, STOPPED }`)
+
+### Code Organization
+- One class per header file
+- Keep functions focused and single-purpose
+- Maximum function length: ~50 lines
+- Use forward declarations in headers when possible
+- Include guards: `#pragma once` or `#ifndef/#define/#endif`
+
+### Memory Management
+- Use `std::unique_ptr` for exclusive ownership
+- Use `std::shared_ptr` only when shared ownership is necessary
+- Avoid `new`/`delete` - use smart pointers or stack allocation
+- For audio buffers, prefer stack allocation or pre-allocated buffers
+- Be mindful of heap allocations in audio callbacks (avoid if possible)
+
+### Error Handling
+- Use return codes for recoverable errors
+- Use assertions (`assert()` or `DSY_ASSERT()`) for programming errors
+- Validate inputs at function boundaries
+- Handle hardware initialization failures gracefully
+
+## DaisySP-Specific Guidelines
+
+### Audio Processing
+- Audio callbacks must be real-time safe (no blocking operations)
+- Use `daisysp::AudioHandle` for audio I/O
+- Process audio in blocks (typically 4-32 samples)
+- Avoid dynamic memory allocation in audio callbacks
+- Use `daisysp::DcBlock` to remove DC offset when needed
+- Normalize audio levels: Eurorack levels are typically ±5V (±1.0 in normalized range)
+
+### Hardware Abstraction
+- Use `daisy::Patch` for Patch.Init hardware access
+- Initialize hardware in `main()` before entering audio callback
+- Use `daisy::GPIO` for digital I/O
+- Use `daisy::AdcChannelConfig` for CV inputs
+- Use `daisy::DacHandle` for CV outputs
+- Sample rate: typically 48kHz for Patch.Init
+
+### DSP Module Usage
+- Initialize DSP objects before use (call `Init()` methods)
+- Set parameters before processing (e.g., `SetFreq()`, `SetAmp()`)
+- Process samples in loops, not individual samples when possible
+- Use `daisysp::Phasor` for LFOs and modulation
+- Use `daisysp::Oscillator` for audio-rate oscillators
+- Use `daisysp::Adsr` for envelope generation
+
+### Common Patterns
+```cpp
+// Audio callback pattern
+void AudioCallback(daisysp::AudioHandle::InputBuffer in,
+                   daisysp::AudioHandle::OutputBuffer out,
+                   size_t size)
+{
+    for (size_t i = 0; i < size; i++)
+    {
+        // Process audio here
+        out[0][i] = processor.Process(in[0][i]);
+        out[1][i] = processor.Process(in[1][i]);
+    }
+}
+
+// Initialization pattern
+void InitAudio(daisy::Patch* patch)
+{
+    patch->Init();
+    patch->SetAudioSampleRate(daisy::SaiHandle::Config::SampleRate::SAI_48KHZ);
+    patch->SetAudioBlockSize(4);
+    patch->StartAudio(AudioCallback);
+}
+```
+
+## Eurorack Module Guidelines
+
+### Patch.Init Module Anatomy
+The Patch.Init module provides:
+- **Audio I/O**: 2x CV inputs, 2x CV outputs, 2x audio inputs, 2x audio outputs
+- **Digital I/O**: Multiple GPIO pins for buttons, LEDs, encoders
+- **Processing**: STM32H7 microcontroller with floating-point unit
+- **Power**: Eurorack power connector (+12V, -12V, GND)
+
+### CV Handling
+- CV inputs: ±5V range (0-5V unipolar, -5V to +5V bipolar)
+- CV outputs: ±5V range
+- Use `daisy::AdcChannelConfig` to configure CV inputs
+- Scale CV inputs appropriately (typically 0.0-1.0 or -1.0 to 1.0)
+- Use `daisy::DacHandle` for CV outputs
+- Consider slew limiting for CV outputs to prevent clicks
+
+### Audio Levels
+- Eurorack audio: ±5V peak-to-peak (±1.0 normalized)
+- Input gain staging: Consider preamp/attenuation
+- Output gain staging: Ensure proper levels to avoid clipping
+- Use `daisysp::Limiter` or `daisysp::Compressor` for dynamics control
+
+### User Interface
+- Buttons: Use `daisy::GPIO` with debouncing
+- LEDs: Use `daisy::GPIO` or PWM for brightness control
+- Encoders: Use `daisy::Encoder` class
+- Consider visual feedback for all user actions
+
+### Real-Time Constraints
+- Audio callback must complete within sample period (~20.8μs at 48kHz)
+- Avoid blocking operations (file I/O, network, etc.)
+- Use lock-free data structures for communication between threads
+- Keep audio processing deterministic
+
+## Code Examples
+
+### Good Example
+```cpp
+class OscillatorProcessor
+{
+public:
+    void Init(float sample_rate)
+    {
+        sample_rate_ = sample_rate;
+        osc_.Init(sample_rate_);
+        osc_.SetWaveform(daisysp::Oscillator::WAVE_SIN);
+        osc_.SetFreq(440.0f);
+        osc_.SetAmp(0.5f);
+    }
+
+    float Process(float cv_input)
+    {
+        // Map CV input (0-1) to frequency range (20Hz - 20kHz)
+        float freq = 20.0f + cv_input * 19980.0f;
+        osc_.SetFreq(freq);
+        return osc_.Process();
+    }
+
+private:
+    daisysp::Oscillator osc_;
+    float sample_rate_;
+};
+```
+
+### Bad Example (Avoid)
+```cpp
+class OscProc  // Too abbreviated
+{
+public:
+    void init(float sr)  // Inconsistent naming
+    {
+        osc = new daisysp::Oscillator();  // Raw pointer, memory leak
+        osc->Init(sr);
+    }
+
+    float process(float cv)  // No validation
+    {
+        osc->SetFreq(cv * 20000);  // Magic number, no comments
+        return osc->Process();
+    }
+
+    daisysp::Oscillator* osc;  // Public member, raw pointer
+};
+```
+
+## Testing Guidelines
+- Write unit tests for DSP algorithms
+- Test edge cases (NaN, infinity, out-of-range values)
+- Use mock objects for hardware dependencies
+- Test at different sample rates
+- Verify real-time performance
+
+## Documentation
+- Document public APIs with comments
+- Explain non-obvious algorithms
+- Include usage examples in comments
+- Document hardware pin assignments
+- Keep README up to date

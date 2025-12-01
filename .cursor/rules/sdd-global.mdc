@@ -1,3 +1,6 @@
+---
+alwaysApply: true
+---
 # Spec-Driven Development Rules (Global)
 
 You are working in a repo that uses a lightweight Spec-Driven Development (SDD) workflow.
