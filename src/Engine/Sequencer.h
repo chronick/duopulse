@@ -156,6 +156,9 @@ private:
     int clockTimer_ = 0;
     int clockDurationSamples_ = 0;
 
+    // Clock Division State
+    int clockDivCounter_ = 0;  // Counter for clock division
+
     // External Clock Logic
     bool usingExternalClock_ = false;
     int  externalClockTimeout_ = 0;
@@ -187,6 +190,7 @@ private:
     void  UpdateSwingParameters();
     int   HoldMsToSamples(float milliseconds) const;
     float NextHumanizeRandom(); // Returns 0-1 for humanize jitter
+    int   GetClockDivisionFactor() const; // Returns 1, 2, 4 for division or -2, -4 for multiplication
 
     // PatternSkeleton-based trigger generation
     // Returns true if triggered, sets velocity output

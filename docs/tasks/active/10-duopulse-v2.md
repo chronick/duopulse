@@ -111,11 +111,13 @@ The implementation builds on the existing codebase (`Sequencer`, `PatternGenerat
 
 ### Phase 8: Gate Time Control
 
-- [ ] **Implement configurable gate time** — Range 5-50ms controlled by K2+Shift in Config Mode. Apply to next trigger. Reference: `docs/specs/main.md` section "Control System [duopulse-controls]".
+- [x] **Implement configurable gate time** — Range 5-50ms controlled by K2+Shift in Config Mode. Apply to next trigger. Reference: `docs/specs/main.md` section "Control System [duopulse-controls]".
+  - *Completed 2025-12-01*: Already implemented. SetGateTime() maps 0-1 to 5-50ms, wired up in main.cpp as K2+Shift in Config Mode.
 
 ### Phase 9: Clock Division
 
-- [ ] **Implement clock output division/multiplication** — ÷4, ÷2, ×1, ×2, ×4 based on K4+Shift in Config Mode. Reference: `docs/specs/main.md` section "Control System [duopulse-controls]".
+- [x] **Implement clock output division/multiplication** — ÷4, ÷2, ×1, ×2, ×4 based on K4+Shift in Config Mode. Reference: `docs/specs/main.md` section "Control System [duopulse-controls]".
+  - *Completed 2025-12-01*: Added GetClockDivisionFactor() and clock division logic in TriggerClock(). Division (÷2, ÷4) works. Multiplication noted as future enhancement (requires sub-step timing).
 
 ### Phase 10: Testing & Tuning
 

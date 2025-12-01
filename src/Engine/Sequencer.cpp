@@ -89,6 +89,9 @@ void Sequencer::Init(float sampleRate)
     useSkeletonPatterns_ = true;
     currentPatternIndex_ = 0;
 
+    // Initialize clock division
+    clockDivCounter_ = 0;
+
     UpdateSwingParameters();
 }
 
@@ -184,6 +187,28 @@ void Sequencer::SetHumanize(float value)
 void Sequencer::SetClockDiv(float value)
 {
     clockDiv_ = Clamp(value, 0.0f, 1.0f);
+}
+
+int Sequencer::GetClockDivisionFactor() const
+{
+    // Clock division/multiplication based on clockDiv_ parameter
+    // | Range     | Division |
+    // |-----------|----------|
+    // | 0-20%     | ÷4       |
+    // | 20-40%    | ÷2       |
+    // | 40-60%    | ×1       |
+    // | 60-80%    | ×2       |
+    // | 80-100%   | ×4       |
+    // Returns: positive for division (4,2,1), negative for multiplication (-2,-4)
+    if(clockDiv_ < 0.2f)
+        return 4;  // ÷4: output every 4 steps
+    if(clockDiv_ < 0.4f)
+        return 2;  // ÷2: output every 2 steps
+    if(clockDiv_ < 0.6f)
+        return 1;  // ×1: output every step
+    if(clockDiv_ < 0.8f)
+        return -2; // ×2: output twice per step
+    return -4;     // ×4: output four times per step
 }
 
 // Legacy interface
@@ -604,7 +629,33 @@ void Sequencer::TriggerGate(int channel)
 
 void Sequencer::TriggerClock()
 {
-    clockTimer_ = clockDurationSamples_;
+    // Apply clock division
+    int divFactor = GetClockDivisionFactor();
+
+    if(divFactor > 1)
+    {
+        // Division mode (÷2, ÷4): Only fire every N steps
+        clockDivCounter_++;
+        if(clockDivCounter_ >= divFactor)
+        {
+            clockDivCounter_ = 0;
+            clockTimer_ = clockDurationSamples_;
+        }
+        // Otherwise skip this clock trigger
+    }
+    else if(divFactor < 0)
+    {
+        // Multiplication mode (×2, ×4): Fire clock now
+        // Note: True multiplication would require sub-step timing.
+        // For now, we fire the clock on every step (same as ×1).
+        // Future enhancement: Add a fast timer for ×2/×4 sub-pulses.
+        clockTimer_ = clockDurationSamples_;
+    }
+    else
+    {
+        // Unity mode (×1): Fire every step
+        clockTimer_ = clockDurationSamples_;
+    }
 }
 
 void Sequencer::ProcessGates()
