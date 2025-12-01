@@ -128,5 +128,48 @@ inline int CalculateSwingDelaySamples(float swingPercent, int stepDurationSample
     return static_cast<int>(delayFraction * static_cast<float>(stepDurationSamples));
 }
 
+// === Orbit Voice Relationship Modes ===
+
+enum class OrbitMode : uint8_t
+{
+    Interlock = 0, // Shimmer fills gaps in Anchor (call-response)
+    Free      = 1, // Independent patterns, no collision logic
+    Shadow    = 2  // Shimmer echoes Anchor with 1-step delay
+};
+
+/**
+ * Get Orbit mode from orbit parameter (0-1).
+ * Interlock: 0-33%, Free: 33-67%, Shadow: 67-100%
+ */
+inline OrbitMode GetOrbitMode(float orbit)
+{
+    if(orbit < 0.33f)
+        return OrbitMode::Interlock;
+    if(orbit < 0.67f)
+        return OrbitMode::Free;
+    return OrbitMode::Shadow;
+}
+
+/**
+ * Calculate shimmer probability modifier for Interlock mode.
+ * When anchor fires, shimmer probability is reduced.
+ * When anchor is silent, shimmer probability is boosted.
+ * 
+ * @param anchorFired True if anchor triggered this step
+ * @param orbit Orbit parameter (0-0.33 for Interlock)
+ * @return Probability modifier (-0.3 to +0.3)
+ */
+inline float GetInterlockModifier(bool anchorFired, float orbit)
+{
+    // Interlock strength scales with how deep into the Interlock zone we are
+    // At orbit=0, max interlock effect. At orbit=0.33, minimal effect
+    float strength = 1.0f - (orbit / 0.33f);
+    if(strength < 0.0f)
+        strength = 0.0f;
+
+    // ±30% probability modifier at max strength
+    return anchorFired ? (-0.3f * strength) : (0.3f * strength);
+}
+
 } // namespace daisysp_idm_grids
 

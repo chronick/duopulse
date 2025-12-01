@@ -123,6 +123,10 @@ private:
     bool  pendingClockTrig_   = false; // Clock trigger waiting for swing delay
     int   stepDurationSamples_ = 0;    // Duration of one 16th note in samples
 
+    // Orbit/Shadow state (for Shadow mode: shimmer echoes anchor with 1-step delay)
+    bool  lastAnchorTrig_ = false;     // Whether anchor triggered on previous step
+    float lastAnchorVel_  = 0.0f;      // Velocity of previous anchor trigger
+
     // Legacy aliases (for internal use during transition)
     float& lowDensity_    = anchorDensity_;
     float& highDensity_   = shimmerDensity_;

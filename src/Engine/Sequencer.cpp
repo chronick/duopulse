@@ -70,6 +70,11 @@ void Sequencer::Init(float sampleRate)
     pendingShimmerVel_  = 0.0f;
     pendingClockTrig_   = false;
     stepDurationSamples_ = 0;
+
+    // Initialize Orbit/Shadow state
+    lastAnchorTrig_ = false;
+    lastAnchorVel_  = 0.0f;
+
     UpdateSwingParameters();
 }
 
@@ -310,18 +315,71 @@ std::array<float, 2> Sequencer::ProcessAudio()
         {
             hhTrig = true;
             // Ghost triggers are usually quieter
-            hhVel = 0.3f + (static_cast<float>(rand() % 100) / 200.0f); 
+            hhVel = 0.3f + (static_cast<float>(rand() % 100) / 200.0f);
         }
 
-        // --- Routing Logic ---
+        // --- Orbit Voice Relationship Logic ---
+        OrbitMode orbitMode = GetOrbitMode(orbit_);
 
-        // Gate 0 (Anchor/Low/Kick)
+        // Gate 0 (Anchor/Low/Kick) - determined by pattern
         bool  gate0 = kickTrig;
         float vel0  = kickTrig ? kickVel : 0.0f;
 
-        // Gate 1 (Shimmer/High/Snare)
-        bool  gate1 = snareTrig;
-        float vel1  = snareTrig ? snareVel : 0.0f;
+        // Gate 1 (Shimmer/High/Snare) - affected by Orbit mode
+        bool  gate1 = false;
+        float vel1  = 0.0f;
+
+        switch(orbitMode)
+        {
+            case OrbitMode::Interlock:
+            {
+                // Shimmer fills gaps - when anchor fires, reduce shimmer;
+                // when anchor silent, boost shimmer
+                float interlockMod = GetInterlockModifier(gate0, orbit_);
+                float modifiedShimmerDens =
+                    Clamp(shimmerDensity_ + interlockMod, 0.0f, 1.0f);
+
+                // Re-evaluate shimmer trigger with modified density
+                // Simple approach: if snare was going to trigger, apply probability check
+                if(snareTrig)
+                {
+                    // Interlock reduces probability when anchor fires
+                    float prob = modifiedShimmerDens;
+                    gate1      = (static_cast<float>(rand() % 100) / 100.0f) < prob;
+                    vel1       = gate1 ? snareVel : 0.0f;
+                }
+                else if(!gate0 && interlockMod > 0.0f)
+                {
+                    // Anchor silent - chance to add shimmer hit
+                    float prob = interlockMod;
+                    if((static_cast<float>(rand() % 100) / 100.0f) < prob)
+                    {
+                        gate1 = true;
+                        vel1  = snareVel > 0.0f ? snareVel : 0.6f;
+                    }
+                }
+                break;
+            }
+
+            case OrbitMode::Free:
+                // Independent patterns, no collision logic (default behavior)
+                gate1 = snareTrig;
+                vel1  = snareTrig ? snareVel : 0.0f;
+                break;
+
+            case OrbitMode::Shadow:
+                // Shimmer echoes anchor with 1-step delay at 70% velocity
+                if(lastAnchorTrig_)
+                {
+                    gate1 = true;
+                    vel1  = lastAnchorVel_ * 0.7f; // 70% velocity
+                }
+                break;
+        }
+
+        // Store current anchor state for next step's Shadow mode
+        lastAnchorTrig_ = gate0;
+        lastAnchorVel_  = vel0;
 
         // Route HH/Perc based on Grid (pattern selection also affects routing)
         if(hhTrig)

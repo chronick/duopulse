@@ -439,3 +439,37 @@ TEST_CASE("Sequencer swing integration", "[swing]")
     REQUIRE(seq.GetSwingPercent() == Catch::Approx(0.54f).margin(0.01f));
 }
 
+// === Orbit Voice Relationship Tests ===
+
+TEST_CASE("Orbit mode detection", "[orbit]")
+{
+    // Interlock: 0-33%
+    REQUIRE(GetOrbitMode(0.0f) == OrbitMode::Interlock);
+    REQUIRE(GetOrbitMode(0.32f) == OrbitMode::Interlock);
+
+    // Free: 33-67%
+    REQUIRE(GetOrbitMode(0.33f) == OrbitMode::Free);
+    REQUIRE(GetOrbitMode(0.5f) == OrbitMode::Free);
+    REQUIRE(GetOrbitMode(0.66f) == OrbitMode::Free);
+
+    // Shadow: 67-100%
+    REQUIRE(GetOrbitMode(0.67f) == OrbitMode::Shadow);
+    REQUIRE(GetOrbitMode(1.0f) == OrbitMode::Shadow);
+}
+
+TEST_CASE("Interlock modifier calculation", "[orbit]")
+{
+    // At orbit=0 (max interlock), anchor firing reduces shimmer by 30%
+    REQUIRE(GetInterlockModifier(true, 0.0f) == Catch::Approx(-0.3f));
+    // At orbit=0 (max interlock), anchor silent boosts shimmer by 30%
+    REQUIRE(GetInterlockModifier(false, 0.0f) == Catch::Approx(0.3f));
+
+    // At orbit=0.33 (edge of interlock zone), minimal effect
+    REQUIRE(GetInterlockModifier(true, 0.33f) == Catch::Approx(0.0f).margin(0.01f));
+    REQUIRE(GetInterlockModifier(false, 0.33f) == Catch::Approx(0.0f).margin(0.01f));
+
+    // At orbit=0.165 (mid interlock), half effect
+    REQUIRE(GetInterlockModifier(true, 0.165f) == Catch::Approx(-0.15f).margin(0.02f));
+    REQUIRE(GetInterlockModifier(false, 0.165f) == Catch::Approx(0.15f).margin(0.02f));
+}
+
