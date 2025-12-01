@@ -66,7 +66,8 @@ The implementation builds on the existing codebase (`Sequencer`, `PatternGenerat
 - [x] **Implement FLUX probabilistic variation** — FLUX adds fill chance (30% max), ghost chance (50% max), velocity jitter (20%), timing jitter (IDM only). Reference: `docs/specs/main.md` section "Pattern Generation [duopulse-patterns]".
   - *Completed 2025-12-01*: Added `CalculateGhostProbability()`, `ShouldTriggerGhost()`, `ApplyVelocityJitter()`. Ghost-level steps (1-4 intensity) can fire via FLUX even below density threshold.
 
-- [ ] **Implement FUSE energy tilt** — CCW boosts anchor density, CW boosts shimmer density. Reference: `docs/specs/main.md` section "Control System [duopulse-controls]".
+- [x] **Implement FUSE energy tilt** — CCW boosts anchor density, CW boosts shimmer density. Reference: `docs/specs/main.md` section "Control System [duopulse-controls]".
+  - *Completed 2025-12-01*: Already implemented. fuseBias = (fuse - 0.5) * 0.3 applies ±15% density tilt. CCW boosts anchor, CW boosts shimmer.
 
 ### Phase 4: Phrase Structure
 
