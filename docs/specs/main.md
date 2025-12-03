@@ -255,6 +255,46 @@ DuoPulse uses a **hybrid** pattern system:
 
 This provides the musicality of curated patterns with the flexibility of algorithmic generation.
 
+### Pattern Library
+
+The sequencer includes 16 curated skeleton patterns organized by genre affinity:
+
+| Index | Pattern Name | Genre | Relationship | Description |
+|-------|--------------|-------|--------------|-------------|
+| **0** | Techno Four-on-Floor | Techno | Free | Classic techno kick pattern with straight hi-hats. Anchor: Strong kicks on quarter notes (0, 4, 8, 12, 16, 20, 24, 28). Shimmer: 8th note hats, accent on off-beats. |
+| **1** | Techno Minimal | Techno | Free | Sparse, hypnotic pattern. Anchor: Kick on 1 and occasional ghost. Shimmer: Minimal hats, emphasis on space. |
+| **2** | Techno Driving | Techno | Free | Relentless energy, 16th note hats. Anchor: Solid four-on-floor with some ghost notes. Shimmer: Constant 16ths with varying intensity. |
+| **3** | Techno Pounding | Techno | Interlock | Heavy, industrial feel. Anchor: Double kicks and syncopation. Shimmer: Industrial clang accents. |
+| **4** | Tribal Clave | Tribal | Interlock | Based on son clave rhythm. Anchor: 3-2 clave feel. Shimmer: Fills between clave hits. |
+| **5** | Tribal Interlocking | Tribal | Interlock | Anchor and shimmer designed to perfectly interlock. Creates polyrhythmic texture. |
+| **6** | Tribal Polyrhythmic | Tribal | Free | 3-against-4 polyrhythm feel. Anchor: 4-beat pattern. Shimmer: 3-beat pattern (every ~10.67 steps, approximated). |
+| **7** | Tribal Circular | Tribal/Techno | Interlock | Hypnotic, circular pattern for extended grooves. Anchor: Rotating emphasis. Shimmer: Counter-rhythm. |
+| **8** | Trip-Hop Sparse | Trip-Hop | Free | Minimal, spacious pattern. Heavy kick, sparse snare. Anchor: Heavy, sparse kicks. Shimmer: Very sparse snare. |
+| **9** | Trip-Hop Lazy | Trip-Hop | Shadow | Behind-the-beat feel, ghost notes. Anchor: Lazy kick with ghost notes. Shimmer: Snare ghosts building to hit. |
+| **10** | Trip-Hop Heavy | Trip-Hop | Free | Massive sound, emphasis on weight. Anchor: Crushing kicks. Shimmer: Heavy snare with drag. |
+| **11** | Trip-Hop Groove | Trip-Hop/Tribal | Free | More active hip-hop influenced pattern. Anchor: Syncopated kick. Shimmer: Offbeat snares. |
+| **12** | IDM Broken | IDM | Free | Fragmented, glitchy pattern. Anchor: Fragmented kicks. Shimmer: Irregular snare/hat bursts. |
+| **13** | IDM Glitch | IDM | Free | Micro-edits, stutters. Anchor: Stutter kicks. Shimmer: Glitchy fills. |
+| **14** | IDM Irregular | IDM | Free | Unpredictable placement. Anchor: Seemingly random but designed. Shimmer: Counter-irregular. |
+| **15** | IDM Chaos | IDM | Free | Maximum complexity. Anchor: Dense, chaotic. Shimmer: Equally chaotic. |
+
+**Pattern Organization:**
+- **0-3**: Techno (four-on-floor, minimal, driving, pounding)
+- **4-7**: Tribal (clave, interlocking, polyrhythmic, circular)
+- **8-11**: Trip-Hop (sparse, lazy, heavy, behind-beat)
+- **12-15**: IDM (broken, glitch, irregular, chaos)
+
+**Intensity Values (0-15):**
+- **0** = Step off (never fires)
+- **1-4** = Ghost note (fires at high density only)
+- **5-10** = Normal hit (fires at medium density)
+- **11-15** = Strong hit (fires at low density, accent candidate)
+
+**Relationship Modes:**
+- **Free**: Independent patterns, no collision logic
+- **Interlock**: Shimmer fills gaps in Anchor (call-response)
+- **Shadow**: Shimmer echoes Anchor with delay
+
 ### Pattern Structure
 
 ```cpp
