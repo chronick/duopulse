@@ -315,12 +315,12 @@ void ProcessControls()
     }
 
     // CV Always Modulates Performance Parameters (regardless of mode)
-    // CV centered at 0.5 (2.5V), additive modulation clamped 0-1
-    // Note: cv values are 0-1, where 0.5 = 2.5V = neutral
-    float finalAnchorDensity  = Clamp01(controlState.anchorDensity + (cv1 - 0.5f));
-    float finalShimmerDensity = Clamp01(controlState.shimmerDensity + (cv2 - 0.5f));
-    float finalFlux           = Clamp01(controlState.flux + (cv3 - 0.5f));
-    float finalFuse           = Clamp01(controlState.fuse + (cv4 - 0.5f));
+    // Uses additive modulation: CV adds to knob value, clamped 0-1
+    // This matches main branch behavior where 0V CV = no modulation
+    float finalAnchorDensity  = MixControl(controlState.anchorDensity, cv1);
+    float finalShimmerDensity = MixControl(controlState.shimmerDensity, cv2);
+    float finalFlux           = MixControl(controlState.flux, cv3);
+    float finalFuse           = MixControl(controlState.fuse, cv4);
 
     // Apply all DuoPulse v2 parameters to sequencer using new interface
     // Performance parameters (CV-modulated)

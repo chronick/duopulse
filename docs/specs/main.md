@@ -496,12 +496,15 @@ This means:
 
 ### Additive Modulation
 
-CV centered at 2.5V. Values add/subtract from knob position, clamped 0-1.
+CV uses additive modulation: CV value adds directly to knob position, clamped 0-1. When CV input is unpatched (reads 0V), no modulation occurs—knob value is used directly. Patching a CV source adds to the knob position.
+
+> **Implementation Note**: Earlier design specified bipolar modulation centered at 2.5V. Changed to additive (0V = neutral) because unpatched CV jacks on Patch.SM hardware read 0V, not 2.5V. This ensures predictable behavior when no CV is patched.
 
 ### Acceptance Criteria
-- [ ] CV always modulates performance parameters regardless of mode
-- [ ] Additive modulation with center at 2.5V
-- [ ] Clamping to 0-1 range
+- [x] CV always modulates performance parameters regardless of mode
+- [x] Additive modulation (0V = no effect, positive CV adds to knob)
+- [x] Clamping to 0-1 range
+- [x] **BUG FIX**: Unpatched CV inputs don't affect parameter values *(Fixed 2025-12-03: use additive MixControl)*
 
 ---
 

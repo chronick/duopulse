@@ -106,4 +106,5 @@ Three issues need addressing in DuoPulse v2:
 ## Comments
 - 2025-12-03: Created task from user bug reports and control layout change request.
 - 2025-12-03: Phase 1 & 2 complete. SoftKnob bug fixed (now only interpolates when knob moved). Control layout updated. FLUX/FUSE code verified correct - may need hardware tuning for perceptual impact. Phase 3 manual testing remains.
+- 2025-12-03: **CV modulation bug fix** — Audio Out CV wasn't working because CV modulation used `(cv - 0.5f)` offset, assuming unpatched inputs read 0.5V. When inputs read 0V instead, density became 0 and no triggers fired. Fixed by using `MixControl()` (additive, 0V = no effect) to match main branch behavior.
 
