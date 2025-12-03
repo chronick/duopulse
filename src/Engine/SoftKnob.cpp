@@ -53,25 +53,28 @@ float SoftKnob::Process(float raw_value) {
             return value_;
         }
 
-        // Detect knob movement for HasMoved()
+        // Detect knob movement for HasMoved() and for conditional interpolation
         float delta = raw_value - last_raw_;
-        if (std::abs(delta) > kMovementThreshold) {
+        bool knobMoved = std::abs(delta) > kMovementThreshold;
+        if (knobMoved) {
             moved_ = true;
         }
 
         // === Gradual Interpolation (10% per cycle toward physical position) ===
-        // Always interpolate toward physical position, even if knob isn't moving
-        // This creates smooth catchup behavior
-        float distance = raw_value - value_;
-        value_ += distance * interpolation_rate_;
-        
-        // Clamp result
-        value_ = std::max(0.0f, std::min(1.0f, value_));
-        
-        // Check for unlock (within threshold)
-        if (std::abs(raw_value - value_) < kPickupThreshold) {
-            locked_ = false;
-            value_ = raw_value;
+        // ONLY interpolate when the knob is being actively moved.
+        // This prevents parameter drift when switching modes with the knob stationary.
+        if (knobMoved) {
+            float distance = raw_value - value_;
+            value_ += distance * interpolation_rate_;
+            
+            // Clamp result
+            value_ = std::max(0.0f, std::min(1.0f, value_));
+            
+            // Check for unlock (within threshold)
+            if (std::abs(raw_value - value_) < kPickupThreshold) {
+                locked_ = false;
+                value_ = raw_value;
+            }
         }
     } else {
         // Unlocked - direct tracking

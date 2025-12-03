@@ -172,17 +172,17 @@ The implementation builds on the existing codebase (`Sequencer`, `PatternGenerat
 #### Performance Mode Shift (Switch DOWN + B7 held >150ms)
 | Knob | Parameter | Test |
 |------|-----------|------|
-| K1+Shift | Anchor Accent | CCW = even dynamics, CW = punchy accents |
-| K2+Shift | Shimmer Accent | CCW = even dynamics, CW = punchy accents |
-| K3+Shift | ORBIT | 0-33% = Interlock (call-response), 33-67% = Free, 67-100% = Shadow (echo) |
-| K4+Shift | CONTOUR | 0-25% = Velocity CV, 25-50% = Decay CV, 50-75% = Pitch CV, 75-100% = Random S&H |
+| K1+Shift | TERRAIN | 0-25% = Techno (straight), 25-50% = Tribal (shuffle), 50-75% = Trip-Hop (lazy), 75-100% = IDM (broken) |
+| K2+Shift | LENGTH | 1, 2, 4, 8, 16 bars (verify with scope) |
+| K3+Shift | GRID | Patterns 0-15 (audibly different characters) |
+| K4+Shift | ORBIT | 0-33% = Interlock (call-response), 33-67% = Free, 67-100% = Shadow (echo) |
 
 #### Config Mode Primary (Switch UP, no shift)
 | Knob | Parameter | Test |
 |------|-----------|------|
-| K1 | TERRAIN | 0-25% = Techno (straight), 25-50% = Tribal (shuffle), 50-75% = Trip-Hop (lazy), 75-100% = IDM (broken) |
-| K2 | LENGTH | 1, 2, 4, 8, 16 bars (verify with scope) |
-| K3 | GRID | Patterns 0-15 (audibly different characters) |
+| K1 | Anchor Accent | CCW = even dynamics, CW = punchy accents |
+| K2 | Shimmer Accent | CCW = even dynamics, CW = punchy accents |
+| K3 | CONTOUR | 0-25% = Velocity CV, 25-50% = Decay CV, 50-75% = Pitch CV, 75-100% = Random S&H |
 | K4 | TEMPO | 90-160 BPM range |
 
 #### Config Mode Shift (Switch UP + B7 held >150ms)
@@ -305,7 +305,7 @@ The implementation builds on the existing codebase (`Sequencer`, `PatternGenerat
 - Contour CV modes apply to both voices equally (no per-voice contour)
 
 ### Pass/Fail Checklist
-- [ ] All 16 knob mappings work in correct modes
+- [ ] All 16 knob mappings work in correct modes (see updated layout below)
 - [ ] CV inputs modulate performance params in ALL modes
 - [ ] Shift layer activates/deactivates correctly
 - [ ] Tap tempo works (short tap)
@@ -317,9 +317,22 @@ The implementation builds on the existing codebase (`Sequencer`, `PatternGenerat
 - [ ] Clock division works (÷4, ÷2, ×1)
 - [ ] LED feedback reflects all states
 - [ ] Soft takeover prevents jumps
+- [ ] **Mode switching preserves parameters** (no value changes on switch)
+- [ ] **FLUX produces audible variation** across 0-100% range
+- [ ] **FUSE produces audible energy tilt** across 0-100% range
 - [ ] Patterns have distinct genre character
 - [ ] Phrase awareness creates musical arc
 - [ ] No crashes, lockups, or unexpected behavior
+
+### Updated Control Layout (2025-12-03)
+
+**Performance Mode (Switch DOWN)**:
+- Primary: K1=Anchor Density, K2=Shimmer Density, K3=FLUX, K4=FUSE
+- Shift: K1=Terrain, K2=Length, K3=Grid, K4=Orbit
+
+**Config Mode (Switch UP)**:
+- Primary: K1=Anchor Accent, K2=Shimmer Accent, K3=Contour, K4=Tempo
+- Shift: K1=Swing Taste, K2=Gate Time, K3=Humanize, K4=Clock Div
 
 ## Files Modified
 

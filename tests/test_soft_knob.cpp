@@ -51,20 +51,39 @@ TEST_CASE("SoftKnob Gradual Interpolation", "[SoftKnob]") {
         REQUIRE(knob.IsLocked() == true);
     }
 
-    SECTION("Convergence Over Multiple Cycles") {
+    SECTION("No Interpolation When Knob Stationary") {
         // Value = 0.5, start far from physical
         knob.Process(0.0f);
         
-        // Keep physical at 0.0, value should gradually decrease
+        // Keep physical at 0.0 (stationary), value should NOT change
+        // This is the fix for mode-switching parameter drift
         float prev = 0.5f;
         for(int i = 0; i < 5; i++) {
             float out = knob.Process(0.0f);
-            REQUIRE(out < prev); // Should decrease each time
+            REQUIRE(out == prev); // Should stay the same when knob not moved
+        }
+        
+        // Value should still be at 0.5 since knob was stationary
+        REQUIRE(knob.GetValue() == 0.5f);
+        REQUIRE(knob.IsLocked() == true);
+    }
+
+    SECTION("Convergence When Knob Is Moved") {
+        // Value = 0.5, knob starts at 0.0
+        knob.Process(0.0f);
+        
+        // Move knob slightly each cycle, value should gradually decrease
+        float prev = 0.5f;
+        float knobPos = 0.0f;
+        for(int i = 0; i < 5; i++) {
+            knobPos += 0.01f; // Small movement to trigger interpolation
+            float out = knob.Process(knobPos);
+            REQUIRE(out < prev); // Should decrease each time since knob is moved
             prev = out;
         }
         
-        // After 5 cycles: 0.5 * (0.9^5) ≈ 0.295
-        REQUIRE(prev == Approx(0.5f * 0.9f * 0.9f * 0.9f * 0.9f * 0.9f).margin(0.02f));
+        // Value should have decreased significantly
+        REQUIRE(prev < 0.4f);
         REQUIRE(knob.IsLocked() == true); // Still locked, not converged yet
     }
 
@@ -123,10 +142,10 @@ TEST_CASE("SoftKnob Gradual Interpolation", "[SoftKnob]") {
         knob.Init(0.5f);
         knob.SetInterpolationRate(0.5f); // 50% per cycle instead of 10%
         
-        knob.Process(0.0f);
-        float out = knob.Process(0.0f);
+        knob.Process(0.0f);  // First process sets reference
+        float out = knob.Process(0.01f);  // Move knob slightly to trigger interpolation
         
-        // With 50% rate: 0.5 * 0.5 = 0.25
-        REQUIRE(out == Approx(0.25f).margin(0.01f));
+        // With 50% rate: 0.5 + (0.01 - 0.5) * 0.5 = 0.5 - 0.245 = 0.255
+        REQUIRE(out == Approx(0.255f).margin(0.02f));
     }
 }

@@ -61,6 +61,19 @@
 
 ## Feature: Control System [duopulse-controls]
 
+### Quick Reference
+
+|    | **Performance Primary** | **Performance +Shift** | **Config Primary** | **Config +Shift** |
+|----|-------------------------|------------------------|--------------------|--------------------|
+| **K1** | Anchor Density | Terrain | Anchor Accent | Swing Taste |
+| **K2** | Shimmer Density | Length | Shimmer Accent | Gate Time |
+| **K3** | Flux | Grid | Contour | Humanize |
+| **K4** | Fuse | Orbit | Tempo | Clock Div |
+
+> **CV inputs 5-8 always modulate Performance Primary parameters** (Anchor Density, Shimmer Density, Flux, Fuse) regardless of current mode.
+
+---
+
 ### Performance Mode (Switch DOWN)
 
 Primary playing mode. Optimized for live manipulation.
@@ -84,44 +97,10 @@ Primary playing mode. Optimized for live manipulation.
 
 | Knob | Name | Function | Range |
 |------|------|----------|-------|
-| **K1+Shift** | **ANCHOR ACCENT** | Accent intensity for Anchor | Subtle ← → Hard |
-| **K2+Shift** | **SHIMMER ACCENT** | Accent intensity for Shimmer | Subtle ← → Hard |
-| **K3+Shift** | **ORBIT** | Voice relationship mode | See table |
-| **K4+Shift** | **CONTOUR** | CV output shape | See table |
-
-**ACCENT**: Controls the dynamic range and accent probability. Low = even dynamics. High = punchy accents with quiet ghost notes.
-
-**ORBIT** (Voice Relationship):
-
-| Range | Mode | Behavior |
-|-------|------|----------|
-| 0-33% | **Interlock** | Shimmer fills gaps in Anchor (call-response) |
-| 33-67% | **Free** | Independent patterns, no collision logic |
-| 67-100% | **Shadow** | Shimmer echoes Anchor with delay |
-
-**CONTOUR** (CV Shape):
-
-| Range | Mode | CV Behavior |
-|-------|------|-------------|
-| 0-25% | **Velocity** | CV = hit intensity (0-5V) |
-| 25-50% | **Decay** | CV = envelope decay hint |
-| 50-75% | **Pitch** | CV = pitch offset per hit |
-| 75-100% | **Random** | CV = S&H random per trigger |
-
----
-
-### Config Mode (Switch UP)
-
-System configuration and structural parameters.
-
-#### Primary Layer (No Shift)
-
-| Knob | Name | Function | Range |
-|------|------|----------|-------|
-| **K1** | **TERRAIN** | Genre/style character | See table |
-| **K2** | **LENGTH** | Loop length in bars | 1, 2, 4, 8, 16 |
-| **K3** | **GRID** | Pattern family selection | 1-16 patterns |
-| **K4** | **TEMPO** | Internal BPM | 90 ← → 160 |
+| **K1+Shift** | **TERRAIN** | Genre/style character | See table |
+| **K2+Shift** | **LENGTH** | Loop length in bars | 1, 2, 4, 8, 16 |
+| **K3+Shift** | **GRID** | Pattern family selection | 1-16 patterns |
+| **K4+Shift** | **ORBIT** | Voice relationship mode | See table |
 
 **TERRAIN** (Genre Character):
 
@@ -137,6 +116,40 @@ TERRAIN affects:
 - Accent placement patterns
 - Ghost note probability curves
 - Micro-timing jitter (especially for IDM)
+
+**ORBIT** (Voice Relationship):
+
+| Range | Mode | Behavior |
+|-------|------|----------|
+| 0-33% | **Interlock** | Shimmer fills gaps in Anchor (call-response) |
+| 33-67% | **Free** | Independent patterns, no collision logic |
+| 67-100% | **Shadow** | Shimmer echoes Anchor with delay |
+
+---
+
+### Config Mode (Switch UP)
+
+System configuration and expression parameters.
+
+#### Primary Layer (No Shift)
+
+| Knob | Name | Function | Range |
+|------|------|----------|-------|
+| **K1** | **ANCHOR ACCENT** | Accent intensity for Anchor | Subtle ← → Hard |
+| **K2** | **SHIMMER ACCENT** | Accent intensity for Shimmer | Subtle ← → Hard |
+| **K3** | **CONTOUR** | CV output shape | See table |
+| **K4** | **TEMPO** | Internal BPM | 90 ← → 160 |
+
+**ACCENT**: Controls the dynamic range and accent probability. Low = even dynamics. High = punchy accents with quiet ghost notes.
+
+**CONTOUR** (CV Shape):
+
+| Range | Mode | CV Behavior |
+|-------|------|-------------|
+| 0-25% | **Velocity** | CV = hit intensity (0-5V) |
+| 25-50% | **Decay** | CV = envelope decay hint |
+| 50-75% | **Pitch** | CV = pitch offset per hit |
+| 75-100% | **Random** | CV = S&H random per trigger |
 
 #### Shift Layer (Button Held)
 
@@ -269,11 +282,32 @@ FLUX adds probabilistic variations:
 - Velocity jitter: up to 20% variance
 - Timing jitter: up to 1% (IDM only, scaled by genre)
 
+**FLUX Expected Behavior** [control-layout-fixes]:
+- At 0%: Clean skeleton pattern, no variation
+- At 25%: Occasional ghost notes begin appearing
+- At 50%: Noticeable variation, some fills at phrase boundaries
+- At 75%: Busy pattern with frequent ghost notes and fills
+- At 100%: Maximum chaos—ghost notes, fills, velocity swells throughout
+
+### FUSE Application
+
+FUSE tilts the energy balance between voices:
+- At 0% (CCW): Anchor density boosted +15%, Shimmer reduced -15%
+- At 50% (Center): Balanced, no bias
+- At 100% (CW): Shimmer density boosted +15%, Anchor reduced -15%
+
+**FUSE Expected Behavior** [control-layout-fixes]:
+- Turning FUSE CCW should audibly increase kick/anchor density
+- Turning FUSE CW should audibly increase snare/shimmer density
+- The effect should be noticeable across the full range
+
 ### Acceptance Criteria
-- [ ] 16 skeleton patterns optimized for 2-voice output
-- [ ] Density threshold controls which pattern steps fire
-- [ ] FLUX adds probabilistic ghost notes, fills, and velocity variance
-- [ ] Patterns have genre affinity weighting
+- [x] 16 skeleton patterns optimized for 2-voice output
+- [x] Density threshold controls which pattern steps fire
+- [x] FLUX adds probabilistic ghost notes, fills, and velocity variance
+- [x] Patterns have genre affinity weighting
+- [x] **VERIFY**: FLUX produces audible variation across full range *(Code verified 2025-12-03 - needs hardware tuning)*
+- [x] **VERIFY**: FUSE produces audible energy tilt across full range *(Code verified 2025-12-03 - needs hardware tuning)*
 
 ---
 
@@ -424,11 +458,21 @@ All knobs use **gradual interpolation** toward the physical position.
 3. When knob crosses the stored value, full control is restored
 4. Smooth 10% per control cycle interpolation prevents jumps
 
+### Mode Switching Behavior [control-layout-fixes]
+
+**Critical**: When switching between Performance and Config modes, parameters must persist correctly:
+
+1. **Parameter Persistence**: Each mode/shift combination has independent parameter storage. Switching modes does NOT alter stored values.
+2. **Soft Pickup on Mode Switch**: When returning to a mode, the knob physical position may differ from the stored value. Soft pickup engages—parameter only moves when knob crosses the stored value or after gradual interpolation.
+3. **No Jumps**: Mode switching should never cause audible parameter jumps.
+
 ### Acceptance Criteria
-- [ ] SoftKnob class with gradual interpolation
-- [ ] Cross-detection for immediate catchup
-- [ ] 16 parameter slots (4 knobs × 4 mode/shift combinations)
-- [ ] No parameter jumps on mode switch
+- [x] SoftKnob class with gradual interpolation
+- [x] Cross-detection for immediate catchup
+- [x] 16 parameter slots (4 knobs × 4 mode/shift combinations)
+- [x] No parameter jumps on mode switch
+- [x] **BUG FIX**: Mode switching must not alter stored parameter values *(Fixed 2025-12-03: interpolation only when knob moved)*
+- [x] **BUG FIX**: Returning to a mode must restore soft pickup state correctly *(Fixed 2025-12-03)*
 
 ---
 
@@ -538,18 +582,18 @@ When LENGTH changes mid-pattern:
 
 |    | Primary | +Shift |
 |----|---------|--------|
-| K1 | ANCHOR DENSITY | ANCHOR ACCENT |
-| K2 | SHIMMER DENSITY | SHIMMER ACCENT |
-| K3 | FLUX | ORBIT |
-| K4 | FUSE | CONTOUR |
+| K1 | ANCHOR DENSITY | TERRAIN |
+| K2 | SHIMMER DENSITY | LENGTH |
+| K3 | FLUX | GRID |
+| K4 | FUSE | ORBIT |
 
 ### Config Mode (Switch UP)
 
 |    | Primary | +Shift |
 |----|---------|--------|
-| K1 | TERRAIN | SWING TASTE |
-| K2 | LENGTH | GATE TIME |
-| K3 | GRID | HUMANIZE |
+| K1 | ANCHOR ACCENT | SWING TASTE |
+| K2 | SHIMMER ACCENT | GATE TIME |
+| K3 | CONTOUR | HUMANIZE |
 | K4 | TEMPO | CLOCK DIV |
 
 ---

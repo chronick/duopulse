@@ -5,10 +5,10 @@
  * 
  * Performance Mode (Switch DOWN):
  *   Primary:     K1=Anchor Density, K2=Shimmer Density, K3=Flux, K4=Fuse
- *   Shift (B7):  K1=Anchor Accent, K2=Shimmer Accent, K3=Orbit, K4=Contour
+ *   Shift (B7):  K1=Terrain, K2=Length, K3=Grid, K4=Orbit
  * 
  * Config Mode (Switch UP):
- *   Primary:     K1=Terrain, K2=Length, K3=Grid, K4=Tempo
+ *   Primary:     K1=Anchor Accent, K2=Shimmer Accent, K3=Contour, K4=Tempo
  *   Shift (B7):  K1=Swing Taste, K2=Gate Time, K3=Humanize, K4=Clock Div
  * 
  * CV inputs 5-8 always modulate performance parameters (Anchor Density, Shimmer 
@@ -162,6 +162,11 @@ void AudioCallback(AudioHandle::InputBuffer  in,
 }
 
 // Helper to get pointer to parameter by mode and knob index
+// Updated control layout (2025-12-03):
+//   Performance Primary: Anchor Density, Shimmer Density, Flux, Fuse
+//   Performance Shift:   Terrain, Length, Grid, Orbit
+//   Config Primary:      Anchor Accent, Shimmer Accent, Contour, Tempo
+//   Config Shift:        Swing Taste, Gate Time, Humanize, Clock Div
 float* GetParameterPtr(ControlState& state, ControlMode mode, int knobIndex)
 {
     switch(mode)
@@ -178,18 +183,18 @@ float* GetParameterPtr(ControlState& state, ControlMode mode, int knobIndex)
         case ControlMode::PerformanceShift:
             switch(knobIndex)
             {
-                case 0: return &state.anchorAccent;
-                case 1: return &state.shimmerAccent;
-                case 2: return &state.orbit;
-                case 3: return &state.contour;
+                case 0: return &state.terrain;
+                case 1: return &state.length;
+                case 2: return &state.grid;
+                case 3: return &state.orbit;
             }
             break;
         case ControlMode::ConfigPrimary:
             switch(knobIndex)
             {
-                case 0: return &state.terrain;
-                case 1: return &state.length;
-                case 2: return &state.grid;
+                case 0: return &state.anchorAccent;
+                case 1: return &state.shimmerAccent;
+                case 2: return &state.contour;
                 case 3: return &state.tempo;
             }
             break;
@@ -439,22 +444,23 @@ int main(void)
                     Switch::POLARITY_INVERTED);
 
     // Initialize all 16 Soft Knobs (4 knobs × 4 mode/shift combinations)
-    // Performance Primary (indices 0-3)
+    // Updated control layout (2025-12-03)
+    // Performance Primary (indices 0-3): Anchor Density, Shimmer Density, Flux, Fuse
     softKnobs[0].Init(controlState.anchorDensity);
     softKnobs[1].Init(controlState.shimmerDensity);
     softKnobs[2].Init(controlState.flux);
     softKnobs[3].Init(controlState.fuse);
-    // Performance Shift (indices 4-7)
-    softKnobs[4].Init(controlState.anchorAccent);
-    softKnobs[5].Init(controlState.shimmerAccent);
-    softKnobs[6].Init(controlState.orbit);
-    softKnobs[7].Init(controlState.contour);
-    // Config Primary (indices 8-11)
-    softKnobs[8].Init(controlState.terrain);
-    softKnobs[9].Init(controlState.length);
-    softKnobs[10].Init(controlState.grid);
+    // Performance Shift (indices 4-7): Terrain, Length, Grid, Orbit
+    softKnobs[4].Init(controlState.terrain);
+    softKnobs[5].Init(controlState.length);
+    softKnobs[6].Init(controlState.grid);
+    softKnobs[7].Init(controlState.orbit);
+    // Config Primary (indices 8-11): Anchor Accent, Shimmer Accent, Contour, Tempo
+    softKnobs[8].Init(controlState.anchorAccent);
+    softKnobs[9].Init(controlState.shimmerAccent);
+    softKnobs[10].Init(controlState.contour);
     softKnobs[11].Init(controlState.tempo);
-    // Config Shift (indices 12-15)
+    // Config Shift (indices 12-15): Swing Taste, Gate Time, Humanize, Clock Div
     softKnobs[12].Init(controlState.swingTaste);
     softKnobs[13].Init(controlState.gateTime);
     softKnobs[14].Init(controlState.humanize);
