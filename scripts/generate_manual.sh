@@ -35,3 +35,17 @@ uv run generate.py
 
 echo "Done! Manuals generated in $GENERATOR_DIR/output/"
 
+# Optional post-generation hook
+POST_HOOK="$GENERATOR_DIR/post_generate.sh"
+if [ -f "$POST_HOOK" ]; then
+    echo "Running post-generation hook..."
+    GENERATED_FILE="$GENERATOR_DIR/output/manual.pdf"
+    if [ -f "$GENERATED_FILE" ]; then
+        "$POST_HOOK" "$GENERATED_FILE"
+    else
+        echo "Warning: Generated file not found: $GENERATED_FILE"
+    fi
+else
+    echo "Tip: You can add a post-generation hook at $POST_HOOK to automatically process the generated manual."
+fi
+
