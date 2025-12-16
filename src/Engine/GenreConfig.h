@@ -511,6 +511,9 @@ inline ContourMode GetContourMode(float contour)
 /**
  * Calculate CV output value based on contour mode.
  * 
+ * NOTE: This function is called per-sample at 48kHz. Decay rates are tuned
+ * accordingly. At 120 BPM, one 16th note = 6000 samples.
+ * 
  * @param mode Contour mode
  * @param velocity Trigger velocity (0-1)
  * @param randomValue Random value (0-1) for Pitch/Random modes
@@ -524,22 +527,28 @@ inline float CalculateContourCV(ContourMode mode,
                                 float       currentCV,
                                 bool        triggered)
 {
+    // Decay rates tuned for per-sample processing at 48kHz:
+    // - 0.99995f: very slow decay, ~10% over 1 second (sustain-like)
+    // - 0.9997f:  faster decay, ~10% over 250ms (one beat at 240 BPM)
+    constexpr float kVelocityDecay = 0.99995f; // Slight hold/sustain
+    constexpr float kDecayDecay    = 0.9997f;  // Noticeable envelope decay
+
     switch(mode)
     {
         case ContourMode::Velocity:
             // CV = hit intensity, holds between triggers with slight decay
             if(triggered)
                 return velocity;
-            // Slow decay between triggers (retain ~90% per step)
-            return currentCV * 0.95f;
+            // Very slow decay - sustains until next trigger
+            return currentCV * kVelocityDecay;
 
         case ContourMode::Decay:
             // CV hints decay time - high velocity = long decay (high CV)
             // Accent = high CV (long decay), Ghost = low CV (short decay)
             if(triggered)
                 return velocity * 0.8f + 0.2f; // Map 0-1 to 0.2-1.0 for usable range
-            // Decay the CV over time
-            return currentCV * 0.85f;
+            // Decay the CV over time (envelope-like)
+            return currentCV * kDecayDecay;
 
         case ContourMode::Pitch:
             // Random pitch offset scaled by velocity
@@ -551,14 +560,14 @@ inline float CalculateContourCV(ContourMode mode,
                 float offset = (randomValue - 0.5f) * range;
                 return 0.5f + offset;
             }
-            // Hold between triggers
+            // Hold between triggers - no decay
             return currentCV;
 
         case ContourMode::Random:
             // Sample & Hold random voltage on each trigger
             if(triggered)
                 return randomValue;
-            // Hold until next trigger
+            // Hold until next trigger - no decay
             return currentCV;
     }
 

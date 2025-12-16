@@ -519,34 +519,42 @@ std::array<float, 2> Sequencer::ProcessAudio()
     ProcessGates();
 
     // Apply Contour mode to CV outputs
-    // For now, use Velocity mode (direct velocity output) as default
-    // Contour modes will be fully implemented in a follow-up
-    // This preserves backward compatibility with existing tests
+    // When contour=0: simple timer-gated velocity output (for gate/trigger use)
+    // When contour>0: contour mode processing with sustained CV between triggers
     
-    float out1 = accentTimer_ > 0 ? outputLevels_[0] : 0.0f;
-    float out2 = hihatTimer_ > 0 ? outputLevels_[1] : 0.0f;
+    float out1, out2;
 
-    // Apply contour processing only when contour parameter is > 0
-    // (Velocity mode at contour=0 is pass-through)
     if(contour_ > 0.0f)
     {
+        // Contour modes: CV is sustained/decayed according to mode
+        // NOT gated by timer - the CalculateContourCV function handles decay/hold
         ContourMode cmode = GetContourMode(contour_);
 
-        // Detect new triggers (timer just started)
+        // Detect new triggers (timer just started at max value)
         bool anchorTriggered  = (accentTimer_ == accentHoldSamples_);
         bool shimmerTriggered = (hihatTimer_ == hihatHoldSamples_);
 
-        // Only generate random values when needed to preserve RNG state
-        float randVal1 = (anchorTriggered || shimmerTriggered) ? NextHumanizeRandom() : 0.0f;
-        float randVal2 = (anchorTriggered || shimmerTriggered) ? NextHumanizeRandom() : 0.0f;
+        // Only generate random values when triggered to preserve RNG state
+        float randVal1 = anchorTriggered ? NextHumanizeRandom() : 0.0f;
+        float randVal2 = shimmerTriggered ? NextHumanizeRandom() : 0.0f;
 
+        // Update contour CV state (handles decay/hold per mode)
         anchorContourCV_ = CalculateContourCV(cmode, outputLevels_[0], randVal1,
                                               anchorContourCV_, anchorTriggered);
         shimmerContourCV_ = CalculateContourCV(cmode, outputLevels_[1], randVal2,
                                                shimmerContourCV_, shimmerTriggered);
 
-        out1 = accentTimer_ > 0 ? anchorContourCV_ : 0.0f;
-        out2 = hihatTimer_ > 0 ? shimmerContourCV_ : 0.0f;
+        // Output the contour CV directly - it sustains until next trigger
+        // or decays gradually according to the mode
+        out1 = anchorContourCV_;
+        out2 = shimmerContourCV_;
+    }
+    else
+    {
+        // Default mode (contour=0): simple timer-gated velocity
+        // CV is high during gate duration, then goes to 0
+        out1 = accentTimer_ > 0 ? outputLevels_[0] : 0.0f;
+        out2 = hihatTimer_ > 0 ? outputLevels_[1] : 0.0f;
     }
 
     return {out1, out2};

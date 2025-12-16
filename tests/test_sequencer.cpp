@@ -602,9 +602,10 @@ TEST_CASE("Contour CV calculation - Velocity mode", "[contour]")
     float cv = CalculateContourCV(ContourMode::Velocity, 0.8f, 0.5f, 0.0f, true);
     REQUIRE(cv == Catch::Approx(0.8f));
 
-    // Between triggers, decays slowly
+    // Between triggers, decays very slowly (sustain-like)
+    // kVelocityDecay = 0.99995f - designed for per-sample at 48kHz
     cv = CalculateContourCV(ContourMode::Velocity, 0.0f, 0.5f, 0.8f, false);
-    REQUIRE(cv == Catch::Approx(0.8f * 0.95f).margin(0.01f));
+    REQUIRE(cv == Catch::Approx(0.8f * 0.99995f).margin(0.0001f));
 }
 
 TEST_CASE("Contour CV calculation - Decay mode", "[contour]")
@@ -616,9 +617,10 @@ TEST_CASE("Contour CV calculation - Decay mode", "[contour]")
     cv = CalculateContourCV(ContourMode::Decay, 0.0f, 0.5f, 0.0f, true);
     REQUIRE(cv == Catch::Approx(0.2f).margin(0.01f)); // Min velocity = 0.2 CV
 
-    // Decays between triggers
+    // Decays between triggers (envelope-like)
+    // kDecayDecay = 0.9997f - designed for per-sample at 48kHz (~250ms decay)
     cv = CalculateContourCV(ContourMode::Decay, 0.0f, 0.5f, 1.0f, false);
-    REQUIRE(cv == Catch::Approx(0.85f).margin(0.01f));
+    REQUIRE(cv == Catch::Approx(0.9997f).margin(0.0001f));
 }
 
 TEST_CASE("Contour CV calculation - Pitch mode", "[contour]")
