@@ -1,14 +1,16 @@
 # DuoPulse: 2-Voice Percussive Sequencer
 
-**Specification v2.0**  
-**Second Iteration Synthesis**  
-**Date: 2025-11-30**
+**Specification v2.1**  
+**External Clock & Auxiliary Outputs**  
+**Date: 2025-12-16**
 
 ---
 
 ## Executive Summary
 
 **DuoPulse** is an opinionated 2-voice percussion sequencer optimized for the Patch.Init hardware. It embraces the two-output constraint as a creative feature, treating the pair of lanes as a unified rhythmic instrument with complementary roles. The sequencer is tuned for electronic genres—techno, tribal, trip-hop, and IDM—with genre-aware swing, algorithmic pattern generation, and deep performance controls.
+
+When using external clock, CV Out 1 becomes a multi-purpose auxiliary output—enabling a third trigger voice (hi-hat), phrase position CV, fill indicator, and more.
 
 ---
 
@@ -764,12 +766,14 @@ When using internal clock (no external clock patched):
 
 ### Config Mode (Switch UP)
 
-|    | Primary | +Shift |
-|----|---------|--------|
-| K1 | ANCHOR ACCENT | SWING TASTE |
-| K2 | SHIMMER ACCENT | GATE TIME |
-| K3 | CONTOUR | HUMANIZE |
-| K4 | TEMPO | CLOCK DIV |
+|    | Primary (Internal Clock) | Primary (External Clock) | +Shift (Internal) | +Shift (External) |
+|----|--------------------------|--------------------------|-------------------|-------------------|
+| K1 | ANCHOR ACCENT | ANCHOR ACCENT | SWING TASTE | SWING TASTE |
+| K2 | SHIMMER ACCENT | SHIMMER ACCENT | GATE TIME | GATE TIME |
+| K3 | CONTOUR | CONTOUR | HUMANIZE | HUMANIZE |
+| K4 | TEMPO | CLOCK DIV | CLOCK DIV | AUX MODE |
+
+> *K4 is context-aware based on whether external clock is patched. See [external-clock-behavior] and [aux-output-modes].*
 
 ---
 
@@ -787,3 +791,5 @@ When using internal clock (no external clock patched):
 10. **CONTOUR CV Modes**: Velocity/Decay/Pitch/Random expression
 11. **TERRAIN Genre Presets**: Techno/Tribal/Trip-Hop/IDM character tuning
 12. **HUMANIZE Jitter**: Micro-timing variation for organic feel
+13. **Context-Aware Controls**: K4 automatically switches function when external clock is patched
+14. **Auxiliary Output Modes**: CV Out 1 becomes HiHat trigger, Fill gate, Phrase CV, or more when using external clock
