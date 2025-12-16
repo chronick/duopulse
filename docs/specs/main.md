@@ -238,10 +238,10 @@ Swing is **opinionated by genre** but adjustable within a curated range. This pr
 - **Clock Output** respects swing timing (swung clock for downstream modules)
 
 ### Acceptance Criteria
-- [ ] Swing percentage calculated from terrain (genre) + swingTaste parameters
-- [ ] Off-beat steps delayed according to swing formula
-- [ ] Clock output applies swing timing
-- [ ] Anchor receives 70% of swing amount, Shimmer receives 100%
+- [x] Swing percentage calculated from terrain (genre) + swingTaste parameters
+- [x] Off-beat steps delayed according to swing formula
+- [x] Clock output applies swing timing
+- [ ] Anchor receives 70% of swing amount, Shimmer receives 100% *(TODO: differential swing not yet implemented)*
 
 ---
 
@@ -421,10 +421,10 @@ struct PhrasePosition {
 | 16 bars | Last 32 steps | Last 64 steps | Epic builds, DJ-friendly |
 
 ### Acceptance Criteria
-- [ ] PhrasePosition struct tracking current position in phrase
-- [ ] Fill/build zone lengths scale with pattern length
-- [ ] Phrase modulation applies genre-specific scaling
-- [ ] Fill probability, ghost notes, syncopation modulated by phrase position
+- [x] PhrasePosition struct tracking current position in phrase
+- [x] Fill/build zone lengths scale with pattern length
+- [x] Phrase modulation applies genre-specific scaling
+- [x] Fill probability, ghost notes, syncopation modulated by phrase position
 
 ---
 
@@ -440,10 +440,10 @@ Independent patterns, no collision logic. Both voices generate independently. Ca
 Shimmer echoes Anchor with 1-step delay. Creates doubling/echo effect. Shadow velocity reduced to 70%.
 
 ### Acceptance Criteria
-- [ ] Orbit parameter (0-1) selects mode
-- [ ] Interlock: reduces shimmer when anchor fires, boosts when silent
-- [ ] Free: no voice interaction
-- [ ] Shadow: shimmer copies previous anchor trigger at reduced velocity
+- [x] Orbit parameter (0-1) selects mode
+- [x] Interlock: reduces shimmer when anchor fires, boosts when silent
+- [x] Free: no voice interaction
+- [x] Shadow: shimmer copies previous anchor trigger at reduced velocity
 
 ---
 
@@ -462,9 +462,9 @@ CV = pitch offset per hit. Random within scaled range. For melodic percussion.
 Sample & Hold random voltage. New value each trigger. For modulation/chaos.
 
 ### Acceptance Criteria
-- [ ] Contour parameter (0-1) selects mode
-- [ ] Each mode generates appropriate CV behavior
-- [ ] Both Anchor and Shimmer CV outputs respect contour mode
+- [x] Contour parameter (0-1) selects mode
+- [x] Each mode generates appropriate CV behavior
+- [x] Both Anchor and Shimmer CV outputs respect contour mode
 
 ---
 
@@ -481,10 +481,10 @@ Adds micro-timing jitter to trigger timing for organic feel.
 IDM terrain (75-100%) automatically adds extra humanize on top of the knob setting.
 
 ### Acceptance Criteria
-- [ ] Humanize parameter (0-1) controls jitter amount
-- [ ] Max jitter = ±10ms (±480 samples at 48kHz)
-- [ ] IDM terrain adds up to 30% extra humanize
-- [ ] Jitter applied per-trigger, random within range
+- [x] Humanize parameter (0-1) controls jitter amount
+- [x] Max jitter = ±10ms (±480 samples at 48kHz)
+- [x] IDM terrain adds up to 30% extra humanize
+- [x] Jitter applied per-trigger, random within range
 
 ---
 
@@ -562,11 +562,11 @@ CV uses additive modulation: CV value adds directly to knob position, clamped 0-
 | **Fill Active** | Rapid flash (50ms rate) |
 
 ### Acceptance Criteria
-- [ ] LED pulses on anchor trigger in performance mode
-- [ ] LED solid in config mode
-- [ ] Shift held increases brightness
-- [ ] Knob turn shows parameter value for 1 second
-- [ ] Fill active triggers rapid flash
+- [x] LED pulses on anchor trigger in performance mode
+- [x] LED solid in config mode
+- [x] Shift held increases brightness
+- [x] Knob turn shows parameter value for 1 second
+- [x] Fill active triggers rapid flash
 
 ---
 
@@ -599,8 +599,8 @@ When LENGTH changes mid-pattern:
 - No waiting for current pattern to complete
 
 ### Acceptance Criteria
-- [ ] All setters apply immediately, no queuing
-- [ ] Length change wraps step position if necessary
+- [x] All setters apply immediately, no queuing
+- [ ] Length change wraps step position if necessary *(TODO: SetLength doesn't wrap stepIndex when length decreases)*
 
 ---
 
