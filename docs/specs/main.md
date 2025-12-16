@@ -54,7 +54,7 @@
 | **Gate Out 2** | Shimmer Trigger (5V digital) |
 | **Audio Out 1** | Anchor CV (0-5V, velocity/expression) |
 | **Audio Out 2** | Shimmer CV (0-5V, velocity/expression) |
-| **CV Out 1** | Clock Output (**respects swing timing**) |
+| **CV Out 1** | Auxiliary Output (mode-selectable, see [aux-output-modes]) |
 | **CV Out 2** | LED Feedback (mode/trig/parameter brightness) |
 
 ---
@@ -68,9 +68,11 @@
 | **K1** | Anchor Density | Terrain | Anchor Accent | Swing Taste |
 | **K2** | Shimmer Density | Length | Shimmer Accent | Gate Time |
 | **K3** | Flux | Grid | Contour | Humanize |
-| **K4** | Fuse | Orbit | Tempo | Clock Div |
+| **K4** | Fuse | Orbit | Tempo / Clock Div* | Clock Div / Aux Mode* |
 
 > **CV inputs 5-8 always modulate Performance Primary parameters** (Anchor Density, Shimmer Density, Flux, Fuse) regardless of current mode.
+
+> *\*K4 is context-aware:* When **internal clock** (no external clock patched): K4 = Tempo, K4+Shift = Clock Div. When **external clock** patched: K4 = Clock Div (sequencer rate), K4+Shift = Aux Output Mode. See [external-clock-behavior].
 
 ---
 
@@ -138,7 +140,11 @@ System configuration and expression parameters.
 | **K1** | **ANCHOR ACCENT** | Accent intensity for Anchor | Subtle ← → Hard |
 | **K2** | **SHIMMER ACCENT** | Accent intensity for Shimmer | Subtle ← → Hard |
 | **K3** | **CONTOUR** | CV output shape | See table |
-| **K4** | **TEMPO** | Internal BPM | 90 ← → 160 |
+| **K4** | **TEMPO / CLOCK DIV** | Context-aware (see below) | See table |
+
+**K4 Context-Aware Behavior** (see also [external-clock-behavior]):
+- **Internal clock** (no external clock patched): TEMPO — sets internal BPM (90-160)
+- **External clock** patched: CLOCK DIV — divides/multiplies external clock for sequencer step rate
 
 **ACCENT**: Controls the dynamic range and accent probability. Low = even dynamics. High = punchy accents with quiet ghost notes.
 
@@ -158,7 +164,7 @@ System configuration and expression parameters.
 | **K1+Shift** | **SWING TASTE** | Fine-tune swing within genre range | Low ← → High |
 | **K2+Shift** | **GATE TIME** | Trigger duration | 5ms ← → 50ms |
 | **K3+Shift** | **HUMANIZE** | Micro-timing jitter amount | None ← → Loose |
-| **K4+Shift** | **CLOCK DIV** | Clock output divider/multiplier | See table |
+| **K4+Shift** | **CLOCK DIV / AUX MODE** | Context-aware (see below) | See table |
 
 **SWING TASTE**: Adjusts swing amount *within* the genre's opinionated range. You're not setting absolute swing—you're choosing your taste within what's appropriate for the genre. This keeps swing musically valid while allowing personal preference.
 
@@ -170,7 +176,11 @@ System configuration and expression parameters.
 | 50% | ±5ms | Subtle human feel |
 | 100% | ±10ms | Loose, drummer-like |
 
-**CLOCK DIV**:
+**K4+Shift Context-Aware Behavior** (see also [external-clock-behavior], [aux-output-modes]):
+- **Internal clock**: CLOCK DIV — divides/multiplies the clock *output* (CV Out 1)
+- **External clock** patched: AUX MODE — selects what CV Out 1 outputs (see [aux-output-modes])
+
+**CLOCK DIV** (applies to clock output when internal, or sequencer rate when external):
 
 | Range | Division |
 |-------|----------|
@@ -604,6 +614,126 @@ When LENGTH changes mid-pattern:
 
 ---
 
+## Feature: External Clock Behavior [external-clock-behavior]
+
+When an external clock is patched to **Gate In 1**, the sequencer automatically switches to external clock mode with context-aware control behavior.
+
+### Clock Detection
+
+- External clock is detected on rising edge of Gate In 1
+- Timeout: 2 seconds without clock pulse reverts to internal clock
+- Transition is automatic—no manual mode switch required
+
+### Context-Aware K4 Controls
+
+When external clock is patched, K4 controls change function:
+
+| Control | Internal Clock | External Clock |
+|---------|----------------|----------------|
+| **K4 Primary** | TEMPO (90-160 BPM) | CLOCK DIV (sequencer rate) |
+| **K4+Shift** | CLOCK DIV (output rate) | AUX MODE (CV Out 1 mode) |
+
+### External Clock Rate Division
+
+When external clock is active, K4 (Primary) controls the sequencer step rate relative to incoming clock:
+
+| Range | Division | Effect |
+|-------|----------|--------|
+| 0-20% | ÷4 | 4 clock pulses per sequencer step (slow) |
+| 20-40% | ÷2 | 2 clock pulses per sequencer step |
+| 40-60% | ×1 | 1 clock pulse per step (unity) |
+| 60-80% | ×2 | 2 sequencer steps per clock pulse |
+| 80-100% | ×4 | 4 sequencer steps per clock pulse (fast) |
+
+### Clock Output Timing
+
+- Clock output (CV Out 1) is sample-accurate (updated in AudioCallback at 48kHz)
+- Pulse width: configurable, default 10ms
+- Swing timing is respected in clock output
+
+### Acceptance Criteria
+- [ ] Sample-accurate clock output (move from ProcessControls to AudioCallback)
+- [ ] External clock detection with 2-second timeout
+- [ ] Context-aware K4: TEMPO → CLOCK DIV when external clock patched
+- [ ] Context-aware K4+Shift: CLOCK DIV → AUX MODE when external clock patched
+- [ ] External clock rate division/multiplication (÷4 to ×4)
+- [ ] Robust against noise/double-triggering on Gate In 1
+- [ ] Smooth BPM estimation when slaved to external clock
+
+---
+
+## Feature: Auxiliary Output Modes [aux-output-modes]
+
+**CV Out 1** is a multi-purpose auxiliary output. When external clock is patched, it can output various useful signals instead of redundant clock.
+
+### Mode Selection
+
+When external clock is patched, **K4+Shift** (Config Shift) selects the aux output mode:
+
+| Range | Mode | Output Description |
+|-------|------|-------------------|
+| 0-17% | **Clock** | Swung clock output (default, same as internal clock mode) |
+| 17-33% | **HiHat** | Third trigger output for hi-hat/ghost percussion |
+| 33-50% | **Fill Gate** | High (5V) during fill zones, low otherwise |
+| 50-67% | **Phrase CV** | 0-5V ramp through phrase, resets at loop boundary |
+| 67-83% | **Accent** | Trigger only on accented hits |
+| 83-100% | **Downbeat** | Trigger on bar/phrase downbeats |
+
+### Mode Details
+
+**Clock Mode** (0-17%):
+- Outputs the sequencer clock with swing timing
+- Respects CLOCK DIV setting (when internal clock)
+- Default mode, compatible with previous behavior
+
+**HiHat Mode** (17-33%):
+- Outputs ghost/hi-hat triggers generated by ChaosModulator
+- Fires on `ghostTrigger` events from the high-variation chaos stream
+- Lower velocity than main voices (0.3-0.5 range)
+- Great for driving a third VCA or percussion module
+
+**Fill Gate Mode** (33-50%):
+- Outputs a gate signal indicating fill/build zones
+- High (5V) when `isFillZone` or `isBuildZone` is true
+- Patch to effects depth, filter cutoff, or burst generators
+- Follows phrase position tracking
+
+**Phrase CV Mode** (50-67%):
+- Outputs phrase progress as 0-5V CV
+- Rises linearly from 0V at phrase start to 5V at phrase end
+- Resets to 0V at loop boundary
+- Scales with loop length (faster for 1-bar, slower for 16-bar)
+- Patch to filter sweeps, VCA for dynamic arc, etc.
+
+**Accent Mode** (67-83%):
+- Outputs trigger only when accented hits occur
+- Fires when either Anchor or Shimmer triggers with accent-eligible intensity
+- Useful for emphasizing strong beats on external modules
+
+**Downbeat Mode** (83-100%):
+- Outputs trigger on bar downbeats (`isDownbeat` = step 0 of any bar)
+- Optional: phrase reset pulse (step 0 of loop)
+- Useful for syncing external sequencers, resetting envelopes
+
+### Internal Clock Behavior
+
+When using internal clock (no external clock patched):
+- CV Out 1 always outputs clock (respecting CLOCK DIV setting)
+- AUX MODE setting is ignored (K4+Shift = CLOCK DIV)
+
+### Acceptance Criteria
+- [ ] Mode selection via K4+Shift when external clock patched
+- [ ] Clock mode: swung clock output (existing behavior)
+- [ ] HiHat mode: ghost trigger output from ChaosModulator
+- [ ] Fill Gate mode: high during fill/build zones
+- [ ] Phrase CV mode: 0-5V ramp based on phraseProgress
+- [ ] Accent mode: trigger on accent-eligible hits
+- [ ] Downbeat mode: trigger on bar/phrase downbeats
+- [ ] Mode persists across power cycles (save to flash)
+- [ ] LED feedback indicates current mode when adjusting
+
+---
+
 ## Technical Specifications
 
 | Parameter | Value |
@@ -615,7 +745,9 @@ When LENGTH changes mid-pattern:
 | Tempo Range | 90-160 BPM |
 | Gate Time Range | 5-50ms |
 | CV Range | 0-5V |
-| Clock Output | Swung timing |
+| Clock Output | Swung timing, sample-accurate |
+| External Clock Timeout | 2 seconds |
+| Aux Output Modes | 6 (Clock, HiHat, Fill, Phrase, Accent, Downbeat) |
 
 ---
 
