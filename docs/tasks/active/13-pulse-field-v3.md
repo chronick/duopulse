@@ -150,24 +150,28 @@ This eliminates Terrain/Grid mismatches, reduces cognitive load, and provides in
 ## Phase 5: Voice Interaction [fuse-balance] [couple-interlock]
 
 ### FUSE Energy Balance
-- [ ] Implement `ApplyFuse(fuse, anchorDensity, shimmerDensity)`. *(spec: [fuse-balance])*
+- [x] Implement `ApplyFuse(fuse, anchorDensity, shimmerDensity)`. *(spec: [fuse-balance])*
   - fuse=0.5: no change
-  - fuse<0.5: boost anchor, reduce shimmer
-  - fuse>0.5: boost shimmer, reduce anchor
+  - fuse<0.5: boost anchor, reduce shimmer (bias = -0.15)
+  - fuse>0.5: boost shimmer, reduce anchor (bias = +0.15)
   - ±15% density shift at extremes
 
 ### COUPLE Interlock
-- [ ] Implement `ApplyCouple(couple, anchorFires, shimmerFires, shimmerVel)`. *(spec: [couple-interlock])*
-  - 0%: fully independent
-  - 50%: soft interlock (collision avoidance)
-  - 100%: hard interlock (shimmer fills anchor gaps)
-- [ ] Collision suppression scales with COUPLE. *(spec: [couple-interlock])*
-- [ ] Gap-filling boost at COUPLE > 50%. *(spec: [couple-interlock])*
+- [x] Implement `ApplyCouple(couple, anchorFires, shimmerFires, shimmerVel)`. *(spec: [couple-interlock])*
+  - 0-10%: fully independent (no interaction)
+  - 10-100%: collision suppression (up to 80% at max)
+  - 50-100%: gap-filling boost (up to 30% at max)
+- [x] Collision suppression scales with COUPLE. *(spec: [couple-interlock])*
+  - suppressChance = couple × 0.8
+- [x] Gap-filling boost at COUPLE > 50%. *(spec: [couple-interlock])*
+  - boostChance = (couple - 0.5) × 0.6
+  - Fill velocity: 0.5 to 0.8 (medium)
 
 ### Tests
-- [ ] Verify FUSE tilts energy between voices.
-- [ ] Verify COUPLE suppresses collisions at high values.
-- [ ] Verify COUPLE fills gaps at high values.
+- [x] Verify FUSE tilts energy between voices.
+- [x] Verify COUPLE suppresses collisions at high values.
+- [x] Verify COUPLE fills gaps at high values.
+  - All tests in `tests/test_broken_effects.cpp` under [fuse-balance] and [couple-interlock] tags
 
 ## Phase 6: Control Integration
 

@@ -579,6 +579,278 @@ TEST_CASE("Phrase modulation functions work with CalculatePhrasePosition", "[bro
 }
 
 // =============================================================================
+// FUSE Energy Balance Tests [broken-effects][fuse-balance]
+// =============================================================================
+
+TEST_CASE("ApplyFuse at 0.5 makes no change", "[broken-effects][fuse-balance]")
+{
+    float anchor = 0.6f;
+    float shimmer = 0.4f;
+
+    ApplyFuse(0.5f, anchor, shimmer);
+
+    REQUIRE(anchor == Catch::Approx(0.6f));
+    REQUIRE(shimmer == Catch::Approx(0.4f));
+}
+
+TEST_CASE("ApplyFuse at 0.0 boosts anchor, reduces shimmer", "[broken-effects][fuse-balance]")
+{
+    float anchor = 0.5f;
+    float shimmer = 0.5f;
+
+    ApplyFuse(0.0f, anchor, shimmer);
+
+    // bias = (0.0 - 0.5) * 0.3 = -0.15
+    // anchor = 0.5 - (-0.15) = 0.65
+    // shimmer = 0.5 + (-0.15) = 0.35
+    REQUIRE(anchor == Catch::Approx(0.65f));
+    REQUIRE(shimmer == Catch::Approx(0.35f));
+}
+
+TEST_CASE("ApplyFuse at 1.0 boosts shimmer, reduces anchor", "[broken-effects][fuse-balance]")
+{
+    float anchor = 0.5f;
+    float shimmer = 0.5f;
+
+    ApplyFuse(1.0f, anchor, shimmer);
+
+    // bias = (1.0 - 0.5) * 0.3 = +0.15
+    // anchor = 0.5 - 0.15 = 0.35
+    // shimmer = 0.5 + 0.15 = 0.65
+    REQUIRE(anchor == Catch::Approx(0.35f));
+    REQUIRE(shimmer == Catch::Approx(0.65f));
+}
+
+TEST_CASE("ApplyFuse clamps results to valid range", "[broken-effects][fuse-balance]")
+{
+    // Test clamping at low end
+    {
+        float anchor = 0.1f;
+        float shimmer = 0.1f;
+
+        ApplyFuse(1.0f, anchor, shimmer);  // Reduces anchor by 0.15
+
+        REQUIRE(anchor >= 0.0f);
+        REQUIRE(shimmer <= 1.0f);
+    }
+
+    // Test clamping at high end
+    {
+        float anchor = 0.95f;
+        float shimmer = 0.95f;
+
+        ApplyFuse(0.0f, anchor, shimmer);  // Boosts anchor by 0.15
+
+        REQUIRE(anchor <= 1.0f);
+        REQUIRE(shimmer >= 0.0f);
+    }
+}
+
+TEST_CASE("ApplyFuse clamps input parameter", "[broken-effects][fuse-balance]")
+{
+    float anchor = 0.5f;
+    float shimmer = 0.5f;
+
+    // Test with out-of-range fuse values
+    ApplyFuse(-0.5f, anchor, shimmer);  // Should clamp to 0.0
+    REQUIRE(anchor == Catch::Approx(0.65f));
+    REQUIRE(shimmer == Catch::Approx(0.35f));
+
+    anchor = 0.5f;
+    shimmer = 0.5f;
+    ApplyFuse(1.5f, anchor, shimmer);  // Should clamp to 1.0
+    REQUIRE(anchor == Catch::Approx(0.35f));
+    REQUIRE(shimmer == Catch::Approx(0.65f));
+}
+
+// =============================================================================
+// COUPLE Interlock Tests [broken-effects][couple-interlock]
+// =============================================================================
+
+TEST_CASE("ApplyCouple below 0.1 makes no changes", "[broken-effects][couple-interlock]")
+{
+    bool shimmerFires = true;
+    float shimmerVel = 0.8f;
+    uint32_t seed = 12345;
+
+    // Anchor firing, but couple too low to suppress
+    ApplyCouple(0.05f, true, shimmerFires, shimmerVel, seed, 0);
+    REQUIRE(shimmerFires == true);
+    REQUIRE(shimmerVel == Catch::Approx(0.8f));
+
+    // Anchor silent, but couple too low to boost
+    shimmerFires = false;
+    ApplyCouple(0.05f, false, shimmerFires, shimmerVel, seed, 0);
+    REQUIRE(shimmerFires == false);
+}
+
+TEST_CASE("ApplyCouple suppresses shimmer when anchor fires", "[broken-effects][couple-interlock]")
+{
+    // At high couple, shimmer should often be suppressed when anchor fires
+    int suppressedCount = 0;
+
+    for (uint32_t seed = 0; seed < 1000; seed++)
+    {
+        bool shimmerFires = true;
+        float shimmerVel = 0.8f;
+
+        ApplyCouple(1.0f, true, shimmerFires, shimmerVel, seed, 5);
+
+        if (!shimmerFires)
+            suppressedCount++;
+    }
+
+    // At couple=1.0, suppression chance is 80%
+    // Expect ~800 suppressions out of 1000
+    REQUIRE(suppressedCount > 600);
+    REQUIRE(suppressedCount < 950);
+}
+
+TEST_CASE("ApplyCouple suppression scales with couple value", "[broken-effects][couple-interlock]")
+{
+    auto countSuppressions = [](float couple) {
+        int count = 0;
+        for (uint32_t seed = 0; seed < 500; seed++)
+        {
+            for (int step = 0; step < 32; step++)
+            {
+                bool shimmerFires = true;
+                float shimmerVel = 0.8f;
+
+                ApplyCouple(couple, true, shimmerFires, shimmerVel, seed, step);
+
+                if (!shimmerFires)
+                    count++;
+            }
+        }
+        return count;
+    };
+
+    int suppLow = countSuppressions(0.2f);
+    int suppMid = countSuppressions(0.5f);
+    int suppHigh = countSuppressions(1.0f);
+
+    // Higher couple should produce more suppressions
+    REQUIRE(suppLow < suppMid);
+    REQUIRE(suppMid < suppHigh);
+}
+
+TEST_CASE("ApplyCouple fills gaps when anchor silent at high couple", "[broken-effects][couple-interlock]")
+{
+    // At high couple and anchor silent, shimmer can be boosted
+    int boostCount = 0;
+
+    for (uint32_t seed = 0; seed < 1000; seed++)
+    {
+        bool shimmerFires = false;  // Not already firing
+        float shimmerVel = 0.0f;
+
+        ApplyCouple(1.0f, false, shimmerFires, shimmerVel, seed, 5);
+
+        if (shimmerFires)
+        {
+            boostCount++;
+            // Velocity should be in medium range (0.5 to 0.8)
+            REQUIRE(shimmerVel >= 0.5f);
+            REQUIRE(shimmerVel <= 0.8f);
+        }
+    }
+
+    // At couple=1.0, boost chance is 30%
+    // Expect ~300 boosts out of 1000
+    REQUIRE(boostCount > 150);
+    REQUIRE(boostCount < 450);
+}
+
+TEST_CASE("ApplyCouple does not boost when couple <= 0.5", "[broken-effects][couple-interlock]")
+{
+    // Gap filling only happens above 50% couple
+    for (uint32_t seed = 0; seed < 100; seed++)
+    {
+        bool shimmerFires = false;
+        float shimmerVel = 0.0f;
+
+        ApplyCouple(0.5f, false, shimmerFires, shimmerVel, seed, 5);
+
+        REQUIRE(shimmerFires == false);  // Should never boost at exactly 0.5
+    }
+}
+
+TEST_CASE("ApplyCouple does not modify already-firing shimmer when boosting", "[broken-effects][couple-interlock]")
+{
+    // If shimmer is already firing, gap-fill boost doesn't apply
+    bool shimmerFires = true;
+    float shimmerVel = 0.9f;
+    uint32_t seed = 12345;
+
+    ApplyCouple(1.0f, false, shimmerFires, shimmerVel, seed, 5);
+
+    // Shimmer was already firing, should remain unchanged
+    REQUIRE(shimmerFires == true);
+    REQUIRE(shimmerVel == Catch::Approx(0.9f));
+}
+
+TEST_CASE("ApplyCouple is deterministic with same seed", "[broken-effects][couple-interlock]")
+{
+    uint32_t seed = 0xCAFEBABE;
+
+    for (int step = 0; step < 32; step++)
+    {
+        // Test suppression
+        bool shimmer1 = true;
+        float vel1 = 0.8f;
+        ApplyCouple(0.8f, true, shimmer1, vel1, seed, step);
+
+        bool shimmer2 = true;
+        float vel2 = 0.8f;
+        ApplyCouple(0.8f, true, shimmer2, vel2, seed, step);
+
+        REQUIRE(shimmer1 == shimmer2);
+
+        // Test boost
+        bool shimmer3 = false;
+        float vel3 = 0.0f;
+        ApplyCouple(0.8f, false, shimmer3, vel3, seed, step);
+
+        bool shimmer4 = false;
+        float vel4 = 0.0f;
+        ApplyCouple(0.8f, false, shimmer4, vel4, seed, step);
+
+        REQUIRE(shimmer3 == shimmer4);
+        if (shimmer3)
+        {
+            REQUIRE(vel3 == vel4);
+        }
+    }
+}
+
+TEST_CASE("ApplyCouple clamps couple parameter", "[broken-effects][couple-interlock]")
+{
+    // Negative couple should behave like 0 (below threshold, no effect)
+    {
+        bool shimmerFires = true;
+        float shimmerVel = 0.8f;
+        ApplyCouple(-0.5f, true, shimmerFires, shimmerVel, 12345, 0);
+        REQUIRE(shimmerFires == true);  // No suppression
+    }
+
+    // Couple > 1.0 should clamp to 1.0 (max effect)
+    {
+        int suppressedCount = 0;
+        for (uint32_t seed = 0; seed < 100; seed++)
+        {
+            bool shimmerFires = true;
+            float shimmerVel = 0.8f;
+            ApplyCouple(1.5f, true, shimmerFires, shimmerVel, seed, 0);
+            if (!shimmerFires)
+                suppressedCount++;
+        }
+        // Should behave like couple=1.0 (80% suppression)
+        REQUIRE(suppressedCount > 50);
+    }
+}
+
+// =============================================================================
 // Integration Tests [broken-effects][integration]
 // =============================================================================
 

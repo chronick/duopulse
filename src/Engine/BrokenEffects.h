@@ -449,4 +449,127 @@ inline float GetPhraseAccent(const PhrasePosition& pos)
     return 1.0f;
 }
 
+// =============================================================================
+// Voice Interaction: FUSE Energy Balance [fuse-balance]
+// =============================================================================
+
+/**
+ * Apply FUSE energy balance between Anchor and Shimmer voices.
+ *
+ * FUSE tilts the energy between voices:
+ * - fuse = 0.0: anchor-heavy (kick emphasized)
+ * - fuse = 0.5: balanced (no change)
+ * - fuse = 1.0: shimmer-heavy (snare/hat emphasized)
+ *
+ * At extremes, density shifts by ±15%.
+ *
+ * Reference: docs/specs/double-down/simplified-algorithmic-approach.md [fuse-balance]
+ *
+ * @param fuse FUSE parameter (0.0-1.0)
+ * @param anchorDensity Reference to anchor density (modified in place)
+ * @param shimmerDensity Reference to shimmer density (modified in place)
+ */
+inline void ApplyFuse(float fuse, float& anchorDensity, float& shimmerDensity)
+{
+    // Clamp fuse to valid range
+    if(fuse < 0.0f)
+        fuse = 0.0f;
+    if(fuse > 1.0f)
+        fuse = 1.0f;
+
+    // Calculate bias: (fuse - 0.5) * 0.3 gives ±0.15 at extremes
+    // fuse = 0.0 → bias = -0.15 (anchor boost, shimmer reduce)
+    // fuse = 0.5 → bias = 0.0 (balanced)
+    // fuse = 1.0 → bias = +0.15 (shimmer boost, anchor reduce)
+    float bias = (fuse - 0.5f) * 0.3f;
+
+    // Apply bias: subtract from anchor, add to shimmer
+    anchorDensity  = Clamp(anchorDensity - bias, 0.0f, 1.0f);
+    shimmerDensity = Clamp(shimmerDensity + bias, 0.0f, 1.0f);
+}
+
+// =============================================================================
+// Voice Interaction: COUPLE Interlock [couple-interlock]
+// =============================================================================
+
+// Magic numbers for COUPLE hash mixing
+constexpr uint32_t kCoupleSuppressHashMagic = 0x53555050; // "SUPP"
+constexpr uint32_t kCoupleBoostHashMagic    = 0x424F5354; // "BOST"
+constexpr uint32_t kCoupleVelHashMagic      = 0x56454C43; // "VELC"
+
+/**
+ * Apply COUPLE interlock between Anchor and Shimmer voices.
+ *
+ * COUPLE controls voice relationship strength:
+ * - 0%: fully independent (voices can collide or gap freely)
+ * - 50%: soft interlock (slight collision avoidance)
+ * - 100%: hard interlock (shimmer strongly fills anchor gaps)
+ *
+ * When anchor fires, shimmer may be suppressed to avoid collision.
+ * When anchor is silent, shimmer may be boosted to fill the gap.
+ *
+ * Reference: docs/specs/double-down/simplified-algorithmic-approach.md [couple-interlock]
+ *
+ * @param couple COUPLE parameter (0.0-1.0)
+ * @param anchorFires Whether anchor is triggering this step
+ * @param shimmerFires Reference to shimmer trigger (may be modified)
+ * @param shimmerVel Reference to shimmer velocity (may be modified for fills)
+ * @param seed Seed for deterministic randomness
+ * @param step Step index for per-step randomness
+ */
+inline void ApplyCouple(float couple,
+                        bool anchorFires,
+                        bool& shimmerFires,
+                        float& shimmerVel,
+                        uint32_t seed,
+                        int step)
+{
+    // Clamp couple to valid range
+    if(couple < 0.0f)
+        couple = 0.0f;
+    if(couple > 1.0f)
+        couple = 1.0f;
+
+    // Below 10% couple: fully independent, no interaction
+    if(couple < 0.1f)
+        return;
+
+    if(anchorFires)
+    {
+        // Anchor is firing — reduce shimmer probability (collision avoidance)
+        // Suppression chance scales from 0% at couple=0.1 to 80% at couple=1.0
+        float suppressChance = couple * 0.8f;
+
+        uint32_t hash   = HashStep(seed ^ kCoupleSuppressHashMagic, step);
+        float randomVal = HashToFloat(hash);
+
+        if(randomVal < suppressChance)
+        {
+            shimmerFires = false;
+        }
+    }
+    else
+    {
+        // Anchor is silent — boost shimmer probability (gap filling)
+        // Only applies when shimmer wasn't already firing and couple > 50%
+        if(!shimmerFires && couple > 0.5f)
+        {
+            // Boost chance scales from 0% at couple=0.5 to 30% at couple=1.0
+            float boostChance = (couple - 0.5f) * 0.6f;
+
+            uint32_t hash   = HashStep(seed ^ kCoupleBoostHashMagic, step);
+            float randomVal = HashToFloat(hash);
+
+            if(randomVal < boostChance)
+            {
+                shimmerFires = true;
+
+                // Generate medium velocity for fill (0.5 to 0.8)
+                uint32_t velHash = HashStep(seed ^ kCoupleVelHashMagic, step);
+                shimmerVel       = 0.5f + HashToFloat(velHash) * 0.3f;
+            }
+        }
+    }
+}
+
 } // namespace daisysp_idm_grids
