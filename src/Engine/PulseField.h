@@ -312,4 +312,149 @@ inline bool ShouldStepFire(int step,
     return ShouldStepFire(step, density, broken, weights, seed);
 }
 
+// =============================================================================
+// DRIFT System: Dual-Seed Locked/Drifting Pattern Generation
+// =============================================================================
+
+/**
+ * State for the Pulse Field algorithm.
+ * Maintains dual seeds for locked vs. drifting pattern elements.
+ *
+ * The DRIFT system determines how much the pattern evolves over time:
+ * - patternSeed_: Fixed seed for "locked" elements (same every loop)
+ * - loopSeed_: Changes each phrase for "drifting" elements (varies each loop)
+ *
+ * DRIFT sets the threshold: Steps with stability > DRIFT use patternSeed_,
+ * steps with stability <= DRIFT use loopSeed_.
+ *
+ * Reference: docs/specs/double-down/simplified-algorithmic-approach.md [drift-control]
+ */
+struct PulseFieldState
+{
+    uint32_t patternSeed_;  // Fixed seed for locked elements (persists across loops)
+    uint32_t loopSeed_;     // Varying seed for drifting elements (changes each phrase)
+    uint32_t seedCounter_;  // Counter for generating new loopSeeds
+
+    /**
+     * Initialize the pulse field state.
+     *
+     * @param initialSeed Initial seed value for pattern generation
+     */
+    void Init(uint32_t initialSeed = 0x12345678)
+    {
+        patternSeed_ = initialSeed;
+        loopSeed_    = initialSeed ^ 0xDEADBEEF;
+        seedCounter_ = 0;
+    }
+
+    /**
+     * Called on phrase reset to regenerate loopSeed_.
+     * This causes drifting elements to produce different patterns each loop.
+     */
+    void OnPhraseReset()
+    {
+        // Generate a new loopSeed using seedCounter for variation
+        seedCounter_++;
+        loopSeed_ = HashStep(patternSeed_, static_cast<int>(seedCounter_));
+    }
+
+    /**
+     * Lock the current pattern by copying loopSeed_ to patternSeed_.
+     * This "freezes" the current drifting pattern.
+     */
+    void LockPattern()
+    {
+        patternSeed_ = loopSeed_;
+    }
+
+    /**
+     * Set a new pattern seed (for loading saved patterns or user selection).
+     *
+     * @param seed New pattern seed
+     */
+    void SetPatternSeed(uint32_t seed)
+    {
+        patternSeed_ = seed;
+    }
+};
+
+/**
+ * Determine whether a step should fire with DRIFT-aware seed selection.
+ *
+ * This is the full DRIFT-aware algorithm:
+ * 1. Calculate effective DRIFT based on voice (Anchor is more stable)
+ * 2. Get step stability (downbeats are most stable)
+ * 3. If stability > effectiveDrift, use patternSeed_ (locked)
+ * 4. If stability <= effectiveDrift, use loopSeed_ (drifting)
+ * 5. Apply the core pulse field algorithm with the selected seed
+ *
+ * At DRIFT=0%: All steps use patternSeed_ → identical pattern every loop
+ * At DRIFT=100%: Most steps use loopSeed_ → unique pattern each loop
+ * Per-voice: Anchor uses 0.7× drift multiplier, Shimmer uses 1.3×
+ *
+ * @param step Step index (0-31)
+ * @param density How much is happening (0=silent, 1=full)
+ * @param broken How irregular the pattern is (0=straight, 1=chaos)
+ * @param drift How much the pattern evolves (0=locked, 1=evolving)
+ * @param isAnchor true for Anchor voice (more stable), false for Shimmer (more drifty)
+ * @param state Pulse field state with dual seeds
+ * @return true if step should fire
+ *
+ * Reference: docs/specs/double-down/simplified-algorithmic-approach.md [drift-control]
+ */
+inline bool ShouldStepFireWithDrift(int step,
+                                    float density,
+                                    float broken,
+                                    float drift,
+                                    bool isAnchor,
+                                    const PulseFieldState& state)
+{
+    // Get effective DRIFT with per-voice multiplier
+    // Anchor (kick) is more stable (0.7× multiplier)
+    // Shimmer (snare/hat) is more drifty (1.3× multiplier)
+    float effectiveDrift = GetEffectiveDrift(drift, isAnchor);
+
+    // Get step's stability tier
+    float stability = GetStepStability(step);
+
+    // Is this step locked or can it drift?
+    // Steps with stability ABOVE effectiveDrift use the locked seed
+    // Steps with stability AT OR BELOW effectiveDrift use the varying seed
+    bool isLocked = stability > effectiveDrift;
+
+    // Pick the appropriate random seed
+    uint32_t seed = isLocked ? state.patternSeed_ : state.loopSeed_;
+
+    // Get the weight table for this voice
+    const float* weights = isAnchor ? kAnchorWeights : kShimmerWeights;
+
+    // Apply the core pulse field algorithm with the selected seed
+    return ShouldStepFire(step, density, broken, weights, seed);
+}
+
+/**
+ * Get trigger results for both voices with full DRIFT awareness.
+ *
+ * @param step Step index (0-31)
+ * @param anchorDensity Density for Anchor voice
+ * @param shimmerDensity Density for Shimmer voice
+ * @param broken BROKEN parameter (pattern regularity)
+ * @param drift DRIFT parameter (pattern evolution)
+ * @param state Pulse field state
+ * @param anchorFires [out] Whether Anchor should trigger
+ * @param shimmerFires [out] Whether Shimmer should trigger
+ */
+inline void GetPulseFieldTriggers(int step,
+                                  float anchorDensity,
+                                  float shimmerDensity,
+                                  float broken,
+                                  float drift,
+                                  const PulseFieldState& state,
+                                  bool& anchorFires,
+                                  bool& shimmerFires)
+{
+    anchorFires  = ShouldStepFireWithDrift(step, anchorDensity, broken, drift, true, state);
+    shimmerFires = ShouldStepFireWithDrift(step, shimmerDensity, broken, drift, false, state);
+}
+
 } // namespace daisysp_idm_grids

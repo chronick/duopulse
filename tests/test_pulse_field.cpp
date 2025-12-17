@@ -257,3 +257,386 @@ TEST_CASE("Shimmer fires on backbeats, Anchor fires on downbeats", "[pulse-field
     REQUIRE(ShouldStepFire(24, density, broken, kShimmerWeights, seed) == true); // Backbeat
     REQUIRE(ShouldStepFire(0, density, broken, kShimmerWeights, seed) == false); // Low weight downbeat
 }
+
+// =============================================================================
+// PulseFieldState Tests
+// =============================================================================
+
+TEST_CASE("PulseFieldState initializes with dual seeds", "[pulse-field][drift]")
+{
+    PulseFieldState state;
+    state.Init(0x12345678);
+
+    // Seeds should be different after init
+    REQUIRE(state.patternSeed_ != state.loopSeed_);
+    REQUIRE(state.seedCounter_ == 0);
+}
+
+TEST_CASE("PulseFieldState OnPhraseReset changes loopSeed", "[pulse-field][drift]")
+{
+    PulseFieldState state;
+    state.Init(0x12345678);
+
+    uint32_t originalLoopSeed = state.loopSeed_;
+    uint32_t originalPatternSeed = state.patternSeed_;
+
+    state.OnPhraseReset();
+
+    // loopSeed should change
+    REQUIRE(state.loopSeed_ != originalLoopSeed);
+    // patternSeed should NOT change
+    REQUIRE(state.patternSeed_ == originalPatternSeed);
+    // Counter should increment
+    REQUIRE(state.seedCounter_ == 1);
+
+    // Multiple resets produce different seeds
+    uint32_t secondLoopSeed = state.loopSeed_;
+    state.OnPhraseReset();
+    REQUIRE(state.loopSeed_ != secondLoopSeed);
+    REQUIRE(state.seedCounter_ == 2);
+}
+
+TEST_CASE("PulseFieldState LockPattern copies loopSeed to patternSeed", "[pulse-field][drift]")
+{
+    PulseFieldState state;
+    state.Init(0x12345678);
+
+    // After a few phrase resets, loopSeed will be different
+    state.OnPhraseReset();
+    state.OnPhraseReset();
+
+    uint32_t currentLoopSeed = state.loopSeed_;
+
+    state.LockPattern();
+
+    // patternSeed should now equal the previous loopSeed
+    REQUIRE(state.patternSeed_ == currentLoopSeed);
+}
+
+// =============================================================================
+// DRIFT=0% Tests: Identical Pattern Every Loop
+// =============================================================================
+
+TEST_CASE("DRIFT=0% produces identical pattern every loop", "[pulse-field][drift]")
+{
+    PulseFieldState state1;
+    PulseFieldState state2;
+    state1.Init(0xABCD1234);
+    state2.Init(0xABCD1234);
+
+    // Simulate multiple "loops" by calling OnPhraseReset on state2
+    state2.OnPhraseReset();
+    state2.OnPhraseReset();
+    state2.OnPhraseReset();
+
+    float density = 0.5f;
+    float broken = 0.3f;
+    float drift = 0.0f;  // Zero drift = all steps locked
+
+    // With DRIFT=0, pattern should be identical regardless of loopSeed changes
+    for (int step = 0; step < kPulseFieldSteps; step++)
+    {
+        bool anchor1 = ShouldStepFireWithDrift(step, density, broken, drift, true, state1);
+        bool anchor2 = ShouldStepFireWithDrift(step, density, broken, drift, true, state2);
+        REQUIRE(anchor1 == anchor2);
+
+        bool shimmer1 = ShouldStepFireWithDrift(step, density, broken, drift, false, state1);
+        bool shimmer2 = ShouldStepFireWithDrift(step, density, broken, drift, false, state2);
+        REQUIRE(shimmer1 == shimmer2);
+    }
+}
+
+TEST_CASE("DRIFT=0% uses patternSeed for all steps", "[pulse-field][drift]")
+{
+    PulseFieldState state;
+    state.Init(0x12345678);
+
+    // Change loopSeed
+    state.OnPhraseReset();
+
+    float density = 0.6f;
+    float broken = 0.2f;
+    float drift = 0.0f;
+
+    // Record pattern
+    bool pattern1[kPulseFieldSteps];
+    for (int step = 0; step < kPulseFieldSteps; step++)
+    {
+        pattern1[step] = ShouldStepFireWithDrift(step, density, broken, drift, true, state);
+    }
+
+    // Change loopSeed again
+    state.OnPhraseReset();
+
+    // Pattern should be identical (since DRIFT=0 uses patternSeed)
+    for (int step = 0; step < kPulseFieldSteps; step++)
+    {
+        bool result = ShouldStepFireWithDrift(step, density, broken, drift, true, state);
+        REQUIRE(result == pattern1[step]);
+    }
+}
+
+// =============================================================================
+// DRIFT=100% Tests: Unique Pattern Each Loop
+// =============================================================================
+
+TEST_CASE("DRIFT=100% produces different patterns when loopSeed changes", "[pulse-field][drift]")
+{
+    PulseFieldState state;
+    state.Init(0xDEADBEEF);
+
+    // Use high BROKEN to maximize noise variation, making differences more likely
+    float density = 0.5f;
+    float broken = 1.0f;  // Maximum broken for maximum noise
+    float drift = 1.0f;   // Maximum drift
+
+    // Accumulate differences over multiple loops to account for probabilistic behavior
+    int totalDifferences = 0;
+    bool previousPattern[kPulseFieldSteps];
+
+    // Record initial pattern
+    for (int step = 0; step < kPulseFieldSteps; step++)
+    {
+        previousPattern[step] = ShouldStepFireWithDrift(step, density, broken, drift, false, state);
+    }
+
+    // Test over multiple phrase resets
+    for (int loop = 0; loop < 10; loop++)
+    {
+        state.OnPhraseReset();
+
+        for (int step = 0; step < kPulseFieldSteps; step++)
+        {
+            bool result = ShouldStepFireWithDrift(step, density, broken, drift, false, state);
+            if (result != previousPattern[step])
+            {
+                totalDifferences++;
+            }
+            previousPattern[step] = result;
+        }
+    }
+
+    // Over 10 loops × 32 steps = 320 comparisons with max BROKEN,
+    // we expect substantial differences due to noise injection
+    REQUIRE(totalDifferences > 5);
+}
+
+TEST_CASE("DRIFT=100% Shimmer uses loopSeed for most steps", "[pulse-field][drift]")
+{
+    // At DRIFT=100%, Shimmer has effective drift of 1.3 (clamped to 1.0)
+    // All steps should use loopSeed
+    PulseFieldState state;
+    state.Init(0x11111111);
+
+    // Use high BROKEN to maximize noise, making differences more likely
+    float density = 0.5f;
+    float broken = 1.0f;  // Maximum broken for maximum noise variation
+    float drift = 1.0f;
+
+    // Count patterns over multiple loops
+    int totalDifferences = 0;
+    bool previousPattern[kPulseFieldSteps];
+
+    // First loop
+    for (int step = 0; step < kPulseFieldSteps; step++)
+    {
+        previousPattern[step] = ShouldStepFireWithDrift(step, density, broken, drift, false, state);
+    }
+
+    // Run multiple loops and count cumulative differences
+    for (int loop = 0; loop < 10; loop++)
+    {
+        state.OnPhraseReset();
+        for (int step = 0; step < kPulseFieldSteps; step++)
+        {
+            bool result = ShouldStepFireWithDrift(step, density, broken, drift, false, state);
+            if (result != previousPattern[step])
+            {
+                totalDifferences++;
+            }
+            previousPattern[step] = result;
+        }
+    }
+
+    // Over 10 loops × 32 steps = 320 comparisons with max BROKEN,
+    // we expect meaningful differences due to varying seed + noise
+    REQUIRE(totalDifferences > 5);
+}
+
+// =============================================================================
+// Stratified Stability Tests: Downbeats Lock Before Ghost Notes
+// =============================================================================
+
+TEST_CASE("At moderate DRIFT, downbeats lock while ghosts drift", "[pulse-field][drift][stratified]")
+{
+    // At DRIFT=0.5 for Anchor:
+    //   effectiveDrift = 0.5 * 0.7 = 0.35
+    //   Steps with stability > 0.35 are locked
+    //   - Bar downbeats (1.0): LOCKED
+    //   - Half notes (0.85): LOCKED
+    //   - Quarter notes (0.70): LOCKED
+    //   - 8th off-beats (0.40): LOCKED
+    //   - 16th ghosts (0.20): DRIFTING
+
+    PulseFieldState state1;
+    PulseFieldState state2;
+    state1.Init(0x99999999);
+    state2.Init(0x99999999);
+
+    // Simulate different "loops"
+    state2.OnPhraseReset();
+    state2.OnPhraseReset();
+
+    float density = 0.7f;
+    float broken = 0.3f;
+    float drift = 0.5f;
+
+    // Bar downbeats (stability=1.0) should produce identical results
+    REQUIRE(ShouldStepFireWithDrift(0, density, broken, drift, true, state1) ==
+            ShouldStepFireWithDrift(0, density, broken, drift, true, state2));
+    REQUIRE(ShouldStepFireWithDrift(16, density, broken, drift, true, state1) ==
+            ShouldStepFireWithDrift(16, density, broken, drift, true, state2));
+
+    // Half notes (stability=0.85) should produce identical results
+    REQUIRE(ShouldStepFireWithDrift(8, density, broken, drift, true, state1) ==
+            ShouldStepFireWithDrift(8, density, broken, drift, true, state2));
+
+    // Quarter notes (stability=0.70) should produce identical results
+    REQUIRE(ShouldStepFireWithDrift(4, density, broken, drift, true, state1) ==
+            ShouldStepFireWithDrift(4, density, broken, drift, true, state2));
+}
+
+TEST_CASE("16th ghost notes drift at lower DRIFT than downbeats", "[pulse-field][drift][stratified]")
+{
+    // At DRIFT=0.25 for Shimmer:
+    //   effectiveDrift = 0.25 * 1.3 = 0.325
+    //   Steps with stability > 0.325 are locked
+    //   - Bar downbeats (1.0): LOCKED
+    //   - Half notes (0.85): LOCKED
+    //   - Quarter notes (0.70): LOCKED
+    //   - 8th off-beats (0.40): LOCKED
+    //   - 16th ghosts (0.20): DRIFTING
+
+    PulseFieldState state;
+    state.Init(0xAAAAAAAA);
+
+    float density = 0.7f;
+    float broken = 0.3f;
+    float drift = 0.25f;
+
+    // Record ghost note patterns over multiple loops
+    int ghostDifferences = 0;
+    bool previousGhost1 = ShouldStepFireWithDrift(1, density, broken, drift, false, state);
+    bool previousGhost3 = ShouldStepFireWithDrift(3, density, broken, drift, false, state);
+
+    for (int loop = 0; loop < 10; loop++)
+    {
+        state.OnPhraseReset();
+        bool ghost1 = ShouldStepFireWithDrift(1, density, broken, drift, false, state);
+        bool ghost3 = ShouldStepFireWithDrift(3, density, broken, drift, false, state);
+
+        if (ghost1 != previousGhost1) ghostDifferences++;
+        if (ghost3 != previousGhost3) ghostDifferences++;
+
+        previousGhost1 = ghost1;
+        previousGhost3 = ghost3;
+    }
+
+    // Ghost notes (stability 0.20 < effectiveDrift 0.325) should vary
+    // Over 10 loops × 2 ghost notes = 20 comparisons, expect some differences
+    REQUIRE(ghostDifferences > 0);
+}
+
+TEST_CASE("Anchor at DRIFT=100% still has stable downbeats", "[pulse-field][drift][stratified]")
+{
+    // At DRIFT=100% for Anchor:
+    //   effectiveDrift = 1.0 * 0.7 = 0.70
+    //   Steps with stability > 0.70 are locked
+    //   - Bar downbeats (1.0): LOCKED
+    //   - Half notes (0.85): LOCKED
+    //   - Quarter notes (0.70): DRIFTING (0.70 is NOT > 0.70)
+
+    PulseFieldState state1;
+    PulseFieldState state2;
+    state1.Init(0xBBBBBBBB);
+    state2.Init(0xBBBBBBBB);
+
+    state2.OnPhraseReset();
+
+    float density = 0.6f;
+    float broken = 0.3f;
+    float drift = 1.0f;
+
+    // Bar downbeats (stability=1.0 > effectiveDrift=0.70) should still be locked
+    REQUIRE(ShouldStepFireWithDrift(0, density, broken, drift, true, state1) ==
+            ShouldStepFireWithDrift(0, density, broken, drift, true, state2));
+    REQUIRE(ShouldStepFireWithDrift(16, density, broken, drift, true, state1) ==
+            ShouldStepFireWithDrift(16, density, broken, drift, true, state2));
+
+    // Half notes (stability=0.85 > effectiveDrift=0.70) should also be locked
+    REQUIRE(ShouldStepFireWithDrift(8, density, broken, drift, true, state1) ==
+            ShouldStepFireWithDrift(8, density, broken, drift, true, state2));
+}
+
+// =============================================================================
+// Per-Voice DRIFT Multiplier Tests
+// =============================================================================
+
+TEST_CASE("Anchor is more stable than Shimmer at same DRIFT setting", "[pulse-field][drift][voice]")
+{
+    PulseFieldState state;
+    state.Init(0xCCCCCCCC);
+
+    float density = 0.6f;
+    float broken = 0.3f;
+    float drift = 0.5f;
+
+    // At DRIFT=0.5:
+    //   Anchor effective: 0.5 * 0.7 = 0.35
+    //   Shimmer effective: 0.5 * 1.3 = 0.65
+
+    // Quarter notes (stability=0.70) should be:
+    //   - Locked for Anchor (0.70 > 0.35)
+    //   - Locked for Shimmer (0.70 > 0.65)
+
+    // 8th off-beats (stability=0.40) should be:
+    //   - Locked for Anchor (0.40 > 0.35)
+    //   - Drifting for Shimmer (0.40 < 0.65)
+
+    // Test over multiple loops
+    bool anchor8thFirst = ShouldStepFireWithDrift(2, density, broken, drift, true, state);
+
+    state.OnPhraseReset();
+
+    bool anchor8thSecond = ShouldStepFireWithDrift(2, density, broken, drift, true, state);
+
+    // Anchor's 8th notes should be locked (same result)
+    // Step 2 has stability 0.40, which is > effectiveDrift 0.35 for Anchor
+    REQUIRE(anchor8thFirst == anchor8thSecond);
+
+    // Note: Shimmer's 8th notes (stability 0.40 < effectiveDrift 0.65) would drift,
+    // but testing that is probabilistic. The stability math is verified
+    // in GetEffectiveDrift tests and the stratified stability tests above.
+}
+
+TEST_CASE("GetPulseFieldTriggers returns both voice results", "[pulse-field][drift][integration]")
+{
+    PulseFieldState state;
+    state.Init(0xDDDDDDDD);
+
+    bool anchorFires, shimmerFires;
+    GetPulseFieldTriggers(0, 0.5f, 0.5f, 0.0f, 0.0f, state, anchorFires, shimmerFires);
+
+    // At medium density, step 0 has:
+    //   Anchor weight 1.0 > threshold 0.5 → fires
+    //   Shimmer weight 0.25 < threshold 0.5 → doesn't fire
+    REQUIRE(anchorFires == true);
+    REQUIRE(shimmerFires == false);
+
+    // Test backbeat (step 8)
+    GetPulseFieldTriggers(8, 0.5f, 0.5f, 0.0f, 0.0f, state, anchorFires, shimmerFires);
+    // Anchor weight 0.85 > threshold 0.5 → fires
+    // Shimmer weight 1.0 > threshold 0.5 → fires
+    REQUIRE(anchorFires == true);
+    REQUIRE(shimmerFires == true);
+}

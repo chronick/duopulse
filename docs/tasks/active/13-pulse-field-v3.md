@@ -1,9 +1,9 @@
 ---
 id: chronick/daisysp-idm-grids-13
 title: "DuoPulse v3: Algorithmic Pulse Field"
-status: "pending"
+status: "in_progress"
 created_date: "2025-12-16"
-last_updated: "2025-12-16"
+last_updated: "2025-12-16T17:00:00Z"
 owner: "user/ai"
 spec_refs:
   - "pulse-field"
@@ -54,24 +54,25 @@ This eliminates Terrain/Grid mismatches, reduces cognitive load, and provides in
 ## Phase 2: DRIFT System [drift-control]
 
 ### Step Stability
-- [ ] Implement step stability values (1.0 for bar downbeats → 0.2 for 16ths). *(spec: [drift-control])*
-- [ ] Add `patternSeed_` (persists across loops for locked elements). *(spec: [drift-control])*
-- [ ] Add `loopSeed_` (regenerates on phrase reset for drifting elements). *(spec: [drift-control])*
-- [ ] DRIFT threshold determines which steps use locked vs. varying seed. *(spec: [drift-control])*
+- [x] Implement step stability values (1.0 for bar downbeats → 0.2 for 16ths). *(spec: [drift-control])*
+- [x] Add `patternSeed_` (persists across loops for locked elements). *(spec: [drift-control])*
+- [x] Add `loopSeed_` (regenerates on phrase reset for drifting elements). *(spec: [drift-control])*
+- [x] DRIFT threshold determines which steps use locked vs. varying seed. *(spec: [drift-control])*
 
 ### Per-Voice DRIFT
-- [ ] Anchor uses 0.7× drift multiplier (more stable). *(spec: [drift-control])*
-- [ ] Shimmer uses 1.3× drift multiplier (more drifty). *(spec: [drift-control])*
-- [ ] At DRIFT=100%, Anchor still has some stability (effective 70%). *(spec: [drift-control])*
+- [x] Anchor uses 0.7× drift multiplier (more stable). *(spec: [drift-control])*
+- [x] Shimmer uses 1.3× drift multiplier (more drifty). *(spec: [drift-control])*
+- [x] At DRIFT=100%, Anchor still has some stability (effective 70%). *(spec: [drift-control])*
 
 ### Phrase Reset
-- [ ] `OnPhraseReset()` regenerates `loopSeed_`. *(spec: [drift-control])*
+- [x] `OnPhraseReset()` regenerates `loopSeed_`. *(spec: [drift-control])*
 - [ ] Hook phrase reset callback into Sequencer. *(spec: [drift-control])*
+  - Note: PulseFieldState struct ready for integration. Sequencer integration deferred to Phase 6 (Control Integration).
 
 ### Tests
-- [ ] DRIFT=0% produces identical pattern every loop.
-- [ ] DRIFT=100% produces unique pattern each loop.
-- [ ] Verify stratified stability: downbeats lock before ghost notes.
+- [x] DRIFT=0% produces identical pattern every loop.
+- [x] DRIFT=100% produces unique pattern each loop.
+- [x] Verify stratified stability: downbeats lock before ghost notes.
 
 ## Phase 3: BROKEN Effects Stack [broken-effects]
 

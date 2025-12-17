@@ -15,4 +15,4 @@
 | 10 | duopulse-v2 | DuoPulse v2: 2-Voice Percussive Sequencer with genre-aware swing, phrase structure, voice relationships | completed | 2025-12-01 | 2025-12-02 | completed/10-duopulse-v2.md |
 | 11 | control-layout-fixes | Control Layout Fixes: mode persistence bug, FLUX/FUSE investigation, control reorganization | completed | 2025-12-03 | 2025-12-16 | completed/11-control-layout-fixes.md |
 | 12 | aux-output-modes | Auxiliary Output Modes (CV Out 1): HiHat, Fill, Phrase CV, Accent, Downbeat | pending | 2025-12-16 | 2025-12-16 | backlog/12-aux-output-modes.md |
-| 13 | pulse-field-v3 | DuoPulse v3: Algorithmic Pulse Field — BROKEN/DRIFT controls, weighted pulse field, COUPLE interlock | in_progress | 2025-12-16 | 2025-12-16T16:00:00Z | active/13-pulse-field-v3.md |
+| 13 | pulse-field-v3 | DuoPulse v3: Algorithmic Pulse Field — BROKEN/DRIFT controls, weighted pulse field, COUPLE interlock | in_progress | 2025-12-16 | 2025-12-16T17:00:00Z | active/13-pulse-field-v3.md |
