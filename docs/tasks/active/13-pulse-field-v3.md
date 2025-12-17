@@ -37,9 +37,9 @@ This eliminates Terrain/Grid mismatches, reduces cognitive load, and provides in
 ## Phase 1: Core Algorithm [pulse-field]
 
 ### Weight Tables & Core Logic
-- [ ] Create `PulseField.h` with weight tables for 32 steps. *(spec: [pulse-field])*
-- [ ] Implement Anchor weight profile (emphasizes downbeats 0, 8, 16, 24). *(spec: [voice-weights])*
-- [ ] Implement Shimmer weight profile (emphasizes backbeats 8, 24). *(spec: [voice-weights])*
+- [x] Create `PulseField.h` with weight tables for 32 steps. *(spec: [pulse-field])*
+- [x] Implement Anchor weight profile (emphasizes downbeats 0, 8, 16, 24). *(spec: [voice-weights])*
+- [x] Implement Shimmer weight profile (emphasizes backbeats 8, 24). *(spec: [voice-weights])*
 - [ ] Implement `ShouldStepFire(step, density, broken)` function. *(spec: [pulse-field])*
 - [ ] BROKEN flattens weight distribution (Lerp toward 0.5). *(spec: [pulse-field])*
 - [ ] Noise injection scaled by BROKEN. *(spec: [pulse-field])*
