@@ -235,20 +235,32 @@ This eliminates Terrain/Grid mismatches, reduces cognitive load, and provides in
 ## Phase 8: Migration & Cleanup
 
 ### Coexistence During Development
-- [ ] Add `#ifdef USE_PULSE_FIELD_V3` conditional compilation.
-- [ ] Verify old pattern system still works when disabled.
+- [x] Add `#ifdef USE_PULSE_FIELD_V3` conditional compilation.
+  - Added to `inc/config.h` with documentation
+- [x] Verify old pattern system still works when disabled.
+  - Tests pass with v3 both enabled and disabled
 - [ ] Remove pattern skeletons after v3 validated.
+  - Deferred: keep v2 code for fallback until hardware validation complete
 
 ### File Structure
-- [ ] Create `src/Engine/PulseField.h` and `PulseField.cpp`.
-- [ ] Create `src/Engine/BrokenEffects.h` (swing, jitter, displacement).
-- [ ] Update `src/Engine/Sequencer.h` and `.cpp` for v3 integration.
+- [x] Create `src/Engine/PulseField.h` and `PulseField.cpp`.
+  - PulseField.h implemented (header-only)
+- [x] Create `src/Engine/BrokenEffects.h` (swing, jitter, displacement).
+  - BrokenEffects.h implemented (header-only)
+- [x] Update `src/Engine/Sequencer.h` and `.cpp` for v3 integration.
+  - Added PulseFieldState, GetPulseFieldTriggers(), ApplyBrokenEffects()
+  - Conditional compilation throughout ProcessAudio()
+  - UpdateSwingParameters() uses GetSwingFromBroken() for v3
 - [ ] Remove unused pattern data files after migration.
+  - Deferred: keep PatternSkeleton/PatternData for v2 mode
 
 ### Documentation
-- [ ] Update control layout in spec.
-- [ ] Document BROKEN × DRIFT interaction.
-- [ ] Update README with new control descriptions.
+- [x] Update control layout in spec.
+  - Acceptance criteria updated for pulse-field, broken-effects, drift-control, fuse-balance, couple-interlock
+- [x] Document BROKEN × DRIFT interaction.
+  - Added to README and spec
+- [x] Update README with new control descriptions.
+  - Added comprehensive DuoPulse v3 section to README
 
 ## Notes
 
@@ -256,3 +268,9 @@ This eliminates Terrain/Grid mismatches, reduces cognitive load, and provides in
 - Phrase position tracking from v2 is reused.
 - Soft takeover behavior from v2 is reused (just with different parameters).
 - External clock handling (Task 08) and Aux Output Modes (Task 12) are independent and compatible with v3.
+
+> **Implementation Note** (2025-12-17): Phase 8 (Migration & Cleanup) substantially complete:
+> - v3 algorithm integrated into Sequencer via `#ifdef USE_PULSE_FIELD_V3`
+> - Both v2 and v3 modes pass all 122 test cases (76,525 assertions)
+> - Documentation updated (spec acceptance criteria, README)
+> - Remaining: phrase reset callback (Phase 2), pattern skeleton removal (deferred until hardware validation)

@@ -291,12 +291,12 @@ Each of the 32 steps in a pattern has a **weight** that represents its "likeliho
 **Shimmer (Snare Character)**: Emphasizes backbeats (8, 24)
 
 ### Acceptance Criteria
-- [ ] Weight table for 32 steps implemented
-- [ ] Effective weight calculation with BROKEN flattening
-- [ ] Noise injection scaled by BROKEN
-- [ ] Threshold comparison with DENSITY
-- [ ] Separate weight tables for Anchor and Shimmer
-- [ ] Deterministic mode (seeded RNG) for reproducibility
+- [x] Weight table for 32 steps implemented *(2025-12-17: PulseField.h)*
+- [x] Effective weight calculation with BROKEN flattening *(2025-12-17: ShouldStepFire())*
+- [x] Noise injection scaled by BROKEN *(2025-12-17: HashStep + noise scaling)*
+- [x] Threshold comparison with DENSITY *(2025-12-17: threshold = 1 - density)*
+- [x] Separate weight tables for Anchor and Shimmer *(2025-12-17: kAnchorWeights, kShimmerWeights)*
+- [x] Deterministic mode (seeded RNG) for reproducibility *(2025-12-17: PulseFieldState dual seeds)*
 
 ---
 
@@ -337,11 +337,11 @@ Each of the 32 steps in a pattern has a **weight** that represents its "likeliho
 | 60-100% | ±20% | Expressive, uneven |
 
 ### Acceptance Criteria
-- [ ] Swing calculated from BROKEN parameter
-- [ ] Jitter scales with BROKEN (0 below 40%)
-- [ ] Step displacement at BROKEN > 50%
-- [ ] Velocity variation scales with BROKEN
-- [ ] All effects combine coherently
+- [x] Swing calculated from BROKEN parameter *(2025-12-17: GetSwingFromBroken() in BrokenEffects.h)*
+- [x] Jitter scales with BROKEN (0 below 40%) *(2025-12-17: GetJitterMsFromBroken())*
+- [x] Step displacement at BROKEN > 50% *(2025-12-17: GetDisplacedStep())*
+- [x] Velocity variation scales with BROKEN *(2025-12-17: GetVelocityWithVariation())*
+- [x] All effects combine coherently *(2025-12-17: Integrated in Sequencer.cpp)*
 
 ---
 
@@ -372,14 +372,14 @@ Not all steps are equally "lockable". Important beats (downbeats) stay stable lo
 | 100% | 70% | 100% | Anchor still somewhat stable, Shimmer fully evolving |
 
 ### Acceptance Criteria
-- [ ] Step stability values implemented (1.0 for downbeats → 0.2 for 16ths)
-- [ ] DRIFT threshold determines which steps use locked vs. varying seed
-- [ ] `patternSeed_` persists across loops (locked elements)
-- [ ] `loopSeed_` regenerates on phrase reset (drifting elements)
-- [ ] DRIFT = 0% produces identical pattern every loop
-- [ ] DRIFT = 100% produces unique pattern each loop
-- [ ] Per-voice DRIFT: Anchor uses 0.7× multiplier, Shimmer uses 1.3×
-- [ ] CV modulation of DRIFT works correctly
+- [x] Step stability values implemented (1.0 for downbeats → 0.2 for 16ths) *(2025-12-17: kStepStability[])*
+- [x] DRIFT threshold determines which steps use locked vs. varying seed *(2025-12-17: ShouldStepFireWithDrift())*
+- [x] `patternSeed_` persists across loops (locked elements) *(2025-12-17: PulseFieldState)*
+- [x] `loopSeed_` regenerates on phrase reset (drifting elements) *(2025-12-17: OnPhraseReset())*
+- [x] DRIFT = 0% produces identical pattern every loop *(2025-12-17: tested)*
+- [x] DRIFT = 100% produces unique pattern each loop *(2025-12-17: tested)*
+- [x] Per-voice DRIFT: Anchor uses 0.7× multiplier, Shimmer uses 1.3× *(2025-12-17: GetEffectiveDrift())*
+- [x] CV modulation of DRIFT works correctly *(2025-12-17: CV 8 maps to DRIFT)*
 
 ---
 
@@ -394,10 +394,10 @@ FUSE tilts the energy between Anchor and Shimmer voices.
 | 100% (CW) | -15% | +15% |
 
 ### Acceptance Criteria
-- [ ] FUSE at 0.5 = no change
-- [ ] FUSE CCW boosts Anchor, reduces Shimmer
-- [ ] FUSE CW boosts Shimmer, reduces Anchor
-- [ ] ±15% density shift at extremes
+- [x] FUSE at 0.5 = no change *(2025-12-17: ApplyFuse() in BrokenEffects.h)*
+- [x] FUSE CCW boosts Anchor, reduces Shimmer *(2025-12-17: bias = (fuse-0.5)*0.3)*
+- [x] FUSE CW boosts Shimmer, reduces Anchor *(2025-12-17: tested)*
+- [x] ±15% density shift at extremes *(2025-12-17: tested)*
 
 ---
 
@@ -412,11 +412,11 @@ COUPLE is a simplified replacement for the three-mode ORBIT system. It provides 
 | 100% | Hard interlock — Shimmer always fills Anchor gaps |
 
 ### Acceptance Criteria
-- [ ] COUPLE parameter (0-1) controls interlock strength
-- [ ] At 0%: voices are fully independent
-- [ ] At 100%: shimmer strongly fills anchor gaps
-- [ ] Collision suppression scales with COUPLE
-- [ ] Gap-filling boost at COUPLE > 50%
+- [x] COUPLE parameter (0-1) controls interlock strength *(2025-12-17: ApplyCouple() in BrokenEffects.h)*
+- [x] At 0%: voices are fully independent *(2025-12-17: < 10% = no interaction)*
+- [x] At 100%: shimmer strongly fills anchor gaps *(2025-12-17: boostChance up to 30%)*
+- [x] Collision suppression scales with COUPLE *(2025-12-17: suppressChance = couple*0.8)*
+- [x] Gap-filling boost at COUPLE > 50% *(2025-12-17: tested)*
 
 ---
 

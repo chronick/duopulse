@@ -1,4 +1,5 @@
 #include "Sequencer.h"
+#include "config.h"
 
 #include <algorithm>
 #include <cmath>
@@ -93,6 +94,11 @@ void Sequencer::Init(float sampleRate)
 
     // Initialize clock division
     clockDivCounter_ = 0;
+
+#ifdef USE_PULSE_FIELD_V3
+    // Initialize v3 Pulse Field state with a seed based on initial entropy
+    pulseFieldState_.Init(0x44554F50); // "DUOP" as seed
+#endif
 
     UpdateSwingParameters();
 }
@@ -348,6 +354,28 @@ std::array<float, 2> Sequencer::ProcessAudio()
         }
         else
         {
+#ifdef USE_PULSE_FIELD_V3
+            // === DuoPulse v3: Weighted Pulse Field Algorithm ===
+            // FUSE is applied inside GetPulseFieldTriggers
+            // Add chaos density bias for additional variation
+            float anchorDensMod  = Clamp(anchorDensity_ + chaosSampleLow.densityBias, 0.05f, 0.95f);
+            float shimmerDensMod = Clamp(shimmerDensity_ + chaosSampleHigh.densityBias, 0.05f, 0.95f);
+
+            // Use PulseField algorithm with BROKEN/DRIFT controls
+            GetPulseFieldTriggers(stepIndex_, anchorDensMod, shimmerDensMod,
+                                  kickTrig, snareTrig, kickVel, snareVel);
+
+            // Apply BROKEN effects (step displacement already handled in trigger generation)
+            int displaceStep = stepIndex_;
+            ApplyBrokenEffects(displaceStep, kickVel, snareVel, kickTrig, snareTrig);
+
+            // No separate HH in v3 - shimmer handles all upper percussion
+            hhTrig = false;
+            hhVel  = 0.0f;
+
+            // Phrase accent is already applied inside GetPulseFieldTriggers
+#else
+            // === DuoPulse v2: PatternSkeleton System ===
             // Apply fuse as density tilt: fuse < 0.5 boosts anchor, > 0.5 boosts shimmer
             float fuseBias     = (fuse_ - 0.5f) * 0.3f; // ±15% tilt
             float anchorDensMod  = Clamp(anchorDensity_ - fuseBias + chaosSampleLow.densityBias, 0.05f, 0.95f);
@@ -365,6 +393,7 @@ std::array<float, 2> Sequencer::ProcessAudio()
             float accentMult = GetPhraseAccentMultiplier(phrasePos_);
             kickVel  = Clamp(kickVel * accentMult, 0.0f, 1.0f);
             snareVel = Clamp(snareVel * accentMult, 0.0f, 1.0f);
+#endif
         }
 
         // Apply Ghost Triggers to HH/Perc stream (High Variation)
@@ -375,7 +404,9 @@ std::array<float, 2> Sequencer::ProcessAudio()
             hhVel = 0.3f + (static_cast<float>(rand() % 100) / 200.0f);
         }
 
-        // --- CV-Driven Fills (FLUX + Phrase Position) ---
+#ifndef USE_PULSE_FIELD_V3
+        // --- CV-Driven Fills (v2: FLUX + Phrase Position) ---
+        // v3 handles fills through phrase-aware weight boosts in the pulse field algorithm
         // High FLUX values add fill triggers, boosted in fill/build zones
         float phraseFillBoost = GetPhraseFillBoost(phrasePos_, terrain_);
         float effectiveFillFlux = Clamp(flux_ + phraseFillBoost, 0.0f, 1.0f);
@@ -396,8 +427,21 @@ std::array<float, 2> Sequencer::ProcessAudio()
                 snareVel  = CalculateFillVelocity(effectiveFillFlux, NextHumanizeRandom());
             }
         }
+#endif
 
-        // --- Orbit Voice Relationship Logic ---
+#ifdef USE_PULSE_FIELD_V3
+        // === v3: Voice relationship already handled by COUPLE in GetPulseFieldTriggers ===
+        // Direct assignment from trigger results
+        bool  gate0 = kickTrig;
+        float vel0  = kickTrig ? kickVel : 0.0f;
+        bool  gate1 = snareTrig;
+        float vel1  = snareTrig ? snareVel : 0.0f;
+
+        // Store current anchor state (for potential future Shadow-like features)
+        lastAnchorTrig_ = gate0;
+        lastAnchorVel_  = vel0;
+#else
+        // --- v2: Orbit Voice Relationship Logic ---
         OrbitMode orbitMode = GetOrbitMode(orbit_);
 
         // Gate 0 (Anchor/Low/Kick) - determined by pattern
@@ -459,6 +503,7 @@ std::array<float, 2> Sequencer::ProcessAudio()
         // Store current anchor state for next step's Shadow mode
         lastAnchorTrig_ = gate0;
         lastAnchorVel_  = vel0;
+#endif
 
         // Route HH/Perc based on Grid (pattern selection also affects routing)
         if(hhTrig)
@@ -484,7 +529,15 @@ std::array<float, 2> Sequencer::ProcessAudio()
         bool isOffBeat = IsOffBeat(stepIndex_);
 
         // Calculate humanize jitter (applied to all triggers)
+#ifdef USE_PULSE_FIELD_V3
+        // v3: BROKEN adds jitter on top of humanize_ parameter
+        float brokenJitterMs = GetJitterMsFromBroken(broken_);
+        // humanize_ adds up to 10ms, BROKEN adds up to 12ms more
+        float totalJitterMs  = (humanize_ * 10.0f) + brokenJitterMs;
+        float effectiveHumanize = totalJitterMs / 22.0f; // Normalize to 0-1 range (max 22ms total)
+#else
         float effectiveHumanize = CalculateEffectiveHumanize(humanize_, terrain_);
+#endif
         int   humanizeJitter    = 0;
         if(effectiveHumanize > 0.0f && (gate0 || gate1))
         {
@@ -702,8 +755,19 @@ int Sequencer::HoldMsToSamples(float milliseconds) const
 
 void Sequencer::UpdateSwingParameters()
 {
-    // Calculate current swing percentage from terrain (genre) and taste
+#ifdef USE_PULSE_FIELD_V3
+    // v3: Swing is derived from BROKEN parameter, fine-tuned by swingTaste_
+    // GetSwingFromBroken returns 0.50-0.66 based on BROKEN level
+    float baseSwing = GetSwingFromBroken(broken_);
+    
+    // swingTaste_ allows ±4% adjustment within the genre's range
+    // swingTaste=0.5 = no change, 0=reduce swing, 1=increase swing
+    float tasteAdjust = (swingTaste_ - 0.5f) * 0.08f; // ±4%
+    currentSwing_ = Clamp(baseSwing + tasteAdjust, 0.5f, 0.70f);
+#else
+    // v2: Calculate swing from terrain (genre) and taste
     currentSwing_ = CalculateSwing(terrain_, swingTaste_);
+#endif
 
     // Calculate step duration in samples (16th note at current BPM)
     // BPM = beats per minute, 4 16th notes per beat
@@ -846,5 +910,123 @@ void Sequencer::GetSkeletonTriggers(int step, float anchorDens, float shimmerDen
         shimmerVel = 0.0f;
     }
 }
+
+#ifdef USE_PULSE_FIELD_V3
+
+void Sequencer::GetPulseFieldTriggers(int step, float anchorDens, float shimmerDens,
+                                      bool& anchorTrig, bool& shimmerTrig,
+                                      float& anchorVel, float& shimmerVel)
+{
+    // Wrap step to pattern length (32 steps)
+    int wrappedStep = step % kPulseFieldSteps;
+
+    // Get effective BROKEN with phrase modulation (boost in fill zones)
+    float effectiveBroken = GetEffectiveBroken(broken_, phrasePos_);
+
+    // Apply FUSE energy balance (modifies densities in place)
+    float fusedAnchorDens  = anchorDens;
+    float fusedShimmerDens = shimmerDens;
+    ApplyFuse(fuse_, fusedAnchorDens, fusedShimmerDens);
+
+    // Get base triggers using the weighted pulse field algorithm with DRIFT
+    daisysp_idm_grids::GetPulseFieldTriggers(
+        wrappedStep,
+        fusedAnchorDens,
+        fusedShimmerDens,
+        effectiveBroken,
+        drift_,
+        pulseFieldState_,
+        anchorTrig,
+        shimmerTrig);
+
+    // Apply COUPLE interlock (suppresses collisions, fills gaps)
+    // Needs a seed for deterministic randomness
+    uint32_t coupleSeed = pulseFieldState_.patternSeed_ ^ 0x434F5550; // "COUP"
+    ApplyCouple(couple_, anchorTrig, shimmerTrig, shimmerVel, coupleSeed, wrappedStep);
+
+    // Calculate base velocities from weight tables
+    if(anchorTrig)
+    {
+        // Base velocity from weight (higher weight = stronger hit)
+        float weight = GetStepWeight(wrappedStep, true);
+        anchorVel    = 0.6f + weight * 0.4f; // 0.6 to 1.0 range
+
+        // Apply phrase accent (downbeats get boost)
+        anchorVel *= GetPhraseAccent(phrasePos_);
+
+        // Apply accent parameter - boosts velocity for strong positions
+        if(weight >= 0.7f)
+        {
+            float accentBoost = (anchorAccent_ - 0.5f) * 0.4f;
+            anchorVel         = Clamp(anchorVel + accentBoost, 0.3f, 1.0f);
+        }
+
+        // Apply BROKEN velocity variation
+        anchorVel = GetVelocityWithVariation(anchorVel, effectiveBroken,
+                                             pulseFieldState_.patternSeed_, wrappedStep);
+
+        // Clamp to valid range
+        anchorVel = Clamp(anchorVel, 0.2f, 1.0f);
+    }
+    else
+    {
+        anchorVel = 0.0f;
+    }
+
+    if(shimmerTrig)
+    {
+        // Base velocity from weight (check if already set by COUPLE gap-fill)
+        if(shimmerVel <= 0.0f)
+        {
+            float weight = GetStepWeight(wrappedStep, false);
+            shimmerVel   = 0.6f + weight * 0.4f;
+        }
+
+        // Apply phrase accent
+        shimmerVel *= GetPhraseAccent(phrasePos_);
+
+        // Apply accent parameter for strong positions
+        float weight = GetStepWeight(wrappedStep, false);
+        if(weight >= 0.7f)
+        {
+            float accentBoost = (shimmerAccent_ - 0.5f) * 0.4f;
+            shimmerVel        = Clamp(shimmerVel + accentBoost, 0.3f, 1.0f);
+        }
+
+        // Apply BROKEN velocity variation (use different hash offset for shimmer)
+        shimmerVel = GetVelocityWithVariation(shimmerVel, effectiveBroken,
+                                              pulseFieldState_.patternSeed_ ^ 0x5348494D, // "SHIM"
+                                              wrappedStep);
+
+        // Clamp to valid range
+        shimmerVel = Clamp(shimmerVel, 0.2f, 1.0f);
+    }
+    else
+    {
+        shimmerVel = 0.0f;
+    }
+}
+
+void Sequencer::ApplyBrokenEffects(int& step, float& anchorVel, float& shimmerVel,
+                                   bool anchorTrig, bool shimmerTrig)
+{
+    // Get effective BROKEN with phrase modulation
+    float effectiveBroken = GetEffectiveBroken(broken_, phrasePos_);
+
+    // Effect 1: Step Displacement (only at BROKEN > 50%)
+    if(effectiveBroken > 0.5f)
+    {
+        step = GetDisplacedStep(step, effectiveBroken, pulseFieldState_.patternSeed_);
+    }
+
+    // Effect 2: Micro-timing jitter (handled in ProcessAudio via humanize system)
+    // The jitter from BROKEN adds to the humanize_ parameter
+    // This is done in ProcessAudio where timing is applied
+
+    // Velocity variation is already applied in GetPulseFieldTriggers
+    // Swing is already calculated from BROKEN in UpdateSwingParameters
+}
+
+#endif // USE_PULSE_FIELD_V3
 
 } // namespace daisysp_idm_grids

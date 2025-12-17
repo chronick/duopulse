@@ -39,3 +39,18 @@
 #define NORMALIZED_TO_CV(norm) ((norm) * CV_VOLTAGE_RANGE)
 #define FREQ_TO_RAD(freq, sr) ((freq) * 2.0f * 3.14159265359f / (sr))
 
+// =============================================================================
+// DuoPulse v3: Algorithmic Pulse Field
+// =============================================================================
+// Define USE_PULSE_FIELD_V3 to enable the v3 algorithmic system.
+// When enabled:
+//   - Pattern generation uses weighted pulse field instead of discrete skeletons
+//   - BROKEN parameter controls genre character (swing, jitter, displacement)
+//   - DRIFT parameter controls pattern evolution over time
+//   - COUPLE parameter replaces ORBIT for voice interlock
+// When disabled (commented out):
+//   - Uses v2 PatternSkeleton lookup system
+//   - TERRAIN/GRID controls pattern selection
+//   - ORBIT provides 3-mode voice relationship
+#define USE_PULSE_FIELD_V3 1
+

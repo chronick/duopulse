@@ -3,6 +3,7 @@
 #include "../src/Engine/Sequencer.h"
 #include "../src/Engine/LedIndicator.h"
 #include "../src/Engine/GenreConfig.h"
+#include "../inc/config.h"
 
 using namespace daisysp_idm_grids;
 
@@ -421,18 +422,33 @@ TEST_CASE("Sequencer swing integration", "[swing]")
     Sequencer seq;
     seq.Init(48000.0f);
 
-    // v3: Swing is determined by BROKEN parameter via GetSwingFromBroken()
-    // Default BROKEN (0) = straight/Techno feel = 50% swing
-    // Note: Full v3 integration will use BrokenEffects::GetSwingFromBroken()
-    // For now, the sequencer still uses terrain-based swing internally
+#ifdef USE_PULSE_FIELD_V3
+    // === v3: Swing from BROKEN parameter ===
+    // GetSwingFromBroken(0.0) = 0.50 (straight Techno)
+    // swingTaste=0.5 (default) = no adjustment
+    REQUIRE(seq.GetSwingPercent() == Catch::Approx(0.50f).margin(0.01f));
 
+    // At BROKEN=0.6 (Trip-Hop zone: 50-75%), swing is around 60-66%
+    // GetSwingFromBroken(0.6) = 0.60 + (0.6-0.5)*4 * 0.06 = 0.60 + 0.024 = ~0.624
+    // swingTaste=1.0 adds +4%
+    seq.SetBroken(0.6f);
+    seq.SetSwingTaste(1.0f);
+    REQUIRE(seq.GetSwingPercent() == Catch::Approx(0.664f).margin(0.02f));
+
+    // At high BROKEN=0.9 (IDM zone: 75-100%), swing trends back down
+    // GetSwingFromBroken(0.9) = 0.66 - (0.9-0.75)*4 * 0.08 = 0.66 - 0.048 = ~0.612
+    // swingTaste=0.0 subtracts -4%
+    seq.SetBroken(0.9f);
+    seq.SetSwingTaste(0.0f);
+    REQUIRE(seq.GetSwingPercent() == Catch::Approx(0.572f).margin(0.02f));
+#else
+    // === v2: Swing from terrain + swingTaste ===
     // With default parameters (terrain=0, swingTaste=0.5):
     // Techno: 52% + 0.5 * (57% - 52%) = 54.5%
     REQUIRE(seq.GetSwingPercent() == Catch::Approx(0.545f).margin(0.01f));
 
-    // v3: SetBroken now controls swing character
-    // At BROKEN=0.5 (Trip-Hop zone), swing increases
-    seq.SetBroken(0.6f);  // Maps to terrain internally for now
+    // At BROKEN=0.6 (maps to terrain), swing increases
+    seq.SetBroken(0.6f);
     seq.SetSwingTaste(1.0f);
     // Expected: Trip-Hop max swing = 68%
     REQUIRE(seq.GetSwingPercent() == Catch::Approx(0.68f).margin(0.01f));
@@ -442,6 +458,7 @@ TEST_CASE("Sequencer swing integration", "[swing]")
     seq.SetSwingTaste(0.0f);
     // Expected: IDM min swing = 54%
     REQUIRE(seq.GetSwingPercent() == Catch::Approx(0.54f).margin(0.01f));
+#endif
 }
 
 // === Orbit Voice Relationship Tests ===

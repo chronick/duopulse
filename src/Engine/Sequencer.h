@@ -7,6 +7,12 @@
 #include "PatternData.h"
 #include "ChaosModulator.h"
 #include "GenreConfig.h"
+#include "config.h"
+
+#ifdef USE_PULSE_FIELD_V3
+#include "PulseField.h"
+#include "BrokenEffects.h"
+#endif
 
 namespace daisysp_idm_grids
 {
@@ -186,11 +192,26 @@ private:
     float NextHumanizeRandom(); // Returns 0-1 for humanize jitter
     int   GetClockDivisionFactor() const; // Returns 1, 2, 4 for division or -2, -4 for multiplication
 
-    // PatternSkeleton-based trigger generation
+    // PatternSkeleton-based trigger generation (v2)
     // Returns true if triggered, sets velocity output
     void GetSkeletonTriggers(int step, float anchorDens, float shimmerDens,
                              bool& anchorTrig, bool& shimmerTrig,
                              float& anchorVel, float& shimmerVel);
+
+#ifdef USE_PULSE_FIELD_V3
+    // === DuoPulse v3: Pulse Field State ===
+    PulseFieldState pulseFieldState_;
+    
+    // PulseField-based trigger generation (v3)
+    // Uses weighted pulse field algorithm with BROKEN/DRIFT controls
+    void GetPulseFieldTriggers(int step, float anchorDens, float shimmerDens,
+                               bool& anchorTrig, bool& shimmerTrig,
+                               float& anchorVel, float& shimmerVel);
+    
+    // Apply BROKEN effects stack (swing from broken is handled separately)
+    void ApplyBrokenEffects(int& step, float& anchorVel, float& shimmerVel,
+                            bool anchorTrig, bool shimmerTrig);
+#endif
 };
 
 } // namespace daisysp_idm_grids
