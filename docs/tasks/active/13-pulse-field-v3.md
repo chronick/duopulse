@@ -3,7 +3,7 @@ id: chronick/daisysp-idm-grids-13
 title: "DuoPulse v3: Algorithmic Pulse Field"
 status: "in_progress"
 created_date: "2025-12-16"
-last_updated: "2025-12-16T17:00:00Z"
+last_updated: "2025-12-16T21:00:00Z"
 owner: "user/ai"
 spec_refs:
   - "pulse-field"
@@ -77,37 +77,41 @@ This eliminates Terrain/Grid mismatches, reduces cognitive load, and provides in
 ## Phase 3: BROKEN Effects Stack [broken-effects]
 
 ### Swing from BROKEN
-- [ ] Implement `GetSwingFromBroken(broken)` function. *(spec: [broken-effects])*
+- [x] Implement `GetSwingFromBroken(broken)` function. *(spec: [broken-effects])*
   - 0-25%: Techno (50-54%)
   - 25-50%: Tribal (54-60%)
   - 50-75%: Trip-Hop (60-66%)
   - 75-100%: IDM (66-58% + jitter)
-- [ ] Apply swing to off-beat steps. *(spec: [broken-effects])*
+- [x] Apply swing to off-beat steps. *(spec: [broken-effects])*
+  - Added `IsOffBeat(step)` helper function
 
 ### Micro-Timing Jitter
-- [ ] Implement `GetJitterMsFromBroken(broken)` function. *(spec: [broken-effects])*
+- [x] Implement `GetJitterMsFromBroken(broken)` function. *(spec: [broken-effects])*
   - 0-40%: 0ms
   - 40-70%: 0-3ms
   - 70-90%: 3-6ms
   - 90-100%: 6-12ms
-- [ ] Apply jitter per-trigger. *(spec: [broken-effects])*
+- [x] Apply jitter per-trigger. *(spec: [broken-effects])*
+  - Added `ApplyJitter(maxJitterMs, seed, step)` function
 
 ### Step Displacement
-- [ ] Implement `GetDisplacedStep(step, broken)` function. *(spec: [broken-effects])*
+- [x] Implement `GetDisplacedStep(step, broken)` function. *(spec: [broken-effects])*
   - 0-50%: no displacement
   - 50-75%: ±1 step (0-15% chance)
   - 75-100%: ±2 steps (15-40% chance)
 
 ### Velocity Variation
-- [ ] Implement `GetVelocityWithVariation(baseVel, broken)` function. *(spec: [broken-effects])*
+- [x] Implement `GetVelocityWithVariation(baseVel, broken)` function. *(spec: [broken-effects])*
   - 0-30%: ±5%
   - 30-60%: ±10%
   - 60-100%: ±20%
+  - Added `GetVelocityVariationRange(broken)` helper for testing/display
 
 ### Tests
-- [ ] Verify swing output at each BROKEN range.
-- [ ] Verify jitter scaling with BROKEN.
-- [ ] Verify step displacement at high BROKEN.
+- [x] Verify swing output at each BROKEN range.
+- [x] Verify jitter scaling with BROKEN.
+- [x] Verify step displacement at high BROKEN.
+  - Note: All tests implemented in `tests/test_broken_effects.cpp`
 
 ## Phase 4: Phrase Awareness [phrase-modulation]
 
