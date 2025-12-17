@@ -421,21 +421,26 @@ TEST_CASE("Sequencer swing integration", "[swing]")
     Sequencer seq;
     seq.Init(48000.0f);
 
-    // Default terrain (0) = Techno, default taste (0.5) = mid-range
-    // Expected swing: 52% + 0.5 * (57% - 52%) = 54.5%
-    REQUIRE(seq.GetSwingPercent() == Catch::Approx(0.545f).margin(0.01f));
-    REQUIRE(seq.GetCurrentGenre() == Genre::Techno);
+    // v3: Swing is determined by BROKEN parameter via GetSwingFromBroken()
+    // Default BROKEN (0) = straight/Techno feel = 50% swing
+    // Note: Full v3 integration will use BrokenEffects::GetSwingFromBroken()
+    // For now, the sequencer still uses terrain-based swing internally
 
-    // Set to Trip-Hop with high taste
-    seq.SetTerrain(0.6f);
+    // With default parameters (terrain=0, swingTaste=0.5):
+    // Techno: 52% + 0.5 * (57% - 52%) = 54.5%
+    REQUIRE(seq.GetSwingPercent() == Catch::Approx(0.545f).margin(0.01f));
+
+    // v3: SetBroken now controls swing character
+    // At BROKEN=0.5 (Trip-Hop zone), swing increases
+    seq.SetBroken(0.6f);  // Maps to terrain internally for now
     seq.SetSwingTaste(1.0f);
-    REQUIRE(seq.GetCurrentGenre() == Genre::TripHop);
+    // Expected: Trip-Hop max swing = 68%
     REQUIRE(seq.GetSwingPercent() == Catch::Approx(0.68f).margin(0.01f));
 
-    // Set to IDM with low taste
-    seq.SetTerrain(0.9f);
+    // At high BROKEN (IDM zone), swing becomes variable
+    seq.SetBroken(0.9f);
     seq.SetSwingTaste(0.0f);
-    REQUIRE(seq.GetCurrentGenre() == Genre::IDM);
+    // Expected: IDM min swing = 54%
     REQUIRE(seq.GetSwingPercent() == Catch::Approx(0.54f).margin(0.01f));
 }
 

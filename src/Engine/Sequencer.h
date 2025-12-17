@@ -19,32 +19,38 @@ public:
 
     void Init(float sampleRate);
 
-    // === DuoPulse v2 Parameter Setters ===
+    // === DuoPulse v3 Parameter Setters ===
     // All setters apply immediately (no queuing)
 
     // Performance Mode Primary
     void SetAnchorDensity(float value);  // K1: Anchor hit frequency (0-1)
     void SetShimmerDensity(float value); // K2: Shimmer hit frequency (0-1)
-    void SetFlux(float value);           // K3: Global variation/fills/ghosts (0-1)
-    void SetFuse(float value);           // K4: Cross-lane energy tilt (0-1, center=balanced)
+    void SetBroken(float value);         // K3: Pattern regularity (0=straight, 1=IDM chaos)
+    void SetDrift(float value);          // K4: Pattern evolution (0=locked, 1=generative)
 
     // Performance Mode Shift
-    void SetAnchorAccent(float value);   // K1+Shift: Anchor accent intensity (0-1)
-    void SetShimmerAccent(float value);  // K2+Shift: Shimmer accent intensity (0-1)
-    void SetOrbit(float value);          // K3+Shift: Voice relationship (0-1: Interlock/Free/Shadow)
-    void SetContour(float value);        // K4+Shift: CV output shape (0-1: Vel/Decay/Pitch/Random)
+    void SetFuse(float value);           // K1+Shift: Cross-lane energy tilt (0-1, center=balanced)
+    void SetLength(int bars);            // K2+Shift: Loop length (1,2,4,8,16 bars)
+    void SetCouple(float value);         // K3+Shift: Voice interlock strength (0-1)
+    // K4+Shift: Reserved
 
     // Config Mode Primary
-    void SetTerrain(float value);        // K1: Genre character (0-1: Techno/Tribal/TripHop/IDM)
-    void SetLength(int bars);            // K2: Loop length (1,2,4,8,16 bars)
-    void SetGrid(float value);           // K3: Pattern family selection (0-1 maps to 1-16)
+    void SetAnchorAccent(float value);   // K1: Anchor accent intensity (0-1)
+    void SetShimmerAccent(float value);  // K2: Shimmer accent intensity (0-1)
+    void SetContour(float value);        // K3: CV output shape (0-1: Vel/Decay/Pitch/Random)
     void SetTempoControl(float value);   // K4: BPM control (0-1 maps to 90-160)
 
     // Config Mode Shift
-    void SetSwingTaste(float value);     // K1+Shift: Fine-tune swing within genre (0-1)
+    void SetSwingTaste(float value);     // K1+Shift: Fine-tune swing within BROKEN's range (0-1)
     void SetGateTime(float value);       // K2+Shift: Trigger duration (0-1 maps to 5-50ms)
-    void SetHumanize(float value);       // K3+Shift: Micro-timing jitter (0-1)
+    void SetHumanize(float value);       // K3+Shift: Extra jitter on top of BROKEN's (0-1)
     void SetClockDiv(float value);       // K4+Shift: Clock output div/mult (0-1)
+
+    // === Deprecated v2 Setters (for backward compatibility) ===
+    void SetFlux(float value);           // Deprecated: use SetBroken
+    void SetOrbit(float value);          // Deprecated: use SetCouple
+    void SetTerrain(float value);        // Deprecated: genre emerges from BROKEN
+    void SetGrid(float value);           // Deprecated: no pattern selection in v3
 
     // System Triggers
     void TriggerTapTempo(uint32_t nowMs);
@@ -59,7 +65,8 @@ public:
 
     float GetBpm() const { return currentBpm_; }
     float GetSwingPercent() const { return currentSwing_; }
-    Genre GetCurrentGenre() const { return GetGenreFromTerrain(terrain_); }
+    float GetBroken() const { return broken_; }
+    float GetDrift() const { return drift_; }
     const PhrasePosition& GetPhrasePosition() const { return phrasePos_; }
     void  SetBpm(float bpm);
     void  SetAccentHoldMs(float milliseconds);
@@ -83,30 +90,37 @@ private:
 
     int stepIndex_ = 0;
 
-    // === DuoPulse v2 Parameters ===
+    // === DuoPulse v3 Parameters ===
     
     // Performance Primary
-    float anchorDensity_  = 0.5f; // Hit frequency for anchor
-    float shimmerDensity_ = 0.5f; // Hit frequency for shimmer
-    float flux_           = 0.0f; // Variation/fills/ghosts
-    float fuse_           = 0.5f; // Cross-lane energy tilt
+    float anchorDensity_  = 0.5f; // K1: Hit frequency for anchor
+    float shimmerDensity_ = 0.5f; // K2: Hit frequency for shimmer
+    float broken_         = 0.0f; // K3: Pattern regularity (0=straight, 1=chaos)
+    float drift_          = 0.0f; // K4: Pattern evolution (0=locked, 1=generative)
 
     // Performance Shift
-    float anchorAccent_  = 0.5f; // Accent intensity for anchor
-    float shimmerAccent_ = 0.5f; // Accent intensity for shimmer
-    float orbit_         = 0.5f; // Voice relationship mode
-    float contour_       = 0.0f; // CV output shape
+    float fuse_   = 0.5f; // K1+Shift: Cross-lane energy tilt
+    int   loopLengthBars_ = 4;    // K2+Shift: Loop length
+    float couple_ = 0.5f; // K3+Shift: Voice interlock strength
+    // K4+Shift: Reserved
 
     // Config Primary
-    float terrain_     = 0.0f; // Genre character
-    int   loopLengthBars_ = 4; // Loop length
-    float grid_        = 0.0f; // Pattern family
+    float anchorAccent_  = 0.5f; // K1: Accent intensity for anchor
+    float shimmerAccent_ = 0.5f; // K2: Accent intensity for shimmer
+    float contour_       = 0.0f; // K3: CV output shape
+    // K4: Tempo (handled by currentBpm_)
 
     // Config Shift
-    float swingTaste_ = 0.5f; // Swing fine-tune
-    float gateTime_   = 0.2f; // Gate duration (normalized 0-1)
-    float humanize_   = 0.0f; // Micro-timing jitter
-    float clockDiv_   = 0.5f; // Clock division
+    float swingTaste_ = 0.5f; // K1+Shift: Swing fine-tune
+    float gateTime_   = 0.2f; // K2+Shift: Gate duration (normalized 0-1)
+    float humanize_   = 0.0f; // K3+Shift: Micro-timing jitter
+    float clockDiv_   = 0.5f; // K4+Shift: Clock division
+
+    // Deprecated v2 parameters (kept for compatibility, mapped to v3)
+    float flux_    = 0.0f; // Deprecated: mapped to broken_
+    float orbit_   = 0.5f; // Deprecated: mapped to couple_
+    float terrain_ = 0.0f; // Deprecated: genre from BROKEN
+    float grid_    = 0.0f; // Deprecated: no pattern selection
 
     // Swing state
     float currentSwing_       = 0.5f;  // Current effective swing (0.5 = straight)

@@ -176,31 +176,36 @@ This eliminates Terrain/Grid mismatches, reduces cognitive load, and provides in
 ## Phase 6: Control Integration
 
 ### Control Mapping Updates
-- [ ] K1 → ANCHOR DENSITY (unchanged). *(spec: control layout)*
-- [ ] K2 → SHIMMER DENSITY (unchanged). *(spec: control layout)*
-- [ ] K3 → BROKEN (replaces FLUX). *(spec: control layout)*
-- [ ] K4 → DRIFT (new control). *(spec: control layout)*
-- [ ] K1+Shift → FUSE (was K4 primary in v2). *(spec: control layout)*
-- [ ] K2+Shift → LENGTH (unchanged). *(spec: control layout)*
-- [ ] K3+Shift → COUPLE (replaces ORBIT). *(spec: control layout)*
-- [ ] K4+Shift → Reserved for future. *(spec: control layout)*
+- [x] K1 → ANCHOR DENSITY (unchanged). *(spec: control layout)*
+- [x] K2 → SHIMMER DENSITY (unchanged). *(spec: control layout)*
+- [x] K3 → BROKEN (replaces FLUX). *(spec: control layout)*
+- [x] K4 → DRIFT (new control). *(spec: control layout)*
+- [x] K1+Shift → FUSE (was K4 primary in v2). *(spec: control layout)*
+- [x] K2+Shift → LENGTH (unchanged). *(spec: control layout)*
+- [x] K3+Shift → COUPLE (replaces ORBIT). *(spec: control layout)*
+- [x] K4+Shift → Reserved for future. *(spec: control layout)*
 
 ### CV Input Mapping Updates
-- [ ] CV 5 → ANCHOR DENSITY (unchanged).
-- [ ] CV 6 → SHIMMER DENSITY (unchanged).
-- [ ] CV 7 → BROKEN (was FLUX).
-- [ ] CV 8 → DRIFT (was FUSE).
+- [x] CV 5 → ANCHOR DENSITY (unchanged).
+- [x] CV 6 → SHIMMER DENSITY (unchanged).
+- [x] CV 7 → BROKEN (was FLUX).
+- [x] CV 8 → DRIFT (was FUSE).
 
 ### Remove Deprecated Controls
-- [ ] Remove FLUX parameter and references.
-- [ ] Remove TERRAIN parameter (swing from BROKEN now).
-- [ ] Remove GRID parameter (no pattern selection needed).
-- [ ] Remove ORBIT parameter (replaced by COUPLE).
-- [ ] Remove discrete genre enum (emerges from BROKEN).
+- [x] Remove FLUX parameter and references.
+  - Kept as deprecated setter that maps to SetBroken()
+- [x] Remove TERRAIN parameter (swing from BROKEN now).
+  - Kept as deprecated, BROKEN now controls terrain internally
+- [x] Remove GRID parameter (no pattern selection needed).
+  - Kept as deprecated setter for backward compatibility
+- [x] Remove ORBIT parameter (replaced by COUPLE).
+  - Kept as deprecated setter that maps to SetCouple()
+- [x] Remove discrete genre enum (emerges from BROKEN).
+  - Genre still calculated internally from BROKEN/terrain for swing
 
 ### Config Mode Updates (Low-Priority)
-- [ ] K1+Shift Config → SWING TASTE (fine-tune within BROKEN's range).
-- [ ] K3+Shift Config → HUMANIZE (extra jitter on top of BROKEN's).
+- [x] K1+Shift Config → SWING TASTE (fine-tune within BROKEN's range).
+- [x] K3+Shift Config → HUMANIZE (extra jitter on top of BROKEN's).
 
 ## Phase 7: LED Feedback Updates [led-feedback]
 

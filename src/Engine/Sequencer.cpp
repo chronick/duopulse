@@ -41,22 +41,27 @@ void Sequencer::Init(float sampleRate)
     externalClockTimeout_ = 0;
     mustTick_ = false;
     
-    // Initialize DuoPulse v2 parameters
+    // Initialize DuoPulse v3 parameters
     anchorDensity_  = 0.5f;
     shimmerDensity_ = 0.5f;
-    flux_           = 0.0f;
+    broken_         = 0.0f;
+    drift_          = 0.0f;
     fuse_           = 0.5f;
+    loopLengthBars_ = 4;
+    couple_         = 0.5f;
     anchorAccent_   = 0.5f;
     shimmerAccent_  = 0.5f;
-    orbit_          = 0.5f;
     contour_        = 0.0f;
-    terrain_        = 0.0f;
-    loopLengthBars_ = 4;
-    grid_           = 0.0f;
     swingTaste_     = 0.5f;
     gateTime_       = 0.2f;
     humanize_       = 0.0f;
     clockDiv_       = 0.5f;
+    
+    // Initialize deprecated v2 parameters (kept for compatibility)
+    flux_    = 0.0f;
+    orbit_   = 0.5f;
+    terrain_ = 0.0f;
+    grid_    = 0.0f;
 
     // Initialize swing state
     currentSwing_       = 0.5f;
@@ -92,7 +97,7 @@ void Sequencer::Init(float sampleRate)
     UpdateSwingParameters();
 }
 
-// === DuoPulse v2 Setters ===
+// === DuoPulse v3 Setters ===
 
 // Performance Primary
 void Sequencer::SetAnchorDensity(float value)
@@ -105,42 +110,24 @@ void Sequencer::SetShimmerDensity(float value)
     shimmerDensity_ = Clamp(value, 0.0f, 1.0f);
 }
 
-void Sequencer::SetFlux(float value)
+void Sequencer::SetBroken(float value)
 {
-    flux_ = Clamp(value, 0.0f, 1.0f);
+    broken_ = Clamp(value, 0.0f, 1.0f);
+    // Keep deprecated parameters in sync for backward compatibility
+    flux_ = broken_;
+    terrain_ = broken_; // v3: BROKEN controls swing via terrain internally
+    UpdateSwingParameters();
 }
 
-void Sequencer::SetFuse(float value)
+void Sequencer::SetDrift(float value)
 {
-    fuse_ = Clamp(value, 0.0f, 1.0f);
+    drift_ = Clamp(value, 0.0f, 1.0f);
 }
 
 // Performance Shift
-void Sequencer::SetAnchorAccent(float value)
+void Sequencer::SetFuse(float value)
 {
-    anchorAccent_ = Clamp(value, 0.0f, 1.0f);
-}
-
-void Sequencer::SetShimmerAccent(float value)
-{
-    shimmerAccent_ = Clamp(value, 0.0f, 1.0f);
-}
-
-void Sequencer::SetOrbit(float value)
-{
-    orbit_ = Clamp(value, 0.0f, 1.0f);
-}
-
-void Sequencer::SetContour(float value)
-{
-    contour_ = Clamp(value, 0.0f, 1.0f);
-}
-
-// Config Primary
-void Sequencer::SetTerrain(float value)
-{
-    terrain_ = Clamp(value, 0.0f, 1.0f);
-    UpdateSwingParameters();
+    fuse_ = Clamp(value, 0.0f, 1.0f);
 }
 
 void Sequencer::SetLength(int bars)
@@ -152,11 +139,26 @@ void Sequencer::SetLength(int bars)
     loopLengthBars_ = bars;
 }
 
-void Sequencer::SetGrid(float value)
+void Sequencer::SetCouple(float value)
 {
-    grid_ = Clamp(value, 0.0f, 1.0f);
-    // Update pattern index when grid changes
-    currentPatternIndex_ = GetPatternIndex(grid_);
+    couple_ = Clamp(value, 0.0f, 1.0f);
+    orbit_ = couple_; // Keep deprecated parameter in sync
+}
+
+// Config Primary
+void Sequencer::SetAnchorAccent(float value)
+{
+    anchorAccent_ = Clamp(value, 0.0f, 1.0f);
+}
+
+void Sequencer::SetShimmerAccent(float value)
+{
+    shimmerAccent_ = Clamp(value, 0.0f, 1.0f);
+}
+
+void Sequencer::SetContour(float value)
+{
+    contour_ = Clamp(value, 0.0f, 1.0f);
 }
 
 // Config Shift
@@ -164,6 +166,35 @@ void Sequencer::SetSwingTaste(float value)
 {
     swingTaste_ = Clamp(value, 0.0f, 1.0f);
     UpdateSwingParameters();
+}
+
+// === Deprecated v2 Setters (for backward compatibility) ===
+
+void Sequencer::SetFlux(float value)
+{
+    // Map to BROKEN for backward compatibility
+    SetBroken(value);
+}
+
+void Sequencer::SetOrbit(float value)
+{
+    // Map to COUPLE for backward compatibility
+    SetCouple(value);
+}
+
+void Sequencer::SetTerrain(float value)
+{
+    // Deprecated: genre now emerges from BROKEN
+    // Keep the parameter but don't use it actively
+    terrain_ = Clamp(value, 0.0f, 1.0f);
+}
+
+void Sequencer::SetGrid(float value)
+{
+    // Deprecated: no pattern selection in v3
+    // Keep the parameter but don't use it actively
+    grid_ = Clamp(value, 0.0f, 1.0f);
+    currentPatternIndex_ = GetPatternIndex(grid_);
 }
 
 void Sequencer::SetGateTime(float value)
