@@ -161,4 +161,155 @@ inline float GetEffectiveDrift(float drift, bool isAnchor)
     return effective;
 }
 
+// =============================================================================
+// Deterministic Random Number Generation
+// =============================================================================
+
+/**
+ * Hash a seed and step index to produce a deterministic pseudo-random value.
+ * Uses a simple but effective hash combining (similar to boost::hash_combine).
+ *
+ * @param seed Base seed for randomness
+ * @param step Step index to hash
+ * @return Hashed value
+ */
+inline uint32_t HashStep(uint32_t seed, int step)
+{
+    // Simple hash combining using golden ratio prime
+    uint32_t h = seed;
+    h ^= static_cast<uint32_t>(step) + 0x9e3779b9 + (h << 6) + (h >> 2);
+    // Additional mixing
+    h ^= h >> 16;
+    h *= 0x85ebca6b;
+    h ^= h >> 13;
+    h *= 0xc2b2ae35;
+    h ^= h >> 16;
+    return h;
+}
+
+/**
+ * Convert a hash value to a float in range [0, 1).
+ *
+ * @param hash Hash value from HashStep
+ * @return Float in range [0, 1)
+ */
+inline float HashToFloat(uint32_t hash)
+{
+    // Use upper bits for better distribution
+    return static_cast<float>(hash >> 8) / static_cast<float>(0x00FFFFFF);
+}
+
+/**
+ * Linear interpolation between two values.
+ *
+ * @param a Start value
+ * @param b End value
+ * @param t Interpolation factor (0-1)
+ * @return Interpolated value
+ */
+inline float Lerp(float a, float b, float t)
+{
+    return a + t * (b - a);
+}
+
+/**
+ * Clamp a value to a range.
+ *
+ * @param value Value to clamp
+ * @param minVal Minimum value
+ * @param maxVal Maximum value
+ * @return Clamped value
+ */
+inline float Clamp(float value, float minVal, float maxVal)
+{
+    if(value < minVal)
+        return minVal;
+    if(value > maxVal)
+        return maxVal;
+    return value;
+}
+
+// =============================================================================
+// Core Pulse Field Algorithm
+// =============================================================================
+
+/**
+ * Determine whether a step should fire based on the weighted pulse field algorithm.
+ *
+ * The algorithm:
+ * 1. Get base weight for the step position from the weight table
+ * 2. BROKEN flattens weight distribution (Lerp toward 0.5)
+ * 3. Add noise scaled by BROKEN (±0.2 at max)
+ * 4. DENSITY sets threshold: density=0 → threshold=1.0, density=1 → threshold=0.0
+ * 5. Fire if effectiveWeight > threshold
+ *
+ * At BROKEN=0: Pattern follows weight table strictly (regular/predictable)
+ * At BROKEN=1: All weights converge to ~0.5 with noise (chaotic/random)
+ *
+ * @param step Step index (0-31)
+ * @param density How much is happening (0=silent, 1=full)
+ * @param broken How irregular the pattern is (0=straight, 1=chaos)
+ * @param weights Weight table to use (kAnchorWeights or kShimmerWeights)
+ * @param seed Seed for deterministic randomness
+ * @return true if step should fire
+ *
+ * Reference: docs/specs/double-down/simplified-algorithmic-approach.md [pulse-field]
+ */
+inline bool ShouldStepFire(int step,
+                           float density,
+                           float broken,
+                           const float* weights,
+                           uint32_t seed)
+{
+    // 1. Get base weight for this step position
+    if(step < 0 || step >= kPulseFieldSteps)
+        step = 0;
+    float baseWeight = weights[step];
+
+    // 2. BROKEN flattens the weight distribution
+    //    At broken=0: full differentiation (downbeats dominate)
+    //    At broken=1: weights converge to 0.5 (equal probability)
+    float effectiveWeight = Lerp(baseWeight, 0.5f, broken);
+
+    // 3. Add randomness scaled by BROKEN
+    //    More broken = more random variation in weights
+    //    Noise range: ±(broken * 0.2) = ±0.2 at max broken
+    if(broken > 0.0f)
+    {
+        uint32_t hash = HashStep(seed, step);
+        float noise   = (HashToFloat(hash) - 0.5f) * broken * 0.4f;
+        effectiveWeight += noise;
+        effectiveWeight = Clamp(effectiveWeight, 0.0f, 1.0f);
+    }
+
+    // 4. DENSITY sets the threshold
+    //    density=0 → threshold=1.0 (nothing fires)
+    //    density=1 → threshold=0.0 (everything fires)
+    float threshold = 1.0f - density;
+
+    // 5. Fire if weight exceeds threshold
+    return effectiveWeight > threshold;
+}
+
+/**
+ * Convenience wrapper for ShouldStepFire that selects the weight table
+ * based on voice type.
+ *
+ * @param step Step index (0-31)
+ * @param density How much is happening (0=silent, 1=full)
+ * @param broken How irregular the pattern is (0=straight, 1=chaos)
+ * @param isAnchor true for Anchor voice, false for Shimmer
+ * @param seed Seed for deterministic randomness
+ * @return true if step should fire
+ */
+inline bool ShouldStepFire(int step,
+                           float density,
+                           float broken,
+                           bool isAnchor,
+                           uint32_t seed)
+{
+    const float* weights = isAnchor ? kAnchorWeights : kShimmerWeights;
+    return ShouldStepFire(step, density, broken, weights, seed);
+}
+
 } // namespace daisysp_idm_grids

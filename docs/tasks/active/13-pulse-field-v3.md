@@ -40,16 +40,16 @@ This eliminates Terrain/Grid mismatches, reduces cognitive load, and provides in
 - [x] Create `PulseField.h` with weight tables for 32 steps. *(spec: [pulse-field])*
 - [x] Implement Anchor weight profile (emphasizes downbeats 0, 8, 16, 24). *(spec: [voice-weights])*
 - [x] Implement Shimmer weight profile (emphasizes backbeats 8, 24). *(spec: [voice-weights])*
-- [ ] Implement `ShouldStepFire(step, density, broken)` function. *(spec: [pulse-field])*
-- [ ] BROKEN flattens weight distribution (Lerp toward 0.5). *(spec: [pulse-field])*
-- [ ] Noise injection scaled by BROKEN. *(spec: [pulse-field])*
-- [ ] DENSITY sets threshold for firing. *(spec: [pulse-field])*
-- [ ] Deterministic mode using seeded RNG for reproducibility. *(spec: [pulse-field])*
+- [x] Implement `ShouldStepFire(step, density, broken)` function. *(spec: [pulse-field])*
+- [x] BROKEN flattens weight distribution (Lerp toward 0.5). *(spec: [pulse-field])*
+- [x] Noise injection scaled by BROKEN. *(spec: [pulse-field])*
+- [x] DENSITY sets threshold for firing. *(spec: [pulse-field])*
+- [x] Deterministic mode using seeded RNG for reproducibility. *(spec: [pulse-field])*
 
 ### Tests
-- [ ] Unit tests for weight tables (correct values at positions).
-- [ ] Unit tests for `ShouldStepFire` at various density/broken combinations.
-- [ ] Verify BROKEN=0 produces regular patterns, BROKEN=1 produces random.
+- [x] Unit tests for weight tables (correct values at positions).
+- [x] Unit tests for `ShouldStepFire` at various density/broken combinations.
+- [x] Verify BROKEN=0 produces regular patterns, BROKEN=1 produces random.
 
 ## Phase 2: DRIFT System [drift-control]
 
