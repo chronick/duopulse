@@ -56,3 +56,9 @@ test_runner
 lib/
 deps/
 
+# Optional scripts
+scripts/manual_generator/post_generate.sh
+
+# Generated manuals
+scripts/manual_generator/output/
+

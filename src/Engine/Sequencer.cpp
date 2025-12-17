@@ -19,8 +19,6 @@ void Sequencer::Init(float sampleRate)
 {
     sampleRate_ = sampleRate;
 
-    patternGen_.Init();
-
     metro_.Init(2.0f, sampleRate_);
     SetBpm(currentBpm_);
 
@@ -43,52 +41,171 @@ void Sequencer::Init(float sampleRate)
     externalClockTimeout_ = 0;
     mustTick_ = false;
     
-    // Initialize parameters
-    lowDensity_ = 0.5f;
-    highDensity_ = 0.5f;
-    lowVariation_ = 0.0f;
-    highVariation_ = 0.0f;
-    style_ = 0.0f;
+    // Initialize DuoPulse v2 parameters
+    anchorDensity_  = 0.5f;
+    shimmerDensity_ = 0.5f;
+    flux_           = 0.0f;
+    fuse_           = 0.5f;
+    anchorAccent_   = 0.5f;
+    shimmerAccent_  = 0.5f;
+    orbit_          = 0.5f;
+    contour_        = 0.0f;
+    terrain_        = 0.0f;
     loopLengthBars_ = 4;
-    emphasis_ = 0.5f;
+    grid_           = 0.0f;
+    swingTaste_     = 0.5f;
+    gateTime_       = 0.2f;
+    humanize_       = 0.0f;
+    clockDiv_       = 0.5f;
+
+    // Initialize swing state
+    currentSwing_       = 0.5f;
+    swingDelaySamples_  = 0;
+    swingDelayCounter_  = 0;
+    pendingAnchorTrig_  = false;
+    pendingShimmerTrig_ = false;
+    pendingAnchorVel_   = 0.0f;
+    pendingShimmerVel_  = 0.0f;
+    pendingClockTrig_   = false;
+    stepDurationSamples_ = 0;
+
+    // Initialize Orbit/Shadow state
+    lastAnchorTrig_ = false;
+    lastAnchorVel_  = 0.0f;
+
+    // Initialize humanize RNG with step index for variety
+    humanizeRngState_ = 0x12345678;
+
+    // Initialize phrase position
+    phrasePos_ = CalculatePhrasePosition(0, loopLengthBars_);
+
+    // Initialize contour CV state
+    anchorContourCV_  = 0.0f;
+    shimmerContourCV_ = 0.0f;
+
+    // Initialize pattern system
+    currentPatternIndex_ = 0;
+
+    // Initialize clock division
+    clockDivCounter_ = 0;
+
+    UpdateSwingParameters();
 }
 
-void Sequencer::SetLowDensity(float value)
+// === DuoPulse v2 Setters ===
+
+// Performance Primary
+void Sequencer::SetAnchorDensity(float value)
 {
-    lowDensity_ = Clamp(value, 0.0f, 1.0f);
+    anchorDensity_ = Clamp(value, 0.0f, 1.0f);
 }
 
-void Sequencer::SetHighDensity(float value)
+void Sequencer::SetShimmerDensity(float value)
 {
-    highDensity_ = Clamp(value, 0.0f, 1.0f);
+    shimmerDensity_ = Clamp(value, 0.0f, 1.0f);
 }
 
-void Sequencer::SetLowVariation(float value)
+void Sequencer::SetFlux(float value)
 {
-    lowVariation_ = Clamp(value, 0.0f, 1.0f);
+    flux_ = Clamp(value, 0.0f, 1.0f);
 }
 
-void Sequencer::SetHighVariation(float value)
+void Sequencer::SetFuse(float value)
 {
-    highVariation_ = Clamp(value, 0.0f, 1.0f);
+    fuse_ = Clamp(value, 0.0f, 1.0f);
 }
 
-void Sequencer::SetStyle(float value)
+// Performance Shift
+void Sequencer::SetAnchorAccent(float value)
 {
-    style_ = Clamp(value, 0.0f, 1.0f);
+    anchorAccent_ = Clamp(value, 0.0f, 1.0f);
+}
+
+void Sequencer::SetShimmerAccent(float value)
+{
+    shimmerAccent_ = Clamp(value, 0.0f, 1.0f);
+}
+
+void Sequencer::SetOrbit(float value)
+{
+    orbit_ = Clamp(value, 0.0f, 1.0f);
+}
+
+void Sequencer::SetContour(float value)
+{
+    contour_ = Clamp(value, 0.0f, 1.0f);
+}
+
+// Config Primary
+void Sequencer::SetTerrain(float value)
+{
+    terrain_ = Clamp(value, 0.0f, 1.0f);
+    UpdateSwingParameters();
 }
 
 void Sequencer::SetLength(int bars)
 {
-    // Restrict bars to typical powers of 2 or simple integers
-    if (bars < 1) bars = 1;
-    if (bars > 16) bars = 16;
+    if(bars < 1)
+        bars = 1;
+    if(bars > 16)
+        bars = 16;
     loopLengthBars_ = bars;
 }
 
-void Sequencer::SetEmphasis(float value)
+void Sequencer::SetGrid(float value)
 {
-    emphasis_ = Clamp(value, 0.0f, 1.0f);
+    grid_ = Clamp(value, 0.0f, 1.0f);
+    // Update pattern index when grid changes
+    currentPatternIndex_ = GetPatternIndex(grid_);
+}
+
+// Config Shift
+void Sequencer::SetSwingTaste(float value)
+{
+    swingTaste_ = Clamp(value, 0.0f, 1.0f);
+    UpdateSwingParameters();
+}
+
+void Sequencer::SetGateTime(float value)
+{
+    gateTime_ = Clamp(value, 0.0f, 1.0f);
+    // Update gate duration in samples
+    float gateMs         = kMinGateMs + (gateTime_ * (kMaxGateMs - kMinGateMs));
+    gateDurationSamples_ = static_cast<int>(sampleRate_ * gateMs / 1000.0f);
+    if(gateDurationSamples_ < 1)
+        gateDurationSamples_ = 1;
+}
+
+void Sequencer::SetHumanize(float value)
+{
+    humanize_ = Clamp(value, 0.0f, 1.0f);
+}
+
+void Sequencer::SetClockDiv(float value)
+{
+    clockDiv_ = Clamp(value, 0.0f, 1.0f);
+}
+
+int Sequencer::GetClockDivisionFactor() const
+{
+    // Clock division/multiplication based on clockDiv_ parameter
+    // | Range     | Division |
+    // |-----------|----------|
+    // | 0-20%     | ÷4       |
+    // | 20-40%    | ÷2       |
+    // | 40-60%    | ×1       |
+    // | 60-80%    | ×2       |
+    // | 80-100%   | ×4       |
+    // Returns: positive for division (4,2,1), negative for multiplication (-2,-4)
+    if(clockDiv_ < 0.2f)
+        return 4;  // ÷4: output every 4 steps
+    if(clockDiv_ < 0.4f)
+        return 2;  // ÷2: output every 2 steps
+    if(clockDiv_ < 0.6f)
+        return 1;  // ×1: output every step
+    if(clockDiv_ < 0.8f)
+        return -2; // ×2: output twice per step
+    return -4;     // ×4: output four times per step
 }
 
 void Sequencer::SetTempoControl(float value)
@@ -158,16 +275,20 @@ std::array<float, 2> Sequencer::ProcessAudio()
     {
         // Handle Loop Length
         int effectiveLoopSteps = loopLengthBars_ * 16;
-        if (effectiveLoopSteps > PatternGenerator::kPatternLength) 
-            effectiveLoopSteps = PatternGenerator::kPatternLength;
-            
+        if(effectiveLoopSteps > kPatternSteps)
+            effectiveLoopSteps = kPatternSteps;
+
         stepIndex_ = (stepIndex_ + 1) % effectiveLoopSteps;
 
-        // Apply variation to independent modulators
-        chaosLow_.SetAmount(lowVariation_);
-        chaosHigh_.SetAmount(highVariation_);
-        
-        bool trigs[3] = {false, false, false};
+        // Update phrase position tracking
+        phrasePos_ = CalculatePhrasePosition(stepIndex_, loopLengthBars_);
+
+        // Apply flux to chaos modulators (flux controls variation for both voices)
+        // Add phrase-based ghost boost
+        float ghostBoost    = GetPhraseGhostBoost(phrasePos_);
+        float effectiveFlux = Clamp(flux_ + ghostBoost, 0.0f, 1.0f);
+        chaosLow_.SetAmount(effectiveFlux);
+        chaosHigh_.SetAmount(effectiveFlux);
         
         const auto chaosSampleLow = chaosLow_.NextSample();
         const auto chaosSampleHigh = chaosHigh_.NextSample();
@@ -196,25 +317,23 @@ std::array<float, 2> Sequencer::ProcessAudio()
         }
         else
         {
-            // Apply Chaos to Style (Map X).
-            float avgJitterX = (chaosSampleLow.jitterX + chaosSampleHigh.jitterX) * 0.5f;
-            float jitteredStyle = Clamp(style_ + avgJitterX, 0.0f, 1.0f);
-            
-            // Apply independent density bias
-            float lowDensMod = Clamp(lowDensity_ + chaosSampleLow.densityBias, 0.05f, 0.95f);
-            float highDensMod = Clamp(highDensity_ + chaosSampleHigh.densityBias, 0.05f, 0.95f);
-            
-            patternGen_.GetTriggers(jitteredStyle, stepIndex_, lowDensMod, highDensMod, trigs);
-            
-            kickTrig = trigs[0];
-            snareTrig = trigs[1];
-            hhTrig = trigs[2];
+            // Apply fuse as density tilt: fuse < 0.5 boosts anchor, > 0.5 boosts shimmer
+            float fuseBias     = (fuse_ - 0.5f) * 0.3f; // ±15% tilt
+            float anchorDensMod  = Clamp(anchorDensity_ - fuseBias + chaosSampleLow.densityBias, 0.05f, 0.95f);
+            float shimmerDensMod = Clamp(shimmerDensity_ + fuseBias + chaosSampleHigh.densityBias, 0.05f, 0.95f);
 
-            // Get Levels for Velocity (Map Y fixed at 0.5)
-            float mapY = 0.5f;
-            kickVel = static_cast<float>(patternGen_.GetLevel(jitteredStyle, mapY, 0, stepIndex_)) / 255.0f;
-            snareVel = static_cast<float>(patternGen_.GetLevel(jitteredStyle, mapY, 1, stepIndex_)) / 255.0f;
-            hhVel = static_cast<float>(patternGen_.GetLevel(jitteredStyle, mapY, 2, stepIndex_)) / 255.0f;
+            // Use PatternSkeleton system with density threshold
+            GetSkeletonTriggers(stepIndex_, anchorDensMod, shimmerDensMod,
+                                kickTrig, snareTrig, kickVel, snareVel);
+            
+            // No separate HH in skeleton patterns - it's combined into shimmer
+            hhTrig = false;
+            hhVel = 0.0f;
+
+            // Apply phrase-based accent multiplier (strongest on downbeats)
+            float accentMult = GetPhraseAccentMultiplier(phrasePos_);
+            kickVel  = Clamp(kickVel * accentMult, 0.0f, 1.0f);
+            snareVel = Clamp(snareVel * accentMult, 0.0f, 1.0f);
         }
 
         // Apply Ghost Triggers to HH/Perc stream (High Variation)
@@ -222,57 +341,222 @@ std::array<float, 2> Sequencer::ProcessAudio()
         {
             hhTrig = true;
             // Ghost triggers are usually quieter
-            hhVel = 0.3f + (static_cast<float>(rand() % 100) / 200.0f); 
+            hhVel = 0.3f + (static_cast<float>(rand() % 100) / 200.0f);
         }
 
-        TriggerClock();
-        
-        // --- Routing Logic ---
-        
-        // Gate 0 (Low/Kick)
-        bool gate0 = kickTrig;
-        float vel0 = kickTrig ? kickVel : 0.0f;
-        
-        // Gate 1 (High/Snare)
-        bool gate1 = snareTrig;
-        float vel1 = snareTrig ? snareVel : 0.0f;
-        
-        // Route HH/Perc based on Emphasis
+        // --- CV-Driven Fills (FLUX + Phrase Position) ---
+        // High FLUX values add fill triggers, boosted in fill/build zones
+        float phraseFillBoost = GetPhraseFillBoost(phrasePos_, terrain_);
+        float effectiveFillFlux = Clamp(flux_ + phraseFillBoost, 0.0f, 1.0f);
+
+        if(effectiveFillFlux >= kFluxFillThreshold)
+        {
+            // Check for anchor fill (kick fills)
+            if(!kickTrig && ShouldTriggerFill(effectiveFillFlux, NextHumanizeRandom()))
+            {
+                kickTrig = true;
+                kickVel  = CalculateFillVelocity(effectiveFillFlux, NextHumanizeRandom());
+            }
+
+            // Check for shimmer fill (snare fills)
+            if(!snareTrig && ShouldTriggerFill(effectiveFillFlux, NextHumanizeRandom()))
+            {
+                snareTrig = true;
+                snareVel  = CalculateFillVelocity(effectiveFillFlux, NextHumanizeRandom());
+            }
+        }
+
+        // --- Orbit Voice Relationship Logic ---
+        OrbitMode orbitMode = GetOrbitMode(orbit_);
+
+        // Gate 0 (Anchor/Low/Kick) - determined by pattern
+        bool  gate0 = kickTrig;
+        float vel0  = kickTrig ? kickVel : 0.0f;
+
+        // Gate 1 (Shimmer/High/Snare) - affected by Orbit mode
+        bool  gate1 = false;
+        float vel1  = 0.0f;
+
+        switch(orbitMode)
+        {
+            case OrbitMode::Interlock:
+            {
+                // Shimmer fills gaps - when anchor fires, reduce shimmer;
+                // when anchor silent, boost shimmer
+                float interlockMod = GetInterlockModifier(gate0, orbit_);
+                float modifiedShimmerDens =
+                    Clamp(shimmerDensity_ + interlockMod, 0.0f, 1.0f);
+
+                // Re-evaluate shimmer trigger with modified density
+                // Simple approach: if snare was going to trigger, apply probability check
+                if(snareTrig)
+                {
+                    // Interlock reduces probability when anchor fires
+                    float prob = modifiedShimmerDens;
+                    gate1      = (static_cast<float>(rand() % 100) / 100.0f) < prob;
+                    vel1       = gate1 ? snareVel : 0.0f;
+                }
+                else if(!gate0 && interlockMod > 0.0f)
+                {
+                    // Anchor silent - chance to add shimmer hit
+                    float prob = interlockMod;
+                    if((static_cast<float>(rand() % 100) / 100.0f) < prob)
+                    {
+                        gate1 = true;
+                        vel1  = snareVel > 0.0f ? snareVel : 0.6f;
+                    }
+                }
+                break;
+            }
+
+            case OrbitMode::Free:
+                // Independent patterns, no collision logic (default behavior)
+                gate1 = snareTrig;
+                vel1  = snareTrig ? snareVel : 0.0f;
+                break;
+
+            case OrbitMode::Shadow:
+                // Shimmer echoes anchor with 1-step delay at 70% velocity
+                if(lastAnchorTrig_)
+                {
+                    gate1 = true;
+                    vel1  = lastAnchorVel_ * 0.7f; // 70% velocity
+                }
+                break;
+        }
+
+        // Store current anchor state for next step's Shadow mode
+        lastAnchorTrig_ = gate0;
+        lastAnchorVel_  = vel0;
+
+        // Route HH/Perc based on Grid (pattern selection also affects routing)
         if(hhTrig)
         {
-            if(emphasis_ < 0.5f)
+            if(grid_ < 0.5f)
             {
-                // Route to Low (add tom/perc flavor to kick channel)
+                // Route to Anchor (add tom/perc flavor to kick channel)
                 gate0 = true;
-                vel0 = std::max(vel0, hhVel);
+                vel0  = std::max(vel0, hhVel);
             }
             else
             {
-                // Route to High (add hh/perc flavor to snare channel)
+                // Route to Shimmer (add hh/perc flavor to snare channel)
                 gate1 = true;
-                vel1 = std::max(vel1, hhVel);
+                vel1  = std::max(vel1, hhVel);
             }
         }
 
-        if(gate0)
+        // --- Swing + Humanize Application ---
+        // Off-beats (odd steps) get delayed according to swing amount
+        // Anchor receives 70% of swing, Shimmer receives 100%
+        // Humanize adds random jitter to all triggers
+        bool isOffBeat = IsOffBeat(stepIndex_);
+
+        // Calculate humanize jitter (applied to all triggers)
+        float effectiveHumanize = CalculateEffectiveHumanize(humanize_, terrain_);
+        int   humanizeJitter    = 0;
+        if(effectiveHumanize > 0.0f && (gate0 || gate1))
         {
-            TriggerGate(0);
-            accentTimer_ = accentHoldSamples_;
-            outputLevels_[0] = vel0;
+            float randomVal  = NextHumanizeRandom();
+            humanizeJitter   = CalculateHumanizeJitterSamples(effectiveHumanize, sampleRate_, randomVal);
         }
-        
-        if(gate1)
+
+        // Calculate total delay (swing + humanize jitter)
+        // Note: humanize jitter can be negative (early), but we clamp to 0 minimum
+        int totalDelay = 0;
+        if(isOffBeat && swingDelaySamples_ > 0)
         {
-            TriggerGate(1);
-            hihatTimer_ = hihatHoldSamples_;
-            outputLevels_[1] = vel1;
+            totalDelay = swingDelaySamples_ + humanizeJitter;
+        }
+        else
+        {
+            totalDelay = humanizeJitter;
+        }
+        if(totalDelay < 0)
+            totalDelay = 0;
+
+        if(totalDelay > 0)
+        {
+            // Queue triggers for delayed firing
+            swingDelayCounter_ = totalDelay;
+
+            if(gate0)
+            {
+                pendingAnchorTrig_ = true;
+                pendingAnchorVel_  = vel0;
+            }
+            if(gate1)
+            {
+                pendingShimmerTrig_ = true;
+                pendingShimmerVel_  = vel1;
+            }
+            pendingClockTrig_ = true; // Clock also follows timing
+        }
+        else
+        {
+            // No delay - fire immediately
+            TriggerClock();
+
+            if(gate0)
+            {
+                TriggerGate(0);
+                accentTimer_     = accentHoldSamples_;
+                outputLevels_[0] = vel0;
+            }
+
+            if(gate1)
+            {
+                TriggerGate(1);
+                hihatTimer_      = hihatHoldSamples_;
+                outputLevels_[1] = vel1;
+            }
         }
     }
 
+    // Process swing delayed triggers (must run every sample)
+    ProcessSwingDelay();
+
     ProcessGates();
 
-    float out1 = accentTimer_ > 0 ? outputLevels_[0] : 0.0f;
-    float out2 = hihatTimer_ > 0 ? outputLevels_[1] : 0.0f;
+    // Apply Contour mode to CV outputs
+    // When contour=0: simple timer-gated velocity output (for gate/trigger use)
+    // When contour>0: contour mode processing with sustained CV between triggers
+    
+    float out1, out2;
+
+    if(contour_ > 0.0f)
+    {
+        // Contour modes: CV is sustained/decayed according to mode
+        // NOT gated by timer - the CalculateContourCV function handles decay/hold
+        ContourMode cmode = GetContourMode(contour_);
+
+        // Detect new triggers (timer just started at max value)
+        bool anchorTriggered  = (accentTimer_ == accentHoldSamples_);
+        bool shimmerTriggered = (hihatTimer_ == hihatHoldSamples_);
+
+        // Only generate random values when triggered to preserve RNG state
+        float randVal1 = anchorTriggered ? NextHumanizeRandom() : 0.0f;
+        float randVal2 = shimmerTriggered ? NextHumanizeRandom() : 0.0f;
+
+        // Update contour CV state (handles decay/hold per mode)
+        anchorContourCV_ = CalculateContourCV(cmode, outputLevels_[0], randVal1,
+                                              anchorContourCV_, anchorTriggered);
+        shimmerContourCV_ = CalculateContourCV(cmode, outputLevels_[1], randVal2,
+                                               shimmerContourCV_, shimmerTriggered);
+
+        // Output the contour CV directly - it sustains until next trigger
+        // or decays gradually according to the mode
+        out1 = anchorContourCV_;
+        out2 = shimmerContourCV_;
+    }
+    else
+    {
+        // Default mode (contour=0): simple timer-gated velocity
+        // CV is high during gate duration, then goes to 0
+        out1 = accentTimer_ > 0 ? outputLevels_[0] : 0.0f;
+        out2 = hihatTimer_ > 0 ? outputLevels_[1] : 0.0f;
+    }
+
     return {out1, out2};
 }
 
@@ -289,6 +573,11 @@ void Sequencer::SetBpm(float bpm)
 {
     currentBpm_ = Clamp(bpm, kMinTempo, kMaxTempo);
     metro_.SetFreq(currentBpm_ / 60.0f * 4.0f);
+    // Only update swing if sample rate is initialized (avoid issues during Init)
+    if(sampleRate_ > 0.0f)
+    {
+        UpdateSwingParameters();
+    }
 }
 
 void Sequencer::TriggerGate(int channel)
@@ -301,7 +590,33 @@ void Sequencer::TriggerGate(int channel)
 
 void Sequencer::TriggerClock()
 {
-    clockTimer_ = clockDurationSamples_;
+    // Apply clock division
+    int divFactor = GetClockDivisionFactor();
+
+    if(divFactor > 1)
+    {
+        // Division mode (÷2, ÷4): Only fire every N steps
+        clockDivCounter_++;
+        if(clockDivCounter_ >= divFactor)
+        {
+            clockDivCounter_ = 0;
+            clockTimer_ = clockDurationSamples_;
+        }
+        // Otherwise skip this clock trigger
+    }
+    else if(divFactor < 0)
+    {
+        // Multiplication mode (×2, ×4): Fire clock now
+        // Note: True multiplication would require sub-step timing.
+        // For now, we fire the clock on every step (same as ×1).
+        // Future enhancement: Add a fast timer for ×2/×4 sub-pulses.
+        clockTimer_ = clockDurationSamples_;
+    }
+    else
+    {
+        // Unity mode (×1): Fire every step
+        clockTimer_ = clockDurationSamples_;
+    }
 }
 
 void Sequencer::ProcessGates()
@@ -352,6 +667,153 @@ int Sequencer::HoldMsToSamples(float milliseconds) const
     const float samples   = (clampedMs / 1000.0f) * sampleRate_;
     int         asInt     = static_cast<int>(samples);
     return asInt < 1 ? 1 : asInt;
+}
+
+void Sequencer::UpdateSwingParameters()
+{
+    // Calculate current swing percentage from terrain (genre) and taste
+    currentSwing_ = CalculateSwing(terrain_, swingTaste_);
+
+    // Calculate step duration in samples (16th note at current BPM)
+    // BPM = beats per minute, 4 16th notes per beat
+    // stepDuration = 60 / (BPM * 4) seconds = sampleRate * 60 / (BPM * 4) samples
+    if(currentBpm_ > 0.0f)
+    {
+        stepDurationSamples_ = static_cast<int>(sampleRate_ * 60.0f / (currentBpm_ * 4.0f));
+    }
+
+    // Calculate swing delay for off-beats
+    swingDelaySamples_ = CalculateSwingDelaySamples(currentSwing_, stepDurationSamples_);
+}
+
+void Sequencer::ProcessSwingDelay()
+{
+    // Process any pending swung triggers
+    if(swingDelayCounter_ > 0)
+    {
+        swingDelayCounter_--;
+
+        // When counter reaches 0, fire the pending triggers
+        if(swingDelayCounter_ == 0)
+        {
+            if(pendingAnchorTrig_)
+            {
+                TriggerGate(0);
+                accentTimer_     = accentHoldSamples_;
+                outputLevels_[0] = pendingAnchorVel_;
+                pendingAnchorTrig_ = false;
+            }
+
+            if(pendingShimmerTrig_)
+            {
+                TriggerGate(1);
+                hihatTimer_      = hihatHoldSamples_;
+                outputLevels_[1] = pendingShimmerVel_;
+                pendingShimmerTrig_ = false;
+            }
+
+            if(pendingClockTrig_)
+            {
+                TriggerClock();
+                pendingClockTrig_ = false;
+            }
+        }
+    }
+}
+
+float Sequencer::NextHumanizeRandom()
+{
+    // Simple xorshift RNG for humanize jitter
+    humanizeRngState_ ^= humanizeRngState_ << 13;
+    humanizeRngState_ ^= humanizeRngState_ >> 17;
+    humanizeRngState_ ^= humanizeRngState_ << 5;
+    return static_cast<float>(humanizeRngState_ & 0xFFFF) / 65535.0f;
+}
+
+void Sequencer::GetSkeletonTriggers(int step, float anchorDens, float shimmerDens,
+                                    bool& anchorTrig, bool& shimmerTrig,
+                                    float& anchorVel, float& shimmerVel)
+{
+    // Get the current pattern
+    const PatternSkeleton& pattern = GetPattern(currentPatternIndex_);
+
+    // Wrap step to pattern length (32 steps)
+    int wrappedStep = step % kPatternSteps;
+
+    // Apply density threshold to determine if each step fires
+    // Low density = only high-intensity steps fire
+    // High density = all steps including ghosts fire
+    anchorTrig = ShouldStepFire(pattern.anchorIntensity, wrappedStep, anchorDens);
+    shimmerTrig = ShouldStepFire(pattern.shimmerIntensity, wrappedStep, shimmerDens);
+
+    // Get intensity levels for potential ghost note generation
+    uint8_t anchorIntensity = GetStepIntensity(pattern.anchorIntensity, wrappedStep);
+    uint8_t shimmerIntensity = GetStepIntensity(pattern.shimmerIntensity, wrappedStep);
+    IntensityLevel anchorLevel = GetIntensityLevel(anchorIntensity);
+    IntensityLevel shimmerLevel = GetIntensityLevel(shimmerIntensity);
+
+    // FLUX probabilistic ghost note generation
+    // If a ghost-level step (intensity 1-4) didn't fire via density, FLUX can trigger it
+    if(!anchorTrig && anchorLevel == IntensityLevel::Ghost && flux_ > 0.0f)
+    {
+        if(ShouldTriggerGhost(flux_, NextHumanizeRandom()))
+        {
+            anchorTrig = true;
+        }
+    }
+    if(!shimmerTrig && shimmerLevel == IntensityLevel::Ghost && flux_ > 0.0f)
+    {
+        if(ShouldTriggerGhost(flux_, NextHumanizeRandom()))
+        {
+            shimmerTrig = true;
+        }
+    }
+
+    // Get velocity from step intensity
+    if(anchorTrig)
+    {
+        anchorVel = IntensityToVelocity(anchorIntensity);
+
+        // Apply accent parameter - boosts velocity for accent-eligible steps
+        if(IsAccentEligible(pattern.accentMask, wrappedStep))
+        {
+            // Accent parameter scales the boost (0.5 = neutral, 1.0 = max accent)
+            float accentBoost = (anchorAccent_ - 0.5f) * 0.4f; // ±0.2 range
+            anchorVel = Clamp(anchorVel + accentBoost, 0.3f, 1.0f);
+        }
+
+        // Apply FLUX velocity jitter (up to ±20%)
+        if(flux_ > 0.0f)
+        {
+            anchorVel = ApplyVelocityJitter(anchorVel, flux_, NextHumanizeRandom());
+        }
+    }
+    else
+    {
+        anchorVel = 0.0f;
+    }
+
+    if(shimmerTrig)
+    {
+        shimmerVel = IntensityToVelocity(shimmerIntensity);
+
+        // Apply accent parameter
+        if(IsAccentEligible(pattern.accentMask, wrappedStep))
+        {
+            float accentBoost = (shimmerAccent_ - 0.5f) * 0.4f;
+            shimmerVel = Clamp(shimmerVel + accentBoost, 0.3f, 1.0f);
+        }
+
+        // Apply FLUX velocity jitter
+        if(flux_ > 0.0f)
+        {
+            shimmerVel = ApplyVelocityJitter(shimmerVel, flux_, NextHumanizeRandom());
+        }
+    }
+    else
+    {
+        shimmerVel = 0.0f;
+    }
 }
 
 } // namespace daisysp_idm_grids

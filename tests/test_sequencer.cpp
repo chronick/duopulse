@@ -2,6 +2,7 @@
 #include <catch2/catch_all.hpp>
 #include "../src/Engine/Sequencer.h"
 #include "../src/Engine/LedIndicator.h"
+#include "../src/Engine/GenreConfig.h"
 
 using namespace daisysp_idm_grids;
 
@@ -22,19 +23,20 @@ TEST_CASE("Sequencer Knob Control", "[sequencer]")
 
     const float knobX = 0.5f;
 
-    // Knob at 0 -> Min Tempo (30)
+    // DuoPulse v2 tempo range: 90-160 BPM
+    // Knob at 0 -> Min Tempo (90)
     seq.SetTempoControl(0.0f);
-    seq.SetStyle(knobX);
-    REQUIRE(seq.GetBpm() == Catch::Approx(30.0f));
+    seq.SetTerrain(knobX);
+    REQUIRE(seq.GetBpm() == Catch::Approx(90.0f));
 
-    // Knob at 1 -> Max Tempo (200)
+    // Knob at 1 -> Max Tempo (160)
     seq.SetTempoControl(1.0f);
-    REQUIRE(seq.GetBpm() == Catch::Approx(200.0f));
+    REQUIRE(seq.GetBpm() == Catch::Approx(160.0f));
 
-    // Knob at 0.5 -> Mid Tempo (115)
-    // 30 + 0.5 * (200 - 30) = 30 + 85 = 115
+    // Knob at 0.5 -> Mid Tempo (125)
+    // 90 + 0.5 * (160 - 90) = 90 + 35 = 125
     seq.SetTempoControl(0.5f);
-    REQUIRE(seq.GetBpm() == Catch::Approx(115.0f));
+    REQUIRE(seq.GetBpm() == Catch::Approx(125.0f));
 }
 
 TEST_CASE("Sequencer Tap Tempo", "[sequencer]")
@@ -44,16 +46,17 @@ TEST_CASE("Sequencer Tap Tempo", "[sequencer]")
 
     // First tap sets the baseline
     seq.TriggerTapTempo(1000);
-    
+
     // Second tap 500ms later (120 BPM)
     // 60000 / 500 = 120
     seq.TriggerTapTempo(1500);
     REQUIRE(seq.GetBpm() == Catch::Approx(120.0f).margin(1.0f));
 
-    // Third tap 1000ms later (60 BPM)
+    // Third tap 1000ms later would be 60 BPM, but DuoPulse v2 clamps to 90-160
+    // So it should clamp to 90 BPM
     seq.TriggerTapTempo(2500);
-    REQUIRE(seq.GetBpm() == Catch::Approx(60.0f).margin(1.0f));
-    
+    REQUIRE(seq.GetBpm() == Catch::Approx(90.0f).margin(1.0f)); // Clamped to min
+
     // Test ignore too fast taps (< 100ms)
     float currentBpm = seq.GetBpm();
     seq.TriggerTapTempo(2550); // 50ms later
@@ -236,7 +239,7 @@ TEST_CASE("Kick CV outputs level based on accent", "[sequencer]")
     seq.Init(48000.0f);
     // Initialize defaults to mimic behavior
     seq.SetTempoControl(0.5f);
-    seq.SetStyle(0.5f);
+    seq.SetTerrain(0.5f);  // Was SetStyle
 
     auto accented = RunForcedStep(seq, true, false, false, true);
     REQUIRE(accented.gate0);
@@ -258,6 +261,9 @@ TEST_CASE("High CV outputs on Snare and HiHat", "[sequencer]")
     REQUIRE(snareOnly.gate1);
     REQUIRE(snareOnly.hihatMax > 0.5f);
 
+    // HiHat routing is based on grid parameter:
+    // grid < 0.5 routes HH to gate0 (anchor), grid >= 0.5 routes to gate1 (shimmer)
+    seq.SetGrid(1.0f); // Route HH to shimmer channel (gate1)
     auto hihatOnly = RunForcedStep(seq, false, false, true, false);
     REQUIRE(hihatOnly.gate1);
     REQUIRE(hihatOnly.hihatMax > 0.5f);
@@ -303,10 +309,10 @@ TEST_CASE("External Clock Integration", "[sequencer]")
     seq.TriggerExternalClock(); // Trigger step 0
     
     // Step 0 should have audio output if density is high?
-    seq.SetLowDensity(1.0f);
-    seq.SetHighDensity(1.0f);
+    seq.SetAnchorDensity(1.0f);   // Was SetLowDensity
+    seq.SetShimmerDensity(1.0f);  // Was SetHighDensity
     
-    // ProcessAudio calls patternGen.GetTriggers()
+    // ProcessAudio uses PatternSkeleton triggers
     // We need to ensure we catch the audio.
     bool sawAudio = false;
     for(int i=0; i<100; i++) {
@@ -329,5 +335,322 @@ TEST_CASE("External Clock Integration", "[sequencer]")
     }
     // We can't easily assert sawAudio here because step 1 might be silent depending on pattern.
     // But we can assert that the sequencer doesn't crash and accepts the trigger.
+}
+
+// === Genre-Aware Swing Tests ===
+
+TEST_CASE("Genre detection from terrain", "[swing]")
+{
+    REQUIRE(GetGenreFromTerrain(0.0f) == Genre::Techno);
+    REQUIRE(GetGenreFromTerrain(0.24f) == Genre::Techno);
+    REQUIRE(GetGenreFromTerrain(0.25f) == Genre::Tribal);
+    REQUIRE(GetGenreFromTerrain(0.49f) == Genre::Tribal);
+    REQUIRE(GetGenreFromTerrain(0.50f) == Genre::TripHop);
+    REQUIRE(GetGenreFromTerrain(0.74f) == Genre::TripHop);
+    REQUIRE(GetGenreFromTerrain(0.75f) == Genre::IDM);
+    REQUIRE(GetGenreFromTerrain(1.0f) == Genre::IDM);
+}
+
+TEST_CASE("Swing ranges per genre", "[swing]")
+{
+    // Techno: 52-57%
+    SwingRange techno = GetSwingRange(Genre::Techno);
+    REQUIRE(techno.minSwing == Catch::Approx(0.52f));
+    REQUIRE(techno.maxSwing == Catch::Approx(0.57f));
+    REQUIRE(techno.jitter == Catch::Approx(0.0f));
+
+    // Tribal: 56-62%
+    SwingRange tribal = GetSwingRange(Genre::Tribal);
+    REQUIRE(tribal.minSwing == Catch::Approx(0.56f));
+    REQUIRE(tribal.maxSwing == Catch::Approx(0.62f));
+
+    // Trip-Hop: 60-68%
+    SwingRange tripHop = GetSwingRange(Genre::TripHop);
+    REQUIRE(tripHop.minSwing == Catch::Approx(0.60f));
+    REQUIRE(tripHop.maxSwing == Catch::Approx(0.68f));
+
+    // IDM: 54-65% + jitter
+    SwingRange idm = GetSwingRange(Genre::IDM);
+    REQUIRE(idm.minSwing == Catch::Approx(0.54f));
+    REQUIRE(idm.maxSwing == Catch::Approx(0.65f));
+    REQUIRE(idm.jitter == Catch::Approx(0.03f));
+}
+
+TEST_CASE("Swing calculation from terrain and taste", "[swing]")
+{
+    // Techno at low taste -> 52%
+    REQUIRE(CalculateSwing(0.0f, 0.0f) == Catch::Approx(0.52f));
+    // Techno at high taste -> 57%
+    REQUIRE(CalculateSwing(0.0f, 1.0f) == Catch::Approx(0.57f));
+    // Techno at mid taste -> 54.5%
+    REQUIRE(CalculateSwing(0.0f, 0.5f) == Catch::Approx(0.545f));
+
+    // Trip-Hop at high taste -> 68% (max swing)
+    REQUIRE(CalculateSwing(0.6f, 1.0f) == Catch::Approx(0.68f));
+}
+
+TEST_CASE("Off-beat detection", "[swing]")
+{
+    // Even steps are on-beats (0, 2, 4, 6...)
+    REQUIRE_FALSE(IsOffBeat(0));
+    REQUIRE_FALSE(IsOffBeat(2));
+    REQUIRE_FALSE(IsOffBeat(4));
+    REQUIRE_FALSE(IsOffBeat(14));
+
+    // Odd steps are off-beats (1, 3, 5, 7...)
+    REQUIRE(IsOffBeat(1));
+    REQUIRE(IsOffBeat(3));
+    REQUIRE(IsOffBeat(5));
+    REQUIRE(IsOffBeat(15));
+}
+
+TEST_CASE("Swing delay calculation", "[swing]")
+{
+    // At 50% swing (straight), no delay
+    REQUIRE(CalculateSwingDelaySamples(0.50f, 1000) == 0);
+
+    // At 60% swing, delay is 10% of step duration
+    REQUIRE(CalculateSwingDelaySamples(0.60f, 1000) == 100);
+
+    // At 66% swing (triplet), delay is 16% of step duration
+    REQUIRE(CalculateSwingDelaySamples(0.66f, 1000) == 160);
+}
+
+TEST_CASE("Sequencer swing integration", "[swing]")
+{
+    Sequencer seq;
+    seq.Init(48000.0f);
+
+    // Default terrain (0) = Techno, default taste (0.5) = mid-range
+    // Expected swing: 52% + 0.5 * (57% - 52%) = 54.5%
+    REQUIRE(seq.GetSwingPercent() == Catch::Approx(0.545f).margin(0.01f));
+    REQUIRE(seq.GetCurrentGenre() == Genre::Techno);
+
+    // Set to Trip-Hop with high taste
+    seq.SetTerrain(0.6f);
+    seq.SetSwingTaste(1.0f);
+    REQUIRE(seq.GetCurrentGenre() == Genre::TripHop);
+    REQUIRE(seq.GetSwingPercent() == Catch::Approx(0.68f).margin(0.01f));
+
+    // Set to IDM with low taste
+    seq.SetTerrain(0.9f);
+    seq.SetSwingTaste(0.0f);
+    REQUIRE(seq.GetCurrentGenre() == Genre::IDM);
+    REQUIRE(seq.GetSwingPercent() == Catch::Approx(0.54f).margin(0.01f));
+}
+
+// === Orbit Voice Relationship Tests ===
+
+TEST_CASE("Orbit mode detection", "[orbit]")
+{
+    // Interlock: 0-33%
+    REQUIRE(GetOrbitMode(0.0f) == OrbitMode::Interlock);
+    REQUIRE(GetOrbitMode(0.32f) == OrbitMode::Interlock);
+
+    // Free: 33-67%
+    REQUIRE(GetOrbitMode(0.33f) == OrbitMode::Free);
+    REQUIRE(GetOrbitMode(0.5f) == OrbitMode::Free);
+    REQUIRE(GetOrbitMode(0.66f) == OrbitMode::Free);
+
+    // Shadow: 67-100%
+    REQUIRE(GetOrbitMode(0.67f) == OrbitMode::Shadow);
+    REQUIRE(GetOrbitMode(1.0f) == OrbitMode::Shadow);
+}
+
+TEST_CASE("Interlock modifier calculation", "[orbit]")
+{
+    // At orbit=0 (max interlock), anchor firing reduces shimmer by 30%
+    REQUIRE(GetInterlockModifier(true, 0.0f) == Catch::Approx(-0.3f));
+    // At orbit=0 (max interlock), anchor silent boosts shimmer by 30%
+    REQUIRE(GetInterlockModifier(false, 0.0f) == Catch::Approx(0.3f));
+
+    // At orbit=0.33 (edge of interlock zone), minimal effect
+    REQUIRE(GetInterlockModifier(true, 0.33f) == Catch::Approx(0.0f).margin(0.01f));
+    REQUIRE(GetInterlockModifier(false, 0.33f) == Catch::Approx(0.0f).margin(0.01f));
+
+    // At orbit=0.165 (mid interlock), half effect
+    REQUIRE(GetInterlockModifier(true, 0.165f) == Catch::Approx(-0.15f).margin(0.02f));
+    REQUIRE(GetInterlockModifier(false, 0.165f) == Catch::Approx(0.15f).margin(0.02f));
+}
+
+// === Phrase Position Tests ===
+
+TEST_CASE("Phrase position calculation", "[phrase]")
+{
+    // 4-bar loop, step 0
+    PhrasePosition pos = CalculatePhrasePosition(0, 4);
+    REQUIRE(pos.currentBar == 0);
+    REQUIRE(pos.stepInBar == 0);
+    REQUIRE(pos.stepInPhrase == 0);
+    REQUIRE(pos.phraseProgress == Catch::Approx(0.0f));
+    REQUIRE(pos.isLastBar == false);
+    REQUIRE(pos.isDownbeat == true);
+    REQUIRE(pos.isFillZone == false);
+    REQUIRE(pos.isBuildZone == false);
+
+    // 4-bar loop, step 16 (start of bar 2)
+    pos = CalculatePhrasePosition(16, 4);
+    REQUIRE(pos.currentBar == 1);
+    REQUIRE(pos.stepInBar == 0);
+    REQUIRE(pos.isDownbeat == true);
+    REQUIRE(pos.isLastBar == false);
+
+    // 4-bar loop, step 48 (start of bar 4 - last bar)
+    pos = CalculatePhrasePosition(48, 4);
+    REQUIRE(pos.currentBar == 3);
+    REQUIRE(pos.isLastBar == true);
+
+    // 4-bar loop, step 63 (last step - should be in fill zone)
+    pos = CalculatePhrasePosition(63, 4);
+    REQUIRE(pos.stepInPhrase == 63);
+    REQUIRE(pos.phraseProgress == Catch::Approx(63.0f / 64.0f).margin(0.01f));
+    REQUIRE(pos.isFillZone == true);
+    REQUIRE(pos.isBuildZone == true);
+}
+
+TEST_CASE("Fill and build zone scaling", "[phrase]")
+{
+    // 1-bar loop: fill zone = last 4 steps, build zone = last 8 steps
+    PhrasePosition pos1 = CalculatePhrasePosition(12, 1); // Step 12 of 16
+    REQUIRE(pos1.isFillZone == true);  // 4 steps from end
+    REQUIRE(pos1.isBuildZone == true);
+
+    PhrasePosition pos2 = CalculatePhrasePosition(8, 1); // Step 8 of 16
+    REQUIRE(pos2.isFillZone == false);
+    REQUIRE(pos2.isBuildZone == true); // 8 steps from end
+
+    PhrasePosition pos3 = CalculatePhrasePosition(7, 1); // Step 7 of 16
+    REQUIRE(pos3.isBuildZone == false);
+
+    // 8-bar loop: fill zone = last 32 steps (capped), build zone = last 64 steps (capped)
+    PhrasePosition pos4 = CalculatePhrasePosition(128 - 16, 8); // 16 steps from end
+    REQUIRE(pos4.isFillZone == true);  // Within 32-step fill zone
+    REQUIRE(pos4.isBuildZone == true);
+
+    PhrasePosition pos5 = CalculatePhrasePosition(128 - 33, 8); // 33 steps from end (just outside fill zone)
+    REQUIRE(pos5.isFillZone == false);
+    REQUIRE(pos5.isBuildZone == true); // Still in build zone (64 steps)
+}
+
+TEST_CASE("Phrase fill boost calculation", "[phrase]")
+{
+    // Not in fill or build zone
+    PhrasePosition notInZone;
+    notInZone.isFillZone = false;
+    notInZone.isBuildZone = false;
+    REQUIRE(GetPhraseFillBoost(notInZone, 0.0f) == 0.0f);
+
+    // In build zone (not fill)
+    PhrasePosition buildZone;
+    buildZone.isFillZone = false;
+    buildZone.isBuildZone = true;
+    float boost = GetPhraseFillBoost(buildZone, 0.0f); // Techno
+    REQUIRE(boost == Catch::Approx(0.3f * 0.5f).margin(0.01f)); // 30% * 50% genre scale
+
+    // In fill zone, IDM terrain
+    PhrasePosition fillZone;
+    fillZone.isFillZone = true;
+    fillZone.isBuildZone = true;
+    boost = GetPhraseFillBoost(fillZone, 0.9f); // IDM
+    REQUIRE(boost == Catch::Approx(0.5f * 1.5f).margin(0.01f)); // 50% * 150% genre scale
+}
+
+TEST_CASE("Phrase accent multiplier", "[phrase]")
+{
+    // Phrase start (bar 0, step 0) - strongest accent
+    PhrasePosition phraseStart;
+    phraseStart.currentBar = 0;
+    phraseStart.stepInBar = 0;
+    phraseStart.isFillZone = false;
+    phraseStart.phraseProgress = 0.0f;
+    REQUIRE(GetPhraseAccentMultiplier(phraseStart) == Catch::Approx(1.2f));
+
+    // Bar downbeat (not phrase start)
+    PhrasePosition barDownbeat;
+    barDownbeat.currentBar = 2;
+    barDownbeat.stepInBar = 0;
+    barDownbeat.isFillZone = false;
+    barDownbeat.isDownbeat = true;
+    REQUIRE(GetPhraseAccentMultiplier(barDownbeat) == Catch::Approx(1.1f));
+
+    // Regular step
+    PhrasePosition regular;
+    regular.currentBar = 1;
+    regular.stepInBar = 3;
+    regular.isFillZone = false;
+    regular.isDownbeat = false;
+    REQUIRE(GetPhraseAccentMultiplier(regular) == Catch::Approx(1.0f));
+}
+
+// === Contour CV Mode Tests ===
+
+TEST_CASE("Contour mode detection", "[contour]")
+{
+    REQUIRE(GetContourMode(0.0f) == ContourMode::Velocity);
+    REQUIRE(GetContourMode(0.24f) == ContourMode::Velocity);
+    REQUIRE(GetContourMode(0.25f) == ContourMode::Decay);
+    REQUIRE(GetContourMode(0.49f) == ContourMode::Decay);
+    REQUIRE(GetContourMode(0.50f) == ContourMode::Pitch);
+    REQUIRE(GetContourMode(0.74f) == ContourMode::Pitch);
+    REQUIRE(GetContourMode(0.75f) == ContourMode::Random);
+    REQUIRE(GetContourMode(1.0f) == ContourMode::Random);
+}
+
+TEST_CASE("Contour CV calculation - Velocity mode", "[contour]")
+{
+    // On trigger, CV = velocity
+    float cv = CalculateContourCV(ContourMode::Velocity, 0.8f, 0.5f, 0.0f, true);
+    REQUIRE(cv == Catch::Approx(0.8f));
+
+    // Between triggers, decays very slowly (sustain-like)
+    // kVelocityDecay = 0.99995f - designed for per-sample at 48kHz
+    cv = CalculateContourCV(ContourMode::Velocity, 0.0f, 0.5f, 0.8f, false);
+    REQUIRE(cv == Catch::Approx(0.8f * 0.99995f).margin(0.0001f));
+}
+
+TEST_CASE("Contour CV calculation - Decay mode", "[contour]")
+{
+    // On trigger, CV maps velocity to decay hint
+    float cv = CalculateContourCV(ContourMode::Decay, 1.0f, 0.5f, 0.0f, true);
+    REQUIRE(cv == Catch::Approx(1.0f).margin(0.01f)); // Max velocity = max CV
+
+    cv = CalculateContourCV(ContourMode::Decay, 0.0f, 0.5f, 0.0f, true);
+    REQUIRE(cv == Catch::Approx(0.2f).margin(0.01f)); // Min velocity = 0.2 CV
+
+    // Decays between triggers (envelope-like)
+    // kDecayDecay = 0.9997f - designed for per-sample at 48kHz (~250ms decay)
+    cv = CalculateContourCV(ContourMode::Decay, 0.0f, 0.5f, 1.0f, false);
+    REQUIRE(cv == Catch::Approx(0.9997f).margin(0.0001f));
+}
+
+TEST_CASE("Contour CV calculation - Pitch mode", "[contour]")
+{
+    // On trigger, CV centered at 0.5 with velocity-scaled random offset
+    // With random = 0.5, offset = 0 (centered)
+    float cv = CalculateContourCV(ContourMode::Pitch, 1.0f, 0.5f, 0.0f, true);
+    REQUIRE(cv == Catch::Approx(0.5f).margin(0.01f));
+
+    // With random = 1.0 and max velocity, offset = +0.2
+    cv = CalculateContourCV(ContourMode::Pitch, 1.0f, 1.0f, 0.0f, true);
+    REQUIRE(cv == Catch::Approx(0.7f).margin(0.01f));
+
+    // With random = 0.0 and max velocity, offset = -0.2
+    cv = CalculateContourCV(ContourMode::Pitch, 1.0f, 0.0f, 0.0f, true);
+    REQUIRE(cv == Catch::Approx(0.3f).margin(0.01f));
+
+    // Holds between triggers
+    cv = CalculateContourCV(ContourMode::Pitch, 0.0f, 0.5f, 0.7f, false);
+    REQUIRE(cv == Catch::Approx(0.7f));
+}
+
+TEST_CASE("Contour CV calculation - Random mode", "[contour]")
+{
+    // On trigger, CV = random value
+    float cv = CalculateContourCV(ContourMode::Random, 0.5f, 0.75f, 0.0f, true);
+    REQUIRE(cv == Catch::Approx(0.75f));
+
+    // Holds between triggers
+    cv = CalculateContourCV(ContourMode::Random, 0.0f, 0.5f, 0.75f, false);
+    REQUIRE(cv == Catch::Approx(0.75f));
 }
 
