@@ -116,8 +116,12 @@ This eliminates Terrain/Grid mismatches, reduces cognitive load, and provides in
 ## Phase 4: Phrase Awareness [phrase-modulation]
 
 ### Reuse v2 Phrase Position
-- [ ] Verify `PhrasePosition` struct compatibility. *(spec: [phrase-modulation])*
-- [ ] Ensure `phraseProgress`, `isFillZone`, `isBuildZone`, `isDownbeat` are available.
+- [x] Verify `PhrasePosition` struct compatibility. *(spec: [phrase-modulation])*
+  - Verified in `GenreConfig.h` (lines 367-377): struct has all required fields
+- [x] Ensure `phraseProgress`, `isFillZone`, `isBuildZone`, `isDownbeat` are available.
+  - All fields present with correct types and default values
+  - `CalculatePhrasePosition()` helper function computes all values correctly
+  - `Sequencer::GetPhrasePosition()` getter already exposes the struct
 
 ### Phrase Weight Modulation
 - [ ] Implement `GetPhraseWeightBoost(pos, broken)` function. *(spec: [phrase-modulation])*
