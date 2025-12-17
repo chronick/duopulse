@@ -66,3 +66,8 @@ When external clock is patched, outputting clock on CV_OUT_1 is redundant. Inste
 - HiHat mode uses existing `ghostTrigger` from ChaosModulator—this data is already generated but currently merged into anchor/shimmer.
 - Fill Gate and Phrase CV modes use existing `PhrasePosition` tracking.
 - This feature makes DuoPulse a 3-voice sequencer when external clock is used: Anchor, Shimmer, and HiHat/Aux triggers.
+
+## v3 Compatibility
+- This task is compatible with v3 algorithmic pulse field changes.
+- Ghost trigger source may change in v3 (from ChaosModulator to PulseField), but the output behavior remains the same.
+- Phrase position tracking is reused from v2.

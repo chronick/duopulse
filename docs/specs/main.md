@@ -1,16 +1,20 @@
 # DuoPulse: 2-Voice Percussive Sequencer
 
-**Specification v2.1**  
-**External Clock & Auxiliary Outputs**  
+**Specification v3.0**  
+**Algorithmic Pulse Field**  
 **Date: 2025-12-16**
 
 ---
 
 ## Executive Summary
 
-**DuoPulse** is an opinionated 2-voice percussion sequencer optimized for the Patch.Init hardware. It embraces the two-output constraint as a creative feature, treating the pair of lanes as a unified rhythmic instrument with complementary roles. The sequencer is tuned for electronic genres—techno, tribal, trip-hop, and IDM—with genre-aware swing, algorithmic pattern generation, and deep performance controls.
+**DuoPulse** is an opinionated 2-voice percussion sequencer optimized for the Patch.Init hardware. Version 3 introduces a **continuous algorithmic pulse field** that replaces the discrete pattern lookup system, providing infinite variation along a musically coherent gradient from club-ready techno to experimental IDM.
 
-When using external clock, CV Out 1 becomes a multi-purpose auxiliary output—enabling a third trigger voice (hi-hat), phrase position CV, fill indicator, and more.
+The core mental model is simplified to two axes:
+1. **BROKEN** — How regular/irregular the pattern is (4/4 techno → IDM chaos)
+2. **DRIFT** — How much the pattern evolves over time (locked → generative)
+
+Genre character (Techno/Tribal/Trip-Hop/IDM) emerges naturally from the BROKEN parameter. When using external clock, CV Out 1 becomes a multi-purpose auxiliary output.
 
 ---
 
@@ -20,9 +24,21 @@ When using external clock, CV Out 1 becomes a multi-purpose auxiliary output—e
 
 1. **Embrace the Constraint**: Two voices, maximally expressive. No compromise mapping of 3 voices to 2 outputs.
 2. **Abstract Vocabulary**: "Anchor" and "Shimmer" replace traditional drum names, encouraging modular synthesis thinking.
-3. **Genre-Opinionated**: The sequencer knows what sounds good in techno, tribal, trip-hop, and IDM—and applies that knowledge to swing, density, and accent behavior.
+3. **Predictable Axes**: Every parameter change produces a predictable, musical result. Two clear axes: weird (BROKEN) × stable (DRIFT).
 4. **Performance-First**: Core controls are immediate and tactile; deeper configuration is accessible but never in the way.
 5. **CV is King**: CV inputs always map to the four main performance parameters, regardless of mode.
+
+### The Problem Solved by v3
+
+The v2 system had 16 hand-crafted pattern skeletons with TERRAIN (genre) and GRID (pattern selection) controls. This caused:
+- Terrain and Grid mismatches (Tribal pattern with Techno swing)
+- Unpredictable parameter combinations
+- Abrupt pattern transitions
+
+The v3 algorithmic approach replaces discrete patterns with a continuous algorithm where:
+- Genre character **emerges** from the BROKEN parameter
+- Every knob turn produces a **predictable, audible change**
+- Patterns can be **locked** (DJ tool) or **generative** (experimental)
 
 ### Voice Architecture
 
@@ -67,12 +83,14 @@ When using external clock, CV Out 1 becomes a multi-purpose auxiliary output—e
 
 |    | **Performance Primary** | **Performance +Shift** | **Config Primary** | **Config +Shift** |
 |----|-------------------------|------------------------|--------------------|--------------------|
-| **K1** | Anchor Density | Terrain | Anchor Accent | Swing Taste |
+| **K1** | Anchor Density | Fuse | Anchor Accent | Swing Taste |
 | **K2** | Shimmer Density | Length | Shimmer Accent | Gate Time |
-| **K3** | Flux | Grid | Contour | Humanize |
-| **K4** | Fuse | Orbit | Tempo / Clock Div* | Clock Div / Aux Mode* |
+| **K3** | Broken | Couple | Contour | Humanize |
+| **K4** | Drift | *(Reserved)* | Tempo / Clock Div* | Clock Div / Aux Mode* |
 
-> **CV inputs 5-8 always modulate Performance Primary parameters** (Anchor Density, Shimmer Density, Flux, Fuse) regardless of current mode.
+> **CV inputs 5-8 always modulate Performance Primary parameters** (Anchor Density, Shimmer Density, Broken, Drift) regardless of current mode.
+
+> **v3 Control Changes**: FLUX→BROKEN (K3), FUSE→DRIFT (K4). TERRAIN/GRID removed (genre emerges from BROKEN). ORBIT→COUPLE simplified. See `docs/specs/double-down/simplified-algorithmic-approach.md` for full v3 algorithm spec.
 
 > *\*K4 is context-aware:* When **internal clock** (no external clock patched): K4 = Tempo, K4+Shift = Clock Div. When **external clock** patched: K4 = Clock Div (sequencer rate), K4+Shift = Aux Output Mode. See [external-clock-behavior].
 
@@ -86,48 +104,32 @@ Primary playing mode. Optimized for live manipulation.
 
 | Knob | Name | Function | Range |
 |------|------|----------|-------|
-| **K1** | **ANCHOR DENSITY** | Hit frequency for Anchor lane | Sparse ← → Busy |
-| **K2** | **SHIMMER DENSITY** | Hit frequency for Shimmer lane | Sparse ← → Busy |
-| **K3** | **FLUX** | Global variation, fills, ghost notes | Steady ← → Chaotic |
-| **K4** | **FUSE** | Cross-lane energy exchange | Anchor-heavy ← → Shimmer-heavy |
+| **K1** | **ANCHOR DENSITY** | How many Anchor triggers fire | 0%=silent → 100%=full |
+| **K2** | **SHIMMER DENSITY** | How many Shimmer triggers fire | 0%=silent → 100%=full |
+| **K3** | **BROKEN** | Pattern regularity (genre emerges) | 0%=4/4 → 100%=IDM |
+| **K4** | **DRIFT** | Pattern stability over time | 0%=locked → 100%=evolving |
 
-**ANCHOR/SHIMMER DENSITY**: Controls the probability of hits per step. At low values, only downbeats fire. At high values, dense patterns with ghost notes emerge.
+**ANCHOR/SHIMMER DENSITY**: Controls how many triggers fire. Low density fires only high-weight positions (downbeats). High density fires nearly all steps.
 
-**FLUX**: Injects variation into both lanes—fills at loop boundaries, velocity swells, ghost notes. At high values, patterns evolve and mutate.
+**BROKEN**: Controls how regular/irregular the pattern is. Genre character emerges naturally: 0-25% Techno (straight), 25-50% Tribal (shuffled), 50-75% Trip-Hop (lazy), 75-100% IDM (broken). BROKEN also affects swing, micro-timing jitter, step displacement, and velocity variation.
 
-**FUSE**: Tilts energy between lanes. CCW emphasizes Anchor (more kick, less shimmer). CW emphasizes Shimmer (sparse foundation, busy accents). At center, balanced.
+**DRIFT**: Controls how much the pattern evolves over time. At 0%, pattern is fully locked (same every loop). At 100%, pattern is fully generative (unique each loop). Per-voice behavior: Anchor is more stable (0.7× multiplier), Shimmer is more drifty (1.3× multiplier).
 
 #### Shift Layer (Button Held)
 
 | Knob | Name | Function | Range |
 |------|------|----------|-------|
-| **K1+Shift** | **TERRAIN** | Genre/style character | See table |
+| **K1+Shift** | **FUSE** | Voice energy balance | CCW=kick-heavy, CW=snare-heavy |
 | **K2+Shift** | **LENGTH** | Loop length in bars | 1, 2, 4, 8, 16 |
-| **K3+Shift** | **GRID** | Pattern family selection | 1-16 patterns |
-| **K4+Shift** | **ORBIT** | Voice relationship mode | See table |
+| **K3+Shift** | **COUPLE** | Voice relationship strength | 0%=independent, 100%=interlock |
+| **K4+Shift** | *(Reserved)* | Reserved for future features | — |
 
-**TERRAIN** (Genre Character):
+**FUSE**: Tilts energy between voices. CCW boosts Anchor density (+15%), reduces Shimmer (-15%). CW does the opposite. At center (50%), balanced.
 
-| Range | Genre | Swing Base | Character |
-|-------|-------|------------|-----------|
-| 0-25% | **Techno** | 52-57% | Straight, driving, minimal swing |
-| 25-50% | **Tribal** | 56-62% | Circular, percussive, moderate swing |
-| 50-75% | **Trip-Hop** | 60-68% | Lazy, behind-beat, heavy swing |
-| 75-100% | **IDM** | 54-65% + jitter | Broken, glitchy, micro-timing chaos |
-
-TERRAIN affects:
-- Base swing amount (genre-specific range)
-- Accent placement patterns
-- Ghost note probability curves
-- Micro-timing jitter (especially for IDM)
-
-**ORBIT** (Voice Relationship):
-
-| Range | Mode | Behavior |
-|-------|------|----------|
-| 0-33% | **Interlock** | Shimmer fills gaps in Anchor (call-response) |
-| 33-67% | **Free** | Independent patterns, no collision logic |
-| 67-100% | **Shadow** | Shimmer echoes Anchor with delay |
+**COUPLE**: Controls voice interlock strength (simplified from v2's 3-mode ORBIT):
+- 0%: Fully independent — voices can collide or gap freely
+- 50%: Soft interlock — slight collision avoidance
+- 100%: Hard interlock — Shimmer fills Anchor gaps, suppresses collisions
 
 ---
 
@@ -257,7 +259,170 @@ Swing is **opinionated by genre** but adjustable within a curated range. This pr
 
 ---
 
+## Feature: Weighted Pulse Field Algorithm [pulse-field]
+
+> **v3 Feature**: This replaces the discrete pattern lookup system (see v2 Pattern Generation below, kept for reference).
+
+### Concept
+
+Each of the 32 steps in a pattern has a **weight** that represents its "likelihood" of triggering. The algorithm uses these weights combined with DENSITY and BROKEN to determine what fires.
+
+### Grid Position Weights
+
+| Step Positions | Weight | Musical Role |
+|----------------|--------|--------------|
+| 0, 16 | 1.0 | Bar downbeats ("THE ONE") |
+| 8, 24 | 0.85 | Half-note positions |
+| 4, 12, 20, 28 | 0.7 | Quarter notes |
+| 2, 6, 10, 14, 18, 22, 26, 30 | 0.4 | 8th note off-beats |
+| 1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31 | 0.2 | 16th note off-beats |
+
+### The Algorithm
+
+1. Get base weight for step position
+2. BROKEN flattens the weight distribution (at broken=1, all weights converge to 0.5)
+3. Add randomness scaled by BROKEN (more broken = more random variation)
+4. DENSITY sets the threshold (density=0 → threshold=1.0, nothing fires; density=1 → threshold=0.0, everything fires)
+5. Fire if effective weight exceeds threshold
+
+### Voice Differentiation [voice-weights]
+
+**Anchor (Kick Character)**: Emphasizes downbeats (0, 8, 16, 24)
+**Shimmer (Snare Character)**: Emphasizes backbeats (8, 24)
+
+### Acceptance Criteria
+- [ ] Weight table for 32 steps implemented
+- [ ] Effective weight calculation with BROKEN flattening
+- [ ] Noise injection scaled by BROKEN
+- [ ] Threshold comparison with DENSITY
+- [ ] Separate weight tables for Anchor and Shimmer
+- [ ] Deterministic mode (seeded RNG) for reproducibility
+
+---
+
+## Feature: BROKEN Effects Stack [broken-effects]
+
+### Effect 1: Swing (Tied to BROKEN)
+
+| BROKEN Range | Genre Feel | Swing % | Character |
+|--------------|------------|---------|-----------|
+| 0-25% | Techno | 50-54% | Nearly straight, driving |
+| 25-50% | Tribal | 54-60% | Mild shuffle, groove |
+| 50-75% | Trip-Hop | 60-66% | Lazy, behind-beat |
+| 75-100% | IDM | 66-58% + jitter | Continuous chaos |
+
+### Effect 2: Micro-Timing Jitter
+
+| BROKEN Range | Max Jitter | Feel |
+|--------------|------------|------|
+| 0-40% | ±0ms | Machine-tight |
+| 40-70% | ±3ms | Subtle human feel |
+| 70-90% | ±6ms | Loose, organic |
+| 90-100% | ±12ms | Broken, glitchy |
+
+### Effect 3: Step Displacement
+
+| BROKEN Range | Displacement Chance | Max Shift |
+|--------------|---------------------|-----------|
+| 0-50% | 0% | 0 steps |
+| 50-75% | 0-15% | ±1 step |
+| 75-100% | 15-40% | ±2 steps |
+
+### Effect 4: Velocity Variation
+
+| BROKEN Range | Velocity Variation | Character |
+|--------------|-------------------|-----------|
+| 0-30% | ±5% | Consistent, mechanical |
+| 30-60% | ±10% | Subtle dynamics |
+| 60-100% | ±20% | Expressive, uneven |
+
+### Acceptance Criteria
+- [ ] Swing calculated from BROKEN parameter
+- [ ] Jitter scales with BROKEN (0 below 40%)
+- [ ] Step displacement at BROKEN > 50%
+- [ ] Velocity variation scales with BROKEN
+- [ ] All effects combine coherently
+
+---
+
+## Feature: DRIFT Variation Control [drift-control]
+
+### Stratified Stability Model
+
+Not all steps are equally "lockable". Important beats (downbeats) stay stable longer than ghost notes as DRIFT increases.
+
+| Step Type | Stability | Behavior |
+|-----------|-----------|----------|
+| Bar downbeats (0, 16) | 1.0 | Lock until DRIFT > 100% |
+| Half notes (8, 24) | 0.85 | Lock until DRIFT > 85% |
+| Quarter notes (4, 12, 20, 28) | 0.7 | Lock until DRIFT > 70% |
+| 8th off-beats | 0.4 | Lock until DRIFT > 40% |
+| 16th ghosts | 0.2 | Vary unless DRIFT < 20% |
+
+**DRIFT sets the threshold**: Steps with stability *above* DRIFT use a fixed seed (same every loop). Steps *below* DRIFT use a varying seed (different each loop).
+
+### Per-Voice DRIFT
+
+| DRIFT Knob | Anchor Effective | Shimmer Effective | Result |
+|------------|------------------|-------------------|--------|
+| 0% | 0% | 0% | Both fully locked |
+| 30% | 21% | 39% | Anchor mostly locked, Shimmer ghosts vary |
+| 50% | 35% | 65% | Anchor quarters locked, Shimmer quite loose |
+| 70% | 49% | 91% | Anchor half-notes locked, Shimmer nearly full drift |
+| 100% | 70% | 100% | Anchor still somewhat stable, Shimmer fully evolving |
+
+### Acceptance Criteria
+- [ ] Step stability values implemented (1.0 for downbeats → 0.2 for 16ths)
+- [ ] DRIFT threshold determines which steps use locked vs. varying seed
+- [ ] `patternSeed_` persists across loops (locked elements)
+- [ ] `loopSeed_` regenerates on phrase reset (drifting elements)
+- [ ] DRIFT = 0% produces identical pattern every loop
+- [ ] DRIFT = 100% produces unique pattern each loop
+- [ ] Per-voice DRIFT: Anchor uses 0.7× multiplier, Shimmer uses 1.3×
+- [ ] CV modulation of DRIFT works correctly
+
+---
+
+## Feature: FUSE Energy Balance [fuse-balance]
+
+FUSE tilts the energy between Anchor and Shimmer voices.
+
+| FUSE | Anchor Density | Shimmer Density |
+|------|----------------|-----------------|
+| 0% (CCW) | +15% | -15% |
+| 50% (Center) | 0% | 0% |
+| 100% (CW) | -15% | +15% |
+
+### Acceptance Criteria
+- [ ] FUSE at 0.5 = no change
+- [ ] FUSE CCW boosts Anchor, reduces Shimmer
+- [ ] FUSE CW boosts Shimmer, reduces Anchor
+- [ ] ±15% density shift at extremes
+
+---
+
+## Feature: COUPLE Voice Interlock [couple-interlock]
+
+COUPLE is a simplified replacement for the three-mode ORBIT system. It provides a single 0-100% axis for voice relationship strength.
+
+| COUPLE | Behavior |
+|--------|----------|
+| 0% | Fully independent — voices can collide or gap freely |
+| 50% | Soft interlock — slight collision avoidance |
+| 100% | Hard interlock — Shimmer always fills Anchor gaps |
+
+### Acceptance Criteria
+- [ ] COUPLE parameter (0-1) controls interlock strength
+- [ ] At 0%: voices are fully independent
+- [ ] At 100%: shimmer strongly fills anchor gaps
+- [ ] Collision suppression scales with COUPLE
+- [ ] Gap-filling boost at COUPLE > 50%
+
+---
+
 ## Feature: Pattern Generation [duopulse-patterns]
+
+> **v2 Feature**: This section documents the discrete pattern lookup system. v3 replaces this with the Weighted Pulse Field Algorithm [pulse-field].
 
 ### Hybrid Approach
 
@@ -538,8 +703,8 @@ All knobs use **gradual interpolation** toward the physical position.
 |----------|------------------|
 | **CV 5** | ANCHOR DENSITY |
 | **CV 6** | SHIMMER DENSITY |
-| **CV 7** | FLUX |
-| **CV 8** | FUSE |
+| **CV 7** | BROKEN |
+| **CV 8** | DRIFT |
 
 This means:
 - In **Config Mode**, CV still affects performance parameters
@@ -759,10 +924,10 @@ When using internal clock (no external clock patched):
 
 |    | Primary | +Shift |
 |----|---------|--------|
-| K1 | ANCHOR DENSITY | TERRAIN |
+| K1 | ANCHOR DENSITY | FUSE |
 | K2 | SHIMMER DENSITY | LENGTH |
-| K3 | FLUX | GRID |
-| K4 | FUSE | ORBIT |
+| K3 | BROKEN | COUPLE |
+| K4 | DRIFT | *(Reserved)* |
 
 ### Config Mode (Switch UP)
 
@@ -779,17 +944,23 @@ When using internal clock (no external clock patched):
 
 ## Summary of Key Innovations
 
-1. **Abstract Terminology**: Anchor/Shimmer instead of Kick/Snare—encourages modular thinking
-2. **Genre-Aware Swing**: Opinionated ranges per genre, taste control for fine-tuning
-3. **CV Always Performance**: CV inputs always modulate performance params, regardless of mode
-4. **CV-Driven Fills**: High FLUX via CV naturally creates fill behavior—truly modular
-5. **Swung Clock Output**: Clock respects swing for downstream module sync
-6. **Hybrid Pattern Engine**: Curated skeletons + algorithmic variation
-7. **Phrase-Aware Composition**: Longer patterns have musical arc with builds and fills
-8. **Gradual Soft Pickup**: Interpolated takeover instead of catch-up
-9. **ORBIT Relationship Modes**: Interlock/Free/Shadow for voice interaction
-10. **CONTOUR CV Modes**: Velocity/Decay/Pitch/Random expression
-11. **TERRAIN Genre Presets**: Techno/Tribal/Trip-Hop/IDM character tuning
-12. **HUMANIZE Jitter**: Micro-timing variation for organic feel
-13. **Context-Aware Controls**: K4 automatically switches function when external clock is patched
-14. **Auxiliary Output Modes**: CV Out 1 becomes HiHat trigger, Fill gate, Phrase CV, or more when using external clock
+### v3 Algorithmic Approach
+
+1. **BROKEN unifies genre**: Swing, jitter, displacement all scale with one knob. Genre character (Techno/Tribal/Trip-Hop/IDM) emerges naturally.
+2. **DRIFT unifies predictability**: No more separate "deterministic mode". DRIFT = 0% locks the pattern; DRIFT = 100% makes it evolve.
+3. **Stratified stability**: At intermediate DRIFT, downbeats stay locked while ghost notes vary. "Stable groove with living details."
+4. **Per-voice DRIFT**: Anchor is more stable (0.7× drift), Shimmer is more drifty (1.3× drift). Even at max DRIFT, kicks have some stability.
+5. **COUPLE simplifies voice relationship**: Single 0-100% interlock strength replaces three discrete modes.
+6. **Weighted Pulse Field**: Continuous algorithm replaces discrete pattern lookups. No more Terrain/Grid mismatches.
+
+### Core Architecture (v2/v3)
+
+7. **Abstract Terminology**: Anchor/Shimmer instead of Kick/Snare—encourages modular thinking
+8. **CV Always Performance**: CV inputs always modulate performance params, regardless of mode
+9. **Swung Clock Output**: Clock respects swing for downstream module sync
+10. **Phrase-Aware Composition**: Longer patterns have musical arc with builds and fills
+11. **Gradual Soft Pickup**: Interpolated takeover instead of catch-up
+12. **CONTOUR CV Modes**: Velocity/Decay/Pitch/Random expression
+13. **HUMANIZE Jitter**: Micro-timing variation for organic feel
+14. **Context-Aware Controls**: K4 automatically switches function when external clock is patched
+15. **Auxiliary Output Modes**: CV Out 1 becomes HiHat trigger, Fill gate, Phrase CV, or more when using external clock
