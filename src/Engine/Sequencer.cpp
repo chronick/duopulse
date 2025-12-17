@@ -317,6 +317,15 @@ std::array<float, 2> Sequencer::ProcessAudio()
 
         stepIndex_ = (stepIndex_ + 1) % effectiveLoopSteps;
 
+#ifdef USE_PULSE_FIELD_V3
+        // Phrase reset: regenerate loopSeed_ for drifting pattern elements
+        // This causes DRIFT-affected steps to produce different patterns each loop
+        if(stepIndex_ == 0)
+        {
+            pulseFieldState_.OnPhraseReset();
+        }
+#endif
+
         // Update phrase position tracking
         phrasePos_ = CalculatePhrasePosition(stepIndex_, loopLengthBars_);
 

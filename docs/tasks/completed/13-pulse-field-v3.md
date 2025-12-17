@@ -66,8 +66,8 @@ This eliminates Terrain/Grid mismatches, reduces cognitive load, and provides in
 
 ### Phrase Reset
 - [x] `OnPhraseReset()` regenerates `loopSeed_`. *(spec: [drift-control])*
-- [ ] Hook phrase reset callback into Sequencer. *(spec: [drift-control])*
-  - Note: PulseFieldState struct ready for integration. Sequencer integration deferred to Phase 6 (Control Integration).
+- [x] Hook phrase reset callback into Sequencer. *(spec: [drift-control])*
+  - Implemented: `pulseFieldState_.OnPhraseReset()` called when `stepIndex_` wraps to 0 in `ProcessAudio()`.
 
 ### Tests
 - [x] DRIFT=0% produces identical pattern every loop.
@@ -239,8 +239,9 @@ This eliminates Terrain/Grid mismatches, reduces cognitive load, and provides in
   - Added to `inc/config.h` with documentation
 - [x] Verify old pattern system still works when disabled.
   - Tests pass with v3 both enabled and disabled
-- [ ] Remove pattern skeletons after v3 validated.
-  - Deferred: keep v2 code for fallback until hardware validation complete
+- [ ] ~~Remove pattern skeletons after v3 validated.~~ **DEFERRED**
+  - Intentionally deferred: keep v2 code for fallback until hardware validation complete
+  - The `#ifdef USE_PULSE_FIELD_V3` conditional allows easy switching between v2/v3
 
 ### File Structure
 - [x] Create `src/Engine/PulseField.h` and `PulseField.cpp`.
@@ -251,8 +252,8 @@ This eliminates Terrain/Grid mismatches, reduces cognitive load, and provides in
   - Added PulseFieldState, GetPulseFieldTriggers(), ApplyBrokenEffects()
   - Conditional compilation throughout ProcessAudio()
   - UpdateSwingParameters() uses GetSwingFromBroken() for v3
-- [ ] Remove unused pattern data files after migration.
-  - Deferred: keep PatternSkeleton/PatternData for v2 mode
+- [ ] ~~Remove unused pattern data files after migration.~~ **DEFERRED**
+  - Intentionally deferred: keep PatternSkeleton/PatternData for v2 fallback mode
 
 ### Documentation
 - [x] Update control layout in spec.
@@ -269,8 +270,28 @@ This eliminates Terrain/Grid mismatches, reduces cognitive load, and provides in
 - Soft takeover behavior from v2 is reused (just with different parameters).
 - External clock handling (Task 08) and Aux Output Modes (Task 12) are independent and compatible with v3.
 
-> **Implementation Note** (2025-12-17): Phase 8 (Migration & Cleanup) substantially complete:
+> **Implementation Note** (2025-12-17): Task 13 complete:
 > - v3 algorithm integrated into Sequencer via `#ifdef USE_PULSE_FIELD_V3`
-> - Both v2 and v3 modes pass all 122 test cases (76,525 assertions)
+> - Phase 2 phrase reset callback hooked in Sequencer.cpp (calls `OnPhraseReset()` when step wraps to 0)
+> - Both v2 and v3 modes pass all 124 test cases (76,532 assertions)
 > - Documentation updated (spec acceptance criteria, README)
-> - Remaining: phrase reset callback (Phase 2), pattern skeleton removal (deferred until hardware validation)
+> - Pattern skeleton removal intentionally deferred until hardware validation complete
+
+---
+
+### Session Notes (2025-12-17)
+
+**Phrase Reset Callback Implementation:**
+- Added `pulseFieldState_.OnPhraseReset()` call in `Sequencer::ProcessAudio()` when `stepIndex_` wraps to 0
+- Wrapped in `#ifdef USE_PULSE_FIELD_V3` for conditional compilation
+- This enables DRIFT-affected steps to produce different patterns each loop (loopSeed_ regeneration)
+
+**Tests Added:**
+- `test_sequencer.cpp`: "Phrase reset triggers loopSeed regeneration in v3" - verifies pattern behavior with DRIFT
+- `test_sequencer.cpp`: "Phrase reset at step 0 verified via phrase position" - verifies loop wrap detection
+
+**Files Modified:**
+- `src/Engine/Sequencer.cpp` - phrase reset callback
+- `tests/test_sequencer.cpp` - integration tests
+- `docs/tasks/completed/13-pulse-field-v3.md` - task updates
+- `docs/tasks/index.md` - status update

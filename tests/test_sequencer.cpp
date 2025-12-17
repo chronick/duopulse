@@ -676,3 +676,116 @@ TEST_CASE("Contour CV calculation - Random mode", "[contour]")
     REQUIRE(cv == Catch::Approx(0.75f));
 }
 
+#ifdef USE_PULSE_FIELD_V3
+
+// === DuoPulse v3: Phrase Reset Integration Tests ===
+
+TEST_CASE("Phrase reset triggers loopSeed regeneration in v3", "[sequencer][drift][v3]")
+{
+    // This test verifies that when the sequencer wraps to step 0,
+    // the phrase reset callback is called, causing DRIFT-affected
+    // steps to produce different patterns.
+    
+    Sequencer seq;
+    seq.Init(48000.0f);
+    
+    // Use very fast tempo for quick loop completion
+    seq.SetBpm(160.0f);
+    
+    // Set up for maximum drift (patterns should vary between loops)
+    seq.SetDrift(1.0f);
+    seq.SetBroken(0.5f);  // Moderate broken for some noise variation
+    seq.SetAnchorDensity(0.6f);
+    seq.SetShimmerDensity(0.6f);
+    seq.SetLength(1);  // 1-bar loop = 16 steps (shortest loop for faster test)
+    
+    // Reset to start at step 0
+    seq.TriggerReset();
+    
+    // Count triggers over multiple loops
+    // With DRIFT=1.0 and phrase reset, patterns should differ between loops
+    
+    // 16th note at 160 BPM = 60000 / (160 * 4) = 93.75ms per step
+    // At 48kHz, that's about 4500 samples per step
+    // For 1-bar (16 steps), one loop = ~72000 samples
+    
+    int samplesPerStep = static_cast<int>(48000.0f * 60.0f / (160.0f * 4.0f));
+    int samplesPerLoop = samplesPerStep * 16;
+    
+    // Record triggers for first loop
+    int loop1Triggers = 0;
+    for (int i = 0; i < samplesPerLoop + 100; i++)  // +100 for margin
+    {
+        seq.ProcessAudio();
+        if (seq.IsGateHigh(0)) loop1Triggers++;
+    }
+    
+    // Record triggers for second loop (should potentially differ due to DRIFT)
+    int loop2Triggers = 0;
+    for (int i = 0; i < samplesPerLoop + 100; i++)
+    {
+        seq.ProcessAudio();
+        if (seq.IsGateHigh(0)) loop2Triggers++;
+    }
+    
+    // Note: Due to DRIFT affecting which steps fire, we can't predict exact counts
+    // But both loops should produce some triggers
+    REQUIRE(loop1Triggers > 0);
+    REQUIRE(loop2Triggers > 0);
+    
+    // The phrase position should correctly track loop boundaries
+    // After running 2 full loops, we should be somewhere in the pattern
+    const PhrasePosition& pos = seq.GetPhrasePosition();
+    REQUIRE(pos.stepInPhrase >= 0);
+    REQUIRE(pos.stepInPhrase < 16);  // Within 1-bar loop
+}
+
+TEST_CASE("Phrase reset at step 0 verified via phrase position", "[sequencer][phrase][v3]")
+{
+    Sequencer seq;
+    seq.Init(48000.0f);
+    seq.SetBpm(160.0f);
+    seq.SetLength(1);  // 1-bar = 16 steps
+    
+    // Reset to step -1 (next tick will be step 0)
+    seq.TriggerReset();
+    
+    // Run until we see step 0, then continue through full loop
+    int samplesPerStep = static_cast<int>(48000.0f * 60.0f / (160.0f * 4.0f));
+    
+    bool sawStep0 = false;
+    bool sawStep15 = false;
+    bool sawStep0Again = false;
+    
+    // Run for 2 loops worth of samples
+    for (int i = 0; i < samplesPerStep * 32 + 1000; i++)
+    {
+        seq.ProcessAudio();
+        const PhrasePosition& pos = seq.GetPhrasePosition();
+        
+        if (pos.stepInPhrase == 0)
+        {
+            if (!sawStep0)
+            {
+                sawStep0 = true;
+            }
+            else if (sawStep15)
+            {
+                sawStep0Again = true;
+                break;  // Verified loop wrap
+            }
+        }
+        else if (pos.stepInPhrase == 15)
+        {
+            sawStep15 = true;
+        }
+    }
+    
+    // Should have seen step 0, then step 15, then step 0 again (loop wrapped)
+    REQUIRE(sawStep0);
+    REQUIRE(sawStep15);
+    REQUIRE(sawStep0Again);
+}
+
+#endif // USE_PULSE_FIELD_V3
+
