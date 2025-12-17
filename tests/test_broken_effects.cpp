@@ -415,6 +415,170 @@ TEST_CASE("GetVelocityVariationRange clamps out-of-range inputs", "[broken-effec
 }
 
 // =============================================================================
+// Phrase Modulation Tests [broken-effects][phrase-modulation]
+// =============================================================================
+
+TEST_CASE("GetPhraseWeightBoost returns 0 outside build zone", "[broken-effects][phrase-modulation]")
+{
+    PhrasePosition pos;
+    pos.isBuildZone = false;
+    pos.isFillZone = false;
+    pos.phraseProgress = 0.3f;  // Early in phrase
+
+    // Should return 0 regardless of broken level
+    REQUIRE(GetPhraseWeightBoost(pos, 0.0f) == Catch::Approx(0.0f));
+    REQUIRE(GetPhraseWeightBoost(pos, 0.5f) == Catch::Approx(0.0f));
+    REQUIRE(GetPhraseWeightBoost(pos, 1.0f) == Catch::Approx(0.0f));
+}
+
+TEST_CASE("GetPhraseWeightBoost returns subtle boost in build zone", "[broken-effects][phrase-modulation]")
+{
+    PhrasePosition pos;
+    pos.isBuildZone = true;
+    pos.isFillZone = false;
+
+    // At start of build zone (50%)
+    pos.phraseProgress = 0.5f;
+    REQUIRE(GetPhraseWeightBoost(pos, 0.0f) == Catch::Approx(0.0f));
+
+    // At end of build zone (75%) before fill zone
+    pos.phraseProgress = 0.749f;
+    float boost = GetPhraseWeightBoost(pos, 0.0f);
+    // buildProgress ≈ 0.996, boost ≈ 0.075 * 0.996 ≈ 0.0747, scaled by 0.5 ≈ 0.037
+    REQUIRE(boost > 0.0f);
+    REQUIRE(boost < 0.075f);  // Build zone max is 0.075 * genreScale
+}
+
+TEST_CASE("GetPhraseWeightBoost returns significant boost in fill zone", "[broken-effects][phrase-modulation]")
+{
+    PhrasePosition pos;
+    pos.isBuildZone = true;
+    pos.isFillZone = true;
+
+    // At start of fill zone (75%)
+    pos.phraseProgress = 0.75f;
+    float boostStart = GetPhraseWeightBoost(pos, 0.5f);  // genreScale = 1.0
+    // boost = 0.15 + 0 = 0.15, scaled by 1.0 = 0.15
+    REQUIRE(boostStart == Catch::Approx(0.15f));
+
+    // At end of fill zone (100%)
+    pos.phraseProgress = 1.0f;
+    float boostEnd = GetPhraseWeightBoost(pos, 0.5f);  // genreScale = 1.0
+    // boost = 0.15 + 1.0 * 0.10 = 0.25, scaled by 1.0 = 0.25
+    REQUIRE(boostEnd == Catch::Approx(0.25f));
+}
+
+TEST_CASE("GetPhraseWeightBoost scales with BROKEN level", "[broken-effects][phrase-modulation]")
+{
+    PhrasePosition pos;
+    pos.isBuildZone = true;
+    pos.isFillZone = true;
+    pos.phraseProgress = 0.9f;  // Mid fill zone
+
+    // At broken=0: genreScale = 0.5
+    float boostLow = GetPhraseWeightBoost(pos, 0.0f);
+
+    // At broken=1: genreScale = 1.5
+    float boostHigh = GetPhraseWeightBoost(pos, 1.0f);
+
+    // High broken should produce 3× the boost of low broken
+    REQUIRE(boostHigh == Catch::Approx(boostLow * 3.0f));
+}
+
+TEST_CASE("GetEffectiveBroken returns unchanged value outside fill zone", "[broken-effects][phrase-modulation]")
+{
+    PhrasePosition pos;
+    pos.isFillZone = false;
+    pos.phraseProgress = 0.3f;
+
+    REQUIRE(GetEffectiveBroken(0.0f, pos) == Catch::Approx(0.0f));
+    REQUIRE(GetEffectiveBroken(0.5f, pos) == Catch::Approx(0.5f));
+    REQUIRE(GetEffectiveBroken(1.0f, pos) == Catch::Approx(1.0f));
+}
+
+TEST_CASE("GetEffectiveBroken boosts in fill zone", "[broken-effects][phrase-modulation]")
+{
+    PhrasePosition pos;
+    pos.isFillZone = true;
+
+    // At start of fill zone (75%): no boost yet
+    pos.phraseProgress = 0.75f;
+    REQUIRE(GetEffectiveBroken(0.5f, pos) == Catch::Approx(0.5f));
+
+    // At end of fill zone (100%): 20% boost
+    pos.phraseProgress = 1.0f;
+    REQUIRE(GetEffectiveBroken(0.5f, pos) == Catch::Approx(0.7f));
+    REQUIRE(GetEffectiveBroken(0.0f, pos) == Catch::Approx(0.2f));
+}
+
+TEST_CASE("GetEffectiveBroken clamps to 1.0", "[broken-effects][phrase-modulation]")
+{
+    PhrasePosition pos;
+    pos.isFillZone = true;
+    pos.phraseProgress = 1.0f;  // Max boost
+
+    // Even with high base broken, should not exceed 1.0
+    REQUIRE(GetEffectiveBroken(0.9f, pos) == Catch::Approx(1.0f));
+    REQUIRE(GetEffectiveBroken(1.0f, pos) == Catch::Approx(1.0f));
+}
+
+TEST_CASE("GetPhraseAccent returns 1.2 for phrase downbeat", "[broken-effects][phrase-modulation]")
+{
+    PhrasePosition pos;
+    pos.stepInPhrase = 0;
+    pos.isDownbeat = true;
+
+    REQUIRE(GetPhraseAccent(pos) == Catch::Approx(1.2f));
+}
+
+TEST_CASE("GetPhraseAccent returns 1.1 for bar downbeat", "[broken-effects][phrase-modulation]")
+{
+    PhrasePosition pos;
+    pos.stepInPhrase = 16;  // Second bar
+    pos.isDownbeat = true;
+
+    REQUIRE(GetPhraseAccent(pos) == Catch::Approx(1.1f));
+
+    pos.stepInPhrase = 32;  // Third bar
+    REQUIRE(GetPhraseAccent(pos) == Catch::Approx(1.1f));
+}
+
+TEST_CASE("GetPhraseAccent returns 1.0 for other steps", "[broken-effects][phrase-modulation]")
+{
+    PhrasePosition pos;
+    pos.stepInPhrase = 5;
+    pos.isDownbeat = false;
+    REQUIRE(GetPhraseAccent(pos) == Catch::Approx(1.0f));
+
+    pos.stepInPhrase = 13;
+    REQUIRE(GetPhraseAccent(pos) == Catch::Approx(1.0f));
+
+    pos.stepInPhrase = 31;
+    REQUIRE(GetPhraseAccent(pos) == Catch::Approx(1.0f));
+}
+
+TEST_CASE("Phrase modulation functions work with CalculatePhrasePosition", "[broken-effects][phrase-modulation][integration]")
+{
+    // Test integration with actual phrase position calculation
+    int loopLengthBars = 4;
+
+    // Step 0 (phrase downbeat)
+    PhrasePosition pos0 = CalculatePhrasePosition(0, loopLengthBars);
+    REQUIRE(GetPhraseAccent(pos0) == Catch::Approx(1.2f));
+    REQUIRE(GetPhraseWeightBoost(pos0, 0.5f) == Catch::Approx(0.0f));  // Not in build zone
+
+    // Step 16 (second bar downbeat)
+    PhrasePosition pos16 = CalculatePhrasePosition(16, loopLengthBars);
+    REQUIRE(GetPhraseAccent(pos16) == Catch::Approx(1.1f));
+
+    // Step 60 (in fill zone of a 4-bar phrase = 64 steps)
+    PhrasePosition pos60 = CalculatePhrasePosition(60, loopLengthBars);
+    REQUIRE(pos60.isFillZone == true);
+    float effectiveBroken = GetEffectiveBroken(0.5f, pos60);
+    REQUIRE(effectiveBroken > 0.5f);  // Should be boosted
+}
+
+// =============================================================================
 // Integration Tests [broken-effects][integration]
 // =============================================================================
 

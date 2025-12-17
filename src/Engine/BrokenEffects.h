@@ -1,6 +1,7 @@
 #pragma once
 
-#include "PulseField.h"  // For Lerp, Clamp, HashStep, HashToFloat
+#include "PulseField.h"    // For Lerp, Clamp, HashStep, HashToFloat
+#include "GenreConfig.h"   // For PhrasePosition
 
 namespace daisysp_idm_grids
 {
@@ -83,17 +84,7 @@ inline float GetSwingFromBroken(float broken)
     }
 }
 
-/**
- * Check if a step is an off-beat (should have swing applied).
- * Off-beats are odd-numbered steps (1, 3, 5, 7, ..., 31).
- *
- * @param step Step index (0-31)
- * @return true if step is an off-beat
- */
-inline bool IsOffBeat(int step)
-{
-    return (step & 1) != 0;
-}
+// Note: IsOffBeat() is defined in GenreConfig.h (included above)
 
 // =============================================================================
 // Effect 2: Micro-Timing Jitter
@@ -335,6 +326,127 @@ inline float GetVelocityVariationRange(float broken)
         float t = (broken - 0.6f) / 0.4f;
         return 0.10f + t * 0.10f;
     }
+}
+
+// =============================================================================
+// Phrase-Aware Modulation [phrase-modulation]
+// =============================================================================
+
+/**
+ * Get the weight boost for the current phrase position.
+ *
+ * Near phrase boundaries, weights are modulated to create natural fills:
+ * - Build zone (50-75%): subtle boost (0 to 0.075)
+ * - Fill zone (75-100%): significant boost (0.15 to 0.25)
+ *
+ * The boost is scaled by BROKEN level:
+ * - Techno (low broken): subtle fills (0.5× scale)
+ * - IDM (high broken): dramatic fills (1.5× scale)
+ *
+ * Reference: docs/specs/double-down/simplified-algorithmic-approach.md [phrase-modulation]
+ *
+ * @param pos Current phrase position
+ * @param broken BROKEN parameter (0.0-1.0)
+ * @return Weight boost to add to step weights (0.0 to ~0.375)
+ */
+inline float GetPhraseWeightBoost(const PhrasePosition& pos, float broken)
+{
+    // No boost outside build zone
+    if(!pos.isBuildZone)
+        return 0.0f;
+
+    // Clamp broken to valid range
+    if(broken < 0.0f)
+        broken = 0.0f;
+    if(broken > 1.0f)
+        broken = 1.0f;
+
+    // Base boost: increases toward phrase end
+    float boost = 0.0f;
+
+    if(pos.isFillZone)
+    {
+        // Last 25%: significant boost to off-beat weights
+        // phraseProgress goes from 0.75 to 1.0 in fill zone
+        // boost goes from 0.15 to 0.25
+        float fillProgress = (pos.phraseProgress - 0.75f) * 4.0f; // 0.0 to 1.0
+        boost              = 0.15f + fillProgress * 0.10f;        // 0.15 to 0.25
+    }
+    else
+    {
+        // Build zone but not fill zone (50-75%): subtle boost
+        // phraseProgress goes from 0.5 to 0.75 in build zone
+        // boost goes from 0 to 0.075
+        float buildProgress = (pos.phraseProgress - 0.5f) * 4.0f; // 0.0 to 1.0
+        boost               = buildProgress * 0.075f;             // 0.0 to 0.075
+    }
+
+    // Genre scale: Techno has subtle fills, IDM has dramatic fills
+    // Scale ranges from 0.5 (at broken=0) to 1.5 (at broken=1)
+    float genreScale = 0.5f + broken * 1.0f;
+
+    return boost * genreScale;
+}
+
+/**
+ * Get the effective BROKEN level, boosted in fill zones.
+ *
+ * Temporarily increase BROKEN in fill zones for extra chaos:
+ * - Outside fill zone: no change
+ * - In fill zone: boost by up to 20% toward phrase end
+ *
+ * Reference: docs/specs/double-down/simplified-algorithmic-approach.md [phrase-modulation]
+ *
+ * @param broken Base BROKEN parameter (0.0-1.0)
+ * @param pos Current phrase position
+ * @return Effective BROKEN level (0.0-1.0)
+ */
+inline float GetEffectiveBroken(float broken, const PhrasePosition& pos)
+{
+    // No boost outside fill zone
+    if(!pos.isFillZone)
+        return Clamp(broken, 0.0f, 1.0f);
+
+    // Clamp input
+    if(broken < 0.0f)
+        broken = 0.0f;
+    if(broken > 1.0f)
+        broken = 1.0f;
+
+    // Boost BROKEN by up to 20% in fill zone
+    // phraseProgress goes from 0.75 to 1.0 in fill zone
+    // fillBoost goes from 0 to 0.2
+    float fillProgress = (pos.phraseProgress - 0.75f) * 4.0f; // 0.0 to 1.0
+    float fillBoost    = fillProgress * 0.2f;                 // 0.0 to 0.2
+
+    return Clamp(broken + fillBoost, 0.0f, 1.0f);
+}
+
+/**
+ * Get the velocity accent multiplier for the current phrase position.
+ *
+ * Downbeats get velocity boosts to emphasize phrase structure:
+ * - Phrase downbeat (step 0 of phrase): 1.2× velocity
+ * - Bar downbeat (step 0 of any bar): 1.1× velocity
+ * - Other steps: 1.0× (no accent)
+ *
+ * Reference: docs/specs/double-down/simplified-algorithmic-approach.md [phrase-modulation]
+ *
+ * @param pos Current phrase position
+ * @return Velocity multiplier (1.0, 1.1, or 1.2)
+ */
+inline float GetPhraseAccent(const PhrasePosition& pos)
+{
+    // Phrase downbeat gets maximum accent
+    if(pos.stepInPhrase == 0)
+        return 1.2f;
+
+    // Bar downbeat gets moderate accent
+    if(pos.isDownbeat)
+        return 1.1f;
+
+    // No accent for other steps
+    return 1.0f;
 }
 
 } // namespace daisysp_idm_grids

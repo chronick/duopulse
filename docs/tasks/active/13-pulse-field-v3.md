@@ -124,25 +124,28 @@ This eliminates Terrain/Grid mismatches, reduces cognitive load, and provides in
   - `Sequencer::GetPhrasePosition()` getter already exposes the struct
 
 ### Phrase Weight Modulation
-- [ ] Implement `GetPhraseWeightBoost(pos, broken)` function. *(spec: [phrase-modulation])*
-  - Build zone (50-75%): subtle boost
-  - Fill zone (75-100%): significant boost (0.15-0.25)
+- [x] Implement `GetPhraseWeightBoost(pos, broken)` function. *(spec: [phrase-modulation])*
+  - Build zone (50-75%): subtle boost (0 to 0.075)
+  - Fill zone (75-100%): significant boost (0.15 to 0.25)
   - Genre scale: 0.5 + broken × 1.0
-- [ ] Apply weight boost in fill/build zones. *(spec: [phrase-modulation])*
+- [x] Apply weight boost in fill/build zones. *(spec: [phrase-modulation])*
+  - Implemented in `BrokenEffects.h`
 
 ### Phrase BROKEN Modulation
-- [ ] Implement `GetEffectiveBroken(broken, pos)` function. *(spec: [phrase-modulation])*
-- [ ] Boost BROKEN by up to 20% in fill zone. *(spec: [phrase-modulation])*
+- [x] Implement `GetEffectiveBroken(broken, pos)` function. *(spec: [phrase-modulation])*
+- [x] Boost BROKEN by up to 20% in fill zone. *(spec: [phrase-modulation])*
+  - fillProgress scales from 0 to 1.0, boost = fillProgress × 0.2
 
 ### Downbeat Accent
-- [ ] Implement `GetPhraseAccent(pos)` function. *(spec: [phrase-modulation])*
-  - Phrase downbeat: 1.2×
+- [x] Implement `GetPhraseAccent(pos)` function. *(spec: [phrase-modulation])*
+  - Phrase downbeat (stepInPhrase == 0): 1.2×
   - Bar downbeat: 1.1×
   - Otherwise: 1.0×
 
 ### Tests
-- [ ] Verify fill zone boost at phrase end.
-- [ ] Verify downbeat accent multiplier.
+- [x] Verify fill zone boost at phrase end.
+- [x] Verify downbeat accent multiplier.
+  - All tests in `tests/test_broken_effects.cpp` under [phrase-modulation] tag
 
 ## Phase 5: Voice Interaction [fuse-balance] [couple-interlock]
 
