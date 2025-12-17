@@ -47,7 +47,11 @@ Switch       modeSwitch;
 GateScaler accentGate;
 GateScaler hihatGate;
 
+LedIndicator ledIndicator;
+LedState     ledState;
+
 bool lastGateIn1 = false;
+bool lastAnchorGate = false; // For detecting trigger edges
 
 // Control Mode indices for soft knob array
 enum class ControlMode : uint8_t
@@ -363,56 +367,50 @@ void ProcessControls()
         sequencer.TriggerReset();
     }
 
-    // User/front LED Sync per DuoPulse v3 spec:
-    // - Performance mode: pulse on anchor trigger
-    // - Config mode: solid ON
-    // - Shift held: double brightness (brighter)
-    // - Knob interaction: show value for 1s
-    // - High BROKEN: rapid flash (chaos indicator)
+    // === LED Feedback System (DuoPulse v3) ===
+    // Updates LedState based on current mode, parameters, and phrase position
     
-    float ledVoltage = 0.0f;
-    bool  ledDigital = false;
-
+    // Detect anchor trigger edge (rising edge)
+    bool anchorGateHigh = sequencer.IsGateHigh(0);
+    ledState.anchorTriggered = anchorGateHigh && !lastAnchorGate;
+    lastAnchorGate = anchorGateHigh;
+    
+    // Set LED mode based on current state
     if(System::GetNow() - lastInteractionTime < 1000)
     {
-        // Knob interaction: show parameter value as brightness for 1 second
-        ledVoltage = activeParameterValue * 5.0f;
-        ledDigital = (activeParameterValue > 0.3f);
+        ledState.mode = LedMode::Interaction;
+        ledState.interactionValue = activeParameterValue;
     }
-    else if(finalBroken > 0.7f)
+    else if(controlState.shiftActive)
     {
-        // High BROKEN (chaos zone): rapid flash indicates IDM territory
-        // Flash rate increases with BROKEN level
-        uint32_t flashRate = static_cast<uint32_t>(100 - finalBroken * 50); // 50-100ms
-        bool flashState = ((now / flashRate) % 2) == 0;
-        ledVoltage      = flashState ? 5.0f : 0.0f;
-        ledDigital      = flashState;
+        ledState.mode = LedMode::ShiftHeld;
+    }
+    else if(controlState.configMode)
+    {
+        ledState.mode = LedMode::Config;
     }
     else
     {
-        // Default behavior based on mode
-        if(controlState.configMode)
-        {
-            // Config mode: solid ON
-            ledVoltage = 5.0f;
-            ledDigital = true;
-        }
-        else
-        {
-            // Performance mode: pulse on anchor trigger
-            ledDigital = sequencer.IsGateHigh(0);
-            ledVoltage = ledDigital ? 5.0f : 0.0f;
-        }
-
-        // Shift held: increase brightness
-        if(controlState.shiftActive)
-        {
-            // Already at 5V, but we could flash or use a different pattern
-            // For now, ensure LED is bright when shift is held
-            ledVoltage = std::max(ledVoltage, 3.0f);
-            ledDigital = true;
-        }
+        ledState.mode = LedMode::Performance;
     }
+    
+    // Set parameter values for BROKEN × DRIFT behavior
+    ledState.broken = finalBroken;
+    ledState.drift = finalDrift;
+    ledState.anchorDensity = finalAnchorDensity;
+    ledState.shimmerDensity = finalShimmerDensity;
+    
+    // Set phrase position for phrase-aware feedback
+    const auto& phrasePos = sequencer.GetPhrasePosition();
+    ledState.phraseProgress = phrasePos.phraseProgress;
+    ledState.isDownbeat = phrasePos.isDownbeat;
+    ledState.isFillZone = phrasePos.isFillZone;
+    ledState.isBuildZone = phrasePos.isBuildZone;
+    
+    // Process LED and output
+    float ledBrightness = ledIndicator.Process(ledState);
+    float ledVoltage = LedIndicator::BrightnessToVoltage(ledBrightness);
+    bool  ledDigital = (ledBrightness > 0.3f);
 
     patch.SetLed(ledDigital);
     patch.WriteCvOut(patch_sm::CV_OUT_2, ledVoltage);
@@ -437,6 +435,9 @@ int main(void)
     hihatGate.SetTargetVoltage(GateScaler::kGateVoltageLimit);
     sequencer.SetAccentHoldMs(10.0f);
     sequencer.SetHihatHoldMs(10.0f);
+    
+    // Initialize LED feedback system (using control rate ~1kHz)
+    ledIndicator.Init(1000.0f);
 
     // Ensure LEDs start in a known state.
     patch.SetLed(false);

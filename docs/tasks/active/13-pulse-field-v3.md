@@ -3,7 +3,7 @@ id: chronick/daisysp-idm-grids-13
 title: "DuoPulse v3: Algorithmic Pulse Field"
 status: "in_progress"
 created_date: "2025-12-16"
-last_updated: "2025-12-16T21:00:00Z"
+last_updated: "2025-12-17T12:00:00Z"
 owner: "user/ai"
 spec_refs:
   - "pulse-field"
@@ -210,25 +210,27 @@ This eliminates Terrain/Grid mismatches, reduces cognitive load, and provides in
 ## Phase 7: LED Feedback Updates [led-feedback]
 
 ### Mode Indication
-- [ ] Performance Mode: pulse on Anchor triggers.
-- [ ] Config Mode: solid ON.
-- [ ] Shift held: slower breathing (500ms cycle).
+- [x] Performance Mode: pulse on Anchor triggers.
+- [x] Config Mode: solid ON.
+- [x] Shift held: slower breathing (500ms cycle).
 
 ### Parameter Feedback
-- [ ] DENSITY: brightness = level.
-- [ ] BROKEN: flash rate increases with level.
-- [ ] DRIFT: pulse regularity decreases with level.
+- [x] DENSITY: brightness = level.
+- [x] BROKEN: flash rate increases with level.
+- [x] DRIFT: pulse regularity decreases with level.
 
 ### BROKEN × DRIFT Behavior
-- [ ] Low BROKEN + Low DRIFT: regular, steady pulses.
-- [ ] Low BROKEN + High DRIFT: regular timing, varying intensity.
-- [ ] High BROKEN + Low DRIFT: irregular timing, consistent each loop.
-- [ ] High BROKEN + High DRIFT: maximum irregularity.
+- [x] Low BROKEN + Low DRIFT: regular, steady pulses.
+- [x] Low BROKEN + High DRIFT: regular timing, varying intensity.
+- [x] High BROKEN + Low DRIFT: irregular timing, consistent each loop.
+- [x] High BROKEN + High DRIFT: maximum irregularity.
 
 ### Phrase Position Feedback
-- [ ] Downbeat: extra bright pulse.
-- [ ] Fill Zone: rapid triple-pulse pattern.
-- [ ] Build Zone: gradually increasing pulse rate.
+- [x] Downbeat: extra bright pulse.
+- [x] Fill Zone: rapid triple-pulse pattern.
+- [x] Build Zone: gradually increasing pulse rate.
+
+> **Implementation Note** (2025-12-17): LED feedback fully implemented in `LedIndicator.h` with `LedState` struct for state management. Tests in `tests/test_led_indicator.cpp`.
 
 ## Phase 8: Migration & Cleanup
 
