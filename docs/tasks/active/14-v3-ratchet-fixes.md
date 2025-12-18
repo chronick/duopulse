@@ -124,10 +124,10 @@ DuoPulse v3 is mostly complete, but hardware testing revealed two critical bugs 
 
 ## Phase 4: Documentation Updates
 
-- [ ] Update README with RATCHET description
-- [ ] Update control layout in README
-- [ ] Update `docs/specs/main.md` acceptance criteria as items complete
-- [ ] Mark task complete in `docs/tasks/index.md`
+- [x] Update README with RATCHET description *(2025-12-18)*
+- [x] Update control layout in README *(2025-12-18: K4+Shift = RATCHET)*
+- [x] Update `docs/specs/main.md` acceptance criteria as items complete *(2025-12-18: already marked complete)*
+- [x] Mark task complete in `docs/tasks/index.md` *(2025-12-18)*
 
 ## Notes
 
@@ -205,5 +205,6 @@ DuoPulse v3 is mostly complete, but hardware testing revealed two critical bugs 
 | DRIFT=0 = zero variation | ☑ *(2025-12-17)* |
 | RATCHET controls fill intensity | ☑ *(2025-12-17)* |
 | Fills target phrase boundaries | ☑ *(2025-12-17)* |
-| Code moved to cpp files | ☐ |
+| Code moved to cpp files | ☑ *(2025-12-18: Phase 3 complete)* |
 | All tests pass | ☑ *(149 tests, 81957 assertions)* |
+| Documentation updated | ☑ *(2025-12-18: Phase 4 complete)* |

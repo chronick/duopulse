@@ -37,7 +37,7 @@ Genre character (swing, jitter, feel) **emerges** from the BROKEN parameter—no
 | K1 | Anchor Density | FUSE (voice balance) |
 | K2 | Shimmer Density | LENGTH (1-16 bars) |
 | K3 | BROKEN | COUPLE (voice interlock) |
-| K4 | DRIFT | *(Reserved)* |
+| K4 | DRIFT | RATCHET (fill intensity) |
 
 #### Config Mode (Switch UP)
 
@@ -58,6 +58,23 @@ Genre character (swing, jitter, feel) **emerges** from the BROKEN parameter—no
 | Low | High | Stable groove with living details |
 | High | Low | Broken but consistent each loop |
 | High | High | Maximum generative chaos (experimental) |
+
+### RATCHET: Fill Intensity Control
+
+**RATCHET** (K4+Shift) controls fill intensity during phrase transitions. Works together with DRIFT:
+
+- **DRIFT** controls fill **probability** (when fills occur)
+- **RATCHET** controls fill **intensity** (how intense fills are)
+- At DRIFT=0, RATCHET has no effect (no fills occur)
+- At RATCHET > 50%, ratcheting (32nd note subdivisions) can occur in fill zones
+
+| RATCHET Level | Behavior |
+|---------------|----------|
+| 0% | Subtle fills — slight density boost only |
+| 25% | Moderate fills — noticeable energy increase |
+| 50% | Standard fills — clear rhythmic intensification |
+| 75% | Aggressive fills — ratcheted 16ths, strong build |
+| 100% | Maximum intensity — rapid-fire hits, peak energy |
 
 ### CV Inputs (Always Performance Parameters)
 
