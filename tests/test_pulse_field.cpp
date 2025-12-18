@@ -911,3 +911,108 @@ TEST_CASE("The Reference Point: BROKEN=0 DRIFT=0 DENSITY=50% classic 4/4", "[pul
         REQUIRE(s24 == shimmer24);
     }
 }
+
+// =============================================================================
+// v3 Critical Rules: DENSITY=1.0 Maximum Triggers [v3-critical-rules]
+// =============================================================================
+
+TEST_CASE("DENSITY=1.0 fires all steps at BROKEN=0", "[pulse-field][v3-critical-rules][density-max]")
+{
+    PulseFieldState state;
+    state.Init(0x12345678);
+
+    // At DENSITY=1.0, threshold=0.0, all weights > 0 should fire
+    // At BROKEN=0, weights are unchanged from base values
+    for (int step = 0; step < kPulseFieldSteps; step++)
+    {
+        // All anchor weights are > 0, so all should fire
+        bool anchorFires = ShouldStepFire(step, 1.0f, 0.0f, kAnchorWeights, state.patternSeed_);
+        REQUIRE(anchorFires == true);
+
+        // All shimmer weights are > 0, so all should fire
+        bool shimmerFires = ShouldStepFire(step, 1.0f, 0.0f, kShimmerWeights, state.patternSeed_);
+        REQUIRE(shimmerFires == true);
+    }
+}
+
+TEST_CASE("DENSITY=1.0 fires all steps regardless of BROKEN", "[pulse-field][v3-critical-rules][density-max]")
+{
+    PulseFieldState state;
+    state.Init(0xABCDEF01);
+
+    // At DENSITY=1.0, threshold=0.0
+    // Even with BROKEN adding noise, clamped effectiveWeight is always > 0
+    for (float broken = 0.0f; broken <= 1.0f; broken += 0.25f)
+    {
+        for (int step = 0; step < kPulseFieldSteps; step++)
+        {
+            bool anchorFires = ShouldStepFire(step, 1.0f, broken, kAnchorWeights, state.patternSeed_);
+            REQUIRE(anchorFires == true);
+
+            bool shimmerFires = ShouldStepFire(step, 1.0f, broken, kShimmerWeights, state.patternSeed_);
+            REQUIRE(shimmerFires == true);
+        }
+    }
+}
+
+TEST_CASE("DENSITY=1.0 fires all steps via GetPulseFieldTriggers", "[pulse-field][v3-critical-rules][density-max]")
+{
+    PulseFieldState state;
+    state.Init(0xFEDCBA98);
+
+    // Test full integration: both voices at max density
+    for (float broken = 0.0f; broken <= 1.0f; broken += 0.5f)
+    {
+        for (float drift = 0.0f; drift <= 1.0f; drift += 0.5f)
+        {
+            state.OnPhraseReset();
+
+            for (int step = 0; step < kPulseFieldSteps; step++)
+            {
+                bool anchorFires, shimmerFires;
+                GetPulseFieldTriggers(step, 1.0f, 1.0f, broken, drift, state, anchorFires, shimmerFires);
+
+                REQUIRE(anchorFires == true);
+                REQUIRE(shimmerFires == true);
+            }
+        }
+    }
+}
+
+TEST_CASE("DENSITY extremes are symmetric: 0 = silence, 1 = full", "[pulse-field][v3-critical-rules][density-extremes]")
+{
+    PulseFieldState state;
+    state.Init(0x55AA55AA);
+
+    float broken = 0.5f;
+    float drift = 0.5f;
+
+    // Count triggers at density extremes across all steps
+    int zeroAnchorFires = 0;
+    int zeroShimmerFires = 0;
+    int maxAnchorFires = 0;
+    int maxShimmerFires = 0;
+
+    for (int step = 0; step < kPulseFieldSteps; step++)
+    {
+        bool anchorFires, shimmerFires;
+
+        // DENSITY=0: nothing fires
+        GetPulseFieldTriggers(step, 0.0f, 0.0f, broken, drift, state, anchorFires, shimmerFires);
+        if (anchorFires) zeroAnchorFires++;
+        if (shimmerFires) zeroShimmerFires++;
+
+        // DENSITY=1: everything fires
+        GetPulseFieldTriggers(step, 1.0f, 1.0f, broken, drift, state, anchorFires, shimmerFires);
+        if (anchorFires) maxAnchorFires++;
+        if (shimmerFires) maxShimmerFires++;
+    }
+
+    // DENSITY=0: zero triggers
+    REQUIRE(zeroAnchorFires == 0);
+    REQUIRE(zeroShimmerFires == 0);
+
+    // DENSITY=1: all 32 steps fire for both voices
+    REQUIRE(maxAnchorFires == 32);
+    REQUIRE(maxShimmerFires == 32);
+}

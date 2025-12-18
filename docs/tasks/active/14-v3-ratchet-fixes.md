@@ -184,6 +184,27 @@ DuoPulse v3 is mostly complete, but hardware testing revealed two critical bugs 
 
 **Test Results**: All 149 tests pass (81,957 assertions). Firmware builds at 73.47% flash.
 
+### Session 2025-12-17: Phase 1 Post-Fix #2 (Chaos Density Bias Bypass)
+
+**Bug Found**: With DRIFT > 0, `chaosSampleHigh.densityBias` was being added to shimmer density even when base density was 0.
+
+**Root Cause**:
+1. In ProcessAudio, when `drift_ > 0`, chaos bias is added: `shimmerDensMod += chaosSampleHigh.densityBias`
+2. If `shimmerDensity_ = 0.0f` but `densityBias = 0.3f`, shimmerDensMod becomes 0.3f
+3. The clamp `Clamp(0.3f, 0.0f, 0.95f) = 0.3f` — chaos bias bypassed DENSITY=0!
+
+**Fix**: Store `anchorWasZero` and `shimmerWasZero` flags before any modification. After clamp, restore to 0 if the flag is set.
+
+**New Tests Added**:
+- PulseField: DENSITY=1.0 (max) fires all steps (4 tests)
+- Sequencer integration: DENSITY=0 full pipeline test (1 test)
+- Sequencer integration: DENSITY=0 per-voice independence (1 test)
+- Sequencer integration: DENSITY=1.0 fires all steps (1 test)
+- Sequencer integration: DENSITY=0 with isolated parameters (DRIFT, BROKEN, COUPLE, DRIFT+BROKEN) (4 tests)
+- Sequencer: Forced triggers bypass density check (1 test)
+
+**Test Results**: All 161 tests pass (82,937 assertions). Firmware builds at 73.50% flash.
+
 ### Session 2025-12-17: Phase 3 Complete
 
 **Changes Made:**

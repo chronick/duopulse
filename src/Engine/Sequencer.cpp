@@ -383,11 +383,16 @@ std::array<float, 2> Sequencer::ProcessAudio()
             // v3 Critical Rule: DENSITY=0 must be absolute silence
             // v3 Critical Rule: DRIFT=0 must produce zero variation (identical every loop)
             // 
-            // At DRIFT=0, skip chaos densityBias to ensure deterministic pattern.
-            // ChaosModulator uses non-deterministic RNG that would break DRIFT=0 invariant.
+            // Store whether densities were zero BEFORE any modification
+            // This is critical for the DENSITY=0 invariant
+            bool anchorWasZero  = (anchorDensity_ <= 0.0f);
+            bool shimmerWasZero = (shimmerDensity_ <= 0.0f);
+            
             float anchorDensMod  = anchorDensity_;
             float shimmerDensMod = shimmerDensity_;
             
+            // At DRIFT=0, skip chaos densityBias to ensure deterministic pattern.
+            // ChaosModulator uses non-deterministic RNG that would break DRIFT=0 invariant.
             if(drift_ > 0.0f)
             {
                 // Only add chaos variation when DRIFT allows pattern evolution
@@ -395,9 +400,16 @@ std::array<float, 2> Sequencer::ProcessAudio()
                 shimmerDensMod += chaosSampleHigh.densityBias;
             }
             
-            // Clamp to valid range (0.0f floor preserves DENSITY=0 = silence)
+            // Clamp to valid range
             anchorDensMod  = Clamp(anchorDensMod, 0.0f, 0.95f);
             shimmerDensMod = Clamp(shimmerDensMod, 0.0f, 0.95f);
+            
+            // v3 Critical Rule: If density started at 0, keep it at 0
+            // Chaos bias must NOT boost a zero density
+            if(anchorWasZero)
+                anchorDensMod = 0.0f;
+            if(shimmerWasZero)
+                shimmerDensMod = 0.0f;
 
             // Use PulseField algorithm with BROKEN/DRIFT controls
             GetPulseFieldTriggers(stepIndex_, anchorDensMod, shimmerDensMod,

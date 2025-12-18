@@ -787,5 +787,272 @@ TEST_CASE("Phrase reset at step 0 verified via phrase position", "[sequencer][ph
     REQUIRE(sawStep0Again);
 }
 
+// =============================================================================
+// v3 Critical Rules: DENSITY=0 Full Pipeline Test [v3-critical-rules]
+// =============================================================================
+
+TEST_CASE("DENSITY=0 produces zero triggers through full ProcessAudio pipeline", "[sequencer][v3-critical-rules][density-zero]")
+{
+    Sequencer seq;
+    seq.Init(48000.0f);
+    
+    // Set both densities to 0 - should be absolute silence
+    seq.SetAnchorDensity(0.0f);
+    seq.SetShimmerDensity(0.0f);
+    
+    // Start with minimal settings to isolate the issue
+    seq.SetBroken(0.0f);   // No chaos
+    seq.SetDrift(0.0f);    // No drift
+    seq.SetFuse(0.5f);     // Balanced
+    seq.SetCouple(0.0f);   // No gap filling
+    seq.SetRatchet(0.0f);  // No ratchet
+    seq.SetBpm(160.0f);    // Fast tempo for more steps
+    seq.SetLength(1);      // Short loop for quick test
+    
+    // Reset to start at step 0
+    seq.TriggerReset();
+    
+    // Run for 2 complete loops
+    int samplesPerStep = static_cast<int>(48000.0f * 60.0f / (160.0f * 4.0f));
+    int totalSamples = samplesPerStep * 16 * 2;  // 16 steps × 2 loops
+    
+    int anchorGateCount = 0;
+    int shimmerGateCount = 0;
+    
+    for (int i = 0; i < totalSamples; i++)
+    {
+        seq.ProcessAudio();
+        if (seq.IsGateHigh(0)) anchorGateCount++;
+        if (seq.IsGateHigh(1)) shimmerGateCount++;
+    }
+    
+    // CRITICAL: At DENSITY=0, there should be ZERO triggers
+    REQUIRE(anchorGateCount == 0);
+    REQUIRE(shimmerGateCount == 0);
+}
+
+TEST_CASE("DENSITY=0 silence with max DRIFT only", "[sequencer][v3-critical-rules][density-zero][isolate]")
+{
+    Sequencer seq;
+    seq.Init(48000.0f);
+    seq.SetAnchorDensity(0.0f);
+    seq.SetShimmerDensity(0.0f);
+    seq.SetDrift(1.0f);    // Test DRIFT in isolation
+    seq.SetBpm(160.0f);
+    seq.SetLength(1);
+    seq.TriggerReset();
+    
+    int samplesPerStep = static_cast<int>(48000.0f * 60.0f / (160.0f * 4.0f));
+    int totalSamples = samplesPerStep * 16 * 2;
+    
+    int anchorGateCount = 0, shimmerGateCount = 0;
+    for (int i = 0; i < totalSamples; i++)
+    {
+        seq.ProcessAudio();
+        if (seq.IsGateHigh(0)) anchorGateCount++;
+        if (seq.IsGateHigh(1)) shimmerGateCount++;
+    }
+    
+    REQUIRE(anchorGateCount == 0);
+    REQUIRE(shimmerGateCount == 0);
+}
+
+TEST_CASE("DENSITY=0 silence with max BROKEN only", "[sequencer][v3-critical-rules][density-zero][isolate]")
+{
+    Sequencer seq;
+    seq.Init(48000.0f);
+    seq.SetAnchorDensity(0.0f);
+    seq.SetShimmerDensity(0.0f);
+    seq.SetBroken(1.0f);   // Test BROKEN in isolation
+    seq.SetBpm(160.0f);
+    seq.SetLength(1);
+    seq.TriggerReset();
+    
+    int samplesPerStep = static_cast<int>(48000.0f * 60.0f / (160.0f * 4.0f));
+    int totalSamples = samplesPerStep * 16 * 2;
+    
+    int anchorGateCount = 0, shimmerGateCount = 0;
+    for (int i = 0; i < totalSamples; i++)
+    {
+        seq.ProcessAudio();
+        if (seq.IsGateHigh(0)) anchorGateCount++;
+        if (seq.IsGateHigh(1)) shimmerGateCount++;
+    }
+    
+    REQUIRE(anchorGateCount == 0);
+    REQUIRE(shimmerGateCount == 0);
+}
+
+TEST_CASE("DENSITY=0 silence with max COUPLE only", "[sequencer][v3-critical-rules][density-zero][isolate]")
+{
+    Sequencer seq;
+    seq.Init(48000.0f);
+    seq.SetAnchorDensity(0.0f);
+    seq.SetShimmerDensity(0.0f);
+    seq.SetCouple(1.0f);   // Test COUPLE in isolation
+    seq.SetBpm(160.0f);
+    seq.SetLength(1);
+    seq.TriggerReset();
+    
+    int samplesPerStep = static_cast<int>(48000.0f * 60.0f / (160.0f * 4.0f));
+    int totalSamples = samplesPerStep * 16 * 2;
+    
+    int anchorGateCount = 0, shimmerGateCount = 0;
+    for (int i = 0; i < totalSamples; i++)
+    {
+        seq.ProcessAudio();
+        if (seq.IsGateHigh(0)) anchorGateCount++;
+        if (seq.IsGateHigh(1)) shimmerGateCount++;
+    }
+    
+    REQUIRE(anchorGateCount == 0);
+    REQUIRE(shimmerGateCount == 0);
+}
+
+TEST_CASE("DENSITY=0 silence with max DRIFT+BROKEN", "[sequencer][v3-critical-rules][density-zero][isolate]")
+{
+    Sequencer seq;
+    seq.Init(48000.0f);
+    seq.SetAnchorDensity(0.0f);
+    seq.SetShimmerDensity(0.0f);
+    seq.SetDrift(1.0f);
+    seq.SetBroken(1.0f);
+    seq.SetBpm(160.0f);
+    seq.SetLength(1);
+    seq.TriggerReset();
+    
+    int samplesPerStep = static_cast<int>(48000.0f * 60.0f / (160.0f * 4.0f));
+    int totalSamples = samplesPerStep * 16 * 2;
+    
+    int anchorGateCount = 0, shimmerGateCount = 0;
+    for (int i = 0; i < totalSamples; i++)
+    {
+        seq.ProcessAudio();
+        if (seq.IsGateHigh(0)) anchorGateCount++;
+        if (seq.IsGateHigh(1)) shimmerGateCount++;
+    }
+    
+    REQUIRE(anchorGateCount == 0);
+    REQUIRE(shimmerGateCount == 0);
+}
+
+TEST_CASE("DENSITY=0 for one voice does not affect the other in Sequencer", "[sequencer][v3-critical-rules][density-zero]")
+{
+    Sequencer seq;
+    seq.Init(48000.0f);
+    
+    // Anchor at 0, Shimmer at high density
+    seq.SetAnchorDensity(0.0f);
+    seq.SetShimmerDensity(0.9f);  // High density = lots of triggers
+    seq.SetBroken(0.0f);
+    seq.SetDrift(0.0f);
+    seq.SetBpm(160.0f);
+    seq.SetLength(1);  // 1-bar for quick test
+    
+    seq.TriggerReset();
+    
+    int samplesPerStep = static_cast<int>(48000.0f * 60.0f / (160.0f * 4.0f));
+    int totalSamples = samplesPerStep * 16 * 2;  // 2 full loops
+    
+    int anchorGateCount = 0;
+    int shimmerGateCount = 0;
+    
+    for (int i = 0; i < totalSamples; i++)
+    {
+        seq.ProcessAudio();
+        if (seq.IsGateHigh(0)) anchorGateCount++;
+        if (seq.IsGateHigh(1)) shimmerGateCount++;
+    }
+    
+    // Anchor should have zero triggers (density=0)
+    REQUIRE(anchorGateCount == 0);
+    // Shimmer should have many triggers (high density)
+    REQUIRE(shimmerGateCount > 0);
+}
+
+TEST_CASE("DENSITY=1.0 produces triggers on all steps", "[sequencer][v3-critical-rules][density-max]")
+{
+    Sequencer seq;
+    seq.Init(48000.0f);
+    
+    // Set both densities to max - should fire on every step
+    seq.SetAnchorDensity(1.0f);
+    seq.SetShimmerDensity(1.0f);
+    seq.SetBroken(0.0f);   // No chaos
+    seq.SetDrift(0.0f);    // No drift
+    seq.SetFuse(0.5f);     // Balanced
+    seq.SetCouple(0.0f);   // No interlock (to avoid suppression)
+    seq.SetBpm(160.0f);
+    seq.SetLength(1);      // 1-bar loop = 16 steps
+    
+    seq.TriggerReset();
+    
+    int samplesPerStep = static_cast<int>(48000.0f * 60.0f / (160.0f * 4.0f));
+    int totalSamples = samplesPerStep * 16 + 1000;  // One full loop with margin
+    
+    // Track which steps fired for each voice
+    int anchorStepsFired = 0;
+    int shimmerStepsFired = 0;
+    int lastStep = -1;
+    bool anchorFiredThisStep = false;
+    bool shimmerFiredThisStep = false;
+    
+    for (int i = 0; i < totalSamples; i++)
+    {
+        seq.ProcessAudio();
+        
+        int currentStep = seq.GetPhrasePosition().stepInPhrase;
+        
+        // Detect step change
+        if (currentStep != lastStep && lastStep >= 0)
+        {
+            if (anchorFiredThisStep) anchorStepsFired++;
+            if (shimmerFiredThisStep) shimmerStepsFired++;
+            anchorFiredThisStep = false;
+            shimmerFiredThisStep = false;
+        }
+        
+        if (seq.IsGateHigh(0)) anchorFiredThisStep = true;
+        if (seq.IsGateHigh(1)) shimmerFiredThisStep = true;
+        
+        lastStep = currentStep;
+    }
+    
+    // At DENSITY=1.0, all 16 steps should fire for both voices
+    REQUIRE(anchorStepsFired >= 15);   // Allow 1 step margin for timing
+    REQUIRE(shimmerStepsFired >= 15);
+}
+
+TEST_CASE("Forced triggers bypass density check", "[sequencer][triggers]")
+{
+    Sequencer seq;
+    seq.Init(48000.0f);
+    
+    // Set density to 0 - normally would be silent
+    seq.SetAnchorDensity(0.0f);
+    seq.SetShimmerDensity(0.0f);
+    seq.SetBpm(120.0f);
+    
+    // Force next step triggers - should override density=0
+    seq.ForceNextStepTriggers(true, true, false, false);
+    
+    // Process until we get to the next step
+    int samplesPerStep = static_cast<int>(48000.0f * 60.0f / (120.0f * 4.0f));
+    
+    bool sawAnchorGate = false;
+    bool sawShimmerGate = false;
+    
+    for (int i = 0; i < samplesPerStep * 2; i++)
+    {
+        seq.ProcessAudio();
+        if (seq.IsGateHigh(0)) sawAnchorGate = true;
+        if (seq.IsGateHigh(1)) sawShimmerGate = true;
+    }
+    
+    // Forced triggers should fire regardless of density
+    REQUIRE(sawAnchorGate == true);
+    REQUIRE(sawShimmerGate == true);
+}
+
 #endif // USE_PULSE_FIELD_V3
 
