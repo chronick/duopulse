@@ -169,6 +169,21 @@ DuoPulse v3 is mostly complete, but hardware testing revealed two critical bugs 
 
 **Test Results:** All 149 tests pass (81,957 assertions). Firmware builds at 76.80% flash.
 
+### Session 2025-12-17: Phase 1 Post-Fix (Ghost Trigger Bypass)
+
+**Bug Found**: Even with DENSITY=0 fixes in place, triggers were still firing due to legacy v2 ghost trigger code running in v3.
+
+**Root Cause**:
+1. v3 code sets `hhTrig = false` (line 411)
+2. Ghost trigger code (lines 437-445) was running unconditionally AFTER the v3 block
+3. It would set `hhTrig = true` based on `ChaosModulator.ghostTrigger`
+4. HH routing code (lines 547-561) would then set `gate0` or `gate1` to `true`
+5. This bypassed all DENSITY=0 checks!
+
+**Fix**: Moved ghost trigger code inside `#ifndef USE_PULSE_FIELD_V3` block so it only runs in v2 mode.
+
+**Test Results**: All 149 tests pass (81,957 assertions). Firmware builds at 73.47% flash.
+
 ### Session 2025-12-17: Phase 3 Complete
 
 **Changes Made:**

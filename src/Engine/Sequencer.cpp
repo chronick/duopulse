@@ -434,7 +434,9 @@ std::array<float, 2> Sequencer::ProcessAudio()
 #endif
         }
 
+#ifndef USE_PULSE_FIELD_V3
         // Apply Ghost Triggers to HH/Perc stream (High Variation)
+        // v2 only: In v3, ghost triggers are handled by the pulse field algorithm
         if(!hhTrig && chaosSampleHigh.ghostTrigger)
         {
             hhTrig = true;
@@ -442,7 +444,6 @@ std::array<float, 2> Sequencer::ProcessAudio()
             hhVel = 0.3f + (static_cast<float>(rand() % 100) / 200.0f);
         }
 
-#ifndef USE_PULSE_FIELD_V3
         // --- CV-Driven Fills (v2: FLUX + Phrase Position) ---
         // v3 handles fills through phrase-aware weight boosts in the pulse field algorithm
         // High FLUX values add fill triggers, boosted in fill/build zones
