@@ -86,7 +86,7 @@ The v3 algorithmic approach replaces discrete patterns with a continuous algorit
 | **K1** | Anchor Density | Fuse | Anchor Accent | Swing Taste |
 | **K2** | Shimmer Density | Length | Shimmer Accent | Gate Time |
 | **K3** | Broken | Couple | Contour | Humanize |
-| **K4** | Drift | *(Reserved)* | Tempo / Clock Div* | Clock Div / Aux Mode* |
+| **K4** | Drift | Ratchet | Tempo / Clock Div* | Clock Div / Aux Mode* |
 
 > **CV inputs 5-8 always modulate Performance Primary parameters** (Anchor Density, Shimmer Density, Broken, Drift) regardless of current mode.
 
@@ -122,7 +122,7 @@ Primary playing mode. Optimized for live manipulation.
 | **K1+Shift** | **FUSE** | Voice energy balance | CCW=kick-heavy, CW=snare-heavy |
 | **K2+Shift** | **LENGTH** | Loop length in bars | 1, 2, 4, 8, 16 |
 | **K3+Shift** | **COUPLE** | Voice relationship strength | 0%=independent, 100%=interlock |
-| **K4+Shift** | *(Reserved)* | Reserved for future features | — |
+| **K4+Shift** | **RATCHET** | Fill intensity during phrase transitions | 0%=subtle, 100%=intense |
 
 **FUSE**: Tilts energy between voices. CCW boosts Anchor density (+15%), reduces Shimmer (-15%). CW does the opposite. At center (50%), balanced.
 
@@ -130,6 +130,12 @@ Primary playing mode. Optimized for live manipulation.
 - 0%: Fully independent — voices can collide or gap freely
 - 50%: Soft interlock — slight collision avoidance
 - 100%: Hard interlock — Shimmer fills Anchor gaps, suppresses collisions
+
+**RATCHET**: Controls fill intensity during phrase transitions. Works with DRIFT:
+- DRIFT controls fill PROBABILITY (when fills occur)
+- RATCHET controls fill INTENSITY (how intense fills are)
+- At DRIFT=0, RATCHET has no effect (no fills occur)
+- At RATCHET > 50%, ratcheting (32nd note subdivisions) can occur
 
 ---
 
@@ -263,6 +269,16 @@ Swing is **opinionated by genre** but adjustable within a curated range. This pr
 
 > **v3 Feature**: This replaces the discrete pattern lookup system (see v2 Pattern Generation below, kept for reference).
 
+### Critical Design Rules [v3-critical-rules]
+
+These rules are **absolute** and must be enforced at the algorithm level:
+
+1. **DENSITY=0 is ABSOLUTE SILENCE.** No triggers fire, regardless of BROKEN, DRIFT, phrase position, fills, or any other modulation. This check must come FIRST in `ShouldStepFire()`.
+
+2. **DRIFT=0 is ZERO VARIATION.** The pattern is 100% identical every loop. No beat variation whatsoever. All steps must use `patternSeed_` (locked seed).
+
+3. **The Reference Point:** At BROKEN=0, DRIFT=0, DENSITIES at 50%: **classic 4/4 kick with snare on backbeat, repeated identically forever.**
+
 ### Concept
 
 Each of the 32 steps in a pattern has a **weight** that represents its "likelihood" of triggering. The algorithm uses these weights combined with DENSITY and BROKEN to determine what fires.
@@ -297,6 +313,8 @@ Each of the 32 steps in a pattern has a **weight** that represents its "likeliho
 - [x] Threshold comparison with DENSITY *(2025-12-17: threshold = 1 - density)*
 - [x] Separate weight tables for Anchor and Shimmer *(2025-12-17: kAnchorWeights, kShimmerWeights)*
 - [x] Deterministic mode (seeded RNG) for reproducibility *(2025-12-17: PulseFieldState dual seeds)*
+- [ ] **BUG**: DENSITY=0 check must be FIRST (absolute floor) — currently has leakage
+- [ ] **BUG**: DRIFT=0 must produce ZERO variation — currently has beat variation
 
 ---
 
@@ -417,6 +435,56 @@ COUPLE is a simplified replacement for the three-mode ORBIT system. It provides 
 - [x] At 100%: shimmer strongly fills anchor gaps *(2025-12-17: boostChance up to 30%)*
 - [x] Collision suppression scales with COUPLE *(2025-12-17: suppressChance = couple*0.8)*
 - [x] Gap-filling boost at COUPLE > 50% *(2025-12-17: tested)*
+
+---
+
+## Feature: RATCHET Fill Intensity [ratchet-control]
+
+RATCHET (K4+Shift) controls fill intensity during phrase transitions. While DRIFT controls WHEN fills occur, RATCHET controls HOW INTENSE they are.
+
+### DRIFT × RATCHET Interaction
+
+| DRIFT | RATCHET | Result |
+|-------|---------|--------|
+| 0% | any | No fills (pattern locked) |
+| 50% | 0% | Occasional subtle fills |
+| 50% | 100% | Occasional intense fills |
+| 100% | 0% | Frequent subtle fills |
+| 100% | 100% | Maximum fill frequency and intensity |
+
+**Key distinction:**
+- **DRIFT** = "Do fills happen?" (probability gate)
+- **RATCHET** = "How intense are fills?" (intensity control)
+
+### RATCHET Effects
+
+| RATCHET Level | Behavior |
+|---------------|----------|
+| 0% | Subtle fills — slight density boost only |
+| 25% | Moderate fills — noticeable energy increase |
+| 50% | Standard fills — clear rhythmic intensification |
+| 75% | Aggressive fills — ratcheted 16ths, strong build |
+| 100% | Maximum intensity — rapid-fire hits, peak energy |
+
+### Fill Zones
+
+Fills are structured to target musically appropriate positions:
+
+| Zone | Phrase Progress | Purpose |
+|------|-----------------|---------|
+| Groove | 0-40% | Stable pattern, minimal fills |
+| Mid-Point | 40-60% | Potential mid-phrase fill |
+| Build | 50-75% | Increasing energy toward phrase end |
+| Fill | 75-100% | Maximum fill activity, resolving to downbeat |
+
+### Acceptance Criteria
+- [ ] RATCHET parameter (K4+Shift) implemented
+- [ ] RATCHET controls fill density boost (0-30%)
+- [ ] Ratcheting (32nd subdivisions) at RATCHET > 50%
+- [ ] Velocity ramp in fills (louder toward phrase end)
+- [ ] Resolution accent on phrase downbeat
+- [ ] DRIFT=0 = no fills, regardless of RATCHET
+- [ ] Fills target phrase boundaries (mid-point, end)
 
 ---
 
@@ -927,7 +995,7 @@ When using internal clock (no external clock patched):
 | K1 | ANCHOR DENSITY | FUSE |
 | K2 | SHIMMER DENSITY | LENGTH |
 | K3 | BROKEN | COUPLE |
-| K4 | DRIFT | *(Reserved)* |
+| K4 | DRIFT | RATCHET |
 
 ### Config Mode (Switch UP)
 

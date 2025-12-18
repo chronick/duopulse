@@ -1,16 +1,18 @@
 # DuoPulse v3: Simplified Algorithmic Approach
 
-**Specification Draft v0.1**  
-**Date: 2025-12-16**
+**Specification Draft v0.2**  
+**Date: 2025-12-17**
 
 ---
 
 ## Executive Summary
 
-This document proposes a radical simplification of DuoPulse's rhythm generation system, replacing the 16 discrete pattern lookup tables with a continuous **algorithmic pulse field** controlled by two primary axes:
+This document proposes a radical simplification of DuoPulse's rhythm generation system, replacing the 16 discrete pattern lookup tables with a continuous **algorithmic pulse field** controlled by four primary axes:
 
-1. **DENSITY** — How many triggers fire (sparse → dense)
-2. **BROKEN** — How regular/irregular the pattern is (4/4 techno → IDM chaos)
+1. **DENSITY** — How many triggers fire (sparse → dense). **DENSITY=0 = absolute silence.**
+2. **BROKEN** — Pattern structure/shape (4/4 techno → IDM chaos). Controls WHERE hits occur.
+3. **DRIFT** — Pattern evolution over time (locked → generative). Controls WHETHER pattern repeats.
+4. **RATCHET** — Fill intensity during phrase transitions. Controls fill energy.
 
 This approach eliminates the Terrain/Grid mismatch problem, reduces cognitive load, and provides infinite variation along a musically coherent gradient from club-ready techno to experimental IDM.
 
@@ -37,16 +39,21 @@ Replace discrete patterns with a **continuous algorithm** where:
 - Every parameter change produces a **predictable, musical result**
 - Genre character **emerges** from the BROKEN parameter
 - Infinite variation within a coherent musical space
-- No pattern mismatches possible
+- No parameter mismatches possible
 
 ### Core Mental Model
 
 ```
-DENSITY = "How much is happening"
-BROKEN  = "How weird is it"
+DENSITY = "How much is happening"     (0 = silence, always)
+BROKEN  = "What shape is the pattern" (4/4 → IDM)
+DRIFT   = "How much it changes"       (locked → evolving)
+RATCHET = "How intense are fills"     (subtle → ratcheted)
 ```
 
-Together they span the entire rhythmic space:
+**The Reference Point:**
+> If BROKEN=0, DRIFT=0, both DENSITIES at 50%: **classic 4/4 kick with snare on backbeat, repeated with zero variation.**
+
+Together DENSITY and BROKEN span the rhythmic space:
 
 ```
                         BROKEN
@@ -61,9 +68,11 @@ Together they span the entire rhythmic space:
    N          │ kick-snare       broken         │
    S          │                                 │
    I          │                                 │
-   T     0%   │ Silence          Silence        │
+   T     0%   │ SILENCE          SILENCE        │
    Y          └────────────────────────────────┘
 ```
+
+**Critical Design Rule: DENSITY=0 is an absolute floor. Zero triggers, always, regardless of BROKEN, DRIFT, fills, or any other modulation.**
 
 ---
 
@@ -72,6 +81,14 @@ Together they span the entire rhythmic space:
 ### Concept
 
 Each of the 32 steps in a pattern has a **weight** that represents its "likelihood" of triggering. The algorithm uses these weights combined with DENSITY and BROKEN to determine what fires.
+
+### Critical Design Rules
+
+1. **DENSITY=0 is ABSOLUTE SILENCE.** No triggers fire, regardless of BROKEN, DRIFT, phrase position, or any other modulation. This must be enforced as a hard floor before any other calculations.
+
+2. **BROKEN controls pattern STRUCTURE**, not density. At BROKEN=0, only high-weight positions fire. At BROKEN=100%, all positions have equal probability. But the TOTAL number of triggers is still controlled by DENSITY.
+
+3. **Weights are normalized** such that at DENSITY=50%, BROKEN=0, you get a classic 4/4 pattern.
 
 ### Grid Position Weights
 
@@ -89,6 +106,15 @@ Steps are weighted by their musical importance in a standard 4/4 context:
 
 ```cpp
 bool ShouldStepFire(int step, float density, float broken, const float* weights) {
+    // ============================================
+    // CRITICAL: DENSITY=0 IS ABSOLUTE SILENCE
+    // ============================================
+    // This check comes FIRST, before any other calculations.
+    // No phrase boosts, no BROKEN noise, nothing can override this.
+    if (density <= 0.0f) {
+        return false;  // Absolute floor
+    }
+    
     // 1. Get base weight for this step position
     float baseWeight = weights[step];
     
@@ -99,12 +125,13 @@ bool ShouldStepFire(int step, float density, float broken, const float* weights)
     
     // 3. Add randomness scaled by BROKEN
     //    More broken = more random variation in weights
+    //    NOTE: This affects WHERE hits land, not how many (that's DENSITY)
     float noise = (Random() - 0.5f) * broken * 0.4f;
     effectiveWeight += noise;
     effectiveWeight = Clamp(effectiveWeight, 0.0f, 1.0f);
     
     // 4. DENSITY sets the threshold
-    //    density=0 → threshold=1.0 (nothing fires)
+    //    density=0 → threshold=1.0 (nothing fires) [handled above]
     //    density=1 → threshold=0.0 (everything fires)
     float threshold = 1.0f - density;
     
@@ -115,15 +142,18 @@ bool ShouldStepFire(int step, float density, float broken, const float* weights)
 
 ### How It Works
 
+**At DENSITY = 0% (Silence):**
+- **Zero triggers, always.** This is an absolute floor that cannot be overridden.
+
 **At BROKEN = 0% (Straight):**
 - Weights are sharply differentiated
 - Only highest-weight positions fire at medium density
-- Result: Regular, predictable patterns
+- Result: Regular, predictable patterns (classic 4/4)
 
 **At BROKEN = 100% (Chaos):**
 - All weights converge toward 0.5
 - Any step is equally likely to fire
-- Additional noise makes each iteration different
+- Additional noise makes pattern structure irregular
 - Result: Unpredictable, IDM-style patterns
 
 **Density Sweeps:**
@@ -132,11 +162,12 @@ bool ShouldStepFire(int step, float density, float broken, const float* weights)
 - High density: Nearly all steps
 
 ### Acceptance Criteria
-- [ ] Weight table for 32 steps implemented
-- [ ] Effective weight calculation with BROKEN flattening
-- [ ] Noise injection scaled by BROKEN
-- [ ] Threshold comparison with DENSITY
-- [ ] Deterministic mode (seeded RNG) for reproducibility
+- [x] Weight table for 32 steps implemented
+- [x] Effective weight calculation with BROKEN flattening
+- [x] Noise injection scaled by BROKEN
+- [x] Threshold comparison with DENSITY
+- [x] Deterministic mode (seeded RNG) for reproducibility
+- [ ] **DENSITY=0 check is FIRST, as absolute floor**
 
 ---
 
@@ -192,18 +223,22 @@ With these weight profiles:
 
 | DENSITY | BROKEN | Anchor | Shimmer |
 |---------|--------|--------|---------|
+| **0%** | **any** | **SILENCE** | **SILENCE** |
 | 50% | 0% | Kicks on 0, 8, 16, 24 | Snares on 8, 24 |
 | 50% | 50% | Kicks shift around | Snares + off-beat hits |
 | 50% | 100% | Random kick placement | Random snare placement |
 | 100% | 0% | Full kick pattern, on-grid | Full snare pattern, on-grid |
 | 100% | 100% | Maximum kick chaos | Maximum snare chaos |
 
+**Critical:** DENSITY=0 for either voice produces **absolute silence** for that voice, regardless of BROKEN, DRIFT, fills, or any other modulation.
+
 ### Acceptance Criteria
-- [ ] Separate weight tables for Anchor and Shimmer
-- [ ] Anchor emphasizes downbeats (0, 8, 16, 24)
-- [ ] Shimmer emphasizes backbeats (8, 24)
-- [ ] Both voices respond identically to density/broken controls
-- [ ] Weight profiles can be tuned via constants
+- [x] Separate weight tables for Anchor and Shimmer
+- [x] Anchor emphasizes downbeats (0, 8, 16, 24)
+- [x] Shimmer emphasizes backbeats (8, 24)
+- [x] Both voices respond identically to density/broken controls
+- [x] Weight profiles can be tuned via constants
+- [ ] **DENSITY=0 produces absolute silence (hard floor)**
 
 ---
 
@@ -326,7 +361,16 @@ float GetVelocityWithVariation(float baseVel, float broken, uint32_t& rng) {
 
 ## Feature: Phrase-Aware Modulation [phrase-modulation]
 
-The algorithm should be aware of phrase position to create musical builds and fills.
+The algorithm is aware of phrase position to create musical builds and fills. Even at high DRIFT, fills target musically appropriate positions to maintain danceability.
+
+### Design Philosophy: Structured Fills
+
+Even with maximum DRIFT, patterns should feel like they have **musical intention**:
+
+1. **Fills happen at phrase boundaries** — middle (50%) and end (75-100%) of phrases
+2. **Fills resolve to downbeats** — energy builds toward the next phrase start
+3. **Higher DRIFT = more fill probability** — but fills still target the right positions
+4. **RATCHET controls fill intensity** — DRIFT says "when", RATCHET says "how hard"
 
 ### Phrase Position Tracking
 
@@ -339,45 +383,133 @@ struct PhrasePosition {
     bool  isDownbeat;      // Step 0 of any bar
     bool  isFillZone;      // Last 25% of phrase
     bool  isBuildZone;     // Last 50% of phrase
+    bool  isMidPhrase;     // 40-60% of phrase (potential mid-phrase fill)
 };
 ```
+
+### Fill Zones
+
+Fills are structured to create musical tension and release:
+
+| Zone | Phrase Progress | Purpose |
+|------|-----------------|---------|
+| **Groove** | 0-40% | Stable pattern, minimal fills |
+| **Mid-Point** | 40-60% | Potential mid-phrase fill (builds anticipation) |
+| **Build** | 50-75% | Increasing energy toward phrase end |
+| **Fill** | 75-100% | Maximum fill activity, resolving to downbeat |
 
 ### Phrase Modulation of Weights
 
 Near phrase boundaries, weights are modulated to create natural fills:
 
 ```cpp
-float GetPhraseWeightBoost(const PhrasePosition& pos, float broken) {
-    if (!pos.isBuildZone) return 0.0f;
+float GetPhraseWeightBoost(const PhrasePosition& pos, float drift, float ratchet) {
+    // No boost outside fill-eligible zones
+    if (!pos.isBuildZone && !pos.isMidPhrase) return 0.0f;
     
-    // Base boost: increases toward phrase end
+    // DRIFT controls fill PROBABILITY (when fills happen)
+    // RATCHET controls fill INTENSITY (how hard fills hit)
+    
     float boost = 0.0f;
     
     if (pos.isFillZone) {
-        // Last 25%: significant boost to off-beat weights
-        boost = 0.15f + (pos.phraseProgress - 0.75f) * 0.4f;  // 0.15 to 0.25
-    } else if (pos.isBuildZone) {
+        // Last 25%: significant boost, scales with RATCHET
+        float fillProgress = (pos.phraseProgress - 0.75f) * 4.0f;  // 0 to 1
+        float baseBoost = 0.15f + fillProgress * 0.10f;  // 0.15 to 0.25
+        boost = baseBoost * (0.5f + ratchet * 0.5f);  // Half boost at RATCHET=0, full at RATCHET=1
+    } 
+    else if (pos.isBuildZone) {
         // 50-75%: subtle boost
-        boost = (pos.phraseProgress - 0.5f) * 0.3f;  // 0 to 0.075
+        float buildProgress = (pos.phraseProgress - 0.5f) * 4.0f;
+        boost = buildProgress * 0.075f * (0.5f + ratchet * 0.5f);
+    }
+    else if (pos.isMidPhrase) {
+        // 40-60%: optional mid-phrase fill (probability scales with DRIFT)
+        // Only trigger if DRIFT > 50%
+        if (drift > 0.5f) {
+            float midProgress = 1.0f - fabsf(pos.phraseProgress - 0.5f) * 5.0f;  // Peak at 50%
+            boost = midProgress * 0.1f * (drift - 0.5f) * 2.0f * ratchet;
+        }
     }
     
-    // Techno (low broken) has subtle fills; IDM (high broken) has dramatic fills
-    float genreScale = 0.5f + broken * 1.0f;  // 0.5 to 1.5
-    
-    return boost * genreScale;
+    return boost;
 }
 ```
+
+### RATCHET Parameter [ratchet-control]
+
+**RATCHET** (K4+Shift) controls fill intensity and timing. While DRIFT controls WHEN fills occur, RATCHET controls HOW INTENSE they are.
+
+| RATCHET Level | Behavior |
+|---------------|----------|
+| **0%** | Subtle fills — slight density boost only |
+| **25%** | Moderate fills — noticeable energy increase |
+| **50%** | Standard fills — clear rhythmic intensification |
+| **75%** | Aggressive fills — ratcheted 16ths, strong build |
+| **100%** | Maximum intensity — rapid-fire hits, peak energy |
+
+#### RATCHET Effects
+
+1. **Fill Density Boost**: Higher RATCHET = more triggers during fill zones
+2. **Ratcheting**: At RATCHET > 50%, fills can include rapid repeated hits (32nd notes)
+3. **Velocity Ramp**: Fill velocities increase toward phrase end
+4. **Resolution**: Final fill beat resolves strongly to phrase downbeat
+
+```cpp
+struct RatchetConfig {
+    float densityBoost;      // Extra density during fills (0.0-0.3)
+    bool  enableRatcheting;  // Allow 32nd note subdivisions
+    float velocityRamp;      // Velocity increase toward phrase end (1.0-1.3)
+    float resolutionAccent;  // Velocity boost on phrase downbeat (1.0-1.5)
+};
+
+RatchetConfig GetRatchetConfig(float ratchet) {
+    RatchetConfig cfg;
+    
+    // Density boost scales linearly with RATCHET
+    cfg.densityBoost = ratchet * 0.3f;  // 0 to 30% extra density
+    
+    // Ratcheting (32nd subdivisions) only above 50%
+    cfg.enableRatcheting = ratchet > 0.5f;
+    
+    // Velocity ramp: fills get louder toward phrase end
+    cfg.velocityRamp = 1.0f + ratchet * 0.3f;  // 1.0 to 1.3
+    
+    // Strong resolution to phrase downbeat
+    cfg.resolutionAccent = 1.0f + ratchet * 0.5f;  // 1.0 to 1.5
+    
+    return cfg;
+}
+```
+
+### DRIFT × RATCHET Interaction
+
+These parameters work together to control fill behavior:
+
+| DRIFT | RATCHET | Result |
+|-------|---------|--------|
+| 0 | 0 | No fills, pattern repeats exactly |
+| 0 | 100 | No fills (DRIFT gates fill probability) |
+| 100 | 0 | Fills occur, but subtle/minimal |
+| 100 | 100 | Maximum fill intensity and frequency |
+| 50 | 50 | Moderate fills at phrase boundaries |
+
+**Key distinction:**
+- **DRIFT** = "Do fills happen?" (probability gate)
+- **RATCHET** = "How intense are fills?" (intensity control)
 
 ### Phrase Modulation of BROKEN
 
 Temporarily increase BROKEN in fill zones for extra chaos:
 
 ```cpp
-float GetEffectiveBroken(float broken, const PhrasePosition& pos) {
+float GetEffectiveBroken(float broken, const PhrasePosition& pos, float drift) {
     if (!pos.isFillZone) return broken;
     
-    // Boost BROKEN by up to 20% in fill zone
-    float fillBoost = 0.2f * (pos.phraseProgress - 0.75f) * 4.0f;  // 0 to 0.2
+    // Boost BROKEN by up to 20% in fill zone, scaled by DRIFT
+    // At DRIFT=0, no chaos boost (pattern stays stable)
+    float fillProgress = (pos.phraseProgress - 0.75f) * 4.0f;  // 0 to 1
+    float fillBoost = fillProgress * 0.2f * drift;  // 0 to 0.2 at max DRIFT
     
     return Clamp(broken + fillBoost, 0.0f, 1.0f);
 }
@@ -385,22 +517,30 @@ float GetEffectiveBroken(float broken, const PhrasePosition& pos) {
 
 ### Downbeat Accent
 
-First beat of phrase gets velocity boost:
+First beat of phrase gets velocity boost (scaled by RATCHET):
 
 ```cpp
-float GetPhraseAccent(const PhrasePosition& pos) {
-    if (pos.stepInPhrase == 0) return 1.2f;  // Phrase downbeat
-    if (pos.isDownbeat) return 1.1f;          // Bar downbeat
+float GetPhraseAccent(const PhrasePosition& pos, float ratchet) {
+    if (pos.stepInPhrase == 0) {
+        // Phrase downbeat: stronger accent with higher RATCHET
+        return 1.2f + ratchet * 0.3f;  // 1.2 to 1.5
+    }
+    if (pos.isDownbeat) return 1.1f;  // Bar downbeat
     return 1.0f;
 }
 ```
 
 ### Acceptance Criteria
-- [ ] Phrase position tracking (same as v2)
-- [ ] Weight boost in build/fill zones
-- [ ] BROKEN boost in fill zones
-- [ ] Downbeat accent multiplier
-- [ ] Fill intensity scales with BROKEN level
+- [x] Phrase position tracking (same as v2)
+- [x] Weight boost in build/fill zones
+- [x] BROKEN boost in fill zones
+- [x] Downbeat accent multiplier
+- [ ] **RATCHET parameter controls fill intensity**
+- [ ] **Fills target phrase boundaries (mid-point, end)**
+- [ ] **High DRIFT + high RATCHET = intense fills**
+- [ ] **DRIFT=0 = no fills, regardless of RATCHET**
+- [ ] **Ratcheting (32nd subdivisions) at RATCHET > 50%**
+- [ ] **Fill resolution accent on phrase downbeat**
 
 ---
 
@@ -433,7 +573,15 @@ void ApplyFuse(float fuse, float& anchorDensity, float& shimmerDensity) {
 
 ## Feature: DRIFT Variation Control [drift-control]
 
-**DRIFT** is the fourth primary performance control. It determines **how much the pattern evolves over time** — the axis from fully locked/predictable to constantly varying/evolving.
+**DRIFT** is the third primary performance control. It determines **how much the pattern evolves over time** — the axis from fully locked/predictable to constantly varying/evolving.
+
+### Critical Design Rules
+
+1. **DRIFT=0 means ZERO variation.** The pattern is 100% identical every loop. No beat variation whatsoever. This is an absolute guarantee.
+
+2. **DRIFT controls evolution, not structure.** BROKEN controls WHERE hits occur (pattern shape). DRIFT controls WHETHER those decisions change over time.
+
+3. **The Reference Point:** At BROKEN=0, DRIFT=0, DENSITY=50%: classic 4/4 kick with snare on backbeat, repeated identically forever.
 
 ### The Core Concept
 
@@ -441,8 +589,8 @@ Instead of separate "deterministic mode" and "random fills" controls, DRIFT prov
 
 | DRIFT Level | Behavior |
 |-------------|----------|
-| **0%** | Fully locked — exact same pattern every loop |
-| **25%** | Core groove locked, ghost notes vary |
+| **0%** | **Fully locked — exact same pattern every single loop. ZERO variation.** |
+| **25%** | Core groove locked, ghost notes may vary |
 | **50%** | Downbeats stable, off-beats can shift |
 | **75%** | Only bar downbeats locked, rest evolves |
 | **100%** | Everything varies — maximum evolution |
@@ -482,6 +630,13 @@ struct PulseField {
     static constexpr float kShimmerDriftMult = 1.3f;
     
     bool ShouldStepFire(int step, float density, float broken, float drift, bool isAnchor) {
+        // ============================================
+        // CRITICAL: DRIFT=0 MEANS ZERO VARIATION
+        // ============================================
+        // At DRIFT=0, ALL steps use patternSeed_ (fully deterministic)
+        // BROKEN still affects WHERE hits land (pattern structure)
+        // but DRIFT=0 guarantees identical output every loop
+        
         float weight = GetEffectiveWeight(step, broken, isAnchor);
         float threshold = 1.0f - density;
         
@@ -493,6 +648,7 @@ struct PulseField {
         float stability = GetStepStability(step);
         
         // Is this step locked or can it drift?
+        // At DRIFT=0: effectiveDrift=0, all stability values > 0, so ALL steps locked
         bool isLocked = stability > effectiveDrift;
         
         // Pick the appropriate random seed
@@ -501,6 +657,8 @@ struct PulseField {
             : HashStep(loopSeed_, step);     // Different each loop
         
         // Calculate trigger with appropriate randomness
+        // NOTE: This noise is deterministic given the seed.
+        // At DRIFT=0, seed is always patternSeed_, so noise is identical every loop.
         float noise = (RandomFloat(rng) - 0.5f) * broken * 0.4f;
         float effectiveWeight = Lerp(weight, 0.5f, broken) + noise;
         
@@ -516,14 +674,18 @@ struct PulseField {
 
 ### DRIFT × BROKEN Interaction
 
-These two axes are independent and combine powerfully:
+These two axes are **independent** and combine powerfully:
 
 | BROKEN | DRIFT | Result |
 |--------|-------|--------|
-| Low | Low | Classic 4/4, same every loop (DJ tool) |
-| Low | High | Classic 4/4 base, subtle variations each loop |
-| High | Low | IDM pattern, but same chaos every loop (signature beat) |
-| High | High | Maximum unpredictability (generative) |
+| **0 (straight)** | **0 (locked)** | **Classic 4/4, identical every loop (DJ tool)** |
+| 0 (straight) | 100 (evolving) | Classic 4/4 base, subtle variations each loop |
+| 100 (chaos) | 0 (locked) | IDM pattern, but same chaos every loop (signature beat) |
+| 100 (chaos) | 100 (evolving) | Maximum unpredictability (generative) |
+
+**Key distinction:**
+- **BROKEN** controls the SHAPE of the pattern (simulating different base patterns)
+- **DRIFT** controls the STABILITY of the pattern (whether it repeats or evolves)
 
 ### CV Modulation of DRIFT
 
@@ -537,15 +699,15 @@ CV 8 → DRIFT is extremely expressive:
 | **Manual CV** | Performance control: twist to freeze/unfreeze |
 
 ### Acceptance Criteria
-- [ ] Step stability values implemented (1.0 for downbeats → 0.2 for 16ths)
-- [ ] DRIFT threshold determines which steps use locked vs. varying seed
-- [ ] `patternSeed_` persists across loops (locked elements)
-- [ ] `loopSeed_` regenerates on phrase reset (drifting elements)
-- [ ] DRIFT = 0% produces identical pattern every loop
-- [ ] DRIFT = 100% produces unique pattern each loop
-- [ ] **Per-voice DRIFT**: Anchor uses 0.7× drift multiplier, Shimmer uses 1.3×
-- [ ] At DRIFT = 100%, Anchor still has some stability (effective 70%)
-- [ ] CV modulation of DRIFT works correctly
+- [x] Step stability values implemented (1.0 for downbeats → 0.2 for 16ths)
+- [x] DRIFT threshold determines which steps use locked vs. varying seed
+- [x] `patternSeed_` persists across loops (locked elements)
+- [x] `loopSeed_` regenerates on phrase reset (drifting elements)
+- [ ] **DRIFT = 0% produces IDENTICAL pattern every loop (ZERO variation)**
+- [x] DRIFT = 100% produces unique pattern each loop
+- [x] **Per-voice DRIFT**: Anchor uses 0.7× drift multiplier, Shimmer uses 1.3×
+- [x] At DRIFT = 100%, Anchor still has some stability (effective 70%)
+- [x] CV modulation of DRIFT works correctly
 
 ---
 
@@ -611,15 +773,15 @@ Shadow mode added complexity for limited musical value. The call-response behavi
 
 | Knob | Parameter | Range | Mental Model |
 |------|-----------|-------|--------------|
-| **K1** | ANCHOR DENSITY | 0%=silent → 100%=full | "How much kick" |
-| **K2** | SHIMMER DENSITY | 0%=silent → 100%=full | "How much snare" |
-| **K3** | BROKEN | 0%=4/4 → 100%=IDM | "How weird" |
-| **K4** | DRIFT | 0%=locked → 100%=evolving | "How much it changes" |
+| **K1** | ANCHOR DENSITY | 0%=silence → 100%=full | "How much kick" |
+| **K2** | SHIMMER DENSITY | 0%=silence → 100%=full | "How much snare" |
+| **K3** | BROKEN | 0%=4/4 → 100%=IDM | "Pattern shape" |
+| **K4** | DRIFT | 0%=locked → 100%=evolving | "Does it change?" |
 
 These four knobs define the complete rhythmic character:
-- **DENSITY** (K1, K2): How much activity for each voice
-- **BROKEN** (K3): Pattern regularity (genre character emerges from this)
-- **DRIFT** (K4): Pattern stability (locked groove vs. evolving chaos)
+- **DENSITY** (K1, K2): How much activity for each voice. **0 = silence, always.**
+- **BROKEN** (K3): Pattern structure (WHERE hits occur). Genre character emerges from this.
+- **DRIFT** (K4): Pattern evolution (WHETHER it repeats). **0 = identical every loop.**
 
 ### Performance Mode Shift (Switch DOWN + B7) — Secondary Performance
 
@@ -628,7 +790,17 @@ These four knobs define the complete rhythmic character:
 | K1+S | FUSE | CCW=kick, CW=snare | Energy balance between voices |
 | K2+S | LENGTH | 1,2,4,8,16 bars | Loop length |
 | K3+S | COUPLE | 0%=independent, 100%=interlock | Voice relationship strength |
-| K4+S | *(Reserved)* | — | Could add feature later or leave empty |
+| **K4+S** | **RATCHET** | 0%=subtle, 100%=intense | Fill intensity during phrase transitions |
+
+### RATCHET × DRIFT Interaction
+
+| DRIFT | RATCHET | Fill Behavior |
+|-------|---------|---------------|
+| 0% | any | No fills (pattern locked) |
+| 50% | 0% | Occasional subtle fills |
+| 50% | 100% | Occasional intense fills |
+| 100% | 0% | Frequent subtle fills |
+| 100% | 100% | Maximum fill frequency and intensity |
 
 ### Config Mode Primary (Switch UP)
 
@@ -731,38 +903,51 @@ The LED timing should reflect the current state of the algorithm:
 
 ## Implementation Strategy
 
-### Phase 1: Core Algorithm
+### Phase 1: Core Algorithm ✓
 1. Implement weight tables for Anchor and Shimmer
 2. Implement `ShouldStepFire()` with BROKEN flattening
-3. Implement DENSITY threshold
+3. Implement DENSITY threshold **with absolute floor check FIRST**
 4. Basic trigger generation loop (deterministic with fixed seed)
 
-### Phase 2: DRIFT System
+### Phase 2: DRIFT System ✓
 1. Implement step stability values
 2. Dual-seed system (patternSeed_ + loopSeed_)
 3. DRIFT threshold for locked vs. drifting steps
-4. Phrase reset callback to regenerate loopSeed_
+4. **DRIFT=0 = ALL steps use patternSeed_ (zero variation)**
+5. Phrase reset callback to regenerate loopSeed_
 
-### Phase 3: BROKEN Effects Stack
+### Phase 3: BROKEN Effects Stack ✓
 1. Swing tied to BROKEN
 2. Jitter tied to BROKEN  
 3. Step displacement at high BROKEN
 4. Velocity variation scaling
 
-### Phase 4: Phrase Awareness
+### Phase 4: Phrase Awareness (Update Required)
 1. Phrase position tracking (reuse from v2)
-2. Weight boost in fill zones
-3. BROKEN boost in fill zones
-4. Downbeat accents
+2. **Add isMidPhrase zone (40-60%)**
+3. Weight boost in fill zones **scaled by RATCHET**
+4. BROKEN boost in fill zones **scaled by DRIFT**
+5. Downbeat accents **scaled by RATCHET**
 
-### Phase 5: Voice Interaction
+### Phase 5: RATCHET System (NEW)
+1. **Implement RATCHET parameter (K4+Shift)**
+2. **RATCHET controls fill intensity (density boost, velocity ramp)**
+3. **Ratcheting (32nd subdivisions) at RATCHET > 50%**
+4. **Fill resolution accent on phrase downbeat**
+5. **DRIFT gates fill probability (DRIFT=0 = no fills)**
+
+### Phase 6: Voice Interaction ✓
 1. FUSE energy balance
 2. COUPLE interlock system
 3. Collision avoidance at high COUPLE
 
-### Phase 6: Polish
-1. LED feedback reflecting BROKEN × DRIFT
-2. CV modulation of all four primary params
+### Phase 7: Bug Fixes (Required)
+1. **Fix DENSITY=0 leakage** — absolute silence check must come FIRST
+2. **Fix DRIFT=0 variation** — all steps must use patternSeed_
+
+### Phase 8: Polish
+1. LED feedback reflecting BROKEN × DRIFT × RATCHET
+2. CV modulation of all primary params
 3. Soft takeover for mode switching (reuse from v2)
 4. Pattern lock gesture (optional)
 
@@ -799,14 +984,17 @@ src/Engine/
 | Pattern Source | 16 hand-crafted skeletons | Weighted probability algorithm |
 | Genre Control | Terrain + Grid (can mismatch) | Single BROKEN control |
 | Variation Control | FLUX (adds chaos) | DRIFT (locked ↔ evolving) |
+| Fill Control | Built into patterns | Separate RATCHET control |
 | Voice Relationship | ORBIT (3 discrete modes) | COUPLE (0-100% strength) |
 | Per-Voice Behavior | Same rules for both | Anchor stable, Shimmer drifty |
 | Swing | Separate per-genre config | Tied to BROKEN |
-| Predictability | Hard to predict combinations | Two clear axes: weird × stable |
-| Determinism | Not supported | DRIFT = 0% for locked patterns |
+| Predictability | Hard to predict combinations | Clear axes: structure × stability × fills |
+| Determinism | Not supported | DRIFT=0 = identical every loop |
+| DENSITY=0 Behavior | May have leakage | **Absolute silence guaranteed** |
 | Code Size | ~500 bytes pattern data | ~200 bytes weight tables |
 | Transitions | Abrupt pattern changes | Continuous morphing |
 | Primary Knobs | 4 (Density×2, Flux, Fuse) | 4 (Density×2, Broken, Drift) |
+| Shift Knobs | 4 | 4 (including RATCHET) |
 
 ---
 
@@ -828,7 +1016,17 @@ Rather than a separate "lock seed" mode, DRIFT = 0% provides fully deterministic
 
 ## Open Questions (Remaining)
 
-1. **K4+S in Performance Shift**: Currently marked as "Reserved". Could be used for future features. Keep open for now.
+*(None — all questions resolved.)*
+
+### Resolved: K4+S is RATCHET
+
+**Decision**: K4+Shift is now **RATCHET** — fill intensity control.
+
+RATCHET works in tandem with DRIFT:
+- **DRIFT** controls fill probability (when fills occur)
+- **RATCHET** controls fill intensity (how intense fills are)
+
+At DRIFT=0, RATCHET has no effect (no fills occur). At high DRIFT, RATCHET scales from subtle fills (0%) to aggressive ratcheted fills (100%).
 
 ### Resolved: Per-Voice DRIFT
 
@@ -870,16 +1068,37 @@ For future consideration: a button gesture to "freeze" a pattern you like (copy 
 
 ## Summary
 
-The v3 algorithmic approach replaces discrete pattern lookups with a **two-axis performance model**:
+The v3 algorithmic approach replaces discrete pattern lookups with a **four-axis performance model**:
 
-### The Four Primary Controls
+### The Core Controls
 
-| Control | Function | Mental Model |
-|---------|----------|--------------|
-| **ANCHOR DENSITY** | Kick activity level | "How much kick" |
-| **SHIMMER DENSITY** | Snare/hat activity level | "How much snare" |
-| **BROKEN** | Pattern regularity | "How weird" (4/4 → IDM) |
-| **DRIFT** | Pattern stability | "How much it changes" (locked → evolving) |
+| Control | Function | Mental Model | Critical Behavior |
+|---------|----------|--------------|-------------------|
+| **ANCHOR DENSITY** | Kick activity level | "How much kick" | **0 = silence, always** |
+| **SHIMMER DENSITY** | Snare/hat activity level | "How much snare" | **0 = silence, always** |
+| **BROKEN** | Pattern structure | "Pattern shape" | Controls WHERE hits occur |
+| **DRIFT** | Pattern evolution | "Does it repeat?" | **0 = identical every loop** |
+| **RATCHET** (K4+S) | Fill intensity | "How hard fills hit" | Gates by DRIFT |
+
+### The Reference Point
+
+> **BROKEN=0, DRIFT=0, DENSITIES at 50%: Classic 4/4 kick with snare on backbeat, repeated identically forever.**
+
+This is the "known good" state that every user can return to. From here, each axis adds complexity in a predictable way.
+
+### Key Design Principles
+
+1. **DENSITY=0 is absolute silence.** No triggers fire, regardless of any other parameter. This is a hard floor that cannot be overridden by fills, phrase modulation, or any other system.
+
+2. **DRIFT=0 is absolute repetition.** The pattern is 100% identical every loop. No variation whatsoever. BROKEN affects pattern structure but not stability.
+
+3. **BROKEN controls STRUCTURE, DRIFT controls EVOLUTION.** These are orthogonal axes:
+   - BROKEN = WHERE hits occur (4/4 → scattered IDM)
+   - DRIFT = WHETHER the pattern changes over time (locked → generative)
+
+4. **Fills are structured, not random.** Even at high DRIFT, fills target musically appropriate positions (mid-phrase, phrase-end) and resolve to downbeats. The pattern always feels **danceable**.
+
+5. **RATCHET controls fill intensity.** DRIFT says "when fills happen", RATCHET says "how intense they are". At DRIFT=0, RATCHET has no effect (no fills occur).
 
 ### Key Innovations
 
@@ -891,16 +1110,21 @@ The v3 algorithmic approach replaces discrete pattern lookups with a **two-axis 
 
 4. **Per-voice DRIFT**: Anchor (kick) is more stable (0.7× drift), Shimmer (snare/hat) is more drifty (1.3× drift). Even at max DRIFT, kicks have some stability while hats are fully generative.
 
-5. **COUPLE simplifies voice relationship**: Single 0-100% interlock strength replaces three discrete modes.
+5. **RATCHET for fills**: Separate control for fill intensity allows precise control over phrase transitions without affecting base pattern stability.
 
-6. **CV modulation of BROKEN and DRIFT**: Extremely expressive patching possibilities for evolving patterns.
+6. **COUPLE simplifies voice relationship**: Single 0-100% interlock strength replaces three discrete modes.
+
+7. **CV modulation of all axes**: BROKEN, DRIFT, and densities are all CV-controllable for expressive patching.
 
 ### The Result
 
 A **controllable, playable, and professional** rhythm generator where:
+- **DENSITY=0 is silence** — absolute floor, no surprises
+- **DRIFT=0 is locked** — identical pattern every loop, reliable DJ tool
+- **BROKEN controls genre** — techno→IDM gradient in one knob
+- **RATCHET controls fills** — separate from pattern stability
+- **Fills are musical** — they target phrase boundaries, not random positions
 - Every knob turn produces a **predictable, audible change**
-- The full **techno→IDM gradient** is accessible via BROKEN
-- Patterns can be **locked** (DJ tool) or **generative** (experimental)
 - No parameter combinations produce **incoherent** results
 
 The module becomes an instrument you can **learn** and **master**, not a black box of unpredictable combinations.
