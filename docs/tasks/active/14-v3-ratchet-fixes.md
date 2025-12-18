@@ -101,26 +101,26 @@ DuoPulse v3 is mostly complete, but hardware testing revealed two critical bugs 
 ## Phase 3: Code Quality — Header/CPP Split
 
 ### BrokenEffects Refactor
-- [ ] Create `src/Engine/BrokenEffects.cpp`
-- [ ] Move function implementations from `BrokenEffects.h` to `BrokenEffects.cpp`
-- [ ] Keep only function declarations and inline helpers in header
-- [ ] Verify tests still pass after refactor
+- [x] Create `src/Engine/BrokenEffects.cpp` *(2025-12-17)*
+- [x] Move function implementations from `BrokenEffects.h` to `BrokenEffects.cpp` *(2025-12-17)*
+- [x] Keep only function declarations and inline helpers in header *(2025-12-17)*
+- [x] Verify tests still pass after refactor *(2025-12-17: all 149 tests pass)*
 
 ### PulseField Refactor
-- [ ] Create `src/Engine/PulseField.cpp` (if not already exists)
-- [ ] Move `ShouldStepFire()` and `ShouldStepFireWithDrift()` implementations to cpp
-- [ ] Keep weight tables and inline helpers in header
-- [ ] Verify tests still pass after refactor
+- [x] Create `src/Engine/PulseField.cpp` *(2025-12-17)*
+- [x] Move `ShouldStepFire()` and `ShouldStepFireWithDrift()` implementations to cpp *(2025-12-17)*
+- [x] Keep weight tables and inline helpers in header *(2025-12-17)*
+- [x] Verify tests still pass after refactor *(2025-12-17: all 149 tests pass)*
 
 ### LedIndicator Refactor (Optional)
-- [ ] Create `src/Engine/LedIndicator.cpp`
-- [ ] Move non-trivial function implementations to cpp
-- [ ] Keep inline helpers in header
+- [x] Create `src/Engine/LedIndicator.cpp` *(2025-12-17)*
+- [x] Move non-trivial function implementations to cpp *(2025-12-17)*
+- [x] Keep inline helpers in header *(2025-12-17)*
 
 ### Build Verification
-- [ ] Run `make clean && make` — verify no linker errors
-- [ ] Run `make test` — verify all tests pass
-- [ ] Verify firmware size is reasonable
+- [x] Run `make clean && make` — verify no linker errors *(2025-12-17: firmware builds at 76.95% flash)*
+- [x] Run `make test` — verify all tests pass *(2025-12-17: 149 tests, 81957 assertions)*
+- [x] Verify firmware size is reasonable *(2025-12-17: 76.95% flash usage)*
 
 ## Phase 4: Documentation Updates
 
@@ -168,6 +168,24 @@ DuoPulse v3 is mostly complete, but hardware testing revealed two critical bugs 
 - Ratchet triggers fire at 70% velocity of primary trigger
 
 **Test Results:** All 149 tests pass (81,957 assertions). Firmware builds at 76.80% flash.
+
+### Session 2025-12-17: Phase 3 Complete
+
+**Changes Made:**
+1. `BrokenEffects.cpp` — Created new file, moved all function implementations from header (13 functions)
+2. `BrokenEffects.h` — Converted inline functions to declarations, kept only magic constants and documentation
+3. `PulseField.cpp` — Created new file, moved `ShouldStepFire()` and `ShouldStepFireWithDrift()` implementations
+4. `PulseField.h` — Converted core algorithm functions to declarations, kept weight tables and inline helpers
+5. `LedIndicator.cpp` — Created new file, moved all Process* methods and Init() implementation
+6. `LedIndicator.h` — Converted methods to declarations, kept only simple inline helpers
+
+**Key Design Decisions:**
+- Kept simple inline helpers (Lerp, Clamp, HashStep, HashToFloat) in PulseField.h for performance
+- Kept weight tables and constants in headers for easy access
+- All function implementations moved to .cpp files to reduce compile-time coupling
+- Maintained backward compatibility — no API changes
+
+**Test Results:** All 149 tests pass (81,957 assertions). Firmware builds successfully at 76.95% flash usage.
 
 ---
 
