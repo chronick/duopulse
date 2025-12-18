@@ -50,6 +50,7 @@ void Sequencer::Init(float sampleRate)
     fuse_           = 0.5f;
     loopLengthBars_ = 4;
     couple_         = 0.5f;
+    ratchet_        = 0.0f;
     anchorAccent_   = 0.5f;
     shimmerAccent_  = 0.5f;
     contour_        = 0.0f;
@@ -94,6 +95,13 @@ void Sequencer::Init(float sampleRate)
 
     // Initialize clock division
     clockDivCounter_ = 0;
+
+    // Initialize ratchet state
+    ratchetTimer_ = 0;
+    ratchetAnchorPending_ = false;
+    ratchetShimmerPending_ = false;
+    ratchetAnchorVel_ = 0.0f;
+    ratchetShimmerVel_ = 0.0f;
 
 #ifdef USE_PULSE_FIELD_V3
     // Initialize v3 Pulse Field state with a seed based on initial entropy
@@ -149,6 +157,11 @@ void Sequencer::SetCouple(float value)
 {
     couple_ = Clamp(value, 0.0f, 1.0f);
     orbit_ = couple_; // Keep deprecated parameter in sync
+}
+
+void Sequencer::SetRatchet(float value)
+{
+    ratchet_ = Clamp(value, 0.0f, 1.0f);
 }
 
 // Config Primary
@@ -620,10 +633,60 @@ std::array<float, 2> Sequencer::ProcessAudio()
                 outputLevels_[1] = vel1;
             }
         }
+
+#ifdef USE_PULSE_FIELD_V3
+        // === Ratchet Scheduling (32nd note subdivisions) ===
+        // Ratchets fire mid-step (half of stepDurationSamples_) after primary trigger
+        // Conditions for ratcheting:
+        // - RATCHET > 50% (threshold for 32nd subdivisions)
+        // - DRIFT > 0 (no ratchets when pattern is fully locked)
+        // - In fill zone (or mid-phrase with high RATCHET)
+        // - Primary trigger fired this step
+        bool shouldRatchet = (ratchet_ > 0.5f) && (drift_ > 0.0f) &&
+                             (phrasePos_.isFillZone || (phrasePos_.isMidPhrase && ratchet_ > 0.75f));
+        
+        if(shouldRatchet && (gate0 || gate1) && stepDurationSamples_ > 0)
+        {
+            // Calculate ratchet probability based on position and RATCHET level
+            // Higher toward phrase end, scales with RATCHET
+            float ratchetProb = (ratchet_ - 0.5f) * 2.0f; // 0 at 50%, 1 at 100%
+            if(phrasePos_.isFillZone)
+            {
+                // Increase probability toward phrase end
+                float fillProgress = (phrasePos_.phraseProgress - 0.75f) * 4.0f;
+                ratchetProb *= (0.5f + fillProgress * 0.5f); // 50-100% of base prob
+            }
+            else
+            {
+                ratchetProb *= 0.3f; // Lower probability in mid-phrase
+            }
+            
+            // Apply DRIFT gating
+            ratchetProb *= drift_;
+            
+            // Check if ratchet should fire (use RNG)
+            if(NextHumanizeRandom() < ratchetProb)
+            {
+                // Schedule ratchet for half-step later
+                ratchetTimer_ = stepDurationSamples_ / 2;
+                
+                // Ratchet follows primary trigger with reduced velocity
+                ratchetAnchorPending_  = gate0;
+                ratchetShimmerPending_ = gate1;
+                ratchetAnchorVel_      = vel0 * 0.7f;  // 70% velocity
+                ratchetShimmerVel_     = vel1 * 0.7f;
+            }
+        }
+#endif
     }
 
     // Process swing delayed triggers (must run every sample)
     ProcessSwingDelay();
+    
+#ifdef USE_PULSE_FIELD_V3
+    // Process ratchet triggers (32nd note subdivisions)
+    ProcessRatchet();
+#endif
 
     ProcessGates();
 
@@ -952,6 +1015,18 @@ void Sequencer::GetPulseFieldTriggers(int step, float anchorDens, float shimmerD
     float fusedAnchorDens  = anchorDens;
     float fusedShimmerDens = shimmerDens;
     ApplyFuse(fuse_, fusedAnchorDens, fusedShimmerDens);
+    
+    // Apply fill zone density boost based on DRIFT × RATCHET interaction
+    // DRIFT gates fill probability, RATCHET controls intensity
+    float fillBoost = GetPhraseWeightBoostWithRatchet(phrasePos_, broken_, drift_, ratchet_);
+    if(fillBoost > 0.0f)
+    {
+        // Boost densities in fill zones (respecting DENSITY=0 invariant)
+        if(fusedAnchorDens > 0.0f)
+            fusedAnchorDens = Clamp(fusedAnchorDens + fillBoost, 0.0f, 0.95f);
+        if(fusedShimmerDens > 0.0f)
+            fusedShimmerDens = Clamp(fusedShimmerDens + fillBoost, 0.0f, 0.95f);
+    }
 
     // Get base triggers using the weighted pulse field algorithm with DRIFT
     daisysp_idm_grids::GetPulseFieldTriggers(
@@ -977,8 +1052,8 @@ void Sequencer::GetPulseFieldTriggers(int step, float anchorDens, float shimmerD
         float weight = GetStepWeight(wrappedStep, true);
         anchorVel    = 0.6f + weight * 0.4f; // 0.6 to 1.0 range
 
-        // Apply phrase accent (downbeats get boost)
-        anchorVel *= GetPhraseAccent(phrasePos_);
+        // Apply phrase accent with RATCHET-enhanced resolution accent
+        anchorVel *= GetPhraseAccentWithRatchet(phrasePos_, ratchet_);
 
         // Apply accent parameter - boosts velocity for strong positions
         if(weight >= 0.7f)
@@ -1008,8 +1083,8 @@ void Sequencer::GetPulseFieldTriggers(int step, float anchorDens, float shimmerD
             shimmerVel   = 0.6f + weight * 0.4f;
         }
 
-        // Apply phrase accent
-        shimmerVel *= GetPhraseAccent(phrasePos_);
+        // Apply phrase accent with RATCHET-enhanced resolution accent
+        shimmerVel *= GetPhraseAccentWithRatchet(phrasePos_, ratchet_);
 
         // Apply accent parameter for strong positions
         float weight = GetStepWeight(wrappedStep, false);
@@ -1051,6 +1126,36 @@ void Sequencer::ApplyBrokenEffects(int& step, float& anchorVel, float& shimmerVe
 
     // Velocity variation is already applied in GetPulseFieldTriggers
     // Swing is already calculated from BROKEN in UpdateSwingParameters
+}
+
+void Sequencer::ProcessRatchet()
+{
+    // Process pending ratchet triggers (32nd note subdivisions)
+    // Ratchets are scheduled to fire halfway through a step
+    if(ratchetTimer_ > 0)
+    {
+        ratchetTimer_--;
+        
+        if(ratchetTimer_ == 0)
+        {
+            // Fire ratchet triggers
+            if(ratchetAnchorPending_)
+            {
+                TriggerGate(0);
+                accentTimer_     = accentHoldSamples_;
+                outputLevels_[0] = ratchetAnchorVel_;
+                ratchetAnchorPending_ = false;
+            }
+            
+            if(ratchetShimmerPending_)
+            {
+                TriggerGate(1);
+                hihatTimer_      = hihatHoldSamples_;
+                outputLevels_[1] = ratchetShimmerVel_;
+                ratchetShimmerPending_ = false;
+            }
+        }
+    }
 }
 
 #endif // USE_PULSE_FIELD_V3

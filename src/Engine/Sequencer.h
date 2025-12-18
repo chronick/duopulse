@@ -38,7 +38,7 @@ public:
     void SetFuse(float value);           // K1+Shift: Cross-lane energy tilt (0-1, center=balanced)
     void SetLength(int bars);            // K2+Shift: Loop length (1,2,4,8,16 bars)
     void SetCouple(float value);         // K3+Shift: Voice interlock strength (0-1)
-    // K4+Shift: Reserved
+    void SetRatchet(float value);        // K4+Shift: Fill intensity (0-1)
 
     // Config Mode Primary
     void SetAnchorAccent(float value);   // K1: Anchor accent intensity (0-1)
@@ -73,6 +73,7 @@ public:
     float GetSwingPercent() const { return currentSwing_; }
     float GetBroken() const { return broken_; }
     float GetDrift() const { return drift_; }
+    float GetRatchet() const { return ratchet_; }
     const PhrasePosition& GetPhrasePosition() const { return phrasePos_; }
     void  SetBpm(float bpm);
     void  SetAccentHoldMs(float milliseconds);
@@ -108,7 +109,7 @@ private:
     float fuse_   = 0.5f; // K1+Shift: Cross-lane energy tilt
     int   loopLengthBars_ = 4;    // K2+Shift: Loop length
     float couple_ = 0.5f; // K3+Shift: Voice interlock strength
-    // K4+Shift: Reserved
+    float ratchet_ = 0.0f; // K4+Shift: Fill intensity (0-1)
 
     // Config Primary
     float anchorAccent_  = 0.5f; // K1: Accent intensity for anchor
@@ -161,6 +162,13 @@ private:
     // Clock Division State
     int clockDivCounter_ = 0;  // Counter for clock division
 
+    // Ratchet State (32nd note subdivisions)
+    int   ratchetTimer_ = 0;        // Countdown to ratchet trigger
+    bool  ratchetAnchorPending_ = false;
+    bool  ratchetShimmerPending_ = false;
+    float ratchetAnchorVel_ = 0.0f;
+    float ratchetShimmerVel_ = 0.0f;
+
     // External Clock Logic
     bool usingExternalClock_ = false;
     int  externalClockTimeout_ = 0;
@@ -187,6 +195,7 @@ private:
     void  TriggerClock();
     void  ProcessGates();
     void  ProcessSwingDelay();
+    void  ProcessRatchet();
     void  UpdateSwingParameters();
     int   HoldMsToSamples(float milliseconds) const;
     float NextHumanizeRandom(); // Returns 0-1 for humanize jitter

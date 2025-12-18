@@ -1015,3 +1015,175 @@ TEST_CASE("BROKEN effects combine coherently", "[broken-effects][integration]")
         REQUIRE(GetVelocityVariationRange(broken) > 0.15f);
     }
 }
+
+// =============================================================================
+// RATCHET Control Tests [ratchet-control]
+// =============================================================================
+
+TEST_CASE("GetPhraseWeightBoostWithRatchet returns 0 when DRIFT=0", "[ratchet-control][v3-critical-rules]")
+{
+    // DRIFT=0 means pattern is locked — no fills should occur regardless of RATCHET
+    PhrasePosition fillPos;
+    fillPos.phraseProgress = 0.85f;  // In fill zone
+    fillPos.isFillZone = true;
+    fillPos.isBuildZone = true;
+    fillPos.isMidPhrase = false;
+
+    // Test at various RATCHET levels — all should return 0 when DRIFT=0
+    REQUIRE(GetPhraseWeightBoostWithRatchet(fillPos, 0.5f, 0.0f, 0.0f) == Catch::Approx(0.0f));
+    REQUIRE(GetPhraseWeightBoostWithRatchet(fillPos, 0.5f, 0.0f, 0.5f) == Catch::Approx(0.0f));
+    REQUIRE(GetPhraseWeightBoostWithRatchet(fillPos, 0.5f, 0.0f, 1.0f) == Catch::Approx(0.0f));
+    REQUIRE(GetPhraseWeightBoostWithRatchet(fillPos, 1.0f, 0.0f, 1.0f) == Catch::Approx(0.0f));
+}
+
+TEST_CASE("GetPhraseWeightBoostWithRatchet scales with RATCHET when DRIFT>0", "[ratchet-control]")
+{
+    PhrasePosition fillPos;
+    fillPos.phraseProgress = 0.90f;  // In fill zone
+    fillPos.isFillZone = true;
+    fillPos.isBuildZone = true;
+    fillPos.isMidPhrase = false;
+
+    float drift = 1.0f;  // Full drift
+    float broken = 0.5f;
+
+    // Higher RATCHET should produce higher boost
+    float boostRatchet0 = GetPhraseWeightBoostWithRatchet(fillPos, broken, drift, 0.0f);
+    float boostRatchet50 = GetPhraseWeightBoostWithRatchet(fillPos, broken, drift, 0.5f);
+    float boostRatchet100 = GetPhraseWeightBoostWithRatchet(fillPos, broken, drift, 1.0f);
+
+    REQUIRE(boostRatchet0 > 0.0f);  // Base boost still present
+    REQUIRE(boostRatchet50 > boostRatchet0);  // RATCHET adds intensity
+    REQUIRE(boostRatchet100 > boostRatchet50);  // More RATCHET = more boost
+}
+
+TEST_CASE("GetPhraseWeightBoostWithRatchet scales with DRIFT", "[ratchet-control]")
+{
+    PhrasePosition fillPos;
+    fillPos.phraseProgress = 0.90f;
+    fillPos.isFillZone = true;
+    fillPos.isBuildZone = true;
+    fillPos.isMidPhrase = false;
+
+    float ratchet = 0.75f;
+    float broken = 0.5f;
+
+    // Higher DRIFT should produce higher boost (more fill probability)
+    float boostDrift25 = GetPhraseWeightBoostWithRatchet(fillPos, broken, 0.25f, ratchet);
+    float boostDrift50 = GetPhraseWeightBoostWithRatchet(fillPos, broken, 0.50f, ratchet);
+    float boostDrift100 = GetPhraseWeightBoostWithRatchet(fillPos, broken, 1.0f, ratchet);
+
+    REQUIRE(boostDrift50 > boostDrift25);
+    REQUIRE(boostDrift100 > boostDrift50);
+}
+
+TEST_CASE("GetPhraseWeightBoostWithRatchet returns 0 outside fill zones", "[ratchet-control]")
+{
+    PhrasePosition groovePos;
+    groovePos.phraseProgress = 0.20f;  // Early in phrase (groove zone)
+    groovePos.isFillZone = false;
+    groovePos.isBuildZone = false;
+    groovePos.isMidPhrase = false;
+
+    // No boost outside fill-relevant zones
+    REQUIRE(GetPhraseWeightBoostWithRatchet(groovePos, 0.5f, 1.0f, 1.0f) == Catch::Approx(0.0f));
+}
+
+TEST_CASE("GetPhraseWeightBoostWithRatchet works in mid-phrase zone", "[ratchet-control]")
+{
+    PhrasePosition midPos;
+    midPos.phraseProgress = 0.50f;  // Mid-phrase
+    midPos.isFillZone = false;
+    midPos.isBuildZone = false;  // Not yet in build zone
+    midPos.isMidPhrase = true;
+
+    // Mid-phrase gets subtle boost, scaled by RATCHET
+    float boostLowRatchet = GetPhraseWeightBoostWithRatchet(midPos, 0.5f, 1.0f, 0.25f);
+    float boostHighRatchet = GetPhraseWeightBoostWithRatchet(midPos, 0.5f, 1.0f, 1.0f);
+
+    REQUIRE(boostHighRatchet > boostLowRatchet);  // Higher RATCHET = more mid-phrase fills
+}
+
+TEST_CASE("GetPhraseAccentWithRatchet returns base accent at RATCHET=0", "[ratchet-control]")
+{
+    PhrasePosition pos;
+    pos.stepInPhrase = 0;  // Phrase downbeat
+    pos.isDownbeat = true;
+    pos.phraseProgress = 0.0f;
+    pos.isFillZone = false;
+
+    // At RATCHET=0, should return base accent (1.2× for phrase downbeat)
+    REQUIRE(GetPhraseAccentWithRatchet(pos, 0.0f) == Catch::Approx(1.2f));
+}
+
+TEST_CASE("GetPhraseAccentWithRatchet boosts resolution accent with RATCHET", "[ratchet-control]")
+{
+    PhrasePosition pos;
+    pos.stepInPhrase = 0;  // Phrase downbeat
+    pos.isDownbeat = true;
+    pos.phraseProgress = 0.0f;
+    pos.isFillZone = false;
+
+    // At RATCHET=1, phrase downbeat should get boosted accent (up to 1.5×)
+    REQUIRE(GetPhraseAccentWithRatchet(pos, 1.0f) == Catch::Approx(1.5f));
+
+    // At RATCHET=0.5, should be halfway
+    REQUIRE(GetPhraseAccentWithRatchet(pos, 0.5f) == Catch::Approx(1.35f));
+}
+
+TEST_CASE("GetPhraseAccentWithRatchet provides velocity ramp in fill zone", "[ratchet-control]")
+{
+    // Early in fill zone
+    PhrasePosition earlyFill;
+    earlyFill.stepInPhrase = 24;  // Not step 0
+    earlyFill.isDownbeat = false;
+    earlyFill.phraseProgress = 0.76f;  // Just entered fill zone
+    earlyFill.isFillZone = true;
+
+    // Late in fill zone
+    PhrasePosition lateFill;
+    lateFill.stepInPhrase = 30;
+    lateFill.isDownbeat = false;
+    lateFill.phraseProgress = 0.95f;  // Near phrase end
+    lateFill.isFillZone = true;
+
+    float ratchet = 1.0f;
+
+    float earlyAccent = GetPhraseAccentWithRatchet(earlyFill, ratchet);
+    float lateAccent = GetPhraseAccentWithRatchet(lateFill, ratchet);
+
+    // Later in fill zone should have higher accent (velocity ramp)
+    REQUIRE(lateAccent > earlyAccent);
+    REQUIRE(lateAccent > 1.0f);  // Should have some boost
+    REQUIRE(lateAccent <= 1.3f);  // Max is 1.3× in fill zone
+}
+
+TEST_CASE("GetPhraseAccentWithRatchet no ramp at RATCHET=0", "[ratchet-control]")
+{
+    PhrasePosition fillPos;
+    fillPos.stepInPhrase = 28;
+    fillPos.isDownbeat = false;
+    fillPos.phraseProgress = 0.90f;
+    fillPos.isFillZone = true;
+
+    // At RATCHET=0, no fill zone velocity ramp
+    REQUIRE(GetPhraseAccentWithRatchet(fillPos, 0.0f) == Catch::Approx(1.0f));
+}
+
+TEST_CASE("isMidPhrase is set correctly in PhrasePosition", "[ratchet-control][phrase-modulation]")
+{
+    // Test CalculatePhrasePosition sets isMidPhrase correctly
+    // For a 4-bar phrase (64 steps), mid-phrase is 40-60% = steps 25-38
+
+    // Before mid-phrase (30%)
+    auto pos30 = CalculatePhrasePosition(19, 4);  // ~30% of 64 = step 19
+    REQUIRE(pos30.isMidPhrase == false);
+
+    // In mid-phrase (50%)
+    auto pos50 = CalculatePhrasePosition(32, 4);  // 50% of 64 = step 32
+    REQUIRE(pos50.isMidPhrase == true);
+
+    // After mid-phrase (70%)
+    auto pos70 = CalculatePhrasePosition(45, 4);  // ~70% of 64 = step 45
+    REQUIRE(pos70.isMidPhrase == false);
+}

@@ -5,7 +5,7 @@
  * 
  * Performance Mode (Switch DOWN):
  *   Primary:     K1=Anchor Density, K2=Shimmer Density, K3=BROKEN, K4=DRIFT
- *   Shift (B7):  K1=FUSE, K2=Length, K3=COUPLE, K4=Reserved
+ *   Shift (B7):  K1=FUSE, K2=Length, K3=COUPLE, K4=RATCHET
  * 
  * Config Mode (Switch UP):
  *   Primary:     K1=Anchor Accent, K2=Shimmer Accent, K3=Contour, K4=Tempo
@@ -81,7 +81,7 @@ struct ControlState
     float fuse    = 0.5f; // K1+Shift: Cross-lane energy tilt (center=balanced)
     float length  = 0.5f; // K2+Shift: Loop length in bars (1,2,4,8,16)
     float couple  = 0.5f; // K3+Shift: Voice interlock strength (0=independent, 1=interlocked)
-    float reserve = 0.0f; // K4+Shift: Reserved for future use
+    float ratchet = 0.0f; // K4+Shift: Fill intensity (0=subtle, 1=intense)
 
     // === Config Mode Primary (Switch UP, no shift) ===
     float anchorAccent  = 0.5f; // K1: Accent intensity for Anchor
@@ -197,7 +197,7 @@ float* GetParameterPtr(ControlState& state, ControlMode mode, int knobIndex)
                 case 0: return &state.fuse;
                 case 1: return &state.length;
                 case 2: return &state.couple;
-                case 3: return &state.reserve;
+                case 3: return &state.ratchet;
             }
             break;
         case ControlMode::ConfigPrimary:
@@ -345,7 +345,7 @@ void ProcessControls()
     sequencer.SetFuse(controlState.fuse);
     sequencer.SetLength(MapToLength(controlState.length));
     sequencer.SetCouple(controlState.couple);
-    // K4+Shift (reserve) is not connected
+    sequencer.SetRatchet(controlState.ratchet);
 
     // Config Primary
     sequencer.SetAnchorAccent(controlState.anchorAccent);
@@ -460,11 +460,11 @@ int main(void)
     softKnobs[1].Init(controlState.shimmerDensity);
     softKnobs[2].Init(controlState.broken);
     softKnobs[3].Init(controlState.drift);
-    // Performance Shift (indices 4-7): FUSE, Length, COUPLE, Reserved
+    // Performance Shift (indices 4-7): FUSE, Length, COUPLE, RATCHET
     softKnobs[4].Init(controlState.fuse);
     softKnobs[5].Init(controlState.length);
     softKnobs[6].Init(controlState.couple);
-    softKnobs[7].Init(controlState.reserve);
+    softKnobs[7].Init(controlState.ratchet);
     // Config Primary (indices 8-11): Anchor Accent, Shimmer Accent, Contour, Tempo
     softKnobs[8].Init(controlState.anchorAccent);
     softKnobs[9].Init(controlState.shimmerAccent);

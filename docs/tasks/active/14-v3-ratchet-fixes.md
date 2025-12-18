@@ -67,36 +67,36 @@ DuoPulse v3 is mostly complete, but hardware testing revealed two critical bugs 
 ## Phase 2: RATCHET Parameter [ratchet-control]
 
 ### Parameter Setup
-- [ ] Add `ratchet_` member to Sequencer (0.0-1.0)
-- [ ] Add `SetRatchet()` / `GetRatchet()` methods
-- [ ] Map K4+Shift to RATCHET in Performance Mode
-- [ ] Add soft takeover for RATCHET parameter
-- [ ] *(spec: [ratchet-control], [duopulse-controls])*
+- [x] Add `ratchet_` member to Sequencer (0.0-1.0) *(2025-12-17)*
+- [x] Add `SetRatchet()` / `GetRatchet()` methods *(2025-12-17)*
+- [x] Map K4+Shift to RATCHET in Performance Mode *(2025-12-17)*
+- [x] Add soft takeover for RATCHET parameter *(2025-12-17: via existing SoftKnob system)*
+- [x] *(spec: [ratchet-control], [duopulse-controls])*
 
 ### Fill Zone Updates [phrase-modulation]
-- [ ] Add `isMidPhrase` (40-60%) to `PhrasePosition` struct
-- [ ] Update `GetPhraseWeightBoost()` to accept DRIFT and RATCHET parameters
-- [ ] Fill density boost scales with RATCHET (0-30%)
-- [ ] DRIFT gates fill probability — at DRIFT=0, no fills occur
-- [ ] *(spec: [ratchet-control], [phrase-modulation])*
+- [x] Add `isMidPhrase` (40-60%) to `PhrasePosition` struct *(2025-12-17)*
+- [x] Update `GetPhraseWeightBoost()` to accept DRIFT and RATCHET parameters *(2025-12-17: GetPhraseWeightBoostWithRatchet)*
+- [x] Fill density boost scales with RATCHET (0-30%) *(2025-12-17)*
+- [x] DRIFT gates fill probability — at DRIFT=0, no fills occur *(2025-12-17)*
+- [x] *(spec: [ratchet-control], [phrase-modulation])*
 
 ### Ratcheting (32nd Subdivisions)
-- [ ] Implement ratcheting logic when RATCHET > 50%
-- [ ] Ratchets occur in fill zones only
-- [ ] Ratchet density increases toward phrase end
-- [ ] *(spec: [ratchet-control])*
+- [x] Implement ratcheting logic when RATCHET > 50% *(2025-12-17: ProcessRatchet() in Sequencer)*
+- [x] Ratchets occur in fill zones only *(2025-12-17: conditional on isFillZone || isMidPhrase)*
+- [x] Ratchet density increases toward phrase end *(2025-12-17: fillProgress scales probability)*
+- [x] *(spec: [ratchet-control])*
 
 ### Fill Resolution
-- [ ] Velocity ramp: fills get louder toward phrase end (1.0-1.3×)
-- [ ] Resolution accent on phrase downbeat (1.0-1.5× based on RATCHET)
-- [ ] Update `GetPhraseAccent()` to accept RATCHET parameter
-- [ ] *(spec: [ratchet-control])*
+- [x] Velocity ramp: fills get louder toward phrase end (1.0-1.3×) *(2025-12-17)*
+- [x] Resolution accent on phrase downbeat (1.0-1.5× based on RATCHET) *(2025-12-17)*
+- [x] Update `GetPhraseAccent()` to accept RATCHET parameter *(2025-12-17: GetPhraseAccentWithRatchet)*
+- [x] *(spec: [ratchet-control])*
 
 ### Tests
-- [ ] Unit test: DRIFT=0 + any RATCHET = no fills
-- [ ] Unit test: DRIFT=100% + RATCHET=0 = subtle fills
-- [ ] Unit test: DRIFT=100% + RATCHET=100% = intense fills with ratcheting
-- [ ] Unit test: Fill zones at correct phrase positions
+- [x] Unit test: DRIFT=0 + any RATCHET = no fills *(2025-12-17)*
+- [x] Unit test: DRIFT=100% + RATCHET=0 = subtle fills *(2025-12-17)*
+- [x] Unit test: DRIFT=100% + RATCHET=100% = intense fills with ratcheting *(2025-12-17)*
+- [x] Unit test: Fill zones at correct phrase positions *(2025-12-17: isMidPhrase test)*
 
 ## Phase 3: Code Quality — Header/CPP Split
 
@@ -147,6 +147,28 @@ DuoPulse v3 is mostly complete, but hardware testing revealed two critical bugs 
 
 **Test Results:** All 139 tests pass (81,936 assertions). Firmware builds at 76% flash.
 
+### Session 2025-12-17: Phase 2 Complete
+
+**Changes Made:**
+1. `Sequencer.h` — Added `ratchet_` member, `SetRatchet()`, `GetRatchet()` methods
+2. `Sequencer.cpp` — Added `ProcessRatchet()` for 32nd note subdivision triggers
+3. `Sequencer.cpp` — Ratchet scheduling in ProcessAudio when RATCHET > 50% in fill zones
+4. `Sequencer.cpp` — Updated `GetPulseFieldTriggers()` to use RATCHET-aware functions
+5. `GenreConfig.h` — Added `isMidPhrase` (40-60%) to `PhrasePosition` struct
+6. `BrokenEffects.h` — Added `GetPhraseWeightBoostWithRatchet()` (DRIFT × RATCHET interaction)
+7. `BrokenEffects.h` — Added `GetPhraseAccentWithRatchet()` (resolution accent boost, fill zone velocity ramp)
+8. `main.cpp` — Mapped K4+Shift to RATCHET (replaced 'reserve'), updated soft knob init
+9. `test_broken_effects.cpp` — Added 10 RATCHET tests for fill probability, accent, and isMidPhrase
+
+**Key Design Decisions:**
+- DRIFT gates fill probability (DRIFT=0 → no fills, regardless of RATCHET)
+- RATCHET scales fill intensity (density boost 0-30%, velocity ramp 1.0-1.3×)
+- Ratcheting (32nd subs) fires at RATCHET > 50%, in fill/mid-phrase zones only
+- Resolution accent on phrase downbeat scales 1.2-1.5× with RATCHET
+- Ratchet triggers fire at 70% velocity of primary trigger
+
+**Test Results:** All 149 tests pass (81,957 assertions). Firmware builds at 76.80% flash.
+
 ---
 
 - RATCHET works with DRIFT, not independently:
@@ -163,7 +185,7 @@ DuoPulse v3 is mostly complete, but hardware testing revealed two critical bugs 
 |-------------|--------|
 | DENSITY=0 = absolute silence | ☑ *(2025-12-17)* |
 | DRIFT=0 = zero variation | ☑ *(2025-12-17)* |
-| RATCHET controls fill intensity | ☐ |
-| Fills target phrase boundaries | ☐ |
+| RATCHET controls fill intensity | ☑ *(2025-12-17)* |
+| Fills target phrase boundaries | ☑ *(2025-12-17)* |
 | Code moved to cpp files | ☐ |
-| All tests pass | ☑ *(139 tests, 81936 assertions)* |
+| All tests pass | ☑ *(149 tests, 81957 assertions)* |

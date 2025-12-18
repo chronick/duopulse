@@ -478,13 +478,13 @@ Fills are structured to target musically appropriate positions:
 | Fill | 75-100% | Maximum fill activity, resolving to downbeat |
 
 ### Acceptance Criteria
-- [ ] RATCHET parameter (K4+Shift) implemented
-- [ ] RATCHET controls fill density boost (0-30%)
-- [ ] Ratcheting (32nd subdivisions) at RATCHET > 50%
-- [ ] Velocity ramp in fills (louder toward phrase end)
-- [ ] Resolution accent on phrase downbeat
-- [ ] DRIFT=0 = no fills, regardless of RATCHET
-- [ ] Fills target phrase boundaries (mid-point, end)
+- [x] RATCHET parameter (K4+Shift) implemented *(2025-12-17)*
+- [x] RATCHET controls fill density boost (0-30%) *(2025-12-17)*
+- [x] Ratcheting (32nd subdivisions) at RATCHET > 50% *(2025-12-17)*
+- [x] Velocity ramp in fills (louder toward phrase end) *(2025-12-17)*
+- [x] Resolution accent on phrase downbeat *(2025-12-17)*
+- [x] DRIFT=0 = no fills, regardless of RATCHET *(2025-12-17)*
+- [x] Fills target phrase boundaries (mid-point, end) *(2025-12-17)*
 
 ---
 

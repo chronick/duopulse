@@ -389,6 +389,98 @@ inline float GetPhraseWeightBoost(const PhrasePosition& pos, float broken)
 }
 
 /**
+ * Get the weight boost for the current phrase position with DRIFT/RATCHET control.
+ *
+ * This is the v3 version that implements the DRIFT × RATCHET interaction:
+ * - DRIFT gates fill probability (at DRIFT=0, no fills occur)
+ * - RATCHET controls fill intensity (0-30% density boost)
+ *
+ * Fill zones:
+ * - Mid-phrase (40-60%): Potential mid-phrase fill
+ * - Build zone (50-75%): Increasing energy toward phrase end  
+ * - Fill zone (75-100%): Maximum fill activity
+ *
+ * Reference: docs/specs/main.md [ratchet-control]
+ *
+ * @param pos Current phrase position
+ * @param broken BROKEN parameter (0.0-1.0) - affects genre scaling
+ * @param drift DRIFT parameter (0.0-1.0) - gates fill probability
+ * @param ratchet RATCHET parameter (0.0-1.0) - controls fill intensity
+ * @return Weight boost to add to step weights (0.0 to ~0.45)
+ */
+inline float GetPhraseWeightBoostWithRatchet(const PhrasePosition& pos,
+                                             float broken,
+                                             float drift,
+                                             float ratchet)
+{
+    // CRITICAL: DRIFT=0 means no fills occur, regardless of RATCHET
+    if(drift <= 0.0f)
+        return 0.0f;
+
+    // No boost outside fill-relevant zones
+    if(!pos.isBuildZone && !pos.isMidPhrase)
+        return 0.0f;
+
+    // Clamp parameters to valid range
+    if(broken < 0.0f)
+        broken = 0.0f;
+    if(broken > 1.0f)
+        broken = 1.0f;
+    if(drift < 0.0f)
+        drift = 0.0f;
+    if(drift > 1.0f)
+        drift = 1.0f;
+    if(ratchet < 0.0f)
+        ratchet = 0.0f;
+    if(ratchet > 1.0f)
+        ratchet = 1.0f;
+
+    // Base boost depends on zone
+    float boost = 0.0f;
+
+    if(pos.isFillZone)
+    {
+        // Fill zone (75-100%): Maximum fill activity
+        // phraseProgress goes from 0.75 to 1.0 in fill zone
+        // Base boost: 0.15 to 0.25
+        float fillProgress = (pos.phraseProgress - 0.75f) * 4.0f;
+        boost              = 0.15f + fillProgress * 0.10f;
+    }
+    else if(pos.isBuildZone)
+    {
+        // Build zone (50-75%): Increasing energy
+        // phraseProgress goes from 0.5 to 0.75 in build zone
+        // boost goes from 0 to 0.075
+        float buildProgress = (pos.phraseProgress - 0.5f) * 4.0f;
+        boost               = buildProgress * 0.075f;
+    }
+    else if(pos.isMidPhrase)
+    {
+        // Mid-phrase (40-60%): Potential mid-phrase fill
+        // Subtle boost, only with higher RATCHET
+        // boost goes from 0 to 0.05 based on RATCHET
+        boost = 0.05f * ratchet;
+    }
+
+    // RATCHET scales fill intensity (0-30% additional boost at max)
+    // At RATCHET=0: only base boost
+    // At RATCHET=1: base boost + 30% extra
+    float ratchetBoost = boost * ratchet * 0.6f; // Up to 60% extra on base boost
+    boost += ratchetBoost;
+
+    // DRIFT gates how much fill activity occurs
+    // At DRIFT=0: no fills (handled above)
+    // At DRIFT=1: full fill probability
+    boost *= drift;
+
+    // Genre scale: Techno has subtle fills, IDM has dramatic fills
+    // Scale ranges from 0.5 (at broken=0) to 1.5 (at broken=1)
+    float genreScale = 0.5f + broken * 1.0f;
+
+    return boost * genreScale;
+}
+
+/**
  * Get the effective BROKEN level, boosted in fill zones.
  *
  * Temporarily increase BROKEN in fill zones for extra chaos:
@@ -444,6 +536,55 @@ inline float GetPhraseAccent(const PhrasePosition& pos)
     // Bar downbeat gets moderate accent
     if(pos.isDownbeat)
         return 1.1f;
+
+    // No accent for other steps
+    return 1.0f;
+}
+
+/**
+ * Get the velocity accent multiplier with RATCHET-enhanced resolution accent.
+ *
+ * RATCHET boosts the resolution accent on phrase downbeats:
+ * - Phrase downbeat: 1.2× to 1.5× based on RATCHET
+ * - Bar downbeat: 1.1× (unchanged)
+ * - Fill zone: velocity ramp 1.0-1.3× toward phrase end
+ *
+ * Reference: docs/specs/main.md [ratchet-control]
+ *
+ * @param pos Current phrase position
+ * @param ratchet RATCHET parameter (0.0-1.0) - fill intensity
+ * @return Velocity multiplier (1.0-1.5)
+ */
+inline float GetPhraseAccentWithRatchet(const PhrasePosition& pos, float ratchet)
+{
+    // Clamp ratchet to valid range
+    if(ratchet < 0.0f)
+        ratchet = 0.0f;
+    if(ratchet > 1.0f)
+        ratchet = 1.0f;
+
+    // Phrase downbeat gets resolution accent boosted by RATCHET
+    // Base: 1.2×, max with RATCHET=1: 1.5×
+    if(pos.stepInPhrase == 0)
+        return 1.2f + (ratchet * 0.3f);
+
+    // Bar downbeat gets moderate accent (unchanged by RATCHET)
+    if(pos.isDownbeat)
+        return 1.1f;
+
+    // Fill zone: velocity ramp toward phrase end (fills get louder)
+    // Ramp scales with RATCHET: 0 at RATCHET=0, up to 1.3× at RATCHET=1
+    if(pos.isFillZone && ratchet > 0.0f)
+    {
+        // fillProgress: 0 at start of fill zone (75%), 1 at end (100%)
+        float fillProgress = (pos.phraseProgress - 0.75f) * 4.0f;
+        if(fillProgress < 0.0f)
+            fillProgress = 0.0f;
+        if(fillProgress > 1.0f)
+            fillProgress = 1.0f;
+        // Velocity ramp: 1.0 to 1.3× toward end, scaled by RATCHET
+        return 1.0f + (fillProgress * 0.3f * ratchet);
+    }
 
     // No accent for other steps
     return 1.0f;

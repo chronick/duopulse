@@ -371,8 +371,9 @@ struct PhrasePosition
     int   stepInPhrase   = 0;     // 0 to (loopLengthBars * 16 - 1)
     float phraseProgress = 0.0f;  // 0.0 to 1.0 (normalized position in loop)
     bool  isLastBar      = false; // Approaching loop point
-    bool  isFillZone     = false; // In fill zone (last steps of phrase)
-    bool  isBuildZone    = false; // In build zone (leading up to fill)
+    bool  isFillZone     = false; // In fill zone (last steps of phrase, 75-100%)
+    bool  isBuildZone    = false; // In build zone (leading up to fill, 50-100%)
+    bool  isMidPhrase    = false; // Mid-phrase zone (40-60% of phrase)
     bool  isDownbeat     = true;  // Step 0 of any bar
 };
 
@@ -408,6 +409,9 @@ inline PhrasePosition CalculatePhrasePosition(int stepIndex, int loopLengthBars)
     int stepsFromEnd = totalSteps - pos.stepInPhrase;
     pos.isFillZone  = (stepsFromEnd <= fillZoneSteps);
     pos.isBuildZone = (stepsFromEnd <= buildZoneSteps);
+    
+    // Mid-phrase zone (40-60% of phrase): potential mid-phrase fill point
+    pos.isMidPhrase = (pos.phraseProgress >= 0.40f && pos.phraseProgress < 0.60f);
 
     return pos;
 }
