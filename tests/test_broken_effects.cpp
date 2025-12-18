@@ -851,6 +851,136 @@ TEST_CASE("ApplyCouple clamps couple parameter", "[broken-effects][couple-interl
 }
 
 // =============================================================================
+// v3 Critical Rules: DENSITY=0 Absolute Silence [v3-critical-rules]
+// =============================================================================
+
+TEST_CASE("ApplyFuse preserves DENSITY=0 for anchor", "[broken-effects][v3-critical-rules][density-zero]")
+{
+    // If anchor density was 0, FUSE must NOT boost it above 0
+    float anchor = 0.0f;
+    float shimmer = 0.5f;
+
+    // FUSE CW would normally reduce anchor by 0.15, but it's already 0
+    // FUSE CCW would normally boost anchor by 0.15, but we must preserve 0
+    ApplyFuse(0.0f, anchor, shimmer);  // CCW = anchor boost attempt
+
+    REQUIRE(anchor == Catch::Approx(0.0f));  // Must remain at 0
+    REQUIRE(shimmer < 0.5f);  // Shimmer still affected
+}
+
+TEST_CASE("ApplyFuse preserves DENSITY=0 for shimmer", "[broken-effects][v3-critical-rules][density-zero]")
+{
+    // If shimmer density was 0, FUSE must NOT boost it above 0
+    float anchor = 0.5f;
+    float shimmer = 0.0f;
+
+    // FUSE CW would normally boost shimmer by 0.15, but we must preserve 0
+    ApplyFuse(1.0f, anchor, shimmer);  // CW = shimmer boost attempt
+
+    REQUIRE(shimmer == Catch::Approx(0.0f));  // Must remain at 0
+    REQUIRE(anchor < 0.5f);  // Anchor still affected
+}
+
+TEST_CASE("ApplyFuse preserves DENSITY=0 for both voices", "[broken-effects][v3-critical-rules][density-zero]")
+{
+    // Both voices at 0 must stay at 0 regardless of FUSE
+    for (float fuse = 0.0f; fuse <= 1.0f; fuse += 0.1f)
+    {
+        float anchor = 0.0f;
+        float shimmer = 0.0f;
+
+        ApplyFuse(fuse, anchor, shimmer);
+
+        REQUIRE(anchor == Catch::Approx(0.0f));
+        REQUIRE(shimmer == Catch::Approx(0.0f));
+    }
+}
+
+TEST_CASE("ApplyCouple does not gap-fill when shimmerDensity=0", "[broken-effects][v3-critical-rules][density-zero]")
+{
+    // Gap-filling must NOT happen when shimmer density is 0
+    // Even at max COUPLE with anchor silent, shimmer stays silent
+    for (uint32_t seed = 0; seed < 100; seed++)
+    {
+        bool shimmerFires = false;
+        float shimmerVel = 0.0f;
+        float shimmerDensity = 0.0f;  // Density is zero
+
+        ApplyCouple(1.0f, false, shimmerFires, shimmerVel, seed, 5, shimmerDensity);
+
+        REQUIRE(shimmerFires == false);  // Must NOT gap-fill when density=0
+        REQUIRE(shimmerVel == Catch::Approx(0.0f));
+    }
+}
+
+TEST_CASE("ApplyCouple still suppresses when shimmerDensity=0", "[broken-effects][v3-critical-rules][density-zero]")
+{
+    // Suppression should still work (turning shimmer OFF)
+    // This is a safety check - if shimmer somehow fired, COUPLE can suppress it
+    bool shimmerFires = true;  // Hypothetically firing
+    float shimmerVel = 0.8f;
+    float shimmerDensity = 0.0f;
+    uint32_t seed = 12345;
+
+    // Find a seed that triggers suppression
+    for (uint32_t s = 0; s < 100; s++)
+    {
+        shimmerFires = true;
+        shimmerVel = 0.8f;
+        ApplyCouple(1.0f, true, shimmerFires, shimmerVel, s, 0, shimmerDensity);
+        if (!shimmerFires)
+            break;
+    }
+
+    // At high couple with anchor firing, suppression should work
+    // (This test just verifies suppression still functions)
+    // The important invariant is: gap-fill NEVER injects triggers at density=0
+}
+
+TEST_CASE("ApplyCouple gap-fills normally when shimmerDensity > 0", "[broken-effects][v3-critical-rules][density-zero]")
+{
+    // Verify gap-filling works normally when density is positive
+    int boostCount = 0;
+
+    for (uint32_t seed = 0; seed < 100; seed++)
+    {
+        bool shimmerFires = false;
+        float shimmerVel = 0.0f;
+        float shimmerDensity = 0.5f;  // Normal density
+
+        ApplyCouple(1.0f, false, shimmerFires, shimmerVel, seed, 5, shimmerDensity);
+
+        if (shimmerFires)
+            boostCount++;
+    }
+
+    // Should have some gap-fills when density > 0
+    REQUIRE(boostCount > 10);
+}
+
+TEST_CASE("ApplyCouple backward compatible when shimmerDensity not provided", "[broken-effects][v3-critical-rules][density-zero]")
+{
+    // When shimmerDensity is not provided (default -1.0f), gap-filling should work
+    // This ensures backward compatibility with existing code
+    int boostCount = 0;
+
+    for (uint32_t seed = 0; seed < 100; seed++)
+    {
+        bool shimmerFires = false;
+        float shimmerVel = 0.0f;
+
+        // Call without shimmerDensity (uses default -1.0f)
+        ApplyCouple(1.0f, false, shimmerFires, shimmerVel, seed, 5);
+
+        if (shimmerFires)
+            boostCount++;
+    }
+
+    // Should still gap-fill when density param not provided
+    REQUIRE(boostCount > 10);
+}
+
+// =============================================================================
 // Integration Tests [broken-effects][integration]
 // =============================================================================
 

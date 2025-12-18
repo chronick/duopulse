@@ -313,8 +313,8 @@ Each of the 32 steps in a pattern has a **weight** that represents its "likeliho
 - [x] Threshold comparison with DENSITY *(2025-12-17: threshold = 1 - density)*
 - [x] Separate weight tables for Anchor and Shimmer *(2025-12-17: kAnchorWeights, kShimmerWeights)*
 - [x] Deterministic mode (seeded RNG) for reproducibility *(2025-12-17: PulseFieldState dual seeds)*
-- [ ] **BUG**: DENSITY=0 check must be FIRST (absolute floor) — currently has leakage
-- [ ] **BUG**: DRIFT=0 must produce ZERO variation — currently has beat variation
+- [x] **FIXED**: DENSITY=0 = absolute silence (no leakage from FUSE/COUPLE) *(2025-12-17: v3-ratchet-fixes)*
+- [x] **FIXED**: DRIFT=0 = zero variation (densityBias skipped when DRIFT=0) *(2025-12-17: v3-ratchet-fixes)*
 
 ---
 

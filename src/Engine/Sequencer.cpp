@@ -366,9 +366,25 @@ std::array<float, 2> Sequencer::ProcessAudio()
 #ifdef USE_PULSE_FIELD_V3
             // === DuoPulse v3: Weighted Pulse Field Algorithm ===
             // FUSE is applied inside GetPulseFieldTriggers
-            // Add chaos density bias for additional variation
-            float anchorDensMod  = Clamp(anchorDensity_ + chaosSampleLow.densityBias, 0.05f, 0.95f);
-            float shimmerDensMod = Clamp(shimmerDensity_ + chaosSampleHigh.densityBias, 0.05f, 0.95f);
+            // 
+            // v3 Critical Rule: DENSITY=0 must be absolute silence
+            // v3 Critical Rule: DRIFT=0 must produce zero variation (identical every loop)
+            // 
+            // At DRIFT=0, skip chaos densityBias to ensure deterministic pattern.
+            // ChaosModulator uses non-deterministic RNG that would break DRIFT=0 invariant.
+            float anchorDensMod  = anchorDensity_;
+            float shimmerDensMod = shimmerDensity_;
+            
+            if(drift_ > 0.0f)
+            {
+                // Only add chaos variation when DRIFT allows pattern evolution
+                anchorDensMod  += chaosSampleLow.densityBias;
+                shimmerDensMod += chaosSampleHigh.densityBias;
+            }
+            
+            // Clamp to valid range (0.0f floor preserves DENSITY=0 = silence)
+            anchorDensMod  = Clamp(anchorDensMod, 0.0f, 0.95f);
+            shimmerDensMod = Clamp(shimmerDensMod, 0.0f, 0.95f);
 
             // Use PulseField algorithm with BROKEN/DRIFT controls
             GetPulseFieldTriggers(stepIndex_, anchorDensMod, shimmerDensMod,
@@ -387,8 +403,8 @@ std::array<float, 2> Sequencer::ProcessAudio()
             // === DuoPulse v2: PatternSkeleton System ===
             // Apply fuse as density tilt: fuse < 0.5 boosts anchor, > 0.5 boosts shimmer
             float fuseBias     = (fuse_ - 0.5f) * 0.3f; // ±15% tilt
-            float anchorDensMod  = Clamp(anchorDensity_ - fuseBias + chaosSampleLow.densityBias, 0.05f, 0.95f);
-            float shimmerDensMod = Clamp(shimmerDensity_ + fuseBias + chaosSampleHigh.densityBias, 0.05f, 0.95f);
+            float anchorDensMod  = Clamp(anchorDensity_ - fuseBias + chaosSampleLow.densityBias, 0.0f, 0.95f);
+            float shimmerDensMod = Clamp(shimmerDensity_ + fuseBias + chaosSampleHigh.densityBias, 0.0f, 0.95f);
 
             // Use PatternSkeleton system with density threshold
             GetSkeletonTriggers(stepIndex_, anchorDensMod, shimmerDensMod,
@@ -950,8 +966,9 @@ void Sequencer::GetPulseFieldTriggers(int step, float anchorDens, float shimmerD
 
     // Apply COUPLE interlock (suppresses collisions, fills gaps)
     // Needs a seed for deterministic randomness
+    // Pass fusedShimmerDens to enforce DENSITY=0 invariant (no gap-fill when silent)
     uint32_t coupleSeed = pulseFieldState_.patternSeed_ ^ 0x434F5550; // "COUP"
-    ApplyCouple(couple_, anchorTrig, shimmerTrig, shimmerVel, coupleSeed, wrappedStep);
+    ApplyCouple(couple_, anchorTrig, shimmerTrig, shimmerVel, coupleSeed, wrappedStep, fusedShimmerDens);
 
     // Calculate base velocities from weight tables
     if(anchorTrig)

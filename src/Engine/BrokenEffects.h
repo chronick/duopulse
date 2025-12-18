@@ -463,6 +463,9 @@ inline float GetPhraseAccent(const PhrasePosition& pos)
  *
  * At extremes, density shifts by ±15%.
  *
+ * v3 Critical Rule: If a voice's base density was 0, FUSE must NOT boost it above 0.
+ * DENSITY=0 must always mean absolute silence.
+ *
  * Reference: docs/specs/double-down/simplified-algorithmic-approach.md [fuse-balance]
  *
  * @param fuse FUSE parameter (0.0-1.0)
@@ -471,6 +474,11 @@ inline float GetPhraseAccent(const PhrasePosition& pos)
  */
 inline void ApplyFuse(float fuse, float& anchorDensity, float& shimmerDensity)
 {
+    // v3 Critical Rule: DENSITY=0 = absolute silence
+    // Store whether each voice was at zero before any modification
+    bool anchorWasZero  = (anchorDensity <= 0.0f);
+    bool shimmerWasZero = (shimmerDensity <= 0.0f);
+
     // Clamp fuse to valid range
     if(fuse < 0.0f)
         fuse = 0.0f;
@@ -486,6 +494,12 @@ inline void ApplyFuse(float fuse, float& anchorDensity, float& shimmerDensity)
     // Apply bias: subtract from anchor, add to shimmer
     anchorDensity  = Clamp(anchorDensity - bias, 0.0f, 1.0f);
     shimmerDensity = Clamp(shimmerDensity + bias, 0.0f, 1.0f);
+
+    // Enforce DENSITY=0 invariant: if voice started at 0, keep it at 0
+    if(anchorWasZero)
+        anchorDensity = 0.0f;
+    if(shimmerWasZero)
+        shimmerDensity = 0.0f;
 }
 
 // =============================================================================
@@ -508,6 +522,9 @@ constexpr uint32_t kCoupleVelHashMagic      = 0x56454C43; // "VELC"
  * When anchor fires, shimmer may be suppressed to avoid collision.
  * When anchor is silent, shimmer may be boosted to fill the gap.
  *
+ * v3 Critical Rule: If shimmer's density is 0, COUPLE must NOT inject triggers.
+ * DENSITY=0 must always mean absolute silence.
+ *
  * Reference: docs/specs/double-down/simplified-algorithmic-approach.md [couple-interlock]
  *
  * @param couple COUPLE parameter (0.0-1.0)
@@ -516,13 +533,15 @@ constexpr uint32_t kCoupleVelHashMagic      = 0x56454C43; // "VELC"
  * @param shimmerVel Reference to shimmer velocity (may be modified for fills)
  * @param seed Seed for deterministic randomness
  * @param step Step index for per-step randomness
+ * @param shimmerDensity Shimmer density (for enforcing DENSITY=0 invariant)
  */
 inline void ApplyCouple(float couple,
                         bool anchorFires,
                         bool& shimmerFires,
                         float& shimmerVel,
                         uint32_t seed,
-                        int step)
+                        int step,
+                        float shimmerDensity = -1.0f)
 {
     // Clamp couple to valid range
     if(couple < 0.0f)
@@ -552,7 +571,12 @@ inline void ApplyCouple(float couple,
     {
         // Anchor is silent — boost shimmer probability (gap filling)
         // Only applies when shimmer wasn't already firing and couple > 50%
-        if(!shimmerFires && couple > 0.5f)
+        //
+        // v3 Critical Rule: NEVER gap-fill if shimmerDensity is 0
+        // DENSITY=0 = absolute silence
+        bool densityAllowsFill = (shimmerDensity < 0.0f) || (shimmerDensity > 0.0f);
+        
+        if(!shimmerFires && couple > 0.5f && densityAllowsFill)
         {
             // Boost chance scales from 0% at couple=0.5 to 30% at couple=1.0
             float boostChance = (couple - 0.5f) * 0.6f;

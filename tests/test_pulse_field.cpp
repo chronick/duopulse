@@ -640,3 +640,274 @@ TEST_CASE("GetPulseFieldTriggers returns both voice results", "[pulse-field][dri
     REQUIRE(anchorFires == true);
     REQUIRE(shimmerFires == true);
 }
+
+// =============================================================================
+// v3 Critical Rules: DENSITY=0 Absolute Silence [v3-critical-rules]
+// =============================================================================
+
+TEST_CASE("DENSITY=0 produces zero triggers regardless of BROKEN", "[pulse-field][v3-critical-rules][density-zero]")
+{
+    PulseFieldState state;
+    state.Init(0x12345678);
+
+    // Test all steps at density=0 with various BROKEN levels
+    for (float broken = 0.0f; broken <= 1.0f; broken += 0.25f)
+    {
+        for (int step = 0; step < kPulseFieldSteps; step++)
+        {
+            // Anchor density = 0
+            bool fires = ShouldStepFire(step, 0.0f, broken, kAnchorWeights, state.patternSeed_);
+            REQUIRE(fires == false);
+
+            // Shimmer density = 0
+            fires = ShouldStepFire(step, 0.0f, broken, kShimmerWeights, state.patternSeed_);
+            REQUIRE(fires == false);
+        }
+    }
+}
+
+TEST_CASE("DENSITY=0 produces zero triggers regardless of DRIFT", "[pulse-field][v3-critical-rules][density-zero]")
+{
+    PulseFieldState state;
+    state.Init(0xABCDEF01);
+
+    // Test with DRIFT across multiple phrase resets
+    for (float drift = 0.0f; drift <= 1.0f; drift += 0.25f)
+    {
+        for (int loop = 0; loop < 5; loop++)
+        {
+            state.OnPhraseReset();
+
+            for (int step = 0; step < kPulseFieldSteps; step++)
+            {
+                // Anchor at density=0
+                bool anchorFires = ShouldStepFireWithDrift(step, 0.0f, 0.5f, drift, true, state);
+                REQUIRE(anchorFires == false);
+
+                // Shimmer at density=0
+                bool shimmerFires = ShouldStepFireWithDrift(step, 0.0f, 0.5f, drift, false, state);
+                REQUIRE(shimmerFires == false);
+            }
+        }
+    }
+}
+
+TEST_CASE("DENSITY=0 produces zero triggers via GetPulseFieldTriggers", "[pulse-field][v3-critical-rules][density-zero]")
+{
+    PulseFieldState state;
+    state.Init(0xFEDCBA98);
+
+    // Test full integration: both voices at density=0
+    for (float broken = 0.0f; broken <= 1.0f; broken += 0.5f)
+    {
+        for (float drift = 0.0f; drift <= 1.0f; drift += 0.5f)
+        {
+            state.OnPhraseReset();
+
+            for (int step = 0; step < kPulseFieldSteps; step++)
+            {
+                bool anchorFires, shimmerFires;
+                GetPulseFieldTriggers(step, 0.0f, 0.0f, broken, drift, state, anchorFires, shimmerFires);
+
+                REQUIRE(anchorFires == false);
+                REQUIRE(shimmerFires == false);
+            }
+        }
+    }
+}
+
+TEST_CASE("DENSITY=0 for one voice does not affect other voice", "[pulse-field][v3-critical-rules][density-zero]")
+{
+    PulseFieldState state;
+    state.Init(0x11223344);
+
+    // Anchor at 0, Shimmer at normal density
+    bool anchorFires, shimmerFires;
+
+    // Step 24 = shimmer backbeat (weight 1.0), anchor at density 0
+    GetPulseFieldTriggers(24, 0.0f, 0.8f, 0.0f, 0.0f, state, anchorFires, shimmerFires);
+    REQUIRE(anchorFires == false);  // Anchor silent (density=0)
+    REQUIRE(shimmerFires == true);  // Shimmer fires normally
+
+    // Shimmer at 0, Anchor at normal density
+    // Step 0 = anchor downbeat (weight 1.0), shimmer low weight
+    GetPulseFieldTriggers(0, 0.8f, 0.0f, 0.0f, 0.0f, state, anchorFires, shimmerFires);
+    REQUIRE(anchorFires == true);   // Anchor fires normally
+    REQUIRE(shimmerFires == false); // Shimmer silent (density=0 + low weight)
+}
+
+// =============================================================================
+// v3 Critical Rules: DRIFT=0 Zero Variation [v3-critical-rules]
+// =============================================================================
+
+TEST_CASE("DRIFT=0 produces identical pattern across many phrase resets", "[pulse-field][v3-critical-rules][drift-zero]")
+{
+    PulseFieldState state;
+    state.Init(0x55667788);
+
+    float density = 0.6f;
+    float broken = 0.5f;
+    float drift = 0.0f;  // Critical: zero drift
+
+    // Record the initial pattern
+    bool anchorPattern[kPulseFieldSteps];
+    bool shimmerPattern[kPulseFieldSteps];
+
+    for (int step = 0; step < kPulseFieldSteps; step++)
+    {
+        bool anchor, shimmer;
+        GetPulseFieldTriggers(step, density, density, broken, drift, state, anchor, shimmer);
+        anchorPattern[step] = anchor;
+        shimmerPattern[step] = shimmer;
+    }
+
+    // Verify pattern is identical across 20 phrase resets
+    for (int loop = 0; loop < 20; loop++)
+    {
+        state.OnPhraseReset();
+
+        for (int step = 0; step < kPulseFieldSteps; step++)
+        {
+            bool anchor, shimmer;
+            GetPulseFieldTriggers(step, density, density, broken, drift, state, anchor, shimmer);
+
+            REQUIRE(anchor == anchorPattern[step]);
+            REQUIRE(shimmer == shimmerPattern[step]);
+        }
+    }
+}
+
+TEST_CASE("DRIFT=0 + BROKEN=100% still produces identical pattern every loop", "[pulse-field][v3-critical-rules][drift-zero]")
+{
+    // This is a critical test: even with maximum chaos (BROKEN=100%),
+    // if DRIFT=0, the pattern must be 100% repeatable
+
+    PulseFieldState state;
+    state.Init(0x99AABBCC);
+
+    float density = 0.5f;
+    float broken = 1.0f;  // Maximum chaos
+    float drift = 0.0f;   // But zero drift = locked
+
+    // Record the initial pattern
+    bool anchorPattern[kPulseFieldSteps];
+    bool shimmerPattern[kPulseFieldSteps];
+
+    for (int step = 0; step < kPulseFieldSteps; step++)
+    {
+        bool anchor, shimmer;
+        GetPulseFieldTriggers(step, density, density, broken, drift, state, anchor, shimmer);
+        anchorPattern[step] = anchor;
+        shimmerPattern[step] = shimmer;
+    }
+
+    // Verify pattern is identical across 20 phrase resets
+    for (int loop = 0; loop < 20; loop++)
+    {
+        state.OnPhraseReset();
+
+        for (int step = 0; step < kPulseFieldSteps; step++)
+        {
+            bool anchor, shimmer;
+            GetPulseFieldTriggers(step, density, density, broken, drift, state, anchor, shimmer);
+
+            REQUIRE(anchor == anchorPattern[step]);
+            REQUIRE(shimmer == shimmerPattern[step]);
+        }
+    }
+}
+
+TEST_CASE("DRIFT=0 with different initial seeds produces different but stable patterns", "[pulse-field][v3-critical-rules][drift-zero]")
+{
+    // Different seeds should produce different patterns, but each should be stable at DRIFT=0
+
+    float density = 0.6f;
+    float broken = 0.3f;
+    float drift = 0.0f;
+
+    // Test with two different seeds
+    PulseFieldState state1, state2;
+    state1.Init(0x11111111);
+    state2.Init(0x22222222);
+
+    // Both should be internally stable
+    for (int loop = 0; loop < 5; loop++)
+    {
+        state1.OnPhraseReset();
+        state2.OnPhraseReset();
+    }
+
+    // Check state1 is stable
+    bool pattern1[kPulseFieldSteps];
+    for (int step = 0; step < kPulseFieldSteps; step++)
+    {
+        bool anchor, shimmer;
+        GetPulseFieldTriggers(step, density, density, broken, drift, state1, anchor, shimmer);
+        pattern1[step] = anchor;
+    }
+
+    state1.OnPhraseReset();
+
+    for (int step = 0; step < kPulseFieldSteps; step++)
+    {
+        bool anchor, shimmer;
+        GetPulseFieldTriggers(step, density, density, broken, drift, state1, anchor, shimmer);
+        REQUIRE(anchor == pattern1[step]);  // Must be identical
+    }
+}
+
+TEST_CASE("The Reference Point: BROKEN=0 DRIFT=0 DENSITY=50% classic 4/4", "[pulse-field][v3-critical-rules][reference-point]")
+{
+    // Spec requirement: At BROKEN=0, DRIFT=0, DENSITIES at 50%:
+    // "classic 4/4 kick with snare on backbeat, repeated identically forever"
+
+    PulseFieldState state;
+    state.Init(0x44554F50);  // "DUOP"
+
+    float density = 0.5f;
+    float broken = 0.0f;
+    float drift = 0.0f;
+
+    // Step 0: anchor should fire (downbeat, weight 1.0 > threshold 0.5)
+    bool anchor0, shimmer0;
+    GetPulseFieldTriggers(0, density, density, broken, drift, state, anchor0, shimmer0);
+    REQUIRE(anchor0 == true);   // Kick on the 1
+    REQUIRE(shimmer0 == false); // Shimmer weight 0.25 < 0.5
+
+    // Step 8: shimmer should fire (backbeat, weight 1.0 > threshold 0.5)
+    bool anchor8, shimmer8;
+    GetPulseFieldTriggers(8, density, density, broken, drift, state, anchor8, shimmer8);
+    REQUIRE(anchor8 == true);   // Anchor weight 0.85 > 0.5
+    REQUIRE(shimmer8 == true);  // Snare on backbeat
+
+    // Step 16: anchor should fire (downbeat bar 2)
+    bool anchor16, shimmer16;
+    GetPulseFieldTriggers(16, density, density, broken, drift, state, anchor16, shimmer16);
+    REQUIRE(anchor16 == true);
+
+    // Step 24: shimmer should fire (backbeat bar 2)
+    bool anchor24, shimmer24;
+    GetPulseFieldTriggers(24, density, density, broken, drift, state, anchor24, shimmer24);
+    REQUIRE(shimmer24 == true);
+
+    // Verify pattern repeats identically
+    for (int loop = 0; loop < 10; loop++)
+    {
+        state.OnPhraseReset();
+
+        bool a0, s0, a8, s8, a16, s16, a24, s24;
+        GetPulseFieldTriggers(0, density, density, broken, drift, state, a0, s0);
+        GetPulseFieldTriggers(8, density, density, broken, drift, state, a8, s8);
+        GetPulseFieldTriggers(16, density, density, broken, drift, state, a16, s16);
+        GetPulseFieldTriggers(24, density, density, broken, drift, state, a24, s24);
+
+        REQUIRE(a0 == anchor0);
+        REQUIRE(s0 == shimmer0);
+        REQUIRE(a8 == anchor8);
+        REQUIRE(s8 == shimmer8);
+        REQUIRE(a16 == anchor16);
+        REQUIRE(s16 == shimmer16);
+        REQUIRE(a24 == anchor24);
+        REQUIRE(s24 == shimmer24);
+    }
+}

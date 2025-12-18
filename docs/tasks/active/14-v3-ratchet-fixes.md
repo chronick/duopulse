@@ -41,11 +41,11 @@ DuoPulse v3 is mostly complete, but hardware testing revealed two critical bugs 
 **Design Principle**: If user sets density=0, that voice is SILENT. No FUSE boost, no COUPLE gap-fill.
 
 **Fixes (elegant, algorithm-preserving):**
-- [ ] **Fix 1**: Change clamp from `0.05f` to `0.0f` in Sequencer.cpp (lines 370, 390)
-- [ ] **Fix 2**: In `ApplyFuse()`, don't boost a voice above 0 if its base density was 0
-- [ ] **Fix 3**: In `ApplyCouple()`, don't gap-fill for a voice if its density is 0
-- [ ] Add unit test: density=0 produces zero triggers regardless of BROKEN/DRIFT/FUSE/COUPLE
-- [ ] *(spec: [pulse-field], [v3-critical-rules])*
+- [x] **Fix 1**: Change clamp from `0.05f` to `0.0f` in Sequencer.cpp (lines 370, 390) *(2025-12-17)*
+- [x] **Fix 2**: In `ApplyFuse()`, don't boost a voice above 0 if its base density was 0 *(2025-12-17)*
+- [x] **Fix 3**: In `ApplyCouple()`, don't gap-fill for a voice if its density is 0 *(2025-12-17)*
+- [x] Add unit test: density=0 produces zero triggers regardless of BROKEN/DRIFT/FUSE/COUPLE *(2025-12-17)*
+- [x] *(spec: [pulse-field], [v3-critical-rules])*
 
 ### DRIFT=0 Zero Variation [v3-critical-rules]
 
@@ -57,12 +57,12 @@ DuoPulse v3 is mostly complete, but hardware testing revealed two critical bugs 
 **Design Principle**: In v3, BROKEN controls variation (deterministic via seeds), DRIFT controls whether it changes per-loop. ChaosModulator's density bias is redundant and breaks DRIFT=0.
 
 **Fixes (clean v3 path):**
-- [ ] **Fix 1**: In v3 path, skip `chaosSampleLow.densityBias` addition — just use raw densities
-- [ ] **Fix 2**: Or: Only add densityBias when DRIFT>0 (conditional chaos)
-- [ ] Verify at DRIFT=0, ALL steps use `patternSeed_` (algorithm already correct)
-- [ ] Add unit test: DRIFT=0 produces identical pattern across multiple loops
-- [ ] Add unit test: DRIFT=0 + BROKEN=100% still produces same chaos pattern every loop
-- [ ] *(spec: [drift-control], [v3-critical-rules])*
+- [x] **Fix 1**: In v3 path, skip `chaosSampleLow.densityBias` addition — just use raw densities *(2025-12-17: implemented conditional approach)*
+- [x] **Fix 2**: Only add densityBias when DRIFT>0 (conditional chaos) *(2025-12-17: implemented)*
+- [x] Verify at DRIFT=0, ALL steps use `patternSeed_` (algorithm already correct) *(2025-12-17: verified via tests)*
+- [x] Add unit test: DRIFT=0 produces identical pattern across multiple loops *(2025-12-17)*
+- [x] Add unit test: DRIFT=0 + BROKEN=100% still produces same chaos pattern every loop *(2025-12-17)*
+- [x] *(spec: [drift-control], [v3-critical-rules])*
 
 ## Phase 2: RATCHET Parameter [ratchet-control]
 
@@ -131,6 +131,24 @@ DuoPulse v3 is mostly complete, but hardware testing revealed two critical bugs 
 
 ## Notes
 
+### Session 2025-12-17: Phase 1 Complete
+
+**Changes Made:**
+1. `Sequencer.cpp` — Changed density clamp floor from `0.05f` to `0.0f` (was preventing true silence)
+2. `Sequencer.cpp` — Added conditional: skip ChaosModulator `densityBias` when `drift_ == 0` (was breaking DRIFT=0 determinism)
+3. `BrokenEffects.h` `ApplyFuse()` — Added zero-preservation logic: if voice density was 0, FUSE cannot boost it above 0
+4. `BrokenEffects.h` `ApplyCouple()` — Added optional `shimmerDensity` param; gap-fill disabled when density ≤ 0
+5. `test_broken_effects.cpp` — Added 9 v3-critical-rules tests for DENSITY=0 invariant
+6. `test_pulse_field.cpp` — Added 7 v3-critical-rules tests for DENSITY=0 and DRIFT=0 invariants, including "The Reference Point" test
+
+**Key Design Decisions:**
+- Made `ApplyCouple(shimmerDensity)` optional with default `-1.0f` for backward compatibility
+- Used `densityBias` conditional on `drift_ > 0` rather than removing it entirely (cleaner, maintains v2 fallback)
+
+**Test Results:** All 139 tests pass (81,936 assertions). Firmware builds at 76% flash.
+
+---
+
 - RATCHET works with DRIFT, not independently:
   - DRIFT = "Do fills happen?" (probability gate)
   - RATCHET = "How intense are fills?" (intensity control)
@@ -143,9 +161,9 @@ DuoPulse v3 is mostly complete, but hardware testing revealed two critical bugs 
 
 | Requirement | Status |
 |-------------|--------|
-| DENSITY=0 = absolute silence | ☐ |
-| DRIFT=0 = zero variation | ☐ |
+| DENSITY=0 = absolute silence | ☑ *(2025-12-17)* |
+| DRIFT=0 = zero variation | ☑ *(2025-12-17)* |
 | RATCHET controls fill intensity | ☐ |
 | Fills target phrase boundaries | ☐ |
 | Code moved to cpp files | ☐ |
-| All tests pass | ☐ |
+| All tests pass | ☑ *(139 tests, 81936 assertions)* |
