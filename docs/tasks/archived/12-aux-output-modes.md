@@ -1,7 +1,7 @@
 ---
 id: chronick/daisysp-idm-grids-12
 title: "Auxiliary Output Modes (CV Out 1)"
-status: "superseded"
+status: "archived"
 created_date: "2025-12-16"
 last_updated: "2025-12-19"
 owner: "user/ai"

@@ -14,7 +14,7 @@
 | 09 | soft-takeover-ux | Improve Soft Takeover and Visual Feedback | completed | 2025-11-25 | 2025-11-25 | completed/09-soft-takeover-ux.md |
 | 10 | duopulse-v2 | DuoPulse v2: 2-Voice Percussive Sequencer with genre-aware swing, phrase structure, voice relationships | completed | 2025-12-01 | 2025-12-02 | completed/10-duopulse-v2.md |
 | 11 | control-layout-fixes | Control Layout Fixes: mode persistence bug, FLUX/FUSE investigation, control reorganization | completed | 2025-12-03 | 2025-12-16 | completed/11-control-layout-fixes.md |
-| 12 | aux-output-modes | Auxiliary Output Modes (CV Out 1) — superseded by task 15 (v4) | superseded | 2025-12-16 | 2025-12-19 | backlog/12-aux-output-modes.md |
+| 12 | aux-output-modes | Auxiliary Output Modes (CV Out 1) — superseded by task 15 (v4) | archived | 2025-12-16 | 2025-12-19 | archived/12-aux-output-modes.md |
 | 13 | pulse-field-v3 | DuoPulse v3: Algorithmic Pulse Field — BROKEN/DRIFT controls, weighted pulse field, COUPLE interlock | done | 2025-12-16 | 2025-12-17T22:00:00Z | completed/13-pulse-field-v3.md |
 | 14 | v3-ratchet-fixes | v3 Fixes: RATCHET parameter, DENSITY=0/DRIFT=0 bug fixes, header/cpp code quality | completed | 2025-12-17 | 2025-12-19 | completed/14-v3-ratchet-fixes.md |
 | 15 | duopulse-v4 | DuoPulse v4: Complete architecture overhaul — 2D pattern field, hit budgets, Gumbel sampling, PUNCH/BUILD/BALANCE controls | in-progress | 2025-12-19 | 2025-12-19 | active/15-duopulse-v4.md |
