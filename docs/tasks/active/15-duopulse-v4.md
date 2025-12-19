@@ -30,15 +30,23 @@ This replaces the v3 implementation entirely. Previous code is preserved in git 
 
 These files are being replaced entirely by v4 architecture:
 
-- [ ] **0.1** Remove `src/Engine/ChaosModulator.cpp` and `src/Engine/ChaosModulator.h` (replaced by generation pipeline)
-- [ ] **0.2** Remove `src/Engine/PatternData.h` (replaced by ArchetypeDNA)
-- [ ] **0.3** Remove `src/Engine/PatternSkeleton.h` (replaced by archetype grids)
-- [ ] **0.4** Remove `src/Engine/GenreConfig.h` (replaced by genre-specific fields)
-- [ ] **0.5** Remove `tests/test_pulse_field.cpp` (v3 pulse field tests, will be replaced)
-- [ ] **0.6** Remove `tests/test_broken_effects.cpp` (v3 broken effects tests, will be replaced)
-- [ ] **0.7** Remove `tests/test_sequencer.cpp` (v3 sequencer tests, will be replaced)
-- [ ] **0.8** Update `Makefile` to remove references to deleted source files
-- [ ] **0.9** Verify project still compiles (empty main, no link errors)
+- [x] **0.1** Remove `src/Engine/ChaosModulator.cpp` and `src/Engine/ChaosModulator.h` (replaced by generation pipeline)
+- [x] **0.2** Remove `src/Engine/PatternData.h` (replaced by ArchetypeDNA)
+- [x] **0.3** Remove `src/Engine/PatternSkeleton.h` (replaced by archetype grids)
+- [x] **0.4** Remove `src/Engine/GenreConfig.h` (replaced by genre-specific fields)
+- [x] **0.5** Remove `tests/test_pulse_field.cpp` (v3 pulse field tests, will be replaced)
+- [x] **0.6** Remove `tests/test_broken_effects.cpp` (v3 broken effects tests, will be replaced)
+- [x] **0.7** Remove `tests/test_sequencer.cpp` (v3 sequencer tests, will be replaced)
+- [x] **0.8** Update `Makefile` to remove references to deleted source files (verified: wildcards used, no changes needed)
+- [x] **0.9** Verify project still compiles (empty main, no link errors)
+
+**Phase 0 Notes:**
+- Created `src/Engine/PhrasePosition.h` to extract `PhrasePosition` struct from deleted `GenreConfig.h`
+- Disabled `USE_PULSE_FIELD_V3` in `config.h` for clean v4 migration
+- Stubbed `Sequencer.h/cpp` to remove v3 dependencies while maintaining interface
+- Updated `BrokenEffects.h` to use `PhrasePosition.h` instead of deleted `GenreConfig.h`
+- Updated `tests/test_example.cpp` to remove ChaosModulator tests
+- All tests pass (177 assertions in 20 test cases)
 
 ---
 

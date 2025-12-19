@@ -40,17 +40,16 @@
 #define FREQ_TO_RAD(freq, sr) ((freq) * 2.0f * 3.14159265359f / (sr))
 
 // =============================================================================
-// DuoPulse v3: Algorithmic Pulse Field
+// DuoPulse v4: Full Architecture Overhaul
 // =============================================================================
-// Define USE_PULSE_FIELD_V3 to enable the v3 algorithmic system.
-// When enabled:
-//   - Pattern generation uses weighted pulse field instead of discrete skeletons
-//   - BROKEN parameter controls genre character (swing, jitter, displacement)
-//   - DRIFT parameter controls pattern evolution over time
-//   - COUPLE parameter replaces ORBIT for voice interlock
-// When disabled (commented out):
-//   - Uses v2 PatternSkeleton lookup system
-//   - TERRAIN/GRID controls pattern selection
-//   - ORBIT provides 3-mode voice relationship
-#define USE_PULSE_FIELD_V3 1
+// v4 is a complete rewrite. v3 flag is disabled during migration.
+// The v3 code is being removed and replaced with v4 architecture.
+//
+// v4 key changes:
+//   - 2D Pattern Field with 3×3 archetype grid per genre
+//   - Hit budget system with Gumbel Top-K sampling
+//   - ENERGY/PUNCH, BUILD/GENRE, FIELD X/DRIFT, FIELD Y/BALANCE controls
+//   - FLAVOR parameter (from Audio In R) controls BROKEN timing stack
+//
+// #define USE_PULSE_FIELD_V3 1  // DISABLED: v3 code removed for v4 migration
 

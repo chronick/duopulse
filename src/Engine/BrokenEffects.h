@@ -1,7 +1,7 @@
 #pragma once
 
-#include "PulseField.h"    // For Lerp, Clamp, HashStep, HashToFloat
-#include "GenreConfig.h"   // For PhrasePosition
+#include "PulseField.h"       // For Lerp, Clamp, HashStep, HashToFloat
+#include "PhrasePosition.h"   // For PhrasePosition struct
 
 namespace daisysp_idm_grids
 {

@@ -3,20 +3,20 @@
 #include <array>
 
 #include "daisysp.h"
-#include "PatternSkeleton.h"
-#include "PatternData.h"
-#include "ChaosModulator.h"
-#include "GenreConfig.h"
+#include "PhrasePosition.h"
 #include "config.h"
-
-#ifdef USE_PULSE_FIELD_V3
-#include "PulseField.h"
-#include "BrokenEffects.h"
-#endif
 
 namespace daisysp_idm_grids
 {
 
+/**
+ * DuoPulse Sequencer - Stub for v4 Migration
+ * 
+ * This is a minimal stub that maintains the public interface expected by main.cpp
+ * while the v4 architecture is being implemented.
+ * 
+ * v4 Implementation will replace this entirely in Phase 9.
+ */
 class Sequencer
 {
 public:
@@ -97,130 +97,67 @@ private:
 
     int stepIndex_ = 0;
 
-    // === DuoPulse v3 Parameters ===
+    // === DuoPulse Parameters ===
     
     // Performance Primary
-    float anchorDensity_  = 0.5f; // K1: Hit frequency for anchor
-    float shimmerDensity_ = 0.5f; // K2: Hit frequency for shimmer
-    float broken_         = 0.0f; // K3: Pattern regularity (0=straight, 1=chaos)
-    float drift_          = 0.0f; // K4: Pattern evolution (0=locked, 1=generative)
+    float anchorDensity_  = 0.5f;
+    float shimmerDensity_ = 0.5f;
+    float broken_         = 0.0f;
+    float drift_          = 0.0f;
 
     // Performance Shift
-    float fuse_   = 0.5f; // K1+Shift: Cross-lane energy tilt
-    int   loopLengthBars_ = 4;    // K2+Shift: Loop length
-    float couple_ = 0.5f; // K3+Shift: Voice interlock strength
-    float ratchet_ = 0.0f; // K4+Shift: Fill intensity (0-1)
+    float fuse_   = 0.5f;
+    int   loopLengthBars_ = 4;
+    float couple_ = 0.5f;
+    float ratchet_ = 0.0f;
 
     // Config Primary
-    float anchorAccent_  = 0.5f; // K1: Accent intensity for anchor
-    float shimmerAccent_ = 0.5f; // K2: Accent intensity for shimmer
-    float contour_       = 0.0f; // K3: CV output shape
-    // K4: Tempo (handled by currentBpm_)
+    float anchorAccent_  = 0.5f;
+    float shimmerAccent_ = 0.5f;
+    float contour_       = 0.0f;
 
     // Config Shift
-    float swingTaste_ = 0.5f; // K1+Shift: Swing fine-tune
-    float gateTime_   = 0.2f; // K2+Shift: Gate duration (normalized 0-1)
-    float humanize_   = 0.0f; // K3+Shift: Micro-timing jitter
-    float clockDiv_   = 0.5f; // K4+Shift: Clock division
-
-    // Deprecated v2 parameters (kept for compatibility, mapped to v3)
-    float flux_    = 0.0f; // Deprecated: mapped to broken_
-    float orbit_   = 0.5f; // Deprecated: mapped to couple_
-    float terrain_ = 0.0f; // Deprecated: genre from BROKEN
-    float grid_    = 0.0f; // Deprecated: no pattern selection
+    float swingTaste_ = 0.5f;
+    float gateTime_   = 0.2f;
+    float humanize_   = 0.0f;
+    float clockDiv_   = 0.5f;
 
     // Swing state
-    float currentSwing_       = 0.5f;  // Current effective swing (0.5 = straight)
-    int   swingDelaySamples_  = 0;     // Delay to apply to off-beat steps
-    int   swingDelayCounter_  = 0;     // Countdown for delayed triggers
-    bool  pendingAnchorTrig_  = false; // Anchor trigger waiting for swing delay
-    bool  pendingShimmerTrig_ = false; // Shimmer trigger waiting for swing delay
-    float pendingAnchorVel_   = 0.0f;  // Velocity for pending anchor
-    float pendingShimmerVel_  = 0.0f;  // Velocity for pending shimmer
-    bool  pendingClockTrig_   = false; // Clock trigger waiting for swing delay
-    int   stepDurationSamples_ = 0;    // Duration of one 16th note in samples
-
-    // Orbit/Shadow state (for Shadow mode: shimmer echoes anchor with 1-step delay)
-    bool  lastAnchorTrig_ = false;     // Whether anchor triggered on previous step
-    float lastAnchorVel_  = 0.0f;      // Velocity of previous anchor trigger
-
-    // Humanize state
-    uint32_t humanizeRngState_ = 0x12345678; // Simple RNG for humanize jitter
+    float currentSwing_ = 0.5f;
 
     // Phrase position tracking
     PhrasePosition phrasePos_;
 
-    // Contour CV state (for decay/hold between triggers)
-    float anchorContourCV_  = 0.0f;
-    float shimmerContourCV_ = 0.0f;
-
-    int gateTimers_[2] = {0, 0}; // Anchor, Shimmer
+    int gateTimers_[2] = {0, 0};
     int gateDurationSamples_ = 0;
     int clockTimer_ = 0;
     int clockDurationSamples_ = 0;
+    int accentHoldSamples_ = 0;
+    int hihatHoldSamples_ = 0;
+    int accentTimer_ = 0;
+    int hihatTimer_ = 0;
+    
+    // Output Levels (Velocity)
+    float outputLevels_[2] = {0.0f, 0.0f};
 
-    // Clock Division State
-    int clockDivCounter_ = 0;  // Counter for clock division
-
-    // Ratchet State (32nd note subdivisions)
-    int   ratchetTimer_ = 0;        // Countdown to ratchet trigger
-    bool  ratchetAnchorPending_ = false;
-    bool  ratchetShimmerPending_ = false;
-    float ratchetAnchorVel_ = 0.0f;
-    float ratchetShimmerVel_ = 0.0f;
+    // Current pattern index
+    int currentPatternIndex_ = 0;
 
     // External Clock Logic
     bool usingExternalClock_ = false;
     int  externalClockTimeout_ = 0;
     bool mustTick_ = false;
 
-    daisysp::Metro   metro_;
-    ChaosModulator   chaosLow_;
-    ChaosModulator   chaosHigh_;
-    bool             forceNextTriggers_ = false;
-    bool             forcedTriggers_[3] = {false, false, false};
-    bool             forcedKickAccent_ = false;
-    int              accentTimer_ = 0;
-    int              hihatTimer_ = 0;
-    int              accentHoldSamples_ = 0;
-    int              hihatHoldSamples_ = 0;
-    
-    // Output Levels (Velocity)
-    float            outputLevels_[2] = {0.0f, 0.0f};
+    daisysp::Metro metro_;
+    bool forceNextTriggers_ = false;
+    bool forcedTriggers_[3] = {false, false, false};
+    bool forcedKickAccent_ = false;
 
-    // Current pattern index (0-15)
-    int  currentPatternIndex_ = 0;
-
-    void  TriggerGate(int channel);
-    void  TriggerClock();
-    void  ProcessGates();
-    void  ProcessSwingDelay();
-    void  ProcessRatchet();
-    void  UpdateSwingParameters();
-    int   HoldMsToSamples(float milliseconds) const;
-    float NextHumanizeRandom(); // Returns 0-1 for humanize jitter
-    int   GetClockDivisionFactor() const; // Returns 1, 2, 4 for division or -2, -4 for multiplication
-
-    // PatternSkeleton-based trigger generation (v2)
-    // Returns true if triggered, sets velocity output
-    void GetSkeletonTriggers(int step, float anchorDens, float shimmerDens,
-                             bool& anchorTrig, bool& shimmerTrig,
-                             float& anchorVel, float& shimmerVel);
-
-#ifdef USE_PULSE_FIELD_V3
-    // === DuoPulse v3: Pulse Field State ===
-    PulseFieldState pulseFieldState_;
-    
-    // PulseField-based trigger generation (v3)
-    // Uses weighted pulse field algorithm with BROKEN/DRIFT controls
-    void GetPulseFieldTriggers(int step, float anchorDens, float shimmerDens,
-                               bool& anchorTrig, bool& shimmerTrig,
-                               float& anchorVel, float& shimmerVel);
-    
-    // Apply BROKEN effects stack (swing from broken is handled separately)
-    void ApplyBrokenEffects(int& step, float& anchorVel, float& shimmerVel,
-                            bool anchorTrig, bool shimmerTrig);
-#endif
+    void TriggerGate(int channel);
+    void TriggerClock();
+    void ProcessGates();
+    int  HoldMsToSamples(float milliseconds) const;
+    int  GetClockDivisionFactor() const;
 };
 
 } // namespace daisysp_idm_grids
