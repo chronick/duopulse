@@ -1,18 +1,25 @@
 /**
- * DuoPulse v2: 2-Voice Percussive Sequencer
+ * DuoPulse v3: Algorithmic Pulse Field Sequencer
  * 
  * Control System (4 modes × 4 knobs = 16 parameters):
  * 
  * Performance Mode (Switch DOWN):
- *   Primary:     K1=Anchor Density, K2=Shimmer Density, K3=Flux, K4=Fuse
- *   Shift (B7):  K1=Terrain, K2=Length, K3=Grid, K4=Orbit
+ *   Primary:     K1=Anchor Density, K2=Shimmer Density, K3=BROKEN, K4=DRIFT
+ *   Shift (B7):  K1=FUSE, K2=Length, K3=COUPLE, K4=RATCHET
  * 
  * Config Mode (Switch UP):
  *   Primary:     K1=Anchor Accent, K2=Shimmer Accent, K3=Contour, K4=Tempo
  *   Shift (B7):  K1=Swing Taste, K2=Gate Time, K3=Humanize, K4=Clock Div
  * 
  * CV inputs 5-8 always modulate performance parameters (Anchor Density, Shimmer 
- * Density, Flux, Fuse) regardless of mode.
+ * Density, BROKEN, DRIFT) regardless of mode.
+ * 
+ * v3 Changes from v2:
+ * - FLUX → BROKEN (pattern regularity, genre emerges from this)
+ * - FUSE moved from K4 primary to K1+Shift
+ * - New DRIFT control at K4 (pattern stability/evolution)
+ * - TERRAIN/GRID removed (swing from BROKEN, no pattern selection)
+ * - ORBIT → COUPLE (voice interlock strength)
  */
 
 #include <array>
@@ -40,7 +47,11 @@ Switch       modeSwitch;
 GateScaler accentGate;
 GateScaler hihatGate;
 
+LedIndicator ledIndicator;
+LedState     ledState;
+
 bool lastGateIn1 = false;
+bool lastAnchorGate = false; // For detecting trigger edges
 
 // Control Mode indices for soft knob array
 enum class ControlMode : uint8_t
@@ -63,25 +74,25 @@ struct ControlState
     // === Performance Mode Primary (Switch DOWN, no shift) ===
     float anchorDensity  = 0.5f; // K1: Hit frequency for Anchor lane
     float shimmerDensity = 0.5f; // K2: Hit frequency for Shimmer lane
-    float flux           = 0.0f; // K3: Global variation, fills, ghost notes
-    float fuse           = 0.5f; // K4: Cross-lane energy exchange (center = balanced)
+    float broken         = 0.0f; // K3: Pattern regularity (0=straight 4/4, 1=IDM chaos)
+    float drift          = 0.0f; // K4: Pattern evolution (0=locked, 1=generative)
 
     // === Performance Mode Shift (Switch DOWN + B7 held) ===
-    float anchorAccent  = 0.5f; // K1+Shift: Accent intensity for Anchor
-    float shimmerAccent = 0.5f; // K2+Shift: Accent intensity for Shimmer
-    float orbit         = 0.5f; // K3+Shift: Voice relationship (Interlock/Free/Shadow)
-    float contour       = 0.0f; // K4+Shift: CV output shape (Velocity/Decay/Pitch/Random)
+    float fuse    = 0.5f; // K1+Shift: Cross-lane energy tilt (center=balanced)
+    float length  = 0.5f; // K2+Shift: Loop length in bars (1,2,4,8,16)
+    float couple  = 0.5f; // K3+Shift: Voice interlock strength (0=independent, 1=interlocked)
+    float ratchet = 0.0f; // K4+Shift: Fill intensity (0=subtle, 1=intense)
 
     // === Config Mode Primary (Switch UP, no shift) ===
-    float terrain = 0.0f; // K1: Genre/style character (Techno/Tribal/Trip-Hop/IDM)
-    float length  = 0.5f; // K2: Loop length in bars (1,2,4,8,16)
-    float grid    = 0.0f; // K3: Pattern family selection (1-16)
-    float tempo   = 0.5f; // K4: Internal BPM (90-160)
+    float anchorAccent  = 0.5f; // K1: Accent intensity for Anchor
+    float shimmerAccent = 0.5f; // K2: Accent intensity for Shimmer
+    float contour       = 0.0f; // K3: CV output shape (Velocity/Decay/Pitch/Random)
+    float tempo         = 0.5f; // K4: Internal BPM (90-160)
 
     // === Config Mode Shift (Switch UP + B7 held) ===
-    float swingTaste = 0.5f; // K1+Shift: Fine-tune swing within genre range
+    float swingTaste = 0.5f; // K1+Shift: Fine-tune swing within BROKEN's range
     float gateTime   = 0.2f; // K2+Shift: Trigger duration (5-50ms, default ~14ms)
-    float humanize   = 0.0f; // K3+Shift: Micro-timing jitter amount
+    float humanize   = 0.0f; // K3+Shift: Extra jitter on top of BROKEN's
     float clockDiv   = 0.5f; // K4+Shift: Clock output divider/multiplier (default ×1)
 
     // === Mode State ===
@@ -162,9 +173,9 @@ void AudioCallback(AudioHandle::InputBuffer  in,
 }
 
 // Helper to get pointer to parameter by mode and knob index
-// Updated control layout (2025-12-03):
-//   Performance Primary: Anchor Density, Shimmer Density, Flux, Fuse
-//   Performance Shift:   Terrain, Length, Grid, Orbit
+// Updated control layout (2025-12-16) for DuoPulse v3:
+//   Performance Primary: Anchor Density, Shimmer Density, BROKEN, DRIFT
+//   Performance Shift:   FUSE, Length, COUPLE, Reserved
 //   Config Primary:      Anchor Accent, Shimmer Accent, Contour, Tempo
 //   Config Shift:        Swing Taste, Gate Time, Humanize, Clock Div
 float* GetParameterPtr(ControlState& state, ControlMode mode, int knobIndex)
@@ -176,17 +187,17 @@ float* GetParameterPtr(ControlState& state, ControlMode mode, int knobIndex)
             {
                 case 0: return &state.anchorDensity;
                 case 1: return &state.shimmerDensity;
-                case 2: return &state.flux;
-                case 3: return &state.fuse;
+                case 2: return &state.broken;
+                case 3: return &state.drift;
             }
             break;
         case ControlMode::PerformanceShift:
             switch(knobIndex)
             {
-                case 0: return &state.terrain;
+                case 0: return &state.fuse;
                 case 1: return &state.length;
-                case 2: return &state.grid;
-                case 3: return &state.orbit;
+                case 2: return &state.couple;
+                case 3: return &state.ratchet;
             }
             break;
         case ControlMode::ConfigPrimary:
@@ -317,31 +328,32 @@ void ProcessControls()
     // CV Always Modulates Performance Parameters (regardless of mode)
     // Uses additive modulation: CV adds to knob value, clamped 0-1
     // This matches main branch behavior where 0V CV = no modulation
+    // v3: CV5=Anchor, CV6=Shimmer, CV7=BROKEN, CV8=DRIFT
     float finalAnchorDensity  = MixControl(controlState.anchorDensity, cv1);
     float finalShimmerDensity = MixControl(controlState.shimmerDensity, cv2);
-    float finalFlux           = MixControl(controlState.flux, cv3);
-    float finalFuse           = MixControl(controlState.fuse, cv4);
+    float finalBroken         = MixControl(controlState.broken, cv3);
+    float finalDrift          = MixControl(controlState.drift, cv4);
 
-    // Apply all DuoPulse v2 parameters to sequencer using new interface
-    // Performance parameters (CV-modulated)
+    // Apply all DuoPulse v3 parameters to sequencer
+    // Performance Primary (CV-modulated)
     sequencer.SetAnchorDensity(finalAnchorDensity);
     sequencer.SetShimmerDensity(finalShimmerDensity);
-    sequencer.SetFlux(finalFlux);
-    sequencer.SetFuse(finalFuse);
+    sequencer.SetBroken(finalBroken);
+    sequencer.SetDrift(finalDrift);
 
-    // Performance shift parameters (knob-only, no CV modulation)
+    // Performance Shift (knob-only, no CV modulation)
+    sequencer.SetFuse(controlState.fuse);
+    sequencer.SetLength(MapToLength(controlState.length));
+    sequencer.SetCouple(controlState.couple);
+    sequencer.SetRatchet(controlState.ratchet);
+
+    // Config Primary
     sequencer.SetAnchorAccent(controlState.anchorAccent);
     sequencer.SetShimmerAccent(controlState.shimmerAccent);
-    sequencer.SetOrbit(controlState.orbit);
     sequencer.SetContour(controlState.contour);
-
-    // Config primary parameters
-    sequencer.SetTerrain(controlState.terrain);
-    sequencer.SetLength(MapToLength(controlState.length));
-    sequencer.SetGrid(controlState.grid);
     sequencer.SetTempoControl(controlState.tempo);
 
-    // Config shift parameters
+    // Config Shift
     sequencer.SetSwingTaste(controlState.swingTaste);
     sequencer.SetGateTime(controlState.gateTime);
     sequencer.SetHumanize(controlState.humanize);
@@ -355,55 +367,50 @@ void ProcessControls()
         sequencer.TriggerReset();
     }
 
-    // User/front LED Sync per DuoPulse v2 spec:
-    // - Performance mode: pulse on anchor trigger
-    // - Config mode: solid ON
-    // - Shift held: double brightness (brighter)
-    // - Knob interaction: show value for 1s
-    // - Fill active (high FLUX): rapid flash
+    // === LED Feedback System (DuoPulse v3) ===
+    // Updates LedState based on current mode, parameters, and phrase position
     
-    float ledVoltage = 0.0f;
-    bool  ledDigital = false;
-
+    // Detect anchor trigger edge (rising edge)
+    bool anchorGateHigh = sequencer.IsGateHigh(0);
+    ledState.anchorTriggered = anchorGateHigh && !lastAnchorGate;
+    lastAnchorGate = anchorGateHigh;
+    
+    // Set LED mode based on current state
     if(System::GetNow() - lastInteractionTime < 1000)
     {
-        // Knob interaction: show parameter value as brightness for 1 second
-        ledVoltage = activeParameterValue * 5.0f;
-        ledDigital = (activeParameterValue > 0.3f);
+        ledState.mode = LedMode::Interaction;
+        ledState.interactionValue = activeParameterValue;
     }
-    else if(finalFlux > 0.7f)
+    else if(controlState.shiftActive)
     {
-        // High FLUX (fill active): rapid flash (50ms rate = 20Hz)
-        // Use system time to create rapid flash
-        bool flashState = ((now / 50) % 2) == 0;
-        ledVoltage      = flashState ? 5.0f : 0.0f;
-        ledDigital      = flashState;
+        ledState.mode = LedMode::ShiftHeld;
+    }
+    else if(controlState.configMode)
+    {
+        ledState.mode = LedMode::Config;
     }
     else
     {
-        // Default behavior based on mode
-        if(controlState.configMode)
-        {
-            // Config mode: solid ON
-            ledVoltage = 5.0f;
-            ledDigital = true;
-        }
-        else
-        {
-            // Performance mode: pulse on anchor trigger
-            ledDigital = sequencer.IsGateHigh(0);
-            ledVoltage = ledDigital ? 5.0f : 0.0f;
-        }
-
-        // Shift held: increase brightness
-        if(controlState.shiftActive)
-        {
-            // Already at 5V, but we could flash or use a different pattern
-            // For now, ensure LED is bright when shift is held
-            ledVoltage = std::max(ledVoltage, 3.0f);
-            ledDigital = true;
-        }
+        ledState.mode = LedMode::Performance;
     }
+    
+    // Set parameter values for BROKEN × DRIFT behavior
+    ledState.broken = finalBroken;
+    ledState.drift = finalDrift;
+    ledState.anchorDensity = finalAnchorDensity;
+    ledState.shimmerDensity = finalShimmerDensity;
+    
+    // Set phrase position for phrase-aware feedback
+    const auto& phrasePos = sequencer.GetPhrasePosition();
+    ledState.phraseProgress = phrasePos.phraseProgress;
+    ledState.isDownbeat = phrasePos.isDownbeat;
+    ledState.isFillZone = phrasePos.isFillZone;
+    ledState.isBuildZone = phrasePos.isBuildZone;
+    
+    // Process LED and output
+    float ledBrightness = ledIndicator.Process(ledState);
+    float ledVoltage = LedIndicator::BrightnessToVoltage(ledBrightness);
+    bool  ledDigital = (ledBrightness > 0.3f);
 
     patch.SetLed(ledDigital);
     patch.WriteCvOut(patch_sm::CV_OUT_2, ledVoltage);
@@ -428,6 +435,9 @@ int main(void)
     hihatGate.SetTargetVoltage(GateScaler::kGateVoltageLimit);
     sequencer.SetAccentHoldMs(10.0f);
     sequencer.SetHihatHoldMs(10.0f);
+    
+    // Initialize LED feedback system (using control rate ~1kHz)
+    ledIndicator.Init(1000.0f);
 
     // Ensure LEDs start in a known state.
     patch.SetLed(false);
@@ -444,17 +454,17 @@ int main(void)
                     Switch::POLARITY_INVERTED);
 
     // Initialize all 16 Soft Knobs (4 knobs × 4 mode/shift combinations)
-    // Updated control layout (2025-12-03)
-    // Performance Primary (indices 0-3): Anchor Density, Shimmer Density, Flux, Fuse
+    // Updated control layout (2025-12-16) for DuoPulse v3
+    // Performance Primary (indices 0-3): Anchor Density, Shimmer Density, BROKEN, DRIFT
     softKnobs[0].Init(controlState.anchorDensity);
     softKnobs[1].Init(controlState.shimmerDensity);
-    softKnobs[2].Init(controlState.flux);
-    softKnobs[3].Init(controlState.fuse);
-    // Performance Shift (indices 4-7): Terrain, Length, Grid, Orbit
-    softKnobs[4].Init(controlState.terrain);
+    softKnobs[2].Init(controlState.broken);
+    softKnobs[3].Init(controlState.drift);
+    // Performance Shift (indices 4-7): FUSE, Length, COUPLE, RATCHET
+    softKnobs[4].Init(controlState.fuse);
     softKnobs[5].Init(controlState.length);
-    softKnobs[6].Init(controlState.grid);
-    softKnobs[7].Init(controlState.orbit);
+    softKnobs[6].Init(controlState.couple);
+    softKnobs[7].Init(controlState.ratchet);
     // Config Primary (indices 8-11): Anchor Accent, Shimmer Accent, Contour, Tempo
     softKnobs[8].Init(controlState.anchorAccent);
     softKnobs[9].Init(controlState.shimmerAccent);

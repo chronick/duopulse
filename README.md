@@ -13,6 +13,89 @@ This project provides a custom firmware implementation for the Electro-Smith Pat
 - Multiple GPIO pins for buttons, LEDs, and encoders
 - STM32H7 microcontroller with floating-point unit
 
+## DuoPulse v3: 2-Voice Percussive Sequencer
+
+DuoPulse is an opinionated 2-voice percussion sequencer with a focus on electronic music from club-ready techno to experimental IDM. Version 3 introduces an **algorithmic pulse field** that replaces discrete pattern lookup with continuous variation.
+
+### Core Concept
+
+Two simple axes control everything:
+
+| Axis | Control | Effect |
+|------|---------|--------|
+| **BROKEN** | K3 | Pattern regularity (0%=4/4 techno → 100%=IDM chaos) |
+| **DRIFT** | K4 | Pattern evolution (0%=locked → 100%=generative) |
+
+Genre character (swing, jitter, feel) **emerges** from the BROKEN parameter—no explicit genre selection needed.
+
+### Control Layout
+
+#### Performance Mode (Switch DOWN)
+
+| Knob | Primary | +Shift |
+|------|---------|--------|
+| K1 | Anchor Density | FUSE (voice balance) |
+| K2 | Shimmer Density | LENGTH (1-16 bars) |
+| K3 | BROKEN | COUPLE (voice interlock) |
+| K4 | DRIFT | RATCHET (fill intensity) |
+
+#### Config Mode (Switch UP)
+
+| Knob | Primary | +Shift |
+|------|---------|--------|
+| K1 | Anchor Accent | Swing Taste |
+| K2 | Shimmer Accent | Gate Time |
+| K3 | Contour | Humanize |
+| K4 | Tempo / Clock Div* | Clock Div / Aux Mode* |
+
+> *K4 is context-aware: behavior changes when external clock is patched.
+
+### BROKEN × DRIFT Interaction
+
+| BROKEN | DRIFT | Result |
+|--------|-------|--------|
+| Low | Low | Solid, repeating groove (DJ tool) |
+| Low | High | Stable groove with living details |
+| High | Low | Broken but consistent each loop |
+| High | High | Maximum generative chaos (experimental) |
+
+### RATCHET: Fill Intensity Control
+
+**RATCHET** (K4+Shift) controls fill intensity during phrase transitions. Works together with DRIFT:
+
+- **DRIFT** controls fill **probability** (when fills occur)
+- **RATCHET** controls fill **intensity** (how intense fills are)
+- At DRIFT=0, RATCHET has no effect (no fills occur)
+- At RATCHET > 50%, ratcheting (32nd note subdivisions) can occur in fill zones
+
+| RATCHET Level | Behavior |
+|---------------|----------|
+| 0% | Subtle fills — slight density boost only |
+| 25% | Moderate fills — noticeable energy increase |
+| 50% | Standard fills — clear rhythmic intensification |
+| 75% | Aggressive fills — ratcheted 16ths, strong build |
+| 100% | Maximum intensity — rapid-fire hits, peak energy |
+
+### CV Inputs (Always Performance Parameters)
+
+| CV | Modulates |
+|----|-----------|
+| CV 5 | Anchor Density |
+| CV 6 | Shimmer Density |
+| CV 7 | BROKEN |
+| CV 8 | DRIFT |
+
+### v3 vs v2 Mode
+
+The firmware supports both v3 (Pulse Field) and v2 (Pattern Skeleton) algorithms. Toggle in `inc/config.h`:
+
+```cpp
+#define USE_PULSE_FIELD_V3 1   // v3: Algorithmic pulse field
+// #define USE_PULSE_FIELD_V3 1  // Comment out for v2: Pattern skeletons
+```
+
+See `docs/specs/main.md` for the complete specification.
+
 ## Prerequisites
 
 - **Hardware**: Electro-Smith Patch.Init Eurorack module
