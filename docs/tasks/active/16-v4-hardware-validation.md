@@ -15,11 +15,16 @@
 │                    PATCH.INIT                       │
 ├─────────────────────────────────────────────────────┤
 │                                                     │
-│   ┌───┐  ┌───┐  ┌───┐  ┌───┐                       │
-│   │K1 │  │K2 │  │K3 │  │K4 │   ← KNOBS            │
-│   └───┘  └───┘  └───┘  └───┘                       │
-│  ENERGY  BUILD  FIELD  FIELD                        │
-│                   X      Y                          │
+│        ┌───┐  ┌───┐                                │
+│        │K1 │  │K2 │       ← TOP ROW KNOBS          │
+│        └───┘  └───┘                                │
+│       ENERGY  BUILD                                 │
+│                                                     │
+│        ┌───┐  ┌───┐                                │
+│        │K3 │  │K4 │       ← BOTTOM ROW KNOBS       │
+│        └───┘  └───┘                                │
+│       FIELD   FIELD                                 │
+│         X       Y                                   │
 │                                                     │
 │   ○ CV1  ○ CV2  ○ CV3  ○ CV4   ← CV INPUTS        │
 │                                                     │
@@ -44,6 +49,22 @@
 │   (AUX)   (LED)                                     │
 │                                                     │
 └─────────────────────────────────────────────────────┘
+```
+
+### Knob Layout (2×2 Grid)
+
+```
+        ┌─────────────────────┐
+        │   ┌───┐     ┌───┐   │
+        │   │K1 │     │K2 │   │  ← Top Row
+        │   └───┘     └───┘   │
+        │  ENERGY     BUILD   │
+        │                     │
+        │   ┌───┐     ┌───┐   │
+        │   │K3 │     │K4 │   │  ← Bottom Row
+        │   └───┘     └───┘   │
+        │  FIELD X   FIELD Y  │
+        └─────────────────────┘
 ```
 
 ### Control Modes
@@ -170,13 +191,22 @@ Aux:     ● . ● . ● . ● . ● . ● .  ● . ● .  ● . ● .
 
 #### Knob Positions (ignored at Level 0)
 
+At Level 0, the knobs don't affect the pattern. The simple 4-on-floor runs regardless of knob positions.
+
+![Knobs - Any Position](assets/knobs-any-position.svg)
+
 ```
-         ┌───┐  ┌───┐  ┌───┐  ┌───┐
-         │ ↑ │  │ ↑ │  │ ↑ │  │ ↑ │
-         │ │ │  │ │ │  │ │ │  │ │ │
-         │ · │  │ · │  │ · │  │ · │   ← Any position OK
-         └───┘  └───┘  └───┘  └───┘
-          K1     K2     K3     K4
+        ┌─────────────────────┐
+        │   ┌───┐     ┌───┐   │
+        │   │ · │     │ · │   │  Any position
+        │   └───┘     └───┘   │  is fine!
+        │    K1        K2     │
+        │                     │
+        │   ┌───┐     ┌───┐   │
+        │   │ · │     │ · │   │  Knobs are
+        │   └───┘     └───┘   │  ignored at
+        │    K3        K4     │  Level 0
+        └─────────────────────┘
 ```
 
 #### Checklist
@@ -217,7 +247,7 @@ Same config as Test 1 (Level 0).
 
 ### Test 3: Archetype Patterns (Level 1)
 
-**Goal**: Verify the Pattern Field responds to FIELD X and FIELD Y knobs.
+**Goal**: Verify the Pattern Field responds to FIELD X and FIELD Y knobs (K3 and K4).
 
 #### Setup
 
@@ -225,66 +255,97 @@ Same config as Test 1 (Level 0).
 #define DEBUG_FEATURE_LEVEL 1
 ```
 
-Build and flash. Now the archetype patterns are active, but no hit budget/sampling.
+Build and flash. Now the archetype patterns are active, but no hit budget/sampling—patterns come directly from archetype weight tables.
 
 #### The Pattern Grid
 
+The bottom two knobs (K3 and K4) navigate a 3×3 grid of pattern archetypes:
+
 ```
-        FIELD Y (Complexity)
+        FIELD Y (K4 - Complexity)
             ↑
         2   ┌───────┬───────┬───────┐
             │ Busy  │ Poly  │ Chaos │
             │       │rhythm │       │
         1   ├───────┼───────┼───────┤
-            │Driving│ GROOVY│ Broken│  ← Sweet spot at center
+            │Driving│ GROOVY│ Broken│  ← Sweet spot
             │       │  ★    │       │
         0   ├───────┼───────┼───────┤
             │Minimal│Steady │Displcd│
             │       │       │       │
             └───────┴───────┴───────┘
-            0       1       2       → FIELD X (Syncopation)
+            0       1       2       → FIELD X (K3 - Syncopation)
 ```
 
-#### Test Positions
+#### Test Position A: Minimal (Bottom-Left)
 
-**Position A: Bottom-Left (Minimal)**
+Turn K3 and K4 fully counter-clockwise (7 o'clock position).
 
-```
-         ┌───┐  ┌───┐  ┌───┐  ┌───┐
-         │   │  │   │  │ · │  │ · │   K3, K4 fully CCW
-         │   │  │   │  │ │ │  │ │ │
-         │ ↓ │  │ ↓ │  │ ↓ │  │ ↓ │
-         └───┘  └───┘  └───┘  └───┘
-          K1     K2     K3     K4
-```
-
-Expected: Very sparse pattern, mostly just downbeats.
-
-**Position B: Center (Groovy)**
+![Knobs - Minimal](assets/knobs-minimal.svg)
 
 ```
-         ┌───┐  ┌───┐  ┌───┐  ┌───┐
-         │   │  │   │  │ · │  │ · │   K3, K4 at noon
-         │ · │  │ · │  │ │ │  │ │ │
-         │   │  │   │  │   │  │   │
-         └───┘  └───┘  └───┘  └───┘
-          K1     K2     K3     K4
+        ┌─────────────────────┐
+        │   ┌───┐     ┌───┐   │
+        │   │   │     │   │   │  K1, K2: don't care
+        │   └───┘     └───┘   │
+        │    K1        K2     │
+        │                     │
+        │   ┌───┐     ┌───┐   │
+        │   │◄  │     │◄  │   │  K3, K4: fully CCW
+        │   └───┘     └───┘   │  (7 o'clock)
+        │    K3        K4     │
+        └─────────────────────┘
 ```
 
-Expected: Classic groove with syncopation, best "feel".
+**Expected**: Very sparse pattern, mostly just downbeats. Few triggers per bar.
 
-**Position C: Top-Right (Chaos)**
+---
+
+#### Test Position B: Groovy ★ (Center)
+
+Turn K3 and K4 to the 12 o'clock (noon) position.
+
+![Knobs - Groovy](assets/knobs-groovy.svg)
 
 ```
-         ┌───┐  ┌───┐  ┌───┐  ┌───┐
-         │ ↑ │  │ ↑ │  │ ↑ │  │ ↑ │   K3, K4 fully CW
-         │ │ │  │ │ │  │ │ │  │ │ │
-         │ · │  │ · │  │ · │  │ · │
-         └───┘  └───┘  └───┘  └───┘
-          K1     K2     K3     K4
+        ┌─────────────────────┐
+        │   ┌───┐     ┌───┐   │
+        │   │   │     │   │   │  K1, K2: don't care
+        │   └───┘     └───┘   │
+        │    K1        K2     │
+        │                     │
+        │   ┌───┐     ┌───┐   │
+        │   │ ↑ │     │ ↑ │   │  K3, K4: noon
+        │   └───┘     └───┘   │  (12 o'clock)
+        │    K3        K4     │
+        └─────────────────────┘
 ```
 
-Expected: Dense, irregular, IDM-style pattern.
+**Expected**: Classic groove with syncopation. This is the "sweet spot" - danceable and musical.
+
+---
+
+#### Test Position C: Chaos (Top-Right)
+
+Turn K3 and K4 fully clockwise (5 o'clock position).
+
+![Knobs - Chaos](assets/knobs-chaos.svg)
+
+```
+        ┌─────────────────────┐
+        │   ┌───┐     ┌───┐   │
+        │   │   │     │   │   │  K1, K2: don't care
+        │   └───┘     └───┘   │
+        │    K1        K2     │
+        │                     │
+        │   ┌───┐     ┌───┐   │
+        │   │  ►│     │  ►│   │  K3, K4: fully CW
+        │   └───┘     └───┘   │  (5 o'clock)
+        │    K3        K4     │
+        └─────────────────────┘
+```
+
+**Expected**: Dense, irregular, IDM-style pattern. Lots of activity, unpredictable feel.
 
 #### Checklist
 
@@ -297,7 +358,7 @@ Expected: Dense, irregular, IDM-style pattern.
 
 ### Test 4: Hit Budget & Generation (Level 2-3)
 
-**Goal**: Verify ENERGY controls hit density and guard rails enforce musical rules.
+**Goal**: Verify ENERGY (K1) controls hit density and guard rails enforce musical rules.
 
 #### Setup (Level 2 first, then Level 3)
 
@@ -305,38 +366,56 @@ Expected: Dense, irregular, IDM-style pattern.
 #define DEBUG_FEATURE_LEVEL 2  // Without guard rails
 ```
 
+Build, flash, and test. Then:
+
+```cpp
+#define DEBUG_FEATURE_LEVEL 3  // With guard rails
+```
+
 #### Energy Zone Visualization
 
-```
-ENERGY Knob Position → Hit Density
+The ENERGY knob (K1) controls overall pattern density:
 
-  0%        20%        50%        75%       100%
-  │          │          │          │          │
-  ▼          ▼          ▼          ▼          ▼
-┌──────────────────────────────────────────────────┐
-│ MINIMAL  │  GROOVE   │   BUILD   │    PEAK      │
-│ 1-2 hits │  2-4 hits │  4-6 hits │   6-10 hits  │
-│ per bar  │  per bar  │  per bar  │   per bar    │
-└──────────────────────────────────────────────────┘
+```
+ENERGY Knob (K1) Position → Hit Density
+
+  CCW       ¼         ½         ¾        CW
+   │         │         │         │         │
+   ▼         ▼         ▼         ▼         ▼
+┌──────────────────────────────────────────────┐
+│ MINIMAL │  GROOVE  │  BUILD  │    PEAK      │
+│ 1-2 hits│ 2-4 hits │ 4-6 hits│  6-10 hits   │
+│ per bar │ per bar  │ per bar │  per bar     │
+└──────────────────────────────────────────────┘
 ```
 
 #### Test: Sweep ENERGY (K1)
 
+Slowly turn K1 from fully CCW to fully CW while listening.
+
+![Knobs - Energy Sweep](assets/knobs-energy-sweep.svg)
+
 ```
-         ┌───┐  ┌───┐  ┌───┐  ┌───┐
-         │ ↕ │  │ · │  │ · │  │ · │   Sweep K1 slowly
-         │ │ │  │   │  │ │ │  │ │ │   while listening
-         │ · │  │   │  │   │  │   │
-         └───┘  └───┘  └───┘  └───┘
-          K1     K2     K3     K4
-         SWEEP
+        ┌─────────────────────┐
+        │   ┌───┐     ┌───┐   │
+        │   │↺↻ │     │   │   │  Sweep K1 slowly
+        │   └───┘     └───┘   │  while listening
+        │   K1 ↕       K2     │
+        │   SWEEP             │
+        │   ┌───┐     ┌───┐   │
+        │   │ ↑ │     │ ↑ │   │  K3, K4: at noon
+        │   └───┘     └───┘   │  (center position)
+        │    K3        K4     │
+        └─────────────────────┘
 ```
 
-- [ ] Pattern gets denser as K1 increases
-- [ ] Pattern gets sparser as K1 decreases
+- [ ] Pattern gets denser as K1 turns clockwise
+- [ ] Pattern gets sparser as K1 turns counter-clockwise
 - [ ] Transitions feel smooth (no jarring changes)
 
 #### Level 3: Guard Rails
+
+Update to Level 3 and reflash:
 
 ```cpp
 #define DEBUG_FEATURE_LEVEL 3  // With guard rails
@@ -360,6 +439,8 @@ ENERGY Knob Position → Hit Density
 
 #### Patching for Flavor CV
 
+The FLAVOR CV input is on **Audio In R** (right audio input jack):
+
 ```
                     ┌─────────────────┐
    [Any CV source]──┤ Audio In R      │
@@ -367,7 +448,10 @@ ENERGY Knob Position → Hit Density
                     └─────────────────┘
 ```
 
-Or just patch a steady voltage from your case's +5V if available.
+Try patching:
+- A steady +5V for maximum swing
+- An LFO for evolving timing feel
+- Leave unpatched for perfectly quantized (clinical) patterns
 
 #### Timing Effect Ranges
 
@@ -385,16 +469,16 @@ FLAVOR CV Level → Timing Effect
 
 #### Checklist
 
-- [ ] At 0V: Pattern is perfectly on-grid (clinical)
-- [ ] At 2.5V: Audible shuffle/swing feel
+- [ ] At 0V (unpatched): Pattern is perfectly on-grid (clinical)
+- [ ] At ~2.5V: Audible shuffle/swing feel
 - [ ] At 5V: Maximum humanization, some notes feel "drunk"
-- [ ] Swing only affects off-beats (steps 1, 3, 5, 7...)
+- [ ] Swing primarily affects off-beats (the "e" and "a" subdivisions)
 
 ---
 
 ### Test 6: Full Production Mode (Level 5)
 
-**Goal**: Full system integration test with all features.
+**Goal**: Full system integration test with all features enabled.
 
 #### Setup
 
@@ -402,7 +486,7 @@ FLAVOR CV Level → Timing Effect
 #define DEBUG_FEATURE_LEVEL 5
 ```
 
-Or simply remove/comment out the DEBUG_FEATURE_LEVEL line entirely.
+Or simply remove/comment out the `DEBUG_FEATURE_LEVEL` line entirely (5 is default).
 
 #### Complete Control Matrix
 
