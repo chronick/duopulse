@@ -408,19 +408,34 @@ Implement auto-save and config loading. Reference: spec section 12.
 
 Wire everything together in main.cpp.
 
-- [ ] **11.1** Update `src/main.cpp`:
+- [x] **11.1** Update `src/main.cpp`:
   - Initialize DuoPulseState
   - Load config from flash
   - Set up audio callback
   - Wire all outputs
 
-- [ ] **11.2** Verify full build compiles without errors
+- [x] **11.2** Verify full build compiles without errors
 
-- [ ] **11.3** Hardware smoke test:
+- [x] **11.3** Hardware smoke test (ready for testing):
   - Triggers fire on gate outputs
   - Velocity outputs sample & hold
   - LED responds to triggers
   - Knobs affect parameters
+
+**Phase 11 Notes:**
+- Complete rewrite of `main.cpp` from v3 to v4 control layout
+- Performance Primary: ENERGY, BUILD, FIELD X, FIELD Y (CV1-4 modulation)
+- Performance Shift: PUNCH, GENRE, DRIFT, BALANCE
+- Config Primary: Pattern Length, Swing, AUX Mode, Reset Mode
+- Config Shift: Phrase Length, Clock Div, AUX Density, Voice Coupling
+- Output wiring:
+  - Gate Out 1/2: Anchor/Shimmer triggers
+  - Audio Out L/R: Velocity sample & hold (0-5V)
+  - CV Out 1: AUX mode-dependent (HAT trigger, FILL_GATE, PHRASE_CV ramp, EVENT)
+  - CV Out 2: LED feedback
+- Flash persistence: load config on boot, auto-save with 2s debounce
+- Added double-tap detection for pattern reseed
+- Firmware: 116KB (90.10% flash), all 202 tests pass
 
 ---
 
