@@ -4,6 +4,233 @@
 using namespace daisysp_idm_grids;
 
 // =============================================================================
+// v4 LED State Machine Tests [led-feedback][v4]
+// =============================================================================
+
+TEST_CASE("v4: Anchor trigger produces 80% brightness", "[led-feedback][v4][trigger-brightness]")
+{
+    LedIndicator led;
+    led.Init(1000.0f);
+    
+    LedState state;
+    state.mode = LedMode::Performance;
+    state.anchorTriggered = true;
+    
+    float brightness = led.Process(state);
+    state.anchorTriggered = false;
+    
+    // Should be at anchor brightness (80%)
+    REQUIRE(brightness == Catch::Approx(LedIndicator::kAnchorBrightness).margin(0.01f));
+}
+
+TEST_CASE("v4: Shimmer trigger produces 30% brightness", "[led-feedback][v4][trigger-brightness]")
+{
+    LedIndicator led;
+    led.Init(1000.0f);
+    
+    LedState state;
+    state.mode = LedMode::Performance;
+    state.shimmerTriggered = true;
+    
+    float brightness = led.Process(state);
+    state.shimmerTriggered = false;
+    
+    // Should be at shimmer brightness (30%)
+    REQUIRE(brightness == Catch::Approx(LedIndicator::kShimmerBrightness).margin(0.01f));
+}
+
+TEST_CASE("v4: Anchor trigger overrides shimmer trigger", "[led-feedback][v4][trigger-brightness]")
+{
+    LedIndicator led;
+    led.Init(1000.0f);
+    
+    LedState state;
+    state.mode = LedMode::Performance;
+    state.anchorTriggered = true;
+    state.shimmerTriggered = true;  // Both triggers at same time
+    
+    float brightness = led.Process(state);
+    
+    // Anchor (80%) should override shimmer (30%)
+    REQUIRE(brightness >= LedIndicator::kAnchorBrightness * 0.99f);
+}
+
+TEST_CASE("v4: Mode change event produces 100% flash", "[led-feedback][v4][mode-change-flash]")
+{
+    LedIndicator led;
+    led.Init(1000.0f);
+    
+    LedState state;
+    state.mode = LedMode::Performance;
+    state.event = LedEvent::MODE_CHANGE;
+    
+    float brightness = led.Process(state);
+    
+    // Should be at flash brightness (100%)
+    REQUIRE(brightness == Catch::Approx(LedIndicator::kFlashBrightness).margin(0.01f));
+}
+
+TEST_CASE("v4: Reset event produces 100% flash", "[led-feedback][v4][mode-change-flash]")
+{
+    LedIndicator led;
+    led.Init(1000.0f);
+    
+    LedState state;
+    state.mode = LedMode::Performance;
+    state.event = LedEvent::RESET;
+    
+    float brightness = led.Process(state);
+    
+    // Should be at flash brightness (100%)
+    REQUIRE(brightness == Catch::Approx(LedIndicator::kFlashBrightness).margin(0.01f));
+}
+
+TEST_CASE("v4: Reseed event produces 100% flash", "[led-feedback][v4][mode-change-flash]")
+{
+    LedIndicator led;
+    led.Init(1000.0f);
+    
+    LedState state;
+    state.mode = LedMode::Performance;
+    state.event = LedEvent::RESEED;
+    
+    float brightness = led.Process(state);
+    
+    // Should be at flash brightness (100%)
+    REQUIRE(brightness == Catch::Approx(LedIndicator::kFlashBrightness).margin(0.01f));
+}
+
+TEST_CASE("v4: Flash event lasts for flash duration", "[led-feedback][v4][mode-change-flash]")
+{
+    LedIndicator led;
+    led.Init(1000.0f);  // 1kHz = 1ms per sample
+    
+    LedState state;
+    state.mode = LedMode::Performance;
+    state.event = LedEvent::MODE_CHANGE;
+    
+    // First sample with event should flash
+    float brightness = led.Process(state);
+    REQUIRE(brightness == Catch::Approx(LedIndicator::kFlashBrightness).margin(0.01f));
+    
+    // Clear event, flash should continue for duration
+    state.event = LedEvent::NONE;
+    
+    // Process for 50ms (half of flash duration)
+    for(int i = 0; i < 50; i++)
+    {
+        brightness = led.Process(state);
+    }
+    REQUIRE(brightness == Catch::Approx(LedIndicator::kFlashBrightness).margin(0.01f));
+    
+    // Process for another 60ms (past flash duration of 100ms)
+    for(int i = 0; i < 60; i++)
+    {
+        brightness = led.Process(state);
+    }
+    // Should no longer be at flash brightness
+    REQUIRE(brightness < LedIndicator::kFlashBrightness);
+}
+
+TEST_CASE("v4: Flash event overrides trigger brightness", "[led-feedback][v4][mode-change-flash]")
+{
+    LedIndicator led;
+    led.Init(1000.0f);
+    
+    LedState state;
+    state.mode = LedMode::Performance;
+    state.event = LedEvent::MODE_CHANGE;
+    state.anchorTriggered = true;  // Trigger at same time
+    
+    float brightness = led.Process(state);
+    
+    // Flash (100%) should override anchor (80%)
+    REQUIRE(brightness == Catch::Approx(LedIndicator::kFlashBrightness).margin(0.01f));
+}
+
+TEST_CASE("v4: Live fill mode produces pulsing pattern", "[led-feedback][v4][fill-pulse]")
+{
+    LedIndicator led;
+    led.Init(1000.0f);
+    
+    LedState state;
+    state.mode = LedMode::Performance;
+    state.liveFillActive = true;
+    
+    // Collect brightness values over one pulse period
+    float minBrightness = 1.0f;
+    float maxBrightness = 0.0f;
+    
+    for(int i = 0; i < 200; i++)  // 200ms = more than one pulse period (150ms)
+    {
+        float brightness = led.Process(state);
+        minBrightness = std::min(minBrightness, brightness);
+        maxBrightness = std::max(maxBrightness, brightness);
+    }
+    
+    // Should pulse between shimmer brightness and flash brightness
+    REQUIRE(minBrightness >= LedIndicator::kShimmerBrightness * 0.9f);
+    REQUIRE(maxBrightness >= LedIndicator::kAnchorBrightness);
+    REQUIRE((maxBrightness - minBrightness) > 0.3f);  // Significant variation
+}
+
+TEST_CASE("v4: Live fill mode overrides triggers", "[led-feedback][v4][fill-pulse]")
+{
+    LedIndicator led;
+    led.Init(1000.0f);
+    
+    LedState state;
+    state.mode = LedMode::Performance;
+    state.liveFillActive = true;
+    state.anchorTriggered = true;
+    
+    // Process several samples and verify we get pulsing, not steady anchor brightness
+    float minBrightness = 1.0f;
+    float maxBrightness = 0.0f;
+    
+    state.anchorTriggered = false;  // Clear trigger after first sample
+    for(int i = 0; i < 200; i++)
+    {
+        float brightness = led.Process(state);
+        minBrightness = std::min(minBrightness, brightness);
+        maxBrightness = std::max(maxBrightness, brightness);
+    }
+    
+    // Should still show variation (pulsing), not stuck at anchor brightness
+    REQUIRE((maxBrightness - minBrightness) > 0.2f);
+}
+
+TEST_CASE("v4: No activity produces 0% brightness", "[led-feedback][v4][trigger-brightness]")
+{
+    LedIndicator led;
+    led.Init(1000.0f);
+    
+    LedState state;
+    state.mode = LedMode::Performance;
+    // All triggers/events false, no zones active
+    state.anchorTriggered = false;
+    state.shimmerTriggered = false;
+    state.event = LedEvent::NONE;
+    state.liveFillActive = false;
+    state.isDownbeat = false;
+    state.isFillZone = false;
+    state.isBuildZone = false;
+    state.broken = 0.0f;
+    state.drift = 0.0f;
+    
+    // Process some samples to get past any initial trigger windows
+    for(int i = 0; i < 200; i++)
+    {
+        led.Process(state);
+    }
+    
+    float brightness = led.Process(state);
+    
+    // Should be at off brightness (0%)
+    REQUIRE(brightness == Catch::Approx(LedIndicator::kOffBrightness).margin(0.01f));
+}
+
+// =============================================================================
 // LED Mode Indication Tests [led-feedback][mode-indication]
 // =============================================================================
 

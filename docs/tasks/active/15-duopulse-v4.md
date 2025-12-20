@@ -253,16 +253,27 @@ Implement trigger, velocity, and AUX outputs. Reference: spec section 8.
 
 Implement LED state machine. Reference: spec section 9.
 
-- [ ] **7.1** Update `src/Engine/LedIndicator.h` for v4 LED modes
+- [x] **7.1** Update `src/Engine/LedIndicator.h` for v4 LED modes
 
-- [ ] **7.2** Update `src/Engine/LedIndicator.cpp`:
+- [x] **7.2** Update `src/Engine/LedIndicator.cpp`:
   - LED state machine from spec 9.2
   - Parameter change detection from spec 9.3
 
-- [ ] **7.3** Add tests: `tests/test_led.cpp`
+- [x] **7.3** Add tests: `tests/test_led_indicator.cpp`
   - Test trigger brightness levels
   - Test mode change flash
   - Test fill pulse pattern
+
+**Phase 7 Notes:**
+- Updated `LedIndicator` to v4 state machine with priority-based processing
+- Added `LedEvent` enum for flash events (MODE_CHANGE, RESET, RESEED)
+- Added shimmer trigger support with 30% brightness (spec 9.1)
+- Anchor triggers at 80%, flash events at 100%
+- Added live fill mode pulsing with sine wave pattern (150ms period)
+- Flash events last 100ms and override all other states
+- Maintained v3 compatibility: BROKEN × DRIFT behavior, phrase zones (fill/build)
+- Added 13 new v4-specific tests to existing `test_led_indicator.cpp`
+- All 25 LED tests pass with 140 assertions
 
 ---
 
