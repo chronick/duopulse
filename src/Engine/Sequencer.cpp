@@ -181,6 +181,29 @@ std::array<float, 2> Sequencer::ProcessAudio()
 
 void Sequencer::GenerateBar()
 {
+#if defined(DEBUG_SIMPLE_TRIGGERS)
+    // DEBUG MODE: Simple 4-on-floor pattern, bypass entire generation pipeline
+    // Anchor: beats 1,2,3,4 (steps 0, 8, 16, 24)
+    // Shimmer: beats 2,4 (steps 8, 24)
+    // Aux: 8th notes
+    state_.sequencer.anchorMask = 0x01010101;    // Four-on-floor
+    state_.sequencer.shimmerMask = 0x01000100;   // Backbeat
+    state_.sequencer.auxMask = 0x55555555;       // All 8th notes
+    state_.sequencer.anchorAccentMask = 0x01000001;  // Accent on 1 and 3
+    state_.sequencer.shimmerAccentMask = 0x01000100; // Accent on 2 and 4
+    return;
+#endif
+
+#if DEBUG_FEATURE_LEVEL == 0
+    // Level 0: Simple 4-on-floor, no generation
+    state_.sequencer.anchorMask = 0x01010101;
+    state_.sequencer.shimmerMask = 0x01000100;
+    state_.sequencer.auxMask = 0x55555555;
+    state_.sequencer.anchorAccentMask = 0x01000001;
+    state_.sequencer.shimmerAccentMask = 0x01000100;
+    return;
+#endif
+
     // Get effective control values (with CV modulation)
     const float energy = state_.controls.GetEffectiveEnergy();
     const float balance = state_.controls.balance;
@@ -198,6 +221,29 @@ void Sequencer::GenerateBar()
     // Get phrase progress for BUILD modifiers
     const float phraseProgress = state_.GetPhraseProgress();
     state_.controls.UpdateDerived(phraseProgress);
+
+#if DEBUG_FEATURE_LEVEL == 1
+    // Level 1: Use archetype weights directly (no budget/sampling)
+    // Convert weights > 0.5 to hits
+    uint32_t anchorMask = 0;
+    uint32_t shimmerMask = 0;
+    uint32_t auxMask = 0;
+    for (int step = 0; step < patternLength && step < 32; ++step)
+    {
+        if (state_.blendedArchetype.anchorWeights[step] > 0.5f)
+            anchorMask |= (1U << step);
+        if (state_.blendedArchetype.shimmerWeights[step] > 0.5f)
+            shimmerMask |= (1U << step);
+        if (state_.blendedArchetype.auxWeights[step] > 0.4f)
+            auxMask |= (1U << step);
+    }
+    state_.sequencer.anchorMask = anchorMask;
+    state_.sequencer.shimmerMask = shimmerMask;
+    state_.sequencer.auxMask = auxMask;
+    state_.sequencer.anchorAccentMask = state_.blendedArchetype.anchorAccentMask;
+    state_.sequencer.shimmerAccentMask = state_.blendedArchetype.shimmerAccentMask;
+    return;
+#endif
 
     // 1. Compute hit budget
     BarBudget budget;
@@ -218,9 +264,13 @@ void Sequencer::GenerateBar()
     }
 
     // 2. Select seeds for generation
+#if defined(DEBUG_FIXED_SEED)
+    const uint32_t seed = 0x12345678;  // Fixed seed for reproducibility
+#else
     const uint32_t seed = SelectSeed(
         state_.sequencer.driftState, drift, 0, patternLength
     );
+#endif
 
     // 3. Generate anchor hits
     uint32_t anchorMask = SelectHitsGumbelTopK(
@@ -242,6 +292,7 @@ void Sequencer::GenerateBar()
         GetMinSpacingForZone(zone)
     );
 
+#if DEBUG_FEATURE_LEVEL >= 3
     // 5. Apply voice relationship
     ApplyVoiceRelationship(anchorMask, shimmerMask, coupling, patternLength);
 
@@ -255,6 +306,7 @@ void Sequencer::GenerateBar()
 
     // 7. Hard guard rails
     ApplyHardGuardRails(anchorMask, shimmerMask, zone, genre, patternLength);
+#endif
 
     // 8. Generate aux hits
     uint32_t auxMask = SelectHitsGumbelTopK(
@@ -266,8 +318,10 @@ void Sequencer::GenerateBar()
         0  // No spacing constraint for aux
     );
 
+#if DEBUG_FEATURE_LEVEL >= 3
     // Apply aux voice relationship
     ApplyAuxRelationship(anchorMask, shimmerMask, auxMask, coupling, patternLength);
+#endif
 
     // 9. Store hit masks in sequencer state
     state_.sequencer.anchorMask = anchorMask;
@@ -736,6 +790,16 @@ void Sequencer::BlendArchetype()
 
 void Sequencer::ComputeTimingOffsets()
 {
+#if DEBUG_FEATURE_LEVEL < 4
+    // Levels 0-3: No timing effects, zero all offsets
+    for (int step = 0; step < kMaxSteps; ++step)
+    {
+        state_.sequencer.swingOffsets[step] = 0;
+        state_.sequencer.jitterOffsets[step] = 0;
+    }
+    return;
+#endif
+
     const int patternLength = state_.controls.patternLength;
     const float flavor = state_.controls.flavorCV;
     const EnergyZone zone = state_.controls.energyZone;

@@ -53,3 +53,37 @@
 //
 // #define USE_PULSE_FIELD_V3 1  // DISABLED: v3 code removed for v4 migration
 
+// =============================================================================
+// Debug Configuration Flags
+// =============================================================================
+// Uncomment to enable debug/baseline modes for hardware testing
+
+// DEBUG_BASELINE_MODE: Forces known-good control values on startup
+// This bypasses knob readings and sets predictable "musical" defaults:
+//   - ENERGY=0.75 (BUILD zone, active density)
+//   - FIELD X/Y=0.5 (center of grid = Groovy archetype)
+//   - Four-on-floor pattern at 120 BPM
+// #define DEBUG_BASELINE_MODE 1
+
+// DEBUG_SIMPLE_TRIGGERS: Bypasses generation pipeline entirely
+// Fires anchor on beats 1,2,3,4 and shimmer on 2,4 only
+// Use to verify: clock is running, triggers fire, outputs work
+// #define DEBUG_SIMPLE_TRIGGERS 1
+
+// DEBUG_FIXED_SEED: Uses constant seed for reproducible patterns
+// Helps isolate randomness from pattern generation logic
+// #define DEBUG_FIXED_SEED 1
+
+// DEBUG_LOG_MASKS: Log pattern masks to velocity output for scope debugging
+// Outputs anchor/shimmer masks as stepped voltages on velocity outputs
+// #define DEBUG_LOG_MASKS 1
+
+// DEBUG_FEATURE_LEVEL: Progressive feature enablement (0-5)
+// 0 = Simple 4-on-floor only (no generation pipeline)
+// 1 = Fixed archetype patterns (no blending)
+// 2 = Archetype blending (no guard rails)
+// 3 = Full generation with guard rails
+// 4 = Add timing effects (swing/jitter)
+// 5 = Full feature set (production mode)
+#define DEBUG_FEATURE_LEVEL 5
+
