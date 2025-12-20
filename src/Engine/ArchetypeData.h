@@ -49,261 +49,313 @@ constexpr uint32_t kSixteenthNoteMask = 0xFFFFFFFF; // All steps
 constexpr uint32_t kOffbeatMask      = 0xAAAAAAAA;  // All odd steps
 
 // =============================================================================
-// Techno Genre Archetypes (Placeholder Values)
+// Techno Genre Archetypes - Four-on-floor, driving, minimal-to-industrial
 // =============================================================================
+//
+// Grid layout:
+//   Y (complexity)
+//   ^
+//   2  Busy         Polyrhythm     Chaos
+//   1  Driving      Groovy         Broken
+//   0  Minimal      Steady         Displaced
+//      0            1              2          -> X (syncopation)
+//
+// Design philosophy:
+// - Strong downbeats on 0 and 16 (bar starts)
+// - Classic backbeat on 8 and 24
+// - X axis adds syncopation and off-grid elements
+// - Y axis adds density and 16th note activity
+//
 
 namespace techno
 {
 
 /**
- * [0,0] Minimal: Just kicks, quarter notes
+ * [0,0] Minimal: Pure four-on-floor, quarter notes only
+ * Classic minimal techno foundation - just the essentials
  */
 constexpr float kMinimal_Anchor[32] = {
-    1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,  // Bar 1, beat 1-2
-    0.8f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,  // Bar 1, beat 3-4
-    1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,  // Bar 2, beat 1-2
-    0.8f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f   // Bar 2, beat 3-4
+    // Bar 1: 1-e-&-a 2-e-&-a 3-e-&-a 4-e-&-a
+    1.0f, 0.0f, 0.0f, 0.0f,  0.9f, 0.0f, 0.0f, 0.0f,  // Beats 1, 2
+    0.95f,0.0f, 0.0f, 0.0f,  0.9f, 0.0f, 0.0f, 0.0f,  // Beats 3, 4
+    // Bar 2: repeat
+    1.0f, 0.0f, 0.0f, 0.0f,  0.9f, 0.0f, 0.0f, 0.0f,
+    0.95f,0.0f, 0.0f, 0.0f,  0.9f, 0.0f, 0.0f, 0.0f
 };
 
 constexpr float kMinimal_Shimmer[32] = {
-    0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
-    1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
-    0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
-    1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f
+    // Classic backbeat on 2 and 4
+    0.0f, 0.0f, 0.0f, 0.0f,  0.0f, 0.0f, 0.0f, 0.0f,
+    1.0f, 0.0f, 0.0f, 0.0f,  0.0f, 0.0f, 0.0f, 0.0f,
+    0.0f, 0.0f, 0.0f, 0.0f,  0.0f, 0.0f, 0.0f, 0.0f,
+    1.0f, 0.0f, 0.0f, 0.0f,  0.0f, 0.0f, 0.0f, 0.0f
 };
 
 constexpr float kMinimal_Aux[32] = {
-    0.0f, 0.0f, 0.3f, 0.0f, 0.0f, 0.0f, 0.3f, 0.0f,
-    0.0f, 0.0f, 0.3f, 0.0f, 0.0f, 0.0f, 0.3f, 0.0f,
-    0.0f, 0.0f, 0.3f, 0.0f, 0.0f, 0.0f, 0.3f, 0.0f,
-    0.0f, 0.0f, 0.3f, 0.0f, 0.0f, 0.0f, 0.3f, 0.0f
+    // Sparse closed hats on off-8ths
+    0.3f, 0.0f, 0.5f, 0.0f,  0.3f, 0.0f, 0.5f, 0.0f,
+    0.3f, 0.0f, 0.5f, 0.0f,  0.3f, 0.0f, 0.5f, 0.0f,
+    0.3f, 0.0f, 0.5f, 0.0f,  0.3f, 0.0f, 0.5f, 0.0f,
+    0.3f, 0.0f, 0.5f, 0.0f,  0.3f, 0.0f, 0.6f, 0.0f
 };
 
 /**
- * [1,0] Steady: Basic groove, quarter + some 8ths
+ * [1,0] Steady: Basic techno groove with light syncopation
+ * Standard backbeat with occasional upbeat kicks
  */
 constexpr float kSteady_Anchor[32] = {
-    1.0f, 0.0f, 0.2f, 0.0f, 0.7f, 0.0f, 0.2f, 0.0f,
-    0.9f, 0.0f, 0.2f, 0.0f, 0.7f, 0.0f, 0.2f, 0.0f,
-    1.0f, 0.0f, 0.2f, 0.0f, 0.7f, 0.0f, 0.2f, 0.0f,
-    0.9f, 0.0f, 0.2f, 0.0f, 0.7f, 0.0f, 0.3f, 0.0f
+    // Four-on-floor with some "&" accents
+    1.0f, 0.0f, 0.25f,0.0f,  0.9f, 0.0f, 0.2f, 0.0f,
+    0.95f,0.0f, 0.3f, 0.0f,  0.9f, 0.0f, 0.2f, 0.0f,
+    1.0f, 0.0f, 0.25f,0.0f,  0.9f, 0.0f, 0.2f, 0.0f,
+    0.95f,0.0f, 0.35f,0.0f,  0.9f, 0.0f, 0.25f,0.0f
 };
 
 constexpr float kSteady_Shimmer[32] = {
-    0.0f, 0.0f, 0.0f, 0.0f, 0.3f, 0.0f, 0.0f, 0.0f,
-    1.0f, 0.0f, 0.0f, 0.0f, 0.3f, 0.0f, 0.0f, 0.0f,
-    0.0f, 0.0f, 0.0f, 0.0f, 0.3f, 0.0f, 0.0f, 0.0f,
-    1.0f, 0.0f, 0.0f, 0.0f, 0.4f, 0.0f, 0.0f, 0.0f
+    // Backbeat with upbeat pickups
+    0.0f, 0.0f, 0.0f, 0.0f,  0.0f, 0.0f, 0.35f,0.0f,
+    1.0f, 0.0f, 0.0f, 0.0f,  0.0f, 0.0f, 0.0f, 0.0f,
+    0.0f, 0.0f, 0.0f, 0.0f,  0.0f, 0.0f, 0.4f, 0.0f,
+    1.0f, 0.0f, 0.0f, 0.0f,  0.0f, 0.0f, 0.0f, 0.0f
 };
 
 constexpr float kSteady_Aux[32] = {
-    0.6f, 0.0f, 0.6f, 0.0f, 0.6f, 0.0f, 0.6f, 0.0f,
-    0.6f, 0.0f, 0.6f, 0.0f, 0.6f, 0.0f, 0.6f, 0.0f,
-    0.6f, 0.0f, 0.6f, 0.0f, 0.6f, 0.0f, 0.6f, 0.0f,
-    0.6f, 0.0f, 0.6f, 0.0f, 0.6f, 0.0f, 0.6f, 0.0f
+    // Consistent 8th note hats
+    0.7f, 0.0f, 0.7f, 0.0f,  0.7f, 0.0f, 0.7f, 0.0f,
+    0.7f, 0.0f, 0.7f, 0.0f,  0.7f, 0.0f, 0.7f, 0.0f,
+    0.7f, 0.0f, 0.7f, 0.0f,  0.7f, 0.0f, 0.7f, 0.0f,
+    0.7f, 0.0f, 0.7f, 0.0f,  0.7f, 0.0f, 0.7f, 0.0f
 };
 
 /**
- * [2,0] Displaced: Skipped beat 3, off-grid sparse
+ * [2,0] Displaced: Off-grid sparse, skipped beat 3
+ * Creates tension by avoiding expected downbeats
  */
 constexpr float kDisplaced_Anchor[32] = {
-    1.0f, 0.0f, 0.0f, 0.3f, 0.0f, 0.0f, 0.0f, 0.0f,
-    0.8f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.4f, 0.0f,
-    1.0f, 0.0f, 0.0f, 0.3f, 0.0f, 0.0f, 0.0f, 0.0f,
-    0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.5f, 0.0f, 0.0f
+    // Beat 1 strong, beat 3 missing, displaced to "&" positions
+    1.0f, 0.0f, 0.0f, 0.0f,  0.0f, 0.0f, 0.5f, 0.0f,
+    0.7f, 0.0f, 0.0f, 0.45f, 0.0f, 0.0f, 0.0f, 0.0f,
+    1.0f, 0.0f, 0.0f, 0.0f,  0.0f, 0.0f, 0.55f,0.0f,
+    0.0f, 0.0f, 0.4f, 0.0f,  0.0f, 0.5f, 0.0f, 0.0f
 };
 
 constexpr float kDisplaced_Shimmer[32] = {
-    0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.4f, 0.0f,
-    0.9f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
-    0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.4f, 0.0f,
-    0.9f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f
+    // Anticipated snares - before the beat
+    0.0f, 0.0f, 0.0f, 0.0f,  0.0f, 0.0f, 0.0f, 0.55f,
+    0.85f,0.0f, 0.0f, 0.0f,  0.0f, 0.0f, 0.0f, 0.0f,
+    0.0f, 0.0f, 0.0f, 0.0f,  0.0f, 0.0f, 0.0f, 0.5f,
+    0.9f, 0.0f, 0.0f, 0.0f,  0.0f, 0.0f, 0.0f, 0.0f
 };
 
 constexpr float kDisplaced_Aux[32] = {
-    0.0f, 0.3f, 0.0f, 0.0f, 0.0f, 0.3f, 0.0f, 0.0f,
-    0.0f, 0.3f, 0.0f, 0.0f, 0.0f, 0.3f, 0.0f, 0.0f,
-    0.0f, 0.3f, 0.0f, 0.0f, 0.0f, 0.3f, 0.0f, 0.0f,
-    0.0f, 0.3f, 0.0f, 0.0f, 0.0f, 0.3f, 0.0f, 0.0f
+    // Off-beat hats emphasizing the displaced feel
+    0.0f, 0.4f, 0.0f, 0.3f,  0.0f, 0.4f, 0.0f, 0.35f,
+    0.0f, 0.4f, 0.0f, 0.3f,  0.0f, 0.4f, 0.0f, 0.35f,
+    0.0f, 0.4f, 0.0f, 0.3f,  0.0f, 0.4f, 0.0f, 0.35f,
+    0.0f, 0.4f, 0.0f, 0.35f, 0.0f, 0.45f,0.0f, 0.4f
 };
 
 /**
- * [0,1] Driving: Straight 8ths
+ * [0,1] Driving: Straight 8th notes, high energy
+ * Industrial edge with relentless kick pattern
  */
 constexpr float kDriving_Anchor[32] = {
-    1.0f, 0.0f, 0.5f, 0.0f, 0.8f, 0.0f, 0.5f, 0.0f,
-    0.9f, 0.0f, 0.5f, 0.0f, 0.8f, 0.0f, 0.5f, 0.0f,
-    1.0f, 0.0f, 0.5f, 0.0f, 0.8f, 0.0f, 0.5f, 0.0f,
-    0.9f, 0.0f, 0.5f, 0.0f, 0.8f, 0.0f, 0.5f, 0.0f
+    // Strong 8th notes throughout
+    1.0f, 0.0f, 0.6f, 0.0f,  0.85f,0.0f, 0.6f, 0.0f,
+    0.9f, 0.0f, 0.6f, 0.0f,  0.85f,0.0f, 0.6f, 0.0f,
+    1.0f, 0.0f, 0.6f, 0.0f,  0.85f,0.0f, 0.6f, 0.0f,
+    0.9f, 0.0f, 0.6f, 0.0f,  0.85f,0.0f, 0.65f,0.0f
 };
 
 constexpr float kDriving_Shimmer[32] = {
-    0.0f, 0.0f, 0.0f, 0.0f, 0.4f, 0.0f, 0.0f, 0.0f,
-    1.0f, 0.0f, 0.0f, 0.0f, 0.4f, 0.0f, 0.0f, 0.0f,
-    0.0f, 0.0f, 0.0f, 0.0f, 0.4f, 0.0f, 0.0f, 0.0f,
-    1.0f, 0.0f, 0.0f, 0.0f, 0.4f, 0.0f, 0.0f, 0.0f
+    // Backbeat with ghost notes
+    0.0f, 0.0f, 0.0f, 0.0f,  0.35f,0.0f, 0.0f, 0.0f,
+    1.0f, 0.0f, 0.0f, 0.0f,  0.35f,0.0f, 0.0f, 0.0f,
+    0.0f, 0.0f, 0.0f, 0.0f,  0.35f,0.0f, 0.0f, 0.0f,
+    1.0f, 0.0f, 0.0f, 0.0f,  0.4f, 0.0f, 0.0f, 0.0f
 };
 
 constexpr float kDriving_Aux[32] = {
-    0.7f, 0.0f, 0.7f, 0.0f, 0.7f, 0.0f, 0.7f, 0.0f,
-    0.7f, 0.0f, 0.7f, 0.0f, 0.7f, 0.0f, 0.7f, 0.0f,
-    0.7f, 0.0f, 0.7f, 0.0f, 0.7f, 0.0f, 0.7f, 0.0f,
-    0.7f, 0.0f, 0.7f, 0.0f, 0.7f, 0.0f, 0.7f, 0.0f
+    // Driving 8th note hats
+    0.8f, 0.0f, 0.8f, 0.0f,  0.8f, 0.0f, 0.8f, 0.0f,
+    0.8f, 0.0f, 0.8f, 0.0f,  0.8f, 0.0f, 0.8f, 0.0f,
+    0.8f, 0.0f, 0.8f, 0.0f,  0.8f, 0.0f, 0.8f, 0.0f,
+    0.8f, 0.0f, 0.8f, 0.0f,  0.8f, 0.0f, 0.8f, 0.0f
 };
 
 /**
- * [1,1] Groovy: Swung 8ths, shuffled feel
+ * [1,1] Groovy: Shuffled feel with swing pocket
+ * The sweet spot - danceable with character
  */
 constexpr float kGroovy_Anchor[32] = {
-    1.0f, 0.0f, 0.3f, 0.4f, 0.7f, 0.0f, 0.3f, 0.4f,
-    0.9f, 0.0f, 0.3f, 0.4f, 0.7f, 0.0f, 0.3f, 0.4f,
-    1.0f, 0.0f, 0.3f, 0.4f, 0.7f, 0.0f, 0.3f, 0.4f,
-    0.9f, 0.0f, 0.3f, 0.4f, 0.7f, 0.0f, 0.3f, 0.4f
+    // Swung feel - emphasis on "a" subdivisions (steps 3, 7, 11...)
+    1.0f, 0.0f, 0.0f, 0.45f, 0.85f,0.0f, 0.0f, 0.4f,
+    0.9f, 0.0f, 0.0f, 0.45f, 0.85f,0.0f, 0.0f, 0.4f,
+    1.0f, 0.0f, 0.0f, 0.45f, 0.85f,0.0f, 0.0f, 0.4f,
+    0.9f, 0.0f, 0.0f, 0.5f,  0.85f,0.0f, 0.0f, 0.45f
 };
 
 constexpr float kGroovy_Shimmer[32] = {
-    0.0f, 0.0f, 0.0f, 0.3f, 0.3f, 0.0f, 0.0f, 0.3f,
-    1.0f, 0.0f, 0.0f, 0.3f, 0.3f, 0.0f, 0.0f, 0.3f,
-    0.0f, 0.0f, 0.0f, 0.3f, 0.3f, 0.0f, 0.0f, 0.3f,
-    1.0f, 0.0f, 0.0f, 0.3f, 0.3f, 0.0f, 0.0f, 0.3f
+    // Shuffled backbeat with anticipation
+    0.0f, 0.0f, 0.0f, 0.35f, 0.0f, 0.0f, 0.0f, 0.4f,
+    1.0f, 0.0f, 0.0f, 0.35f, 0.0f, 0.0f, 0.0f, 0.0f,
+    0.0f, 0.0f, 0.0f, 0.35f, 0.0f, 0.0f, 0.0f, 0.4f,
+    1.0f, 0.0f, 0.0f, 0.4f,  0.0f, 0.0f, 0.0f, 0.0f
 };
 
 constexpr float kGroovy_Aux[32] = {
-    0.6f, 0.0f, 0.6f, 0.3f, 0.6f, 0.0f, 0.6f, 0.3f,
-    0.6f, 0.0f, 0.6f, 0.3f, 0.6f, 0.0f, 0.6f, 0.3f,
-    0.6f, 0.0f, 0.6f, 0.3f, 0.6f, 0.0f, 0.6f, 0.3f,
-    0.6f, 0.0f, 0.6f, 0.3f, 0.6f, 0.0f, 0.6f, 0.3f
+    // Swung 8ths with ghost 16ths
+    0.7f, 0.0f, 0.7f, 0.35f, 0.7f, 0.0f, 0.7f, 0.35f,
+    0.7f, 0.0f, 0.7f, 0.35f, 0.7f, 0.0f, 0.7f, 0.35f,
+    0.7f, 0.0f, 0.7f, 0.35f, 0.7f, 0.0f, 0.7f, 0.35f,
+    0.7f, 0.0f, 0.7f, 0.4f,  0.7f, 0.0f, 0.7f, 0.4f
 };
 
 /**
- * [2,1] Broken: Missing downbeats, syncopated
+ * [2,1] Broken: Missing expected beats, syncopated claps
+ * Broken beat techno - keeps you guessing
  */
 constexpr float kBroken_Anchor[32] = {
-    0.8f, 0.0f, 0.0f, 0.6f, 0.0f, 0.0f, 0.5f, 0.0f,
-    0.0f, 0.0f, 0.4f, 0.0f, 0.0f, 0.0f, 0.5f, 0.0f,
-    0.8f, 0.0f, 0.0f, 0.6f, 0.0f, 0.0f, 0.5f, 0.0f,
-    0.0f, 0.0f, 0.4f, 0.0f, 0.0f, 0.0f, 0.5f, 0.0f
+    // Beat 1 present, beat 2 displaced, beat 3 often missing
+    0.95f,0.0f, 0.0f, 0.55f, 0.0f, 0.0f, 0.6f, 0.0f,
+    0.0f, 0.0f, 0.5f, 0.0f,  0.0f, 0.5f, 0.0f, 0.0f,
+    0.9f, 0.0f, 0.0f, 0.55f, 0.0f, 0.0f, 0.55f,0.0f,
+    0.0f, 0.0f, 0.45f,0.0f,  0.0f, 0.55f,0.0f, 0.0f
 };
 
 constexpr float kBroken_Shimmer[32] = {
-    0.0f, 0.0f, 0.4f, 0.0f, 0.0f, 0.0f, 0.0f, 0.4f,
-    0.9f, 0.0f, 0.0f, 0.0f, 0.0f, 0.4f, 0.0f, 0.0f,
-    0.0f, 0.0f, 0.4f, 0.0f, 0.0f, 0.0f, 0.0f, 0.4f,
-    0.9f, 0.0f, 0.0f, 0.0f, 0.0f, 0.4f, 0.0f, 0.0f
+    // Syncopated claps - avoiding expected positions
+    0.0f, 0.0f, 0.45f,0.0f,  0.0f, 0.0f, 0.0f, 0.5f,
+    0.85f,0.0f, 0.0f, 0.0f,  0.0f, 0.5f, 0.0f, 0.0f,
+    0.0f, 0.0f, 0.45f,0.0f,  0.0f, 0.0f, 0.0f, 0.5f,
+    0.9f, 0.0f, 0.0f, 0.0f,  0.0f, 0.45f,0.0f, 0.0f
 };
 
 constexpr float kBroken_Aux[32] = {
-    0.5f, 0.3f, 0.5f, 0.3f, 0.5f, 0.3f, 0.5f, 0.3f,
-    0.5f, 0.3f, 0.5f, 0.3f, 0.5f, 0.3f, 0.5f, 0.3f,
-    0.5f, 0.3f, 0.5f, 0.3f, 0.5f, 0.3f, 0.5f, 0.3f,
-    0.5f, 0.3f, 0.5f, 0.3f, 0.5f, 0.3f, 0.5f, 0.3f
+    // Irregular hat pattern
+    0.6f, 0.35f,0.6f, 0.0f,  0.6f, 0.35f,0.6f, 0.35f,
+    0.6f, 0.0f, 0.6f, 0.35f, 0.6f, 0.35f,0.6f, 0.0f,
+    0.6f, 0.35f,0.6f, 0.0f,  0.6f, 0.35f,0.6f, 0.35f,
+    0.6f, 0.0f, 0.6f, 0.35f, 0.6f, 0.4f, 0.6f, 0.0f
 };
 
 /**
- * [0,2] Busy: 16th kick patterns
+ * [0,2] Busy: Dense 16th note kick patterns
+ * Industrial/gabber influence - relentless energy
  */
 constexpr float kBusy_Anchor[32] = {
-    1.0f, 0.3f, 0.6f, 0.3f, 0.8f, 0.3f, 0.6f, 0.3f,
-    0.9f, 0.3f, 0.6f, 0.3f, 0.8f, 0.3f, 0.6f, 0.3f,
-    1.0f, 0.3f, 0.6f, 0.3f, 0.8f, 0.3f, 0.6f, 0.3f,
-    0.9f, 0.3f, 0.6f, 0.4f, 0.8f, 0.4f, 0.6f, 0.4f
+    // 16th note kicks with accented downbeats
+    1.0f, 0.4f, 0.65f,0.35f, 0.85f,0.4f, 0.65f,0.35f,
+    0.9f, 0.4f, 0.65f,0.35f, 0.85f,0.4f, 0.65f,0.35f,
+    1.0f, 0.4f, 0.65f,0.35f, 0.85f,0.4f, 0.65f,0.35f,
+    0.9f, 0.4f, 0.65f,0.45f, 0.85f,0.45f,0.7f, 0.45f
 };
 
 constexpr float kBusy_Shimmer[32] = {
-    0.0f, 0.0f, 0.3f, 0.0f, 0.5f, 0.0f, 0.3f, 0.0f,
-    1.0f, 0.0f, 0.3f, 0.0f, 0.5f, 0.0f, 0.3f, 0.0f,
-    0.0f, 0.0f, 0.3f, 0.0f, 0.5f, 0.0f, 0.3f, 0.0f,
-    1.0f, 0.0f, 0.3f, 0.0f, 0.5f, 0.0f, 0.3f, 0.0f
+    // Dense ghost snares
+    0.0f, 0.0f, 0.35f,0.0f,  0.5f, 0.0f, 0.35f,0.0f,
+    1.0f, 0.0f, 0.35f,0.0f,  0.5f, 0.0f, 0.35f,0.0f,
+    0.0f, 0.0f, 0.35f,0.0f,  0.5f, 0.0f, 0.35f,0.0f,
+    1.0f, 0.0f, 0.35f,0.0f,  0.5f, 0.0f, 0.4f, 0.0f
 };
 
 constexpr float kBusy_Aux[32] = {
-    0.7f, 0.4f, 0.7f, 0.4f, 0.7f, 0.4f, 0.7f, 0.4f,
-    0.7f, 0.4f, 0.7f, 0.4f, 0.7f, 0.4f, 0.7f, 0.4f,
-    0.7f, 0.4f, 0.7f, 0.4f, 0.7f, 0.4f, 0.7f, 0.4f,
-    0.7f, 0.4f, 0.7f, 0.4f, 0.7f, 0.4f, 0.7f, 0.4f
+    // Constant 16th note hats
+    0.75f,0.5f, 0.75f,0.5f,  0.75f,0.5f, 0.75f,0.5f,
+    0.75f,0.5f, 0.75f,0.5f,  0.75f,0.5f, 0.75f,0.5f,
+    0.75f,0.5f, 0.75f,0.5f,  0.75f,0.5f, 0.75f,0.5f,
+    0.75f,0.5f, 0.75f,0.55f, 0.75f,0.55f,0.75f,0.55f
 };
 
 /**
  * [1,2] Polyrhythm: 3-over-4 feel
+ * Creates rhythmic tension with cross-rhythm
  */
 constexpr float kPolyrhythm_Anchor[32] = {
-    1.0f, 0.0f, 0.0f, 0.7f, 0.0f, 0.0f, 0.7f, 0.0f,
-    0.0f, 0.0f, 0.7f, 0.0f, 0.0f, 0.7f, 0.0f, 0.0f,
-    1.0f, 0.0f, 0.0f, 0.7f, 0.0f, 0.0f, 0.7f, 0.0f,
-    0.0f, 0.0f, 0.7f, 0.0f, 0.0f, 0.7f, 0.0f, 0.0f
+    // Dotted 8ths creating 3-feel: steps 0, 3, 6, 9, 13, 16, 19, 22, 26, 29
+    1.0f, 0.0f, 0.0f, 0.75f, 0.0f, 0.0f, 0.7f, 0.0f,
+    0.0f, 0.65f,0.0f, 0.0f,  0.0f, 0.7f, 0.0f, 0.0f,
+    1.0f, 0.0f, 0.0f, 0.75f, 0.0f, 0.0f, 0.7f, 0.0f,
+    0.0f, 0.0f, 0.65f,0.0f,  0.0f, 0.7f, 0.0f, 0.0f
 };
 
 constexpr float kPolyrhythm_Shimmer[32] = {
-    0.0f, 0.0f, 0.5f, 0.0f, 0.0f, 0.5f, 0.0f, 0.0f,
-    1.0f, 0.0f, 0.0f, 0.5f, 0.0f, 0.0f, 0.5f, 0.0f,
-    0.0f, 0.0f, 0.5f, 0.0f, 0.0f, 0.5f, 0.0f, 0.0f,
-    1.0f, 0.0f, 0.0f, 0.5f, 0.0f, 0.0f, 0.5f, 0.0f
+    // Counter-rhythm - offset from anchor
+    0.0f, 0.0f, 0.55f,0.0f,  0.0f, 0.55f,0.0f, 0.0f,
+    1.0f, 0.0f, 0.0f, 0.55f, 0.0f, 0.0f, 0.55f,0.0f,
+    0.0f, 0.0f, 0.55f,0.0f,  0.0f, 0.55f,0.0f, 0.0f,
+    1.0f, 0.0f, 0.0f, 0.55f, 0.0f, 0.0f, 0.55f,0.0f
 };
 
 constexpr float kPolyrhythm_Aux[32] = {
-    0.6f, 0.3f, 0.6f, 0.3f, 0.6f, 0.3f, 0.6f, 0.3f,
-    0.6f, 0.3f, 0.6f, 0.3f, 0.6f, 0.3f, 0.6f, 0.3f,
-    0.6f, 0.3f, 0.6f, 0.3f, 0.6f, 0.3f, 0.6f, 0.3f,
-    0.6f, 0.3f, 0.6f, 0.3f, 0.6f, 0.3f, 0.6f, 0.3f
+    // Regular 8ths as anchor point
+    0.7f, 0.4f, 0.7f, 0.4f,  0.7f, 0.4f, 0.7f, 0.4f,
+    0.7f, 0.4f, 0.7f, 0.4f,  0.7f, 0.4f, 0.7f, 0.4f,
+    0.7f, 0.4f, 0.7f, 0.4f,  0.7f, 0.4f, 0.7f, 0.4f,
+    0.7f, 0.4f, 0.7f, 0.4f,  0.7f, 0.45f,0.7f, 0.45f
 };
 
 /**
- * [2,2] Chaos: Irregular clusters, fragmented
+ * [2,2] Chaos: Maximum irregularity, fragmented
+ * Controlled chaos - still danceable but unpredictable
  */
 constexpr float kChaos_Anchor[32] = {
-    1.0f, 0.4f, 0.0f, 0.6f, 0.0f, 0.5f, 0.0f, 0.4f,
-    0.0f, 0.0f, 0.5f, 0.0f, 0.6f, 0.0f, 0.4f, 0.5f,
-    0.9f, 0.4f, 0.0f, 0.0f, 0.6f, 0.0f, 0.5f, 0.0f,
-    0.0f, 0.5f, 0.0f, 0.4f, 0.0f, 0.6f, 0.4f, 0.0f
+    // Irregular clusters with gaps
+    1.0f, 0.45f,0.0f, 0.6f,  0.0f, 0.55f,0.0f, 0.5f,
+    0.0f, 0.0f, 0.55f,0.0f,  0.65f,0.0f, 0.5f, 0.55f,
+    0.9f, 0.5f, 0.0f, 0.0f,  0.6f, 0.0f, 0.55f,0.0f,
+    0.0f, 0.55f,0.0f, 0.5f,  0.0f, 0.6f, 0.5f, 0.0f
 };
 
 constexpr float kChaos_Shimmer[32] = {
-    0.0f, 0.0f, 0.4f, 0.0f, 0.5f, 0.0f, 0.4f, 0.0f,
-    0.9f, 0.0f, 0.0f, 0.4f, 0.0f, 0.4f, 0.0f, 0.0f,
-    0.0f, 0.0f, 0.4f, 0.5f, 0.0f, 0.4f, 0.0f, 0.4f,
-    0.9f, 0.0f, 0.4f, 0.0f, 0.4f, 0.0f, 0.0f, 0.0f
+    // Fragmented snares
+    0.0f, 0.0f, 0.5f, 0.0f,  0.55f,0.0f, 0.5f, 0.0f,
+    0.85f,0.0f, 0.0f, 0.5f,  0.0f, 0.5f, 0.0f, 0.0f,
+    0.0f, 0.0f, 0.5f, 0.55f, 0.0f, 0.5f, 0.0f, 0.5f,
+    0.9f, 0.0f, 0.5f, 0.0f,  0.5f, 0.0f, 0.0f, 0.0f
 };
 
 constexpr float kChaos_Aux[32] = {
-    0.5f, 0.4f, 0.5f, 0.4f, 0.5f, 0.4f, 0.5f, 0.4f,
-    0.5f, 0.4f, 0.5f, 0.4f, 0.5f, 0.4f, 0.5f, 0.4f,
-    0.5f, 0.4f, 0.5f, 0.4f, 0.5f, 0.4f, 0.5f, 0.4f,
-    0.5f, 0.4f, 0.5f, 0.4f, 0.5f, 0.4f, 0.5f, 0.4f
+    // Erratic hats
+    0.6f, 0.5f, 0.6f, 0.5f,  0.6f, 0.5f, 0.6f, 0.5f,
+    0.6f, 0.5f, 0.6f, 0.5f,  0.6f, 0.5f, 0.6f, 0.5f,
+    0.6f, 0.5f, 0.6f, 0.5f,  0.6f, 0.5f, 0.6f, 0.5f,
+    0.6f, 0.5f, 0.6f, 0.55f, 0.6f, 0.55f,0.6f, 0.55f
 };
 
-// Archetype metadata arrays
+// Archetype metadata arrays - tuned for techno character
 constexpr float kSwingAmounts[9] = {
-    0.0f, 0.1f, 0.2f,   // Row 0: minimal, steady, displaced
-    0.0f, 0.3f, 0.4f,   // Row 1: driving, groovy, broken
-    0.0f, 0.2f, 0.5f    // Row 2: busy, poly, chaos
+    0.0f, 0.08f,0.15f,  // Row 0: minimal, steady, displaced
+    0.0f, 0.25f,0.35f,  // Row 1: driving, groovy, broken
+    0.05f,0.15f,0.45f   // Row 2: busy, poly, chaos
 };
 
 constexpr float kSwingPatterns[9] = {
-    0.0f, 0.0f, 1.0f,   // Row 0
-    0.0f, 1.0f, 2.0f,   // Row 1
-    1.0f, 1.0f, 2.0f    // Row 2
+    0.0f, 0.0f, 1.0f,   // Row 0: 8ths, 8ths, 16ths
+    0.0f, 1.0f, 2.0f,   // Row 1: 8ths, 16ths, mixed
+    1.0f, 1.0f, 2.0f    // Row 2: 16ths, 16ths, mixed
 };
 
 constexpr float kDefaultCouples[9] = {
-    0.2f, 0.3f, 0.4f,   // Row 0
-    0.3f, 0.4f, 0.5f,   // Row 1
-    0.4f, 0.5f, 0.6f    // Row 2
+    0.15f,0.25f,0.35f,  // Row 0: independent to slight interlock
+    0.2f, 0.4f, 0.5f,   // Row 1: slight interlock to moderate
+    0.35f,0.45f,0.55f   // Row 2: moderate interlock
 };
 
 constexpr float kFillMultipliers[9] = {
-    1.2f, 1.3f, 1.4f,
-    1.3f, 1.5f, 1.6f,
-    1.5f, 1.7f, 2.0f
+    1.15f,1.25f,1.35f,
+    1.3f, 1.45f,1.6f,
+    1.5f, 1.65f,1.9f
 };
 
 constexpr uint32_t kAccentMasks[9] = {
-    0x01010101, 0x01010101, 0x01010101,
-    0x01010101, 0x11111111, 0x55555555,
-    0x11111111, 0x55555555, 0xFFFFFFFF
+    0x01010101, 0x01010101, 0x09090909,  // Row 0: quarters, quarters, displaced
+    0x01010101, 0x11111111, 0x55555555,  // Row 1: quarters, 8ths, all 8ths
+    0x11111111, 0x49494949, 0xFFFFFFFF   // Row 2: 8ths, poly (3s), all
 };
 
 constexpr uint32_t kRatchetMasks[9] = {
-    0x00000000, 0x01010101, 0x01010101,
+    0x00000000, 0x01010101, 0x09090909,
     0x01010101, 0x11111111, 0x55555555,
     0x11111111, 0x55555555, 0xFFFFFFFF
 };
@@ -311,226 +363,273 @@ constexpr uint32_t kRatchetMasks[9] = {
 } // namespace techno
 
 // =============================================================================
-// Tribal Genre Archetypes (Placeholder Values)
+// Tribal Genre Archetypes - Polyrhythmic, Clave-Based, African/Latin Influenced
 // =============================================================================
+//
+// Tribal grid emphasizes polyrhythmic patterns and clave-based grooves:
+// - X axis (syncopation): traditional → displaced → fragmented
+// - Y axis (complexity): sparse → interlocking → dense
+//
+// Design philosophy:
+// - 3-2 and 2-3 clave patterns as foundation
+// - Emphasis on swing and offbeat accents
+// - Call-and-response between voices
+// - More displacement than techno, less chaos than IDM
+//
 
 namespace tribal
 {
 
 /**
- * [0,0] Minimal: Sparse, polyrhythmic foundation
+ * [0,0] Minimal: Sparse polyrhythmic foundation
+ * Character: Afrobeat-influenced minimal - space with tension
  */
 constexpr float kMinimal_Anchor[32] = {
-    1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
-    0.0f, 0.0f, 0.0f, 0.5f, 0.0f, 0.0f, 0.0f, 0.0f,
-    0.8f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
-    0.0f, 0.0f, 0.0f, 0.5f, 0.0f, 0.0f, 0.0f, 0.0f
+    // 3-2 Son Clave inspired spacing
+    1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.7f, 0.0f,  // Hit on 1 and "a" of 2
+    0.0f, 0.0f, 0.0f, 0.0f, 0.8f, 0.0f, 0.0f, 0.0f,  // Hit on "&" of 3
+    1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.7f, 0.0f,
+    0.0f, 0.0f, 0.0f, 0.0f, 0.8f, 0.0f, 0.0f, 0.0f
 };
 
 constexpr float kMinimal_Shimmer[32] = {
-    0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.3f, 0.0f, 0.0f,
+    // Counter-rhythm to anchor
+    0.0f, 0.0f, 0.0f, 0.0f, 0.6f, 0.0f, 0.0f, 0.0f,  // Answer on "&" of 2
     0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
-    0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.3f, 0.0f, 0.0f,
-    0.8f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f
+    0.0f, 0.0f, 0.0f, 0.0f, 0.6f, 0.0f, 0.0f, 0.0f,
+    0.9f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f   // Strong on 4
 };
 
 constexpr float kMinimal_Aux[32] = {
-    0.4f, 0.0f, 0.4f, 0.0f, 0.4f, 0.0f, 0.4f, 0.0f,
-    0.4f, 0.0f, 0.4f, 0.0f, 0.4f, 0.0f, 0.4f, 0.0f,
-    0.4f, 0.0f, 0.4f, 0.0f, 0.4f, 0.0f, 0.4f, 0.0f,
-    0.4f, 0.0f, 0.4f, 0.0f, 0.4f, 0.0f, 0.4f, 0.0f
+    // Bell pattern inspired by Afrobeat
+    0.6f, 0.0f, 0.0f, 0.4f, 0.6f, 0.0f, 0.0f, 0.4f,
+    0.0f, 0.0f, 0.6f, 0.0f, 0.0f, 0.4f, 0.6f, 0.0f,
+    0.6f, 0.0f, 0.0f, 0.4f, 0.6f, 0.0f, 0.0f, 0.4f,
+    0.0f, 0.0f, 0.6f, 0.0f, 0.0f, 0.4f, 0.6f, 0.0f
 };
 
 /**
- * [1,0] Steady: African-influenced groove
+ * [1,0] Steady: Standard Afrobeat groove
+ * Character: Fela Kuti influenced - strong pocket with syncopation
  */
 constexpr float kSteady_Anchor[32] = {
-    1.0f, 0.0f, 0.0f, 0.5f, 0.0f, 0.0f, 0.4f, 0.0f,
-    0.0f, 0.0f, 0.5f, 0.0f, 0.0f, 0.4f, 0.0f, 0.0f,
-    0.9f, 0.0f, 0.0f, 0.5f, 0.0f, 0.0f, 0.4f, 0.0f,
-    0.0f, 0.0f, 0.5f, 0.0f, 0.0f, 0.4f, 0.0f, 0.0f
+    // Standard afrobeat kick pattern
+    1.0f, 0.0f, 0.0f, 0.6f, 0.0f, 0.0f, 0.0f, 0.5f,
+    0.0f, 0.0f, 0.7f, 0.0f, 0.0f, 0.0f, 0.5f, 0.0f,
+    0.95f,0.0f, 0.0f, 0.6f, 0.0f, 0.0f, 0.0f, 0.5f,
+    0.0f, 0.0f, 0.7f, 0.0f, 0.0f, 0.0f, 0.5f, 0.0f
 };
 
 constexpr float kSteady_Shimmer[32] = {
-    0.0f, 0.0f, 0.3f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
-    0.9f, 0.0f, 0.0f, 0.0f, 0.3f, 0.0f, 0.0f, 0.0f,
-    0.0f, 0.0f, 0.3f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
-    0.9f, 0.0f, 0.0f, 0.0f, 0.3f, 0.0f, 0.0f, 0.0f
+    // Snare on 2 and 4 with ghost notes
+    0.0f, 0.0f, 0.35f,0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+    1.0f, 0.0f, 0.0f, 0.0f, 0.35f,0.0f, 0.0f, 0.0f,
+    0.0f, 0.0f, 0.35f,0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+    1.0f, 0.0f, 0.0f, 0.0f, 0.35f,0.0f, 0.0f, 0.0f
 };
 
 constexpr float kSteady_Aux[32] = {
-    0.5f, 0.0f, 0.5f, 0.3f, 0.5f, 0.0f, 0.5f, 0.3f,
-    0.5f, 0.0f, 0.5f, 0.3f, 0.5f, 0.0f, 0.5f, 0.3f,
-    0.5f, 0.0f, 0.5f, 0.3f, 0.5f, 0.0f, 0.5f, 0.3f,
-    0.5f, 0.0f, 0.5f, 0.3f, 0.5f, 0.0f, 0.5f, 0.3f
+    // 12/8 feel bell pattern
+    0.7f, 0.0f, 0.0f, 0.5f, 0.7f, 0.0f, 0.0f, 0.5f,
+    0.0f, 0.0f, 0.7f, 0.0f, 0.0f, 0.5f, 0.7f, 0.0f,
+    0.7f, 0.0f, 0.0f, 0.5f, 0.7f, 0.0f, 0.0f, 0.5f,
+    0.0f, 0.0f, 0.7f, 0.0f, 0.0f, 0.5f, 0.7f, 0.0f
 };
 
 /**
- * [2,0] Displaced: Off-grid tribal
+ * [2,0] Displaced: Off-grid tribal, clave displaced
+ * Character: Rumba clave feel with unexpected accents
  */
 constexpr float kDisplaced_Anchor[32] = {
-    0.9f, 0.0f, 0.0f, 0.6f, 0.0f, 0.0f, 0.0f, 0.4f,
-    0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.5f, 0.0f, 0.0f,
-    0.9f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.5f, 0.0f,
-    0.0f, 0.4f, 0.0f, 0.0f, 0.0f, 0.5f, 0.0f, 0.0f
+    // 2-3 Rumba clave spacing
+    1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.7f,  // Delayed second hit
+    0.0f, 0.0f, 0.0f, 0.0f, 0.8f, 0.0f, 0.0f, 0.0f,
+    0.9f, 0.0f, 0.0f, 0.0f, 0.0f, 0.7f, 0.0f, 0.0f,  // Displaced from beat 3
+    0.0f, 0.0f, 0.0f, 0.6f, 0.0f, 0.0f, 0.0f, 0.0f
 };
 
 constexpr float kDisplaced_Shimmer[32] = {
-    0.0f, 0.0f, 0.0f, 0.0f, 0.4f, 0.0f, 0.0f, 0.0f,
-    0.0f, 0.0f, 0.0f, 0.4f, 0.0f, 0.0f, 0.0f, 0.0f,
-    0.0f, 0.0f, 0.4f, 0.0f, 0.0f, 0.0f, 0.0f, 0.4f,
-    0.8f, 0.0f, 0.0f, 0.0f, 0.4f, 0.0f, 0.0f, 0.0f
+    // Counter to clave - fills the gaps
+    0.0f, 0.0f, 0.0f, 0.5f, 0.0f, 0.0f, 0.0f, 0.0f,
+    0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.5f, 0.0f,
+    0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+    0.9f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.5f, 0.0f
 };
 
 constexpr float kDisplaced_Aux[32] = {
-    0.4f, 0.2f, 0.4f, 0.2f, 0.4f, 0.2f, 0.4f, 0.2f,
-    0.4f, 0.2f, 0.4f, 0.2f, 0.4f, 0.2f, 0.4f, 0.2f,
-    0.4f, 0.2f, 0.4f, 0.2f, 0.4f, 0.2f, 0.4f, 0.2f,
-    0.4f, 0.2f, 0.4f, 0.2f, 0.4f, 0.2f, 0.4f, 0.2f
+    // Offbeat shaker pattern
+    0.0f, 0.5f, 0.0f, 0.4f, 0.0f, 0.5f, 0.0f, 0.4f,
+    0.0f, 0.5f, 0.0f, 0.4f, 0.0f, 0.5f, 0.0f, 0.4f,
+    0.0f, 0.5f, 0.0f, 0.4f, 0.0f, 0.5f, 0.0f, 0.4f,
+    0.0f, 0.5f, 0.0f, 0.4f, 0.0f, 0.5f, 0.0f, 0.5f
 };
 
 /**
- * [0,1] Driving: Afro-house inspired
+ * [0,1] Driving: Afro-house inspired forward motion
+ * Character: Modern afro-house - 4/4 with triplet feel
  */
 constexpr float kDriving_Anchor[32] = {
-    1.0f, 0.0f, 0.0f, 0.5f, 0.7f, 0.0f, 0.0f, 0.5f,
-    0.0f, 0.0f, 0.5f, 0.0f, 0.7f, 0.0f, 0.0f, 0.5f,
-    1.0f, 0.0f, 0.0f, 0.5f, 0.7f, 0.0f, 0.0f, 0.5f,
-    0.0f, 0.0f, 0.5f, 0.0f, 0.7f, 0.0f, 0.0f, 0.5f
+    // Four-on-floor with triplet ghost notes
+    1.0f, 0.0f, 0.0f, 0.45f, 0.0f, 0.0f, 0.0f, 0.4f,
+    0.95f,0.0f, 0.0f, 0.45f, 0.0f, 0.0f, 0.0f, 0.4f,
+    1.0f, 0.0f, 0.0f, 0.45f, 0.0f, 0.0f, 0.0f, 0.4f,
+    0.95f,0.0f, 0.0f, 0.5f,  0.0f, 0.0f, 0.0f, 0.45f
 };
 
 constexpr float kDriving_Shimmer[32] = {
-    0.0f, 0.0f, 0.4f, 0.0f, 0.0f, 0.0f, 0.4f, 0.0f,
-    0.9f, 0.0f, 0.0f, 0.4f, 0.0f, 0.0f, 0.4f, 0.0f,
-    0.0f, 0.0f, 0.4f, 0.0f, 0.0f, 0.0f, 0.4f, 0.0f,
-    0.9f, 0.0f, 0.0f, 0.4f, 0.0f, 0.0f, 0.4f, 0.0f
+    // Snare with triplet feel ghosts
+    0.0f, 0.0f, 0.0f, 0.35f, 0.0f, 0.0f, 0.0f, 0.35f,
+    1.0f, 0.0f, 0.0f, 0.35f, 0.0f, 0.0f, 0.0f, 0.35f,
+    0.0f, 0.0f, 0.0f, 0.35f, 0.0f, 0.0f, 0.0f, 0.35f,
+    1.0f, 0.0f, 0.0f, 0.4f,  0.0f, 0.0f, 0.0f, 0.35f
 };
 
 constexpr float kDriving_Aux[32] = {
-    0.6f, 0.3f, 0.6f, 0.3f, 0.6f, 0.3f, 0.6f, 0.3f,
-    0.6f, 0.3f, 0.6f, 0.3f, 0.6f, 0.3f, 0.6f, 0.3f,
-    0.6f, 0.3f, 0.6f, 0.3f, 0.6f, 0.3f, 0.6f, 0.3f,
-    0.6f, 0.3f, 0.6f, 0.3f, 0.6f, 0.3f, 0.6f, 0.3f
+    // Shaker pattern with triplet groupings
+    0.7f, 0.0f, 0.0f, 0.5f, 0.7f, 0.0f, 0.0f, 0.5f,
+    0.7f, 0.0f, 0.0f, 0.5f, 0.7f, 0.0f, 0.0f, 0.5f,
+    0.7f, 0.0f, 0.0f, 0.5f, 0.7f, 0.0f, 0.0f, 0.5f,
+    0.7f, 0.0f, 0.0f, 0.5f, 0.7f, 0.0f, 0.0f, 0.5f
 };
 
 /**
- * [1,1] Groovy: Clave-based feel
+ * [1,1] Groovy: 3-2 Son Clave based feel
+ * Character: The sweet spot - classic Afro-Cuban pocket
  */
 constexpr float kGroovy_Anchor[32] = {
-    1.0f, 0.0f, 0.0f, 0.7f, 0.0f, 0.0f, 0.0f, 0.6f,
-    0.0f, 0.0f, 0.7f, 0.0f, 0.0f, 0.0f, 0.6f, 0.0f,
-    1.0f, 0.0f, 0.0f, 0.7f, 0.0f, 0.0f, 0.0f, 0.6f,
-    0.0f, 0.0f, 0.7f, 0.0f, 0.0f, 0.0f, 0.6f, 0.0f
+    // 3-2 Son Clave pattern
+    1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.8f, 0.0f,  // 1 ... and a
+    0.0f, 0.0f, 0.0f, 0.0f, 0.75f,0.0f, 0.0f, 0.0f,  //       &
+    1.0f, 0.0f, 0.0f, 0.0f, 0.7f, 0.0f, 0.0f, 0.0f,  // 1     &
+    0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.6f, 0.0f   //       a
 };
 
 constexpr float kGroovy_Shimmer[32] = {
-    0.0f, 0.0f, 0.0f, 0.0f, 0.5f, 0.0f, 0.0f, 0.0f,
-    0.9f, 0.0f, 0.0f, 0.0f, 0.0f, 0.5f, 0.0f, 0.0f,
-    0.0f, 0.0f, 0.0f, 0.0f, 0.5f, 0.0f, 0.0f, 0.0f,
-    0.9f, 0.0f, 0.0f, 0.0f, 0.0f, 0.5f, 0.0f, 0.0f
+    // Conga-style response pattern
+    0.0f, 0.0f, 0.0f, 0.5f, 0.0f, 0.0f, 0.0f, 0.0f,
+    1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.5f, 0.0f, 0.0f,
+    0.0f, 0.0f, 0.0f, 0.5f, 0.0f, 0.0f, 0.0f, 0.0f,
+    1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.5f, 0.0f, 0.0f
 };
 
 constexpr float kGroovy_Aux[32] = {
-    0.6f, 0.0f, 0.6f, 0.4f, 0.6f, 0.0f, 0.6f, 0.4f,
-    0.6f, 0.0f, 0.6f, 0.4f, 0.6f, 0.0f, 0.6f, 0.4f,
-    0.6f, 0.0f, 0.6f, 0.4f, 0.6f, 0.0f, 0.6f, 0.4f,
-    0.6f, 0.0f, 0.6f, 0.4f, 0.6f, 0.0f, 0.6f, 0.4f
+    // Cascara pattern
+    0.7f, 0.0f, 0.5f, 0.0f, 0.7f, 0.0f, 0.0f, 0.5f,
+    0.0f, 0.0f, 0.7f, 0.0f, 0.5f, 0.0f, 0.7f, 0.0f,
+    0.7f, 0.0f, 0.5f, 0.0f, 0.7f, 0.0f, 0.0f, 0.5f,
+    0.0f, 0.0f, 0.7f, 0.0f, 0.5f, 0.0f, 0.7f, 0.0f
 };
 
 /**
- * [2,1] Broken: Syncopated tribal
+ * [2,1] Broken: Syncopated tribal with missing downbeats
+ * Character: Hypnotic and disorienting
  */
 constexpr float kBroken_Anchor[32] = {
-    0.9f, 0.0f, 0.0f, 0.6f, 0.0f, 0.5f, 0.0f, 0.0f,
-    0.0f, 0.0f, 0.5f, 0.0f, 0.6f, 0.0f, 0.0f, 0.5f,
-    0.9f, 0.0f, 0.0f, 0.0f, 0.0f, 0.5f, 0.6f, 0.0f,
-    0.0f, 0.5f, 0.0f, 0.0f, 0.6f, 0.0f, 0.0f, 0.5f
+    // Missing beat 1, emphasis on offbeats
+    0.0f, 0.0f, 0.0f, 0.7f, 0.0f, 0.0f, 0.8f, 0.0f,
+    0.0f, 0.0f, 0.0f, 0.0f, 0.7f, 0.0f, 0.0f, 0.0f,
+    0.9f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.7f, 0.0f,  // Beat 1 appears late
+    0.0f, 0.6f, 0.0f, 0.0f, 0.7f, 0.0f, 0.0f, 0.0f
 };
 
 constexpr float kBroken_Shimmer[32] = {
-    0.0f, 0.0f, 0.4f, 0.0f, 0.0f, 0.0f, 0.4f, 0.0f,
-    0.8f, 0.0f, 0.0f, 0.4f, 0.0f, 0.0f, 0.0f, 0.0f,
-    0.0f, 0.0f, 0.4f, 0.0f, 0.0f, 0.4f, 0.0f, 0.0f,
-    0.8f, 0.0f, 0.0f, 0.0f, 0.0f, 0.4f, 0.0f, 0.0f
+    // Cross-rhythm snare pattern
+    0.0f, 0.0f, 0.5f, 0.0f, 0.0f, 0.0f, 0.0f, 0.5f,
+    0.8f, 0.0f, 0.0f, 0.0f, 0.0f, 0.5f, 0.0f, 0.0f,
+    0.0f, 0.0f, 0.5f, 0.0f, 0.0f, 0.0f, 0.0f, 0.5f,
+    0.0f, 0.0f, 0.0f, 0.5f, 0.0f, 0.0f, 0.8f, 0.0f
 };
 
 constexpr float kBroken_Aux[32] = {
-    0.5f, 0.3f, 0.5f, 0.3f, 0.5f, 0.3f, 0.5f, 0.3f,
-    0.5f, 0.3f, 0.5f, 0.3f, 0.5f, 0.3f, 0.5f, 0.3f,
-    0.5f, 0.3f, 0.5f, 0.3f, 0.5f, 0.3f, 0.5f, 0.3f,
-    0.5f, 0.3f, 0.5f, 0.3f, 0.5f, 0.3f, 0.5f, 0.3f
+    // Irregular shaker - emphasizes displacement
+    0.6f, 0.0f, 0.0f, 0.5f, 0.0f, 0.6f, 0.0f, 0.0f,
+    0.5f, 0.0f, 0.6f, 0.0f, 0.0f, 0.5f, 0.0f, 0.6f,
+    0.0f, 0.0f, 0.5f, 0.0f, 0.6f, 0.0f, 0.0f, 0.5f,
+    0.0f, 0.6f, 0.0f, 0.0f, 0.5f, 0.0f, 0.6f, 0.0f
 };
 
 /**
- * [0,2] Busy: Dense polyrhythmic
+ * [0,2] Busy: Dense polyrhythmic layers
+ * Character: West African ensemble - multiple interlocking parts
  */
 constexpr float kBusy_Anchor[32] = {
-    1.0f, 0.3f, 0.0f, 0.6f, 0.4f, 0.0f, 0.5f, 0.3f,
-    0.0f, 0.3f, 0.6f, 0.0f, 0.4f, 0.3f, 0.0f, 0.5f,
-    0.9f, 0.3f, 0.0f, 0.6f, 0.4f, 0.0f, 0.5f, 0.3f,
-    0.0f, 0.3f, 0.6f, 0.0f, 0.4f, 0.3f, 0.0f, 0.5f
+    // Dense djembe-style pattern
+    1.0f, 0.0f, 0.0f, 0.6f, 0.5f, 0.0f, 0.0f, 0.55f,
+    0.5f, 0.0f, 0.6f, 0.0f, 0.5f, 0.0f, 0.0f, 0.55f,
+    0.95f,0.0f, 0.0f, 0.6f, 0.5f, 0.0f, 0.0f, 0.55f,
+    0.5f, 0.0f, 0.6f, 0.0f, 0.5f, 0.0f, 0.0f, 0.6f
 };
 
 constexpr float kBusy_Shimmer[32] = {
-    0.0f, 0.0f, 0.4f, 0.0f, 0.0f, 0.4f, 0.0f, 0.0f,
-    0.9f, 0.0f, 0.0f, 0.4f, 0.0f, 0.0f, 0.4f, 0.0f,
-    0.0f, 0.0f, 0.4f, 0.0f, 0.0f, 0.4f, 0.0f, 0.0f,
-    0.9f, 0.0f, 0.0f, 0.4f, 0.0f, 0.0f, 0.4f, 0.0f
+    // Kenkeni-style response
+    0.0f, 0.0f, 0.5f, 0.0f, 0.0f, 0.0f, 0.5f, 0.0f,
+    0.0f, 0.0f, 0.0f, 0.5f, 0.0f, 0.0f, 0.5f, 0.0f,
+    0.9f, 0.0f, 0.5f, 0.0f, 0.0f, 0.0f, 0.5f, 0.0f,
+    0.0f, 0.0f, 0.0f, 0.5f, 0.0f, 0.0f, 0.5f, 0.0f
 };
 
 constexpr float kBusy_Aux[32] = {
-    0.6f, 0.4f, 0.6f, 0.4f, 0.6f, 0.4f, 0.6f, 0.4f,
-    0.6f, 0.4f, 0.6f, 0.4f, 0.6f, 0.4f, 0.6f, 0.4f,
-    0.6f, 0.4f, 0.6f, 0.4f, 0.6f, 0.4f, 0.6f, 0.4f,
-    0.6f, 0.4f, 0.6f, 0.4f, 0.6f, 0.4f, 0.6f, 0.4f
+    // Full 16th note shaker/bell
+    0.7f, 0.45f, 0.65f, 0.45f, 0.7f, 0.45f, 0.65f, 0.45f,
+    0.7f, 0.45f, 0.65f, 0.45f, 0.7f, 0.45f, 0.65f, 0.45f,
+    0.7f, 0.45f, 0.65f, 0.45f, 0.7f, 0.45f, 0.65f, 0.45f,
+    0.7f, 0.45f, 0.65f, 0.5f,  0.7f, 0.5f,  0.65f, 0.5f
 };
 
 /**
- * [1,2] Polyrhythm: Complex interlocking
+ * [1,2] Polyrhythm: 5-over-4 and 3-over-4 interlocking
+ * Character: Maximum polymetric tension - Ewe-inspired
  */
 constexpr float kPolyrhythm_Anchor[32] = {
-    1.0f, 0.0f, 0.0f, 0.7f, 0.0f, 0.6f, 0.0f, 0.0f,
-    0.0f, 0.0f, 0.7f, 0.0f, 0.6f, 0.0f, 0.0f, 0.7f,
-    0.9f, 0.0f, 0.0f, 0.0f, 0.0f, 0.6f, 0.7f, 0.0f,
-    0.0f, 0.7f, 0.0f, 0.0f, 0.6f, 0.0f, 0.0f, 0.7f
+    // 5-over-4 pattern (hits at 0, 6.4, 12.8, 19.2, 25.6 approximated)
+    1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.75f,0.0f,
+    0.0f, 0.0f, 0.0f, 0.0f, 0.8f, 0.0f, 0.0f, 0.0f,
+    0.0f, 0.0f, 0.0f, 0.75f,0.0f, 0.0f, 0.0f, 0.0f,
+    0.0f, 0.8f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.7f
 };
 
 constexpr float kPolyrhythm_Shimmer[32] = {
-    0.0f, 0.0f, 0.5f, 0.0f, 0.0f, 0.0f, 0.5f, 0.0f,
-    0.9f, 0.0f, 0.0f, 0.5f, 0.0f, 0.0f, 0.0f, 0.0f,
-    0.0f, 0.0f, 0.5f, 0.0f, 0.0f, 0.5f, 0.0f, 0.0f,
-    0.9f, 0.0f, 0.0f, 0.0f, 0.0f, 0.5f, 0.0f, 0.0f
+    // 3-over-4 counter (dotted 8ths)
+    0.0f, 0.0f, 0.0f, 0.0f, 0.7f, 0.0f, 0.0f, 0.0f,
+    0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.7f, 0.0f,
+    1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+    0.0f, 0.0f, 0.7f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f
 };
 
 constexpr float kPolyrhythm_Aux[32] = {
-    0.5f, 0.4f, 0.5f, 0.4f, 0.5f, 0.4f, 0.5f, 0.4f,
-    0.5f, 0.4f, 0.5f, 0.4f, 0.5f, 0.4f, 0.5f, 0.4f,
-    0.5f, 0.4f, 0.5f, 0.4f, 0.5f, 0.4f, 0.5f, 0.4f,
-    0.5f, 0.4f, 0.5f, 0.4f, 0.5f, 0.4f, 0.5f, 0.4f
+    // Standard 12/8 bell as anchor point
+    0.7f, 0.0f, 0.0f, 0.5f, 0.7f, 0.0f, 0.0f, 0.5f,
+    0.0f, 0.0f, 0.7f, 0.0f, 0.0f, 0.5f, 0.7f, 0.0f,
+    0.7f, 0.0f, 0.0f, 0.5f, 0.7f, 0.0f, 0.0f, 0.5f,
+    0.0f, 0.0f, 0.7f, 0.0f, 0.0f, 0.5f, 0.7f, 0.0f
 };
 
 /**
  * [2,2] Chaos: Maximum polyrhythmic complexity
+ * Character: Controlled chaos - multiple cross-rhythms
  */
 constexpr float kChaos_Anchor[32] = {
-    1.0f, 0.4f, 0.0f, 0.6f, 0.0f, 0.5f, 0.4f, 0.0f,
-    0.0f, 0.0f, 0.6f, 0.0f, 0.5f, 0.0f, 0.4f, 0.5f,
-    0.9f, 0.0f, 0.4f, 0.0f, 0.5f, 0.0f, 0.6f, 0.0f,
-    0.0f, 0.5f, 0.0f, 0.4f, 0.0f, 0.6f, 0.0f, 0.5f
+    // Irregular pattern with cluster accents
+    1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.6f, 0.0f, 0.55f,
+    0.0f, 0.0f, 0.6f, 0.0f, 0.0f, 0.0f, 0.55f,0.0f,
+    0.0f, 0.6f, 0.0f, 0.0f, 0.9f, 0.0f, 0.0f, 0.0f,
+    0.0f, 0.0f, 0.55f,0.0f, 0.0f, 0.6f, 0.0f, 0.0f
 };
 
 constexpr float kChaos_Shimmer[32] = {
-    0.0f, 0.0f, 0.4f, 0.0f, 0.5f, 0.0f, 0.0f, 0.4f,
-    0.8f, 0.0f, 0.0f, 0.4f, 0.0f, 0.5f, 0.0f, 0.0f,
-    0.0f, 0.4f, 0.0f, 0.5f, 0.0f, 0.0f, 0.4f, 0.0f,
-    0.8f, 0.0f, 0.5f, 0.0f, 0.0f, 0.0f, 0.4f, 0.0f
+    // Fills gaps in anchor - call and response
+    0.0f, 0.0f, 0.5f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+    0.0f, 0.5f, 0.0f, 0.0f, 0.8f, 0.0f, 0.0f, 0.0f,
+    0.0f, 0.0f, 0.0f, 0.5f, 0.0f, 0.0f, 0.0f, 0.5f,
+    0.8f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.5f, 0.0f
 };
 
 constexpr float kChaos_Aux[32] = {
-    0.5f, 0.4f, 0.5f, 0.4f, 0.5f, 0.4f, 0.5f, 0.4f,
-    0.5f, 0.4f, 0.5f, 0.4f, 0.5f, 0.4f, 0.5f, 0.4f,
-    0.5f, 0.4f, 0.5f, 0.4f, 0.5f, 0.4f, 0.5f, 0.4f,
-    0.5f, 0.4f, 0.5f, 0.4f, 0.5f, 0.4f, 0.5f, 0.4f
+    // Erratic shaker - breaks expected patterns
+    0.6f, 0.0f, 0.55f,0.0f, 0.0f, 0.6f, 0.0f, 0.55f,
+    0.0f, 0.6f, 0.0f, 0.0f, 0.55f,0.0f, 0.6f, 0.0f,
+    0.0f, 0.55f,0.6f, 0.0f, 0.0f, 0.0f, 0.55f,0.6f,
+    0.0f, 0.0f, 0.6f, 0.55f,0.0f, 0.0f, 0.0f, 0.6f
 };
 
 // Tribal metadata - more swing overall
@@ -573,257 +672,304 @@ constexpr uint32_t kRatchetMasks[9] = {
 } // namespace tribal
 
 // =============================================================================
-// IDM Genre Archetypes (Placeholder Values)
+// IDM Genre Archetypes - Experimental, Glitchy, Algorithmic
 // =============================================================================
+//
+// IDM grid emphasizes unpredictability and unconventional patterns:
+// - X axis (syncopation): off-grid → displaced → fragmented
+// - Y axis (complexity): sparse → fractured → dense chaos
+//
+// Design philosophy:
+// - Avoid predictable downbeats (especially in high syncopation)
+// - Clustered hits and irregular spacing
+// - More silence than techno, but more unpredictable than tribal
+// - Embrace the "wrong" placements that create tension
+//
 
 namespace idm
 {
 
 /**
- * [0,0] Minimal: Sparse, glitchy
+ * [0,0] Minimal: Sparse ambient glitch
+ * Character: Autechre-influenced - space and tension
  */
 constexpr float kMinimal_Anchor[32] = {
+    // Long gaps with unexpected placements
     1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
-    0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.4f, 0.0f, 0.0f,
-    0.8f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
-    0.0f, 0.0f, 0.0f, 0.0f, 0.4f, 0.0f, 0.0f, 0.0f
+    0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.6f, 0.0f,  // Late hit
+    0.0f, 0.0f, 0.0f, 0.0f, 0.8f, 0.0f, 0.0f, 0.0f,  // Off beat 3
+    0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f
 };
 
 constexpr float kMinimal_Shimmer[32] = {
-    0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.3f, 0.0f,
+    // Distant, unexpected responses
     0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
-    0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.3f,
-    0.7f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f
+    0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+    0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.5f, 0.0f, 0.0f,  // Answer
+    0.8f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f
 };
 
 constexpr float kMinimal_Aux[32] = {
-    0.3f, 0.0f, 0.0f, 0.2f, 0.0f, 0.0f, 0.3f, 0.0f,
-    0.0f, 0.2f, 0.0f, 0.0f, 0.3f, 0.0f, 0.0f, 0.2f,
-    0.3f, 0.0f, 0.0f, 0.2f, 0.0f, 0.0f, 0.3f, 0.0f,
-    0.0f, 0.2f, 0.0f, 0.0f, 0.3f, 0.0f, 0.0f, 0.2f
+    // Sparse, irregular hi-hat texture
+    0.0f, 0.0f, 0.0f, 0.4f, 0.0f, 0.0f, 0.0f, 0.0f,
+    0.5f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.4f, 0.0f,
+    0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.5f,
+    0.0f, 0.0f, 0.4f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f
 };
 
 /**
- * [1,0] Steady: Regular but displaced
+ * [1,0] Steady: Regular spacing but off-grid placement
+ * Character: Boards of Canada - predictable rhythm, weird timing
  */
 constexpr float kSteady_Anchor[32] = {
-    0.9f, 0.0f, 0.0f, 0.5f, 0.0f, 0.0f, 0.0f, 0.4f,
-    0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.5f, 0.0f, 0.0f,
-    0.9f, 0.0f, 0.0f, 0.0f, 0.5f, 0.0f, 0.0f, 0.4f,
-    0.0f, 0.0f, 0.0f, 0.5f, 0.0f, 0.0f, 0.0f, 0.0f
+    // Regular intervals but shifted from grid
+    0.95f,0.0f, 0.0f, 0.0f, 0.0f, 0.6f, 0.0f, 0.0f,  // Kick, then "&a" of 2
+    0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.6f, 0.0f, 0.0f,
+    0.9f, 0.0f, 0.0f, 0.0f, 0.0f, 0.55f,0.0f, 0.0f,
+    0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.6f, 0.0f, 0.0f
 };
 
 constexpr float kSteady_Shimmer[32] = {
-    0.0f, 0.0f, 0.3f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
-    0.8f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.3f, 0.0f,
-    0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.3f, 0.0f, 0.0f,
-    0.8f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.3f, 0.0f
+    // Snare in expected place but with odd ghosts
+    0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.4f,
+    0.9f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.4f,
+    0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.4f,
+    0.9f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f
 };
 
 constexpr float kSteady_Aux[32] = {
-    0.4f, 0.2f, 0.4f, 0.2f, 0.4f, 0.2f, 0.4f, 0.2f,
-    0.4f, 0.2f, 0.4f, 0.2f, 0.4f, 0.2f, 0.4f, 0.2f,
-    0.4f, 0.2f, 0.4f, 0.2f, 0.4f, 0.2f, 0.4f, 0.2f,
-    0.4f, 0.2f, 0.4f, 0.2f, 0.4f, 0.2f, 0.4f, 0.2f
+    // Asymmetric hi-hat pattern
+    0.5f, 0.0f, 0.4f, 0.0f, 0.5f, 0.0f, 0.0f, 0.4f,
+    0.0f, 0.0f, 0.5f, 0.0f, 0.4f, 0.0f, 0.5f, 0.0f,
+    0.5f, 0.0f, 0.4f, 0.0f, 0.5f, 0.0f, 0.0f, 0.4f,
+    0.0f, 0.0f, 0.5f, 0.0f, 0.4f, 0.0f, 0.5f, 0.0f
 };
 
 /**
- * [2,0] Displaced: Very off-grid
+ * [2,0] Displaced: Very off-grid, anti-groove
+ * Character: Maximum tension through absence
  */
 constexpr float kDisplaced_Anchor[32] = {
-    0.8f, 0.0f, 0.0f, 0.0f, 0.0f, 0.5f, 0.0f, 0.0f,
-    0.0f, 0.0f, 0.0f, 0.6f, 0.0f, 0.0f, 0.0f, 0.0f,
-    0.0f, 0.0f, 0.0f, 0.0f, 0.8f, 0.0f, 0.0f, 0.0f,
-    0.0f, 0.0f, 0.5f, 0.0f, 0.0f, 0.0f, 0.0f, 0.6f
+    // Only fires in unexpected places
+    0.9f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+    0.0f, 0.0f, 0.0f, 0.6f, 0.0f, 0.0f, 0.0f, 0.0f,  // e of 2
+    0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+    0.0f, 0.0f, 0.6f, 0.0f, 0.0f, 0.0f, 0.0f, 0.7f   // Before and after 4
 };
 
 constexpr float kDisplaced_Shimmer[32] = {
-    0.0f, 0.0f, 0.0f, 0.4f, 0.0f, 0.0f, 0.0f, 0.0f,
-    0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.4f, 0.0f, 0.0f,
-    0.0f, 0.0f, 0.4f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
-    0.7f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.4f, 0.0f
+    // Wrong places for snare
+    0.0f, 0.0f, 0.0f, 0.0f, 0.6f, 0.0f, 0.0f, 0.0f,  // & of 2
+    0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+    0.0f, 0.0f, 0.0f, 0.6f, 0.0f, 0.0f, 0.0f, 0.0f,  // e of 3
+    0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.7f, 0.0f, 0.0f
 };
 
 constexpr float kDisplaced_Aux[32] = {
-    0.3f, 0.2f, 0.3f, 0.2f, 0.3f, 0.2f, 0.3f, 0.2f,
-    0.3f, 0.2f, 0.3f, 0.2f, 0.3f, 0.2f, 0.3f, 0.2f,
-    0.3f, 0.2f, 0.3f, 0.2f, 0.3f, 0.2f, 0.3f, 0.2f,
-    0.3f, 0.2f, 0.3f, 0.2f, 0.3f, 0.2f, 0.3f, 0.2f
+    // Sparse, random-feeling texture
+    0.0f, 0.0f, 0.4f, 0.0f, 0.0f, 0.0f, 0.0f, 0.4f,
+    0.0f, 0.0f, 0.0f, 0.0f, 0.4f, 0.0f, 0.0f, 0.0f,
+    0.0f, 0.4f, 0.0f, 0.0f, 0.0f, 0.0f, 0.4f, 0.0f,
+    0.0f, 0.0f, 0.0f, 0.4f, 0.0f, 0.0f, 0.0f, 0.0f
 };
 
 /**
  * [0,1] Driving: IDM with forward motion
+ * Character: Squarepusher-influenced - energetic but fractured
  */
 constexpr float kDriving_Anchor[32] = {
-    1.0f, 0.0f, 0.4f, 0.0f, 0.7f, 0.0f, 0.4f, 0.0f,
-    0.8f, 0.0f, 0.4f, 0.0f, 0.7f, 0.0f, 0.4f, 0.0f,
-    1.0f, 0.0f, 0.4f, 0.0f, 0.7f, 0.0f, 0.4f, 0.0f,
-    0.8f, 0.0f, 0.4f, 0.0f, 0.7f, 0.0f, 0.5f, 0.3f
+    // Fast 8ths with irregular accents
+    1.0f, 0.0f, 0.55f,0.0f, 0.8f, 0.0f, 0.5f, 0.0f,
+    0.0f, 0.0f, 0.55f,0.0f, 0.8f, 0.0f, 0.5f, 0.0f,  // No beat 2!
+    0.95f,0.0f, 0.55f,0.0f, 0.8f, 0.0f, 0.5f, 0.0f,
+    0.0f, 0.0f, 0.55f,0.0f, 0.8f, 0.0f, 0.6f, 0.45f  // Pickup cluster
 };
 
 constexpr float kDriving_Shimmer[32] = {
-    0.0f, 0.0f, 0.0f, 0.3f, 0.0f, 0.0f, 0.0f, 0.3f,
-    0.9f, 0.0f, 0.0f, 0.3f, 0.0f, 0.0f, 0.0f, 0.3f,
-    0.0f, 0.0f, 0.0f, 0.3f, 0.0f, 0.0f, 0.0f, 0.3f,
-    0.9f, 0.0f, 0.0f, 0.3f, 0.0f, 0.0f, 0.0f, 0.3f
+    // Off-beat snares
+    0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.4f, 0.0f, 0.0f,
+    0.9f, 0.0f, 0.0f, 0.0f, 0.0f, 0.4f, 0.0f, 0.0f,
+    0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.4f, 0.0f, 0.0f,
+    0.9f, 0.0f, 0.0f, 0.0f, 0.0f, 0.45f,0.0f, 0.0f
 };
 
 constexpr float kDriving_Aux[32] = {
-    0.5f, 0.3f, 0.5f, 0.3f, 0.5f, 0.3f, 0.5f, 0.3f,
-    0.5f, 0.3f, 0.5f, 0.3f, 0.5f, 0.3f, 0.5f, 0.3f,
-    0.5f, 0.3f, 0.5f, 0.3f, 0.5f, 0.3f, 0.5f, 0.3f,
-    0.5f, 0.3f, 0.5f, 0.3f, 0.5f, 0.3f, 0.5f, 0.3f
+    // Fast 16th hi-hats with accents
+    0.6f, 0.35f, 0.55f, 0.35f, 0.6f, 0.35f, 0.55f, 0.35f,
+    0.6f, 0.35f, 0.55f, 0.35f, 0.6f, 0.35f, 0.55f, 0.35f,
+    0.6f, 0.35f, 0.55f, 0.35f, 0.6f, 0.35f, 0.55f, 0.35f,
+    0.6f, 0.35f, 0.55f, 0.4f,  0.6f, 0.4f,  0.55f, 0.4f
 };
 
 /**
  * [1,1] Groovy: Complex but danceable IDM
+ * Character: Aphex Twin-influenced - head-nodding chaos
  */
 constexpr float kGroovy_Anchor[32] = {
-    1.0f, 0.0f, 0.0f, 0.5f, 0.0f, 0.0f, 0.4f, 0.0f,
-    0.0f, 0.3f, 0.0f, 0.0f, 0.6f, 0.0f, 0.0f, 0.4f,
-    0.9f, 0.0f, 0.0f, 0.5f, 0.0f, 0.0f, 0.4f, 0.0f,
-    0.0f, 0.3f, 0.0f, 0.0f, 0.6f, 0.0f, 0.0f, 0.4f
+    // Danceable but with displaced accents
+    1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.55f,0.0f, 0.0f,
+    0.0f, 0.0f, 0.0f, 0.5f, 0.0f, 0.0f, 0.0f, 0.0f,
+    0.9f, 0.0f, 0.0f, 0.0f, 0.0f, 0.55f,0.0f, 0.0f,
+    0.0f, 0.0f, 0.0f, 0.5f, 0.0f, 0.0f, 0.55f,0.0f
 };
 
 constexpr float kGroovy_Shimmer[32] = {
-    0.0f, 0.0f, 0.3f, 0.0f, 0.0f, 0.3f, 0.0f, 0.0f,
-    0.8f, 0.0f, 0.0f, 0.3f, 0.0f, 0.0f, 0.3f, 0.0f,
-    0.0f, 0.0f, 0.3f, 0.0f, 0.0f, 0.3f, 0.0f, 0.0f,
-    0.8f, 0.0f, 0.0f, 0.3f, 0.0f, 0.0f, 0.3f, 0.0f
+    // Snare on 2 and 4 but with wrong-feeling ghosts
+    0.0f, 0.0f, 0.0f, 0.4f, 0.0f, 0.0f, 0.0f, 0.0f,
+    0.9f, 0.0f, 0.0f, 0.0f, 0.0f, 0.4f, 0.0f, 0.0f,
+    0.0f, 0.0f, 0.0f, 0.4f, 0.0f, 0.0f, 0.0f, 0.0f,
+    0.9f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.4f
 };
 
 constexpr float kGroovy_Aux[32] = {
-    0.5f, 0.3f, 0.5f, 0.3f, 0.5f, 0.3f, 0.5f, 0.3f,
-    0.5f, 0.3f, 0.5f, 0.3f, 0.5f, 0.3f, 0.5f, 0.3f,
-    0.5f, 0.3f, 0.5f, 0.3f, 0.5f, 0.3f, 0.5f, 0.3f,
-    0.5f, 0.3f, 0.5f, 0.3f, 0.5f, 0.3f, 0.5f, 0.3f
+    // Broken 16th pattern with gaps
+    0.55f,0.0f, 0.5f, 0.0f, 0.0f, 0.5f, 0.0f, 0.55f,
+    0.0f, 0.5f, 0.0f, 0.0f, 0.55f,0.0f, 0.5f, 0.0f,
+    0.55f,0.0f, 0.5f, 0.0f, 0.0f, 0.5f, 0.0f, 0.55f,
+    0.0f, 0.5f, 0.0f, 0.0f, 0.55f,0.0f, 0.55f,0.0f
 };
 
 /**
  * [2,1] Broken: Heavily syncopated IDM
+ * Character: Venetian Snares-influenced - broken but musical
  */
 constexpr float kBroken_Anchor[32] = {
-    0.9f, 0.0f, 0.0f, 0.5f, 0.0f, 0.0f, 0.0f, 0.4f,
-    0.0f, 0.0f, 0.5f, 0.0f, 0.0f, 0.4f, 0.0f, 0.0f,
-    0.0f, 0.0f, 0.0f, 0.5f, 0.8f, 0.0f, 0.0f, 0.0f,
-    0.0f, 0.4f, 0.0f, 0.0f, 0.5f, 0.0f, 0.0f, 0.4f
+    // Beat 1 strong, everything else displaced
+    0.95f,0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.55f,0.0f,
+    0.0f, 0.0f, 0.0f, 0.5f, 0.0f, 0.0f, 0.0f, 0.0f,
+    0.0f, 0.0f, 0.0f, 0.0f, 0.85f,0.0f, 0.0f, 0.0f,  // Late beat 3
+    0.0f, 0.5f, 0.0f, 0.0f, 0.0f, 0.0f, 0.55f,0.0f
 };
 
 constexpr float kBroken_Shimmer[32] = {
-    0.0f, 0.0f, 0.4f, 0.0f, 0.0f, 0.0f, 0.4f, 0.0f,
-    0.7f, 0.0f, 0.0f, 0.0f, 0.4f, 0.0f, 0.0f, 0.0f,
-    0.0f, 0.0f, 0.4f, 0.0f, 0.0f, 0.0f, 0.0f, 0.4f,
-    0.7f, 0.0f, 0.0f, 0.4f, 0.0f, 0.0f, 0.0f, 0.0f
+    // Maximum syncopation - never where expected
+    0.0f, 0.0f, 0.0f, 0.5f, 0.0f, 0.0f, 0.0f, 0.0f,
+    0.0f, 0.0f, 0.5f, 0.0f, 0.0f, 0.0f, 0.0f, 0.5f,
+    0.8f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.5f, 0.0f,
+    0.0f, 0.0f, 0.0f, 0.0f, 0.5f, 0.0f, 0.0f, 0.0f
 };
 
 constexpr float kBroken_Aux[32] = {
-    0.4f, 0.3f, 0.4f, 0.3f, 0.4f, 0.3f, 0.4f, 0.3f,
-    0.4f, 0.3f, 0.4f, 0.3f, 0.4f, 0.3f, 0.4f, 0.3f,
-    0.4f, 0.3f, 0.4f, 0.3f, 0.4f, 0.3f, 0.4f, 0.3f,
-    0.4f, 0.3f, 0.4f, 0.3f, 0.4f, 0.3f, 0.4f, 0.3f
+    // Fractured hi-hat pattern
+    0.5f, 0.0f, 0.0f, 0.45f,0.0f, 0.5f, 0.0f, 0.0f,
+    0.0f, 0.45f,0.0f, 0.0f, 0.5f, 0.0f, 0.0f, 0.45f,
+    0.0f, 0.0f, 0.5f, 0.0f, 0.0f, 0.45f,0.0f, 0.0f,
+    0.5f, 0.0f, 0.0f, 0.0f, 0.0f, 0.5f, 0.0f, 0.45f
 };
 
 /**
  * [0,2] Busy: Dense IDM patterns
+ * Character: Drill'n'bass - fast and furious
  */
 constexpr float kBusy_Anchor[32] = {
-    1.0f, 0.4f, 0.5f, 0.4f, 0.7f, 0.4f, 0.5f, 0.4f,
-    0.8f, 0.4f, 0.5f, 0.4f, 0.7f, 0.4f, 0.5f, 0.4f,
-    1.0f, 0.4f, 0.5f, 0.4f, 0.7f, 0.4f, 0.5f, 0.4f,
-    0.8f, 0.4f, 0.5f, 0.5f, 0.7f, 0.5f, 0.5f, 0.5f
+    // Fast kicks with irregular accents
+    1.0f, 0.45f,0.55f,0.0f, 0.7f, 0.45f,0.55f,0.0f,
+    0.0f, 0.45f,0.55f,0.0f, 0.7f, 0.45f,0.55f,0.0f,
+    0.95f,0.45f,0.55f,0.0f, 0.7f, 0.45f,0.55f,0.0f,
+    0.0f, 0.45f,0.55f,0.5f, 0.7f, 0.5f, 0.6f, 0.5f
 };
 
 constexpr float kBusy_Shimmer[32] = {
-    0.0f, 0.0f, 0.4f, 0.0f, 0.5f, 0.0f, 0.4f, 0.0f,
-    0.9f, 0.0f, 0.4f, 0.0f, 0.5f, 0.0f, 0.4f, 0.0f,
-    0.0f, 0.0f, 0.4f, 0.0f, 0.5f, 0.0f, 0.4f, 0.0f,
-    0.9f, 0.0f, 0.4f, 0.0f, 0.5f, 0.0f, 0.4f, 0.0f
+    // Breakbeat-style snare rolls
+    0.0f, 0.0f, 0.0f, 0.45f,0.0f, 0.0f, 0.0f, 0.5f,
+    0.9f, 0.0f, 0.0f, 0.45f,0.0f, 0.0f, 0.0f, 0.5f,
+    0.0f, 0.0f, 0.0f, 0.45f,0.0f, 0.0f, 0.0f, 0.5f,
+    0.9f, 0.0f, 0.0f, 0.5f, 0.0f, 0.0f, 0.55f,0.5f
 };
 
 constexpr float kBusy_Aux[32] = {
-    0.6f, 0.5f, 0.6f, 0.5f, 0.6f, 0.5f, 0.6f, 0.5f,
-    0.6f, 0.5f, 0.6f, 0.5f, 0.6f, 0.5f, 0.6f, 0.5f,
-    0.6f, 0.5f, 0.6f, 0.5f, 0.6f, 0.5f, 0.6f, 0.5f,
-    0.6f, 0.5f, 0.6f, 0.5f, 0.6f, 0.5f, 0.6f, 0.5f
+    // Maximum density hi-hats
+    0.65f,0.5f, 0.6f, 0.5f, 0.65f,0.5f, 0.6f, 0.5f,
+    0.65f,0.5f, 0.6f, 0.5f, 0.65f,0.5f, 0.6f, 0.5f,
+    0.65f,0.5f, 0.6f, 0.5f, 0.65f,0.5f, 0.6f, 0.5f,
+    0.65f,0.5f, 0.6f, 0.55f,0.65f,0.55f,0.65f,0.55f
 };
 
 /**
  * [1,2] Polyrhythm: Complex metric patterns
+ * Character: Math-rock influenced IDM - 7s and 5s colliding
  */
 constexpr float kPolyrhythm_Anchor[32] = {
-    1.0f, 0.0f, 0.0f, 0.6f, 0.0f, 0.5f, 0.0f, 0.0f,
-    0.6f, 0.0f, 0.0f, 0.0f, 0.0f, 0.5f, 0.6f, 0.0f,
-    0.0f, 0.0f, 0.5f, 0.0f, 0.9f, 0.0f, 0.0f, 0.6f,
-    0.0f, 0.0f, 0.0f, 0.5f, 0.0f, 0.6f, 0.0f, 0.0f
+    // 7-over-8 pattern approximation
+    1.0f, 0.0f, 0.0f, 0.0f, 0.65f,0.0f, 0.0f, 0.0f,
+    0.0f, 0.6f, 0.0f, 0.0f, 0.0f, 0.0f, 0.65f,0.0f,
+    0.0f, 0.0f, 0.0f, 0.6f, 0.0f, 0.0f, 0.0f, 0.65f,
+    0.0f, 0.0f, 0.6f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f
 };
 
 constexpr float kPolyrhythm_Shimmer[32] = {
-    0.0f, 0.0f, 0.4f, 0.0f, 0.0f, 0.0f, 0.4f, 0.0f,
-    0.0f, 0.0f, 0.0f, 0.4f, 0.8f, 0.0f, 0.0f, 0.0f,
-    0.0f, 0.4f, 0.0f, 0.0f, 0.0f, 0.0f, 0.4f, 0.0f,
-    0.8f, 0.0f, 0.0f, 0.0f, 0.4f, 0.0f, 0.0f, 0.0f
+    // 5-over-4 counter
+    0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.55f,0.0f,
+    0.0f, 0.0f, 0.0f, 0.0f, 0.9f, 0.0f, 0.0f, 0.0f,
+    0.0f, 0.0f, 0.0f, 0.55f,0.0f, 0.0f, 0.0f, 0.0f,
+    0.0f, 0.9f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.55f
 };
 
 constexpr float kPolyrhythm_Aux[32] = {
-    0.5f, 0.4f, 0.5f, 0.4f, 0.5f, 0.4f, 0.5f, 0.4f,
-    0.5f, 0.4f, 0.5f, 0.4f, 0.5f, 0.4f, 0.5f, 0.4f,
-    0.5f, 0.4f, 0.5f, 0.4f, 0.5f, 0.4f, 0.5f, 0.4f,
-    0.5f, 0.4f, 0.5f, 0.4f, 0.5f, 0.4f, 0.5f, 0.4f
+    // Irregular groupings
+    0.6f, 0.0f, 0.0f, 0.5f, 0.0f, 0.6f, 0.0f, 0.0f,
+    0.5f, 0.0f, 0.0f, 0.6f, 0.0f, 0.0f, 0.5f, 0.0f,
+    0.6f, 0.0f, 0.0f, 0.5f, 0.0f, 0.6f, 0.0f, 0.0f,
+    0.5f, 0.0f, 0.0f, 0.6f, 0.0f, 0.0f, 0.55f,0.0f
 };
 
 /**
  * [2,2] Chaos: Maximum IDM complexity
+ * Character: Full Autechre - algorithmic destruction
  */
 constexpr float kChaos_Anchor[32] = {
-    1.0f, 0.5f, 0.0f, 0.5f, 0.0f, 0.0f, 0.5f, 0.0f,
-    0.0f, 0.0f, 0.5f, 0.0f, 0.6f, 0.0f, 0.0f, 0.5f,
-    0.0f, 0.5f, 0.0f, 0.0f, 0.9f, 0.0f, 0.5f, 0.0f,
-    0.6f, 0.0f, 0.0f, 0.5f, 0.0f, 0.0f, 0.5f, 0.6f
+    // Cluster-based hits with large gaps
+    1.0f, 0.55f,0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+    0.0f, 0.0f, 0.6f, 0.55f,0.0f, 0.0f, 0.0f, 0.0f,
+    0.0f, 0.0f, 0.0f, 0.0f, 0.9f, 0.55f,0.0f, 0.0f,
+    0.6f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.55f,0.6f
 };
 
 constexpr float kChaos_Shimmer[32] = {
-    0.0f, 0.0f, 0.4f, 0.0f, 0.5f, 0.0f, 0.0f, 0.4f,
-    0.7f, 0.0f, 0.0f, 0.4f, 0.0f, 0.5f, 0.0f, 0.0f,
-    0.0f, 0.0f, 0.4f, 0.5f, 0.0f, 0.0f, 0.0f, 0.4f,
-    0.0f, 0.5f, 0.0f, 0.0f, 0.7f, 0.0f, 0.4f, 0.0f
+    // Anti-pattern - fills gaps chaotically
+    0.0f, 0.0f, 0.0f, 0.5f, 0.55f,0.0f, 0.0f, 0.0f,
+    0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.5f, 0.0f, 0.55f,
+    0.8f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.5f, 0.0f,
+    0.0f, 0.0f, 0.55f,0.0f, 0.0f, 0.0f, 0.0f, 0.0f
 };
 
 constexpr float kChaos_Aux[32] = {
-    0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f,
-    0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f,
-    0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f,
-    0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f
+    // Broken, glitchy texture
+    0.55f,0.0f, 0.0f, 0.5f, 0.0f, 0.55f,0.0f, 0.0f,
+    0.0f, 0.5f, 0.0f, 0.0f, 0.55f,0.0f, 0.0f, 0.5f,
+    0.0f, 0.0f, 0.55f,0.0f, 0.0f, 0.0f, 0.5f, 0.0f,
+    0.0f, 0.55f,0.0f, 0.0f, 0.5f, 0.0f, 0.0f, 0.55f
 };
 
-// IDM metadata - maximum timing chaos
+// IDM metadata - experimental timing, heavy displacement
 constexpr float kSwingAmounts[9] = {
-    0.3f, 0.4f, 0.5f,
-    0.3f, 0.5f, 0.6f,
-    0.4f, 0.5f, 0.7f
+    0.15f,0.25f,0.4f,   // Row 0: subtle to heavy
+    0.2f, 0.35f,0.5f,   // Row 1: moderate to extreme
+    0.25f,0.4f, 0.6f    // Row 2: heavy throughout
 };
 
 constexpr float kSwingPatterns[9] = {
-    2.0f, 2.0f, 2.0f,
+    2.0f, 2.0f, 2.0f,   // All mixed (most chaotic)
     2.0f, 2.0f, 2.0f,
     2.0f, 2.0f, 2.0f
 };
 
 constexpr float kDefaultCouples[9] = {
-    0.4f, 0.5f, 0.6f,
-    0.5f, 0.6f, 0.7f,
-    0.6f, 0.7f, 0.8f
+    0.3f, 0.4f, 0.5f,   // Row 0: independent to moderate
+    0.4f, 0.5f, 0.6f,   // Row 1: moderate
+    0.5f, 0.6f, 0.7f    // Row 2: heavier interlock for density
 };
 
 constexpr float kFillMultipliers[9] = {
-    1.4f, 1.5f, 1.6f,
-    1.5f, 1.7f, 1.8f,
-    1.7f, 1.9f, 2.2f
+    1.35f,1.45f,1.55f,
+    1.5f, 1.65f,1.8f,
+    1.7f, 1.85f,2.1f
 };
 
 constexpr uint32_t kAccentMasks[9] = {
-    0x11111111, 0x55555555, 0x55555555,
-    0x55555555, 0xAAAAAAAA, 0xAAAAAAAA,
-    0xAAAAAAAA, 0xFFFFFFFF, 0xFFFFFFFF
+    0x11111111, 0x55555555, 0xAAAAAAAA,  // Row 0: off-grid emphasis
+    0x55555555, 0xAAAAAAAA, 0xAAAAAAAA,  // Row 1: heavy off-beat
+    0xAAAAAAAA, 0xFFFFFFFF, 0xFFFFFFFF   // Row 2: all positions
 };
 
 constexpr uint32_t kRatchetMasks[9] = {

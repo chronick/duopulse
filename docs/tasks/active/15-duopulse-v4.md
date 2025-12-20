@@ -443,10 +443,46 @@ Wire everything together in main.cpp.
 
 Create and tune the 27 archetype weight tables.
 
-- [ ] **12.1** Design Techno archetypes (9 patterns)
-- [ ] **12.2** Design Tribal archetypes (9 patterns)
-- [ ] **12.3** Design IDM archetypes (9 patterns)
-- [ ] **12.4** Musical validation: sweep FIELD X/Y, verify distinct character
+- [x] **12.1** Design Techno archetypes (9 patterns)
+- [x] **12.2** Design Tribal archetypes (9 patterns)
+- [x] **12.3** Design IDM archetypes (9 patterns)
+- [x] **12.4** Musical validation: sweep FIELD X/Y, verify distinct character
+
+**Phase 12 Notes:**
+- Complete redesign of all 27 archetype weight tables in `ArchetypeData.h`
+- **Techno Grid** (four-on-floor, industrial):
+  - [0,0] Minimal: Pure quarter-note kicks, sparse backbeat
+  - [1,0] Steady: Basic groove with "&" accents
+  - [2,0] Displaced: Skipped beat 3, anticipated snares
+  - [0,1] Driving: Straight 8ths, relentless energy
+  - [1,1] Groovy: Swung feel, shuffled backbeat
+  - [2,1] Broken: Missing downbeats, syncopated claps
+  - [0,2] Busy: Dense 16th kicks, industrial edge
+  - [1,2] Polyrhythm: 3-over-4 dotted 8ths
+  - [2,2] Chaos: Irregular clusters, fragmented
+- **Tribal Grid** (polyrhythmic, clave-based):
+  - [0,0] Minimal: 3-2 Son Clave-inspired spacing
+  - [1,0] Steady: Afrobeat bell patterns, 12/8 feel
+  - [2,0] Displaced: 2-3 Rumba clave
+  - [0,1] Driving: Afro-house, triplet ghosts
+  - [1,1] Groovy: 3-2 Son Clave with cascara
+  - [2,1] Broken: Missing beat 1, cross-rhythms
+  - [0,2] Busy: Djembe ensemble density
+  - [1,2] Polyrhythm: 5-over-4 and 3-over-4 interlocking
+  - [2,2] Chaos: Multiple cross-rhythms colliding
+- **IDM Grid** (experimental, glitchy):
+  - [0,0] Minimal: Autechre-influenced space and tension
+  - [1,0] Steady: BoC-style regular but shifted
+  - [2,0] Displaced: Anti-groove, maximum absence
+  - [0,1] Driving: Squarepusher drill'n'bass energy
+  - [1,1] Groovy: Aphex Twin head-nodding chaos
+  - [2,1] Broken: Venetian Snares displaced madness
+  - [0,2] Busy: Fast breakbeat rolls
+  - [1,2] Polyrhythm: 7s and 5s colliding
+  - [2,2] Chaos: Full algorithmic destruction
+- Updated metadata arrays for each genre (swing, couples, fills, accents)
+- All 202 tests pass (51,399 assertions)
+- Firmware: 118KB (90.08% flash)
 
 ---
 
