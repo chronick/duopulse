@@ -5,19 +5,8 @@
 #include <cmath>
 #include "config.h"
 
-#ifdef USE_PULSE_FIELD_V3
-// When v3 is enabled, PulseField.h defines Clamp
+// PulseField.h defines the Clamp helper function
 #include "PulseField.h"
-#else
-namespace daisysp_idm_grids
-{
-// Helper for C++14 compatibility (std::clamp is C++17)
-inline float Clamp(float value, float minVal, float maxVal)
-{
-    return std::max(minVal, std::min(value, maxVal));
-}
-} // namespace daisysp_idm_grids
-#endif
 
 namespace daisysp_idm_grids
 {

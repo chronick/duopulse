@@ -54,7 +54,7 @@ These files are being replaced entirely by v4 architecture:
 
 Create core types in headers, no implementation yet. Reference: spec sections 4.7, 10.
 
-- [ ] **1.1** Create `src/Engine/DuoPulseTypes.h` with all enums:
+- [x] **1.1** Create `src/Engine/DuoPulseTypes.h` with all enums:
   - `Genre` (TECHNO, TRIBAL, IDM)
   - `Voice` (ANCHOR, SHIMMER, AUX)
   - `EnergyZone` (MINIMAL, GROOVE, BUILD, PEAK)
@@ -63,28 +63,28 @@ Create core types in headers, no implementation yet. Reference: spec sections 4.
   - `VoiceCoupling` (INDEPENDENT, INTERLOCK, SHADOW)
   - `ResetMode` (PHRASE, BAR, STEP)
 
-- [ ] **1.2** Create `src/Engine/ArchetypeDNA.h` with `ArchetypeDNA` struct (spec section 5.2)
+- [x] **1.2** Create `src/Engine/ArchetypeDNA.h` with `ArchetypeDNA` struct (spec section 5.2)
 
-- [ ] **1.3** Create `src/Engine/ControlState.h` with:
+- [x] **1.3** Create `src/Engine/ControlState.h` with:
   - `PunchParams` struct
   - `BuildModifiers` struct
   - `FillInputState` struct
   - `ControlState` struct (all control parameters)
 
-- [ ] **1.4** Create `src/Engine/SequencerState.h` with:
+- [x] **1.4** Create `src/Engine/SequencerState.h` with:
   - `DriftState` struct
   - `GuardRailState` struct
   - `SequencerState` struct (position, masks, event flags)
 
-- [ ] **1.5** Create `src/Engine/OutputState.h` with:
+- [x] **1.5** Create `src/Engine/OutputState.h` with:
   - `TriggerState` struct
   - `VelocityOutputState` struct
   - `LEDState` struct (and `LEDMode` enum)
   - `OutputState` struct
 
-- [ ] **1.6** Create `src/Engine/DuoPulseState.h` combining all state into `DuoPulseState`
+- [x] **1.6** Create `src/Engine/DuoPulseState.h` combining all state into `DuoPulseState`
 
-- [ ] **1.7** Add tests: `tests/test_duopulse_types.cpp` - verify enum values, struct sizes
+- [x] **1.7** Add tests: `tests/test_duopulse_types.cpp` - verify enum values, struct sizes
 
 ---
 
@@ -128,39 +128,39 @@ Implement archetype storage and blending. Reference: spec section 5.
 
 Implement hit budget, eligibility, and Gumbel sampling. Reference: spec section 6.
 
-- [ ] **3.1** Create `src/Engine/HitBudget.h` with:
+- [x] **3.1** Create `src/Engine/HitBudget.h` with:
   - `BarBudget` struct
   - `ComputeBarBudget()` declaration
   - Mask constants (kDownbeatMask, kQuarterNoteMask, etc.)
 
-- [ ] **3.2** Implement `src/Engine/HitBudget.cpp`:
+- [x] **3.2** Implement `src/Engine/HitBudget.cpp`:
   - `ComputeBarBudget()` - budget from energy/balance/zone (spec 6.1)
   - `ComputeEligibilityMask()` - mask from energy/flavor (spec 6.2)
 
-- [ ] **3.3** Create `src/Engine/GumbelSampler.h` with:
+- [x] **3.3** Create `src/Engine/GumbelSampler.h` with:
   - `SelectHitsGumbelTopK()` declaration
   - `HashToFloat()` declaration
 
-- [ ] **3.4** Implement `src/Engine/GumbelSampler.cpp`:
+- [x] **3.4** Implement `src/Engine/GumbelSampler.cpp`:
   - `SelectHitsGumbelTopK()` - weighted selection with spacing (spec 6.3)
   - `HashToFloat()` - deterministic hash to float
 
-- [ ] **3.5** Create `src/Engine/VoiceRelation.h` with:
+- [x] **3.5** Create `src/Engine/VoiceRelation.h` with:
   - `ApplyVoiceRelationship()` declaration
   - `GetCoupleValueFromConfig()` declaration
 
-- [ ] **3.6** Implement `src/Engine/VoiceRelation.cpp`:
+- [x] **3.6** Implement `src/Engine/VoiceRelation.cpp`:
   - `ApplyVoiceRelationship()` - interlock/shadow logic (spec 6.4)
 
-- [ ] **3.7** Create `src/Engine/GuardRails.h` with:
+- [x] **3.7** Create `src/Engine/GuardRails.h` with:
   - `SoftRepairPass()` declaration
   - `ApplyHardGuardRails()` declaration
 
-- [ ] **3.8** Implement `src/Engine/GuardRails.cpp`:
+- [x] **3.8** Implement `src/Engine/GuardRails.cpp`:
   - `SoftRepairPass()` - bias rescue (spec 6.5)
   - `ApplyHardGuardRails()` - force corrections (spec 6.6)
 
-- [ ] **3.9** Add tests: `tests/test_generation.cpp`
+- [x] **3.9** Add tests: `tests/test_generation.cpp`
   - Test hit budget scales with energy
   - Test Gumbel selects correct count
   - Test spacing rules prevent clumping
@@ -173,25 +173,25 @@ Implement hit budget, eligibility, and Gumbel sampling. Reference: spec section 
 
 Implement timing effects. Reference: spec section 7.
 
-- [ ] **4.1** Update `src/Engine/BrokenEffects.h` with v4 declarations:
+- [x] **4.1** Update `src/Engine/BrokenEffects.h` with v4 declarations:
   - `ComputeSwing()` - swing from flavor + zone
   - `ApplySwingToStep()` - swing offset calculation
   - `ComputeMicrotimingOffset()` - jitter from flavor + zone
   - `ComputeStepDisplacement()` - displacement from flavor + zone
 
-- [ ] **4.2** Implement `src/Engine/BrokenEffects.cpp` (v4 version):
+- [x] **4.2** Implement `src/Engine/BrokenEffects.cpp` (v4 version):
   - All timing functions from spec 7.2-7.4
   - Zone-bounded limits
 
-- [ ] **4.3** Create `src/Engine/VelocityCompute.h` with:
+- [x] **4.3** Create `src/Engine/VelocityCompute.h` with:
   - `ComputePunch()` - PunchParams from punch value
   - `ComputeBuildModifiers()` - BuildModifiers from build + progress
   - `ComputeVelocity()` - velocity from punch/build/accent
 
-- [ ] **4.4** Implement `src/Engine/VelocityCompute.cpp`:
+- [x] **4.4** Implement `src/Engine/VelocityCompute.cpp`:
   - All velocity functions from spec 7.5
 
-- [ ] **4.5** Add tests: `tests/test_timing.cpp`
+- [x] **4.5** Add tests: `tests/test_timing.cpp`
   - Test swing bounded by zone
   - Test jitter = 0 at low flavor
   - Test displacement only at high flavor + BUILD/PEAK zone
@@ -203,16 +203,16 @@ Implement timing effects. Reference: spec section 7.
 
 Implement pattern evolution control. Reference: spec section 6.7.
 
-- [ ] **5.1** Create `src/Engine/DriftControl.h` with:
+- [x] **5.1** Create `src/Engine/DriftControl.h` with:
   - `SelectSeed()` declaration
   - `GetStepStability()` declaration
   - `OnPhraseEnd()` declaration
   - `Reseed()` declaration
 
-- [ ] **5.2** Implement `src/Engine/DriftControl.cpp`:
+- [x] **5.2** Implement `src/Engine/DriftControl.cpp`:
   - All drift functions from spec 6.7
 
-- [ ] **5.3** Add tests: `tests/test_drift.cpp`
+- [x] **5.3** Add tests: `tests/test_drift.cpp`
   - Test DRIFT=0 uses locked seed for all steps
   - Test DRIFT=1 uses evolving seed for all steps
   - Test downbeats use locked seed longer than ghosts
@@ -295,28 +295,43 @@ Implement LED state machine. Reference: spec section 9.
 
 Implement control reading and CV modulation. Reference: spec sections 3, 4.
 
-- [ ] **8.1** Update `src/Engine/ControlUtils.h` for v4:
+- [x] **8.1** Update `src/Engine/ControlUtils.h` for v4:
   - `ProcessCVModulation()` declaration
-  - `ProcessFillInput()` declaration
+  - `ProcessFillInputRaw()` declaration (raw version without struct dependency)
+  - `DetectFillGate()` declaration
   - `ProcessFlavorCV()` declaration
+  - `QuantizePatternLength()`, `QuantizePhraseLength()`, `QuantizeClockDivision()` helpers
 
-- [ ] **8.2** Create `src/Engine/ControlProcessor.h` with:
-  - `ProcessControls()` declaration
-  - `ProcessButtonGestures()` declaration
+- [x] **8.2** Create `src/Engine/ControlProcessor.h` with:
+  - `RawHardwareInput` struct (raw values from hardware)
+  - `ButtonState` struct (gesture detection state)
+  - `ModeState` struct (performance/config mode tracking)
+  - `ControlProcessor` class with `ProcessControls()` and `ProcessButtonGestures()`
 
-- [ ] **8.3** Implement `src/Engine/ControlProcessor.cpp`:
-  - Full control processing from spec 11.4
-  - Performance mode handling
-  - Config mode handling
-  - CV modulation
+- [x] **8.3** Implement `src/Engine/ControlProcessor.cpp`:
+  - Full control processing (spec 11.4)
+  - Performance mode handling (primary + shift)
+  - Config mode handling (primary + shift)
+  - CV modulation for all 4 CV inputs
+  - Soft takeover across mode/shift changes
 
-- [ ] **8.4** Reuse `src/Engine/SoftKnob.cpp/h` (should work as-is)
+- [x] **8.4** Reuse `src/Engine/SoftKnob.cpp/h` (verified working as-is)
 
-- [ ] **8.5** Add tests: `tests/test_controls.cpp`
+- [x] **8.5** Add tests: `tests/test_controls.cpp`
   - Test CV modulation clamping
-  - Test fill input gate detection
+  - Test fill input gate detection with hysteresis
   - Test mode switching
-  - Test button gestures
+  - Test button gestures (tap, hold, double-tap, live fill)
+  - Test discrete parameter quantization
+
+**Phase 8 Notes:**
+- `ControlUtils.h` refactored to avoid including `ControlState.h` (prevents conflict with v3 main.cpp)
+- `ProcessFillInputRaw()` provides struct-free interface; `ProcessFillInput()` helper in ControlProcessor.cpp
+- `ControlProcessor` manages 16 soft knobs (4 knobs × 4 contexts)
+- Button gestures: tap (<200ms) queues fill, hold (>200ms) enables shift, hold (>500ms) without knob movement enables live fill, double-tap (<400ms gap) requests reseed
+- Discrete parameters (genre, aux mode, etc.) use quantization helpers with flash notification
+- All 86 assertions in 9 control test cases pass
+- SoftKnob tests (38 assertions) continue to pass
 
 ---
 
@@ -324,20 +339,31 @@ Implement control reading and CV modulation. Reference: spec sections 3, 4.
 
 Implement main sequencer logic. Reference: spec section 11.
 
-- [ ] **9.1** Update `src/Engine/Sequencer.h` for v4:
+- [x] **9.1** Update `src/Engine/Sequencer.h` for v4:
   - New method declarations for v4 pipeline
   - Remove v3-specific methods
 
-- [ ] **9.2** Implement `src/Engine/Sequencer.cpp`:
+- [x] **9.2** Implement `src/Engine/Sequencer.cpp`:
   - `GenerateBar()` - full bar generation (spec 11.2)
   - `ProcessStep()` - step processing (spec 11.3)
   - `AdvanceStep()` - step advancement
   - Clock processing
 
-- [ ] **9.3** Add tests: `tests/test_sequencer.cpp`
+- [x] **9.3** Add tests: `tests/test_sequencer.cpp`
   - Test bar generation produces valid masks
   - Test step advancement wraps correctly
   - Test phrase boundary detection
+
+**Phase 9 Notes:**
+- Wired full generation pipeline in `GenerateBar()`: hit budgets → archetype blending → Gumbel Top-K → voice relationship → guard rails
+- Implemented `ProcessStep()` with timing offsets (swing, jitter) and trigger firing
+- Added internal/external clock support with timeout fallback
+- Added tap tempo support
+- Added v3 compatibility wrappers (e.g., `SetAnchorDensity()` → `SetEnergy()`)
+- Fixed naming conflict: renamed local `ControlState` to `MainControlState` in `main.cpp`
+- Fixed duplicate `Clamp()` definition by making `LedIndicator.h` always include `PulseField.h`
+- Comprehensive test coverage: 181 tests, 3272 assertions all passing
+- Firmware builds at 113KB flash (87.68% usage)
 
 ---
 

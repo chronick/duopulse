@@ -69,7 +69,7 @@ constexpr int kTotalKnobs   = kKnobsPerMode * kNumModes; // 16
 // Shift/Tap timing thresholds
 constexpr uint32_t kShiftThresholdMs = 150; // Hold >150ms = shift, tap <150ms = fill/tap-tempo
 
-struct ControlState
+struct MainControlState
 {
     // === Performance Mode Primary (Switch DOWN, no shift) ===
     float anchorDensity  = 0.5f; // K1: Hit frequency for Anchor lane
@@ -121,7 +121,7 @@ struct ControlState
     }
 };
 
-ControlState controlState;
+MainControlState controlState;
 SoftKnob     softKnobs[kTotalKnobs]; // 16 slots: 4 knobs × 4 mode/shift combinations
 
 // UX State
@@ -178,7 +178,7 @@ void AudioCallback(AudioHandle::InputBuffer  in,
 //   Performance Shift:   FUSE, Length, COUPLE, Reserved
 //   Config Primary:      Anchor Accent, Shimmer Accent, Contour, Tempo
 //   Config Shift:        Swing Taste, Gate Time, Humanize, Clock Div
-float* GetParameterPtr(ControlState& state, ControlMode mode, int knobIndex)
+float* GetParameterPtr(MainControlState& state, ControlMode mode, int knobIndex)
 {
     switch(mode)
     {
