@@ -371,22 +371,36 @@ Implement main sequencer logic. Reference: spec section 11.
 
 Implement auto-save and config loading. Reference: spec section 12.
 
-- [ ] **10.1** Create `src/Engine/Persistence.h` with:
+- [x] **10.1** Create `src/Engine/Persistence.h` with:
   - `PersistentConfig` struct
   - `AutoSaveState` struct
   - `MarkConfigDirty()` declaration
   - `ProcessAutoSave()` declaration
   - `LoadConfig()` declaration
 
-- [ ] **10.2** Implement `src/Engine/Persistence.cpp`:
+- [x] **10.2** Implement `src/Engine/Persistence.cpp`:
   - Auto-save with debouncing (spec 12.1)
   - Flash read/write
   - Config validation
 
-- [ ] **10.3** Add tests: `tests/test_persistence.cpp`
+- [x] **10.3** Add tests: `tests/test_persistence.cpp`
   - Test config serialization round-trip
   - Test checksum validation
   - Test debounce timing
+
+**Phase 10 Notes:**
+- Created `PersistentConfig` struct with magic number, version, checksum for validation
+- Saves: pattern length, swing, aux mode, reset mode, phrase length, clock div, aux density, voice coupling, genre, pattern seed
+- Does NOT save primary performance controls (ENERGY, BUILD, FIELD X/Y, etc.) - read from knobs on boot
+- `AutoSaveState` implements 2-second debounce to minimize flash wear (spec 12.1)
+- Created self-validating `Crc32` class to replace error-prone hardcoded CRC32 lookup table:
+  - Runtime table generation (no hardcoded tables)
+  - Self-test against `CRC32("123456789") = 0xCBF43926` at init
+  - Incremental API (`Update()` + `Finalize()`) for streaming data
+  - Returns false from `Init()` if self-test fails (fail-safe)
+- Stub flash functions for unit testing; real hardware uses Daisy QSPI API
+- Comprehensive tests: 39 CRC32 assertions, full persistence round-trip tests
+- All 202 tests pass (51,399 assertions)
 
 ---
 
