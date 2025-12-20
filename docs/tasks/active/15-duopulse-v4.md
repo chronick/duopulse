@@ -225,27 +225,41 @@ Implement pattern evolution control. Reference: spec section 6.7.
 
 Implement trigger, velocity, and AUX outputs. Reference: spec section 8.
 
-- [ ] **6.1** Update `src/Engine/GateScaler.h` for v4 trigger output
+- [x] **6.1** Update `src/Engine/GateScaler.h` for v4 trigger output
 
-- [ ] **6.2** Update `src/Engine/GateScaler.cpp` with `ProcessTriggerOutput()` (spec 8.2)
+- [x] **6.2** Update `src/Engine/GateScaler.cpp` with `ProcessTriggerOutput()` (spec 8.2)
 
-- [ ] **6.3** Create `src/Engine/VelocityOutput.h` with:
+- [x] **6.3** Create `src/Engine/VelocityOutput.h` with:
   - `ProcessVelocityOutput()` declaration (sample & hold)
 
-- [ ] **6.4** Implement `src/Engine/VelocityOutput.cpp`:
+- [x] **6.4** Implement `src/Engine/VelocityOutput.cpp`:
   - Sample & hold velocity output (spec 8.3)
 
-- [ ] **6.5** Create `src/Engine/AuxOutput.h` with:
+- [x] **6.5** Create `src/Engine/AuxOutput.h` with:
   - `ComputeAuxOutput()` declaration
   - `ComputeAuxModeOutput()` declaration
 
-- [ ] **6.6** Implement `src/Engine/AuxOutput.cpp`:
+- [x] **6.6** Implement `src/Engine/AuxOutput.cpp`:
   - All AUX modes from spec 8.4 (HAT, FILL_GATE, PHRASE_CV, EVENT)
 
-- [ ] **6.7** Add tests: `tests/test_outputs.cpp`
+- [x] **6.7** Add tests: `tests/test_outputs.cpp`
   - Test trigger pulse width
   - Test velocity sample & hold behavior
   - Test AUX modes produce correct signals
+
+**Phase 6 Notes:**
+- Updated `GateScaler` with `Init()`, `SetTriggerDuration()`, and `ProcessTriggerOutput()` methods
+- Created `VelocityOutput` class for sample & hold velocity processing:
+  - `TriggerVelocity()` samples and latches velocity on trigger
+  - `ProcessVelocityOutput()` converts to codec sample
+  - `ApplyVelocityCurve()` for optional exponential response
+- Created `AuxOutput` class implementing all 4 AUX modes:
+  - HAT: Third trigger voice for hi-hat patterns
+  - FILL_GATE: Gate high during fill zones
+  - PHRASE_CV: 0-5V ramp over phrase, resets at boundary
+  - EVENT: Trigger on "interesting" moments (accents, fills)
+- Comprehensive tests in `test_outputs.cpp` (30+ test cases)
+- All tests pass (2588 assertions in 160 test cases)
 
 ---
 
