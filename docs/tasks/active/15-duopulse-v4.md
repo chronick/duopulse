@@ -92,27 +92,35 @@ Create core types in headers, no implementation yet. Reference: spec sections 4.
 
 Implement archetype storage and blending. Reference: spec section 5.
 
-- [ ] **2.1** Create `src/Engine/PatternField.h` with:
+- [x] **2.1** Create `src/Engine/PatternField.h` with:
   - `GenreField` struct (3×3 archetype array)
   - `BlendArchetypes()` declaration
   - `SoftmaxWithTemperature()` declaration
 
-- [ ] **2.2** Implement `src/Engine/PatternField.cpp`:
+- [x] **2.2** Implement `src/Engine/PatternField.cpp`:
   - `BlendArchetypes()` - winner-take-more blending (spec 5.3)
   - `SoftmaxWithTemperature()` - softmax with temperature parameter
   - `GetGenreField()` - return genre's archetype grid
 
-- [ ] **2.3** Create `src/Engine/ArchetypeData.h` with archetype weight tables:
+- [x] **2.3** Create `src/Engine/ArchetypeData.h` with archetype weight tables:
   - Techno grid (9 archetypes)
   - Tribal grid (9 archetypes)
   - IDM grid (9 archetypes)
   - Use `constexpr` arrays for flash storage
 
-- [ ] **2.4** Add tests: `tests/test_pattern_field.cpp`
+- [x] **2.4** Add tests: `tests/test_pattern_field.cpp`
   - Test blending at grid corners returns exact archetype
   - Test blending at center produces weighted mix
   - Test softmax with temperature sharpens weights
   - Test all 27 archetypes load correctly
+
+**Phase 2 Notes:**
+- Created `PatternField.h/cpp` with winner-take-more blending using softmax with temperature
+- `GenreField` struct was added to existing `ArchetypeDNA.h` (from Phase 1)
+- `ArchetypeData.h/cpp` contains 27 archetype patterns (placeholder values for Phase 12 tuning)
+- Each archetype has: 32-step weights for anchor/shimmer/aux, accent masks, timing params, coupling defaults
+- Blending interpolates continuous properties (weights, timing) but uses dominant archetype for discrete properties (masks)
+- All tests pass (873 assertions in 54 test cases)
 
 ---
 
