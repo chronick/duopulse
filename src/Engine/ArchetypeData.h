@@ -132,9 +132,9 @@ constexpr float kSteady_Aux[32] = {
  * Creates tension by avoiding expected downbeats
  */
 constexpr float kDisplaced_Anchor[32] = {
-    // Beat 1 strong, beat 3 missing, displaced to "&" positions
+    // Beat 1 strong, beat 3 skipped in both bars, displaced to "&" positions
     1.0f, 0.0f, 0.0f, 0.0f,  0.0f, 0.0f, 0.5f, 0.0f,
-    0.7f, 0.0f, 0.0f, 0.45f, 0.0f, 0.0f, 0.0f, 0.0f,
+    0.0f, 0.0f, 0.0f, 0.45f, 0.0f, 0.0f, 0.0f, 0.0f,  // Beat 3 (step 8) now skipped
     1.0f, 0.0f, 0.0f, 0.0f,  0.0f, 0.0f, 0.55f,0.0f,
     0.0f, 0.0f, 0.4f, 0.0f,  0.0f, 0.5f, 0.0f, 0.0f
 };
@@ -750,8 +750,8 @@ constexpr float kSteady_Aux[32] = {
  * Character: Maximum tension through absence
  */
 constexpr float kDisplaced_Anchor[32] = {
-    // Only fires in unexpected places
-    0.9f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+    // Only fires in unexpected places - weak downbeat for true anti-groove
+    0.5f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
     0.0f, 0.0f, 0.0f, 0.6f, 0.0f, 0.0f, 0.0f, 0.0f,  // e of 2
     0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
     0.0f, 0.0f, 0.6f, 0.0f, 0.0f, 0.0f, 0.0f, 0.7f   // Before and after 4
