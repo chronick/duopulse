@@ -1,5 +1,11 @@
 # Feature: DuoPulse v4 Implementation [duopulse-v4]
 
+**Status: ✅ COMPLETE** — All 12 phases implemented and validated.
+
+- 202 test cases (51,399 assertions) all passing
+- Firmware: 118KB (90.08% flash usage)
+- Ready for hardware testing
+
 ## Context
 
 DuoPulse v4 is a complete architectural overhaul of the algorithmic drum sequencer. Key changes from v3:
@@ -483,6 +489,11 @@ Create and tune the 27 archetype weight tables.
 - Updated metadata arrays for each genre (swing, couples, fills, accents)
 - All 202 tests pass (51,399 assertions)
 - Firmware: 118KB (90.08% flash)
+
+**Validation Refinements (post-review):**
+- Techno Displaced [2,0]: Step 8 (beat 3) reduced from 0.7 → 0.0 for consistent "skipped beat 3" in both bars
+- IDM Displaced [2,0]: Step 0 (downbeat) reduced from 0.9 → 0.5 for true "anti-groove" character
+- Tribal Broken [2,1]: Step 0 = 0.0 confirmed intentional and effective for disorientation
 
 ---
 
