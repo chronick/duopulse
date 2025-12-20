@@ -42,15 +42,23 @@
 // =============================================================================
 // DuoPulse v3: Algorithmic Pulse Field
 // =============================================================================
-// Define USE_PULSE_FIELD_V3 to enable the v3 algorithmic system.
-// When enabled:
-//   - Pattern generation uses weighted pulse field instead of discrete skeletons
-//   - BROKEN parameter controls genre character (swing, jitter, displacement)
-//   - DRIFT parameter controls pattern evolution over time
-//   - COUPLE parameter replaces ORBIT for voice interlock
-// When disabled (commented out):
-//   - Uses v2 PatternSkeleton lookup system
-//   - TERRAIN/GRID controls pattern selection
-//   - ORBIT provides 3-mode voice relationship
-#define USE_PULSE_FIELD_V3 1
+// v3 is now the default implementation. v2 PatternSkeleton system has been removed.
+// The codebase uses the weighted pulse field algorithm with BROKEN/DRIFT controls.
+
+// =============================================================================
+// Debug Modes for Hardware Testing
+// =============================================================================
+// Uncomment ONE of these to enable a specific debug mode:
+
+// DEBUG_BASELINE_SIMPLE: 4-on-the-floor kick + backbeat snare
+// Perfect for verifying clock, gates, and basic timing
+// #define DEBUG_BASELINE_SIMPLE 1
+
+// DEBUG_BASELINE_LIVELY: Full-featured defaults for expressive patterns
+// Density=0.7, Broken=0.3, Drift=0.2, Tempo=120 BPM
+// #define DEBUG_BASELINE_LIVELY 1
+
+// DEBUG_FEATURE_LEVEL: Progressive feature enablement (0-5)
+// 0 = Simple clock + 4otf, 1 = Add shimmer, 2 = Add density, etc.
+// #define DEBUG_FEATURE_LEVEL 0
 

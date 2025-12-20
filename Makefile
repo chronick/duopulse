@@ -124,6 +124,19 @@ else
     CXXFLAGS += -DNDEBUG
 endif
 
+# Hardware Debug Modes (QA testing)
+ifeq ($(QA_SIMPLE),1)
+    CXXFLAGS += -DDEBUG_BASELINE_SIMPLE=1
+endif
+
+ifeq ($(QA_LIVELY),1)
+    CXXFLAGS += -DDEBUG_BASELINE_LIVELY=1
+endif
+
+ifdef QA_LEVEL
+    CXXFLAGS += -DDEBUG_FEATURE_LEVEL=$(QA_LEVEL)
+endif
+
 # Output Files
 ELF := $(BUILD_DIR)/$(PROJECT_NAME).elf
 BIN := $(BUILD_DIR)/$(PROJECT_NAME).bin
@@ -133,7 +146,7 @@ HEX := $(BUILD_DIR)/$(PROJECT_NAME).hex
 # Build Targets
 ###############################################################################
 
-.PHONY: all clean rebuild daisy-build daisy-update libdaisy-build libdaisy-update program test test-coverage help
+.PHONY: all clean rebuild daisy-build daisy-update libdaisy-build libdaisy-update program test test-coverage help qa-simple qa-lively qa-level0 qa-level1 qa-level2 qa-level3 qa-level4 qa-level5 qa-production
 
 # Default target
 all: $(ELF) $(BIN) $(HEX)
@@ -209,6 +222,59 @@ libdaisy-update:
 program: $(BIN)
 	@echo "Flashing firmware to Patch.Init module..."
 	@dfu-util -a 0 -s 0x08000000:leave -D $(BIN)
+
+###############################################################################
+# QA/Hardware Testing Targets
+###############################################################################
+
+# QA Mode: Simple 4-on-the-floor + backbeat (timing verification)
+qa-simple: clean
+	@echo "=== Building QA: SIMPLE (4otf + backbeat, 120 BPM) ==="
+	@$(MAKE) QA_SIMPLE=1
+	@echo "Ready to flash. Run: make program"
+
+# QA Mode: Lively expressive defaults
+qa-lively: clean
+	@echo "=== Building QA: LIVELY (density=0.7, broken=0.3) ==="
+	@$(MAKE) QA_LIVELY=1
+	@echo "Ready to flash. Run: make program"
+
+# QA Mode: Progressive feature levels
+qa-level0: clean
+	@echo "=== Building QA: LEVEL 0 (Anchor only, clock verification) ==="
+	@$(MAKE) QA_LEVEL=0
+	@echo "Ready to flash. Run: make program"
+
+qa-level1: clean
+	@echo "=== Building QA: LEVEL 1 (Both voices at max) ==="
+	@$(MAKE) QA_LEVEL=1
+	@echo "Ready to flash. Run: make program"
+
+qa-level2: clean
+	@echo "=== Building QA: LEVEL 2 (Variable density) ==="
+	@$(MAKE) QA_LEVEL=2
+	@echo "Ready to flash. Run: make program"
+
+qa-level3: clean
+	@echo "=== Building QA: LEVEL 3 (Add BROKEN/swing) ==="
+	@$(MAKE) QA_LEVEL=3
+	@echo "Ready to flash. Run: make program"
+
+qa-level4: clean
+	@echo "=== Building QA: LEVEL 4 (Add DRIFT/evolution) ==="
+	@$(MAKE) QA_LEVEL=4
+	@echo "Ready to flash. Run: make program"
+
+qa-level5: clean
+	@echo "=== Building QA: LEVEL 5 (Full features) ==="
+	@$(MAKE) QA_LEVEL=5
+	@echo "Ready to flash. Run: make program"
+
+# QA Mode: Production defaults (standard build)
+qa-production: clean
+	@echo "=== Building QA: PRODUCTION (standard defaults) ==="
+	@$(MAKE)
+	@echo "Ready to flash. Run: make program"
 
 # Clean build artifacts
 clean:
@@ -346,30 +412,43 @@ test-coverage: clean test
 help:
 	@echo "DaisySP Patch.Init Firmware Makefile"
 	@echo ""
-	@echo "Targets:"
+	@echo "Build Targets:"
 	@echo "  all              - Build firmware (default)"
 	@echo "  clean            - Remove build artifacts"
 	@echo "  rebuild          - Clean and rebuild"
+	@echo "  program          - Flash firmware to device (DFU mode)"
+	@echo "  test             - Build and run unit tests"
+	@echo ""
+	@echo "QA/Hardware Testing Targets:"
+	@echo "  qa-simple        - 4otf + backbeat, 120 BPM (timing verification)"
+	@echo "  qa-lively        - Lively defaults (density=0.7, broken=0.3)"
+	@echo "  qa-level0        - Level 0: Anchor only (clock verification)"
+	@echo "  qa-level1        - Level 1: Both voices at max density"
+	@echo "  qa-level2        - Level 2: Variable density (0.7)"
+	@echo "  qa-level3        - Level 3: Add BROKEN/swing"
+	@echo "  qa-level4        - Level 4: Add DRIFT/evolution"
+	@echo "  qa-level5        - Level 5: Full feature set"
+	@echo "  qa-production    - Standard production defaults"
+	@echo ""
+	@echo "Library Targets:"
 	@echo "  daisy-build      - Build DaisySP library"
 	@echo "  daisy-update     - Update DaisySP to latest version"
 	@echo "  libdaisy-build   - Build libDaisy library"
 	@echo "  libdaisy-update  - Update libDaisy to latest version"
-	@echo "  program          - Flash firmware to device (DFU mode)"
-	@echo "  test             - Build and run unit tests"
-	@echo "  test-coverage    - Generate test coverage report"
-	@echo "  help             - Show this help message"
 	@echo ""
 	@echo "Variables:"
 	@echo "  DEBUG=1          - Enable debug symbols and disable optimizations"
+	@echo "  QA_SIMPLE=1      - Build with simple baseline defaults"
+	@echo "  QA_LIVELY=1      - Build with lively baseline defaults"
+	@echo "  QA_LEVEL=N       - Build with feature level N (0-5)"
 	@echo "  BUILD_DIR=dir    - Set build directory (default: build)"
 	@echo "  DAISYSP_PATH=dir - Set DaisySP path (default: ./DaisySP)"
 	@echo "  GCC_PATH=dir     - Set ARM GCC toolchain path (default: use PATH)"
 	@echo ""
 	@echo "Examples:"
 	@echo "  make                    - Build firmware"
-	@echo "  make DEBUG=1           - Build with debug symbols"
-	@echo "  make test               - Run tests"
-	@echo "  make daisy-update       - Update DaisySP"
+	@echo "  make qa-simple && make program  - Build and flash simple test"
+	@echo "  make test               - Run unit tests"
 	@echo "  make program            - Flash firmware"
 
 ###############################################################################

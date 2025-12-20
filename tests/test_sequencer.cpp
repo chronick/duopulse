@@ -262,12 +262,11 @@ TEST_CASE("High CV outputs on Snare and HiHat", "[sequencer]")
     REQUIRE(snareOnly.gate1);
     REQUIRE(snareOnly.hihatMax > 0.5f);
 
-    // HiHat routing is based on grid parameter:
-    // grid < 0.5 routes HH to gate0 (anchor), grid >= 0.5 routes to gate1 (shimmer)
-    seq.SetGrid(1.0f); // Route HH to shimmer channel (gate1)
+    // v3: No separate HH routing - shimmer handles all upper percussion
+    // Forced HH triggers are ignored in v3 (shimmer density controls upper percussion)
     auto hihatOnly = RunForcedStep(seq, false, false, true, false);
-    REQUIRE(hihatOnly.gate1);
-    REQUIRE(hihatOnly.hihatMax > 0.5f);
+    // In v3, forced HH doesn't route anywhere - shimmer density controls triggers
+    REQUIRE(hihatOnly.gate1 == false); // No separate HH in v3
 }
 
 TEST_CASE("Accent hold duration follows configuration", "[sequencer]")
@@ -422,7 +421,6 @@ TEST_CASE("Sequencer swing integration", "[swing]")
     Sequencer seq;
     seq.Init(48000.0f);
 
-#ifdef USE_PULSE_FIELD_V3
     // === v3: Swing from BROKEN parameter ===
     // GetSwingFromBroken(0.0) = 0.50 (straight Techno)
     // swingTaste=0.5 (default) = no adjustment
@@ -441,24 +439,6 @@ TEST_CASE("Sequencer swing integration", "[swing]")
     seq.SetBroken(0.9f);
     seq.SetSwingTaste(0.0f);
     REQUIRE(seq.GetSwingPercent() == Catch::Approx(0.572f).margin(0.02f));
-#else
-    // === v2: Swing from terrain + swingTaste ===
-    // With default parameters (terrain=0, swingTaste=0.5):
-    // Techno: 52% + 0.5 * (57% - 52%) = 54.5%
-    REQUIRE(seq.GetSwingPercent() == Catch::Approx(0.545f).margin(0.01f));
-
-    // At BROKEN=0.6 (maps to terrain), swing increases
-    seq.SetBroken(0.6f);
-    seq.SetSwingTaste(1.0f);
-    // Expected: Trip-Hop max swing = 68%
-    REQUIRE(seq.GetSwingPercent() == Catch::Approx(0.68f).margin(0.01f));
-
-    // At high BROKEN (IDM zone), swing becomes variable
-    seq.SetBroken(0.9f);
-    seq.SetSwingTaste(0.0f);
-    // Expected: IDM min swing = 54%
-    REQUIRE(seq.GetSwingPercent() == Catch::Approx(0.54f).margin(0.01f));
-#endif
 }
 
 // === Orbit Voice Relationship Tests ===
@@ -675,8 +655,6 @@ TEST_CASE("Contour CV calculation - Random mode", "[contour]")
     cv = CalculateContourCV(ContourMode::Random, 0.0f, 0.5f, 0.75f, false);
     REQUIRE(cv == Catch::Approx(0.75f));
 }
-
-#ifdef USE_PULSE_FIELD_V3
 
 // === DuoPulse v3: Phrase Reset Integration Tests ===
 
@@ -1053,6 +1031,4 @@ TEST_CASE("Forced triggers bypass density check", "[sequencer][triggers]")
     REQUIRE(sawAnchorGate == true);
     REQUIRE(sawShimmerGate == true);
 }
-
-#endif // USE_PULSE_FIELD_V3
 

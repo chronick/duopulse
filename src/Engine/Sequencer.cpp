@@ -43,6 +43,155 @@ void Sequencer::Init(float sampleRate)
     mustTick_ = false;
     
     // Initialize DuoPulse v3 parameters
+#if defined(DEBUG_BASELINE_SIMPLE)
+    // === DEBUG: Simple 4-on-the-floor + backbeat ===
+    // Forces high-density, locked pattern for timing verification
+    anchorDensity_  = 1.0f;  // All anchor positions fire
+    shimmerDensity_ = 1.0f;  // All shimmer positions fire
+    broken_         = 0.0f;  // Straight timing
+    drift_          = 0.0f;  // Locked pattern
+    fuse_           = 0.5f;  // Balanced
+    loopLengthBars_ = 1;     // 1-bar loop for quick verification
+    couple_         = 0.0f;  // No interlock (independent voices)
+    ratchet_        = 0.0f;  // No fills
+    anchorAccent_   = 0.5f;
+    shimmerAccent_  = 0.5f;
+    contour_        = 0.0f;
+    swingTaste_     = 0.5f;
+    gateTime_       = 0.5f;  // Medium gate time (visible on scope)
+    humanize_       = 0.0f;
+    clockDiv_       = 0.5f;
+    currentBpm_     = 120.0f;
+#elif defined(DEBUG_BASELINE_LIVELY)
+    // === DEBUG: Lively expressive defaults ===
+    // Good for hearing the algorithm in action
+    anchorDensity_  = 0.7f;  // ~60% of positions fire
+    shimmerDensity_ = 0.7f;  // ~60% of positions fire
+    broken_         = 0.3f;  // Light tribal shuffle
+    drift_          = 0.2f;  // Some evolution
+    fuse_           = 0.5f;  // Balanced
+    loopLengthBars_ = 2;     // 2-bar loop
+    couple_         = 0.3f;  // Light interlock
+    ratchet_        = 0.0f;  // No fills
+    anchorAccent_   = 0.6f;
+    shimmerAccent_  = 0.6f;
+    contour_        = 0.0f;
+    swingTaste_     = 0.5f;
+    gateTime_       = 0.3f;
+    humanize_       = 0.0f;
+    clockDiv_       = 0.5f;
+    currentBpm_     = 120.0f;
+#elif defined(DEBUG_FEATURE_LEVEL) && (DEBUG_FEATURE_LEVEL == 0)
+    // === LEVEL 0: Clock only ===
+    // Gate out 1 fires every step, Gate out 2 silent
+    anchorDensity_  = 1.0f;
+    shimmerDensity_ = 0.0f;  // Silent
+    broken_         = 0.0f;
+    drift_          = 0.0f;
+    fuse_           = 0.5f;
+    loopLengthBars_ = 1;
+    couple_         = 0.0f;
+    ratchet_        = 0.0f;
+    anchorAccent_   = 0.5f;
+    shimmerAccent_  = 0.5f;
+    contour_        = 0.0f;
+    swingTaste_     = 0.5f;
+    gateTime_       = 0.5f;
+    humanize_       = 0.0f;
+    clockDiv_       = 0.5f;
+    currentBpm_     = 120.0f;
+#elif defined(DEBUG_FEATURE_LEVEL) && (DEBUG_FEATURE_LEVEL == 1)
+    // === LEVEL 1: Both voices at max ===
+    anchorDensity_  = 1.0f;
+    shimmerDensity_ = 1.0f;
+    broken_         = 0.0f;
+    drift_          = 0.0f;
+    fuse_           = 0.5f;
+    loopLengthBars_ = 1;
+    couple_         = 0.0f;
+    ratchet_        = 0.0f;
+    anchorAccent_   = 0.5f;
+    shimmerAccent_  = 0.5f;
+    contour_        = 0.0f;
+    swingTaste_     = 0.5f;
+    gateTime_       = 0.5f;
+    humanize_       = 0.0f;
+    clockDiv_       = 0.5f;
+    currentBpm_     = 120.0f;
+#elif defined(DEBUG_FEATURE_LEVEL) && (DEBUG_FEATURE_LEVEL == 2)
+    // === LEVEL 2: Variable density ===
+    anchorDensity_  = 0.7f;
+    shimmerDensity_ = 0.7f;
+    broken_         = 0.0f;
+    drift_          = 0.0f;
+    fuse_           = 0.5f;
+    loopLengthBars_ = 2;
+    couple_         = 0.0f;
+    ratchet_        = 0.0f;
+    anchorAccent_   = 0.5f;
+    shimmerAccent_  = 0.5f;
+    contour_        = 0.0f;
+    swingTaste_     = 0.5f;
+    gateTime_       = 0.3f;
+    humanize_       = 0.0f;
+    clockDiv_       = 0.5f;
+    currentBpm_     = 120.0f;
+#elif defined(DEBUG_FEATURE_LEVEL) && (DEBUG_FEATURE_LEVEL == 3)
+    // === LEVEL 3: Add BROKEN ===
+    anchorDensity_  = 0.7f;
+    shimmerDensity_ = 0.7f;
+    broken_         = 0.4f;  // Tribal feel
+    drift_          = 0.0f;
+    fuse_           = 0.5f;
+    loopLengthBars_ = 2;
+    couple_         = 0.0f;
+    ratchet_        = 0.0f;
+    anchorAccent_   = 0.5f;
+    shimmerAccent_  = 0.5f;
+    contour_        = 0.0f;
+    swingTaste_     = 0.5f;
+    gateTime_       = 0.3f;
+    humanize_       = 0.0f;
+    clockDiv_       = 0.5f;
+    currentBpm_     = 120.0f;
+#elif defined(DEBUG_FEATURE_LEVEL) && (DEBUG_FEATURE_LEVEL == 4)
+    // === LEVEL 4: Add DRIFT ===
+    anchorDensity_  = 0.7f;
+    shimmerDensity_ = 0.7f;
+    broken_         = 0.4f;
+    drift_          = 0.5f;  // Pattern evolves
+    fuse_           = 0.5f;
+    loopLengthBars_ = 2;
+    couple_         = 0.0f;
+    ratchet_        = 0.0f;
+    anchorAccent_   = 0.5f;
+    shimmerAccent_  = 0.5f;
+    contour_        = 0.0f;
+    swingTaste_     = 0.5f;
+    gateTime_       = 0.3f;
+    humanize_       = 0.0f;
+    clockDiv_       = 0.5f;
+    currentBpm_     = 120.0f;
+#elif defined(DEBUG_FEATURE_LEVEL) && (DEBUG_FEATURE_LEVEL == 5)
+    // === LEVEL 5: Full feature set ===
+    anchorDensity_  = 0.7f;
+    shimmerDensity_ = 0.7f;
+    broken_         = 0.4f;
+    drift_          = 0.5f;
+    fuse_           = 0.5f;
+    loopLengthBars_ = 4;
+    couple_         = 0.4f;  // Enable interlock
+    ratchet_        = 0.3f;  // Light fills
+    anchorAccent_   = 0.6f;
+    shimmerAccent_  = 0.6f;
+    contour_        = 0.0f;
+    swingTaste_     = 0.5f;
+    gateTime_       = 0.3f;
+    humanize_       = 0.1f;  // Light humanize
+    clockDiv_       = 0.5f;
+    currentBpm_     = 120.0f;
+#else
+    // === DEFAULT: Production defaults ===
     anchorDensity_  = 0.5f;
     shimmerDensity_ = 0.5f;
     broken_         = 0.0f;
@@ -58,6 +207,7 @@ void Sequencer::Init(float sampleRate)
     gateTime_       = 0.2f;
     humanize_       = 0.0f;
     clockDiv_       = 0.5f;
+#endif
     
     // Initialize deprecated v2 parameters (kept for compatibility)
     flux_    = 0.0f;
@@ -103,10 +253,8 @@ void Sequencer::Init(float sampleRate)
     ratchetAnchorVel_ = 0.0f;
     ratchetShimmerVel_ = 0.0f;
 
-#ifdef USE_PULSE_FIELD_V3
     // Initialize v3 Pulse Field state with a seed based on initial entropy
     pulseFieldState_.Init(0x44554F50); // "DUOP" as seed
-#endif
 
     UpdateSwingParameters();
 }
@@ -330,14 +478,12 @@ std::array<float, 2> Sequencer::ProcessAudio()
 
         stepIndex_ = (stepIndex_ + 1) % effectiveLoopSteps;
 
-#ifdef USE_PULSE_FIELD_V3
         // Phrase reset: regenerate loopSeed_ for drifting pattern elements
         // This causes DRIFT-affected steps to produce different patterns each loop
         if(stepIndex_ == 0)
         {
             pulseFieldState_.OnPhraseReset();
         }
-#endif
 
         // Update phrase position tracking
         phrasePos_ = CalculatePhrasePosition(stepIndex_, loopLengthBars_);
@@ -376,7 +522,6 @@ std::array<float, 2> Sequencer::ProcessAudio()
         }
         else
         {
-#ifdef USE_PULSE_FIELD_V3
             // === DuoPulse v3: Weighted Pulse Field Algorithm ===
             // FUSE is applied inside GetPulseFieldTriggers
             // 
@@ -424,63 +569,8 @@ std::array<float, 2> Sequencer::ProcessAudio()
             hhVel  = 0.0f;
 
             // Phrase accent is already applied inside GetPulseFieldTriggers
-#else
-            // === DuoPulse v2: PatternSkeleton System ===
-            // Apply fuse as density tilt: fuse < 0.5 boosts anchor, > 0.5 boosts shimmer
-            float fuseBias     = (fuse_ - 0.5f) * 0.3f; // ±15% tilt
-            float anchorDensMod  = Clamp(anchorDensity_ - fuseBias + chaosSampleLow.densityBias, 0.0f, 0.95f);
-            float shimmerDensMod = Clamp(shimmerDensity_ + fuseBias + chaosSampleHigh.densityBias, 0.0f, 0.95f);
-
-            // Use PatternSkeleton system with density threshold
-            GetSkeletonTriggers(stepIndex_, anchorDensMod, shimmerDensMod,
-                                kickTrig, snareTrig, kickVel, snareVel);
-            
-            // No separate HH in skeleton patterns - it's combined into shimmer
-            hhTrig = false;
-            hhVel = 0.0f;
-
-            // Apply phrase-based accent multiplier (strongest on downbeats)
-            float accentMult = GetPhraseAccentMultiplier(phrasePos_);
-            kickVel  = Clamp(kickVel * accentMult, 0.0f, 1.0f);
-            snareVel = Clamp(snareVel * accentMult, 0.0f, 1.0f);
-#endif
         }
 
-#ifndef USE_PULSE_FIELD_V3
-        // Apply Ghost Triggers to HH/Perc stream (High Variation)
-        // v2 only: In v3, ghost triggers are handled by the pulse field algorithm
-        if(!hhTrig && chaosSampleHigh.ghostTrigger)
-        {
-            hhTrig = true;
-            // Ghost triggers are usually quieter
-            hhVel = 0.3f + (static_cast<float>(rand() % 100) / 200.0f);
-        }
-
-        // --- CV-Driven Fills (v2: FLUX + Phrase Position) ---
-        // v3 handles fills through phrase-aware weight boosts in the pulse field algorithm
-        // High FLUX values add fill triggers, boosted in fill/build zones
-        float phraseFillBoost = GetPhraseFillBoost(phrasePos_, terrain_);
-        float effectiveFillFlux = Clamp(flux_ + phraseFillBoost, 0.0f, 1.0f);
-
-        if(effectiveFillFlux >= kFluxFillThreshold)
-        {
-            // Check for anchor fill (kick fills)
-            if(!kickTrig && ShouldTriggerFill(effectiveFillFlux, NextHumanizeRandom()))
-            {
-                kickTrig = true;
-                kickVel  = CalculateFillVelocity(effectiveFillFlux, NextHumanizeRandom());
-            }
-
-            // Check for shimmer fill (snare fills)
-            if(!snareTrig && ShouldTriggerFill(effectiveFillFlux, NextHumanizeRandom()))
-            {
-                snareTrig = true;
-                snareVel  = CalculateFillVelocity(effectiveFillFlux, NextHumanizeRandom());
-            }
-        }
-#endif
-
-#ifdef USE_PULSE_FIELD_V3
         // === v3: Voice relationship already handled by COUPLE in GetPulseFieldTriggers ===
         // Direct assignment from trigger results
         bool  gate0 = kickTrig;
@@ -491,87 +581,6 @@ std::array<float, 2> Sequencer::ProcessAudio()
         // Store current anchor state (for potential future Shadow-like features)
         lastAnchorTrig_ = gate0;
         lastAnchorVel_  = vel0;
-#else
-        // --- v2: Orbit Voice Relationship Logic ---
-        OrbitMode orbitMode = GetOrbitMode(orbit_);
-
-        // Gate 0 (Anchor/Low/Kick) - determined by pattern
-        bool  gate0 = kickTrig;
-        float vel0  = kickTrig ? kickVel : 0.0f;
-
-        // Gate 1 (Shimmer/High/Snare) - affected by Orbit mode
-        bool  gate1 = false;
-        float vel1  = 0.0f;
-
-        switch(orbitMode)
-        {
-            case OrbitMode::Interlock:
-            {
-                // Shimmer fills gaps - when anchor fires, reduce shimmer;
-                // when anchor silent, boost shimmer
-                float interlockMod = GetInterlockModifier(gate0, orbit_);
-                float modifiedShimmerDens =
-                    Clamp(shimmerDensity_ + interlockMod, 0.0f, 1.0f);
-
-                // Re-evaluate shimmer trigger with modified density
-                // Simple approach: if snare was going to trigger, apply probability check
-                if(snareTrig)
-                {
-                    // Interlock reduces probability when anchor fires
-                    float prob = modifiedShimmerDens;
-                    gate1      = (static_cast<float>(rand() % 100) / 100.0f) < prob;
-                    vel1       = gate1 ? snareVel : 0.0f;
-                }
-                else if(!gate0 && interlockMod > 0.0f)
-                {
-                    // Anchor silent - chance to add shimmer hit
-                    float prob = interlockMod;
-                    if((static_cast<float>(rand() % 100) / 100.0f) < prob)
-                    {
-                        gate1 = true;
-                        vel1  = snareVel > 0.0f ? snareVel : 0.6f;
-                    }
-                }
-                break;
-            }
-
-            case OrbitMode::Free:
-                // Independent patterns, no collision logic (default behavior)
-                gate1 = snareTrig;
-                vel1  = snareTrig ? snareVel : 0.0f;
-                break;
-
-            case OrbitMode::Shadow:
-                // Shimmer echoes anchor with 1-step delay at 70% velocity
-                if(lastAnchorTrig_)
-                {
-                    gate1 = true;
-                    vel1  = lastAnchorVel_ * 0.7f; // 70% velocity
-                }
-                break;
-        }
-
-        // Store current anchor state for next step's Shadow mode
-        lastAnchorTrig_ = gate0;
-        lastAnchorVel_  = vel0;
-#endif
-
-        // Route HH/Perc based on Grid (pattern selection also affects routing)
-        if(hhTrig)
-        {
-            if(grid_ < 0.5f)
-            {
-                // Route to Anchor (add tom/perc flavor to kick channel)
-                gate0 = true;
-                vel0  = std::max(vel0, hhVel);
-            }
-            else
-            {
-                // Route to Shimmer (add hh/perc flavor to snare channel)
-                gate1 = true;
-                vel1  = std::max(vel1, hhVel);
-            }
-        }
 
         // --- Swing + Humanize Application ---
         // Off-beats (odd steps) get delayed according to swing amount
@@ -580,15 +589,11 @@ std::array<float, 2> Sequencer::ProcessAudio()
         bool isOffBeat = IsOffBeat(stepIndex_);
 
         // Calculate humanize jitter (applied to all triggers)
-#ifdef USE_PULSE_FIELD_V3
         // v3: BROKEN adds jitter on top of humanize_ parameter
         float brokenJitterMs = GetJitterMsFromBroken(broken_);
         // humanize_ adds up to 10ms, BROKEN adds up to 12ms more
         float totalJitterMs  = (humanize_ * 10.0f) + brokenJitterMs;
         float effectiveHumanize = totalJitterMs / 22.0f; // Normalize to 0-1 range (max 22ms total)
-#else
-        float effectiveHumanize = CalculateEffectiveHumanize(humanize_, terrain_);
-#endif
         int   humanizeJitter    = 0;
         if(effectiveHumanize > 0.0f && (gate0 || gate1))
         {
@@ -647,7 +652,6 @@ std::array<float, 2> Sequencer::ProcessAudio()
             }
         }
 
-#ifdef USE_PULSE_FIELD_V3
         // === Ratchet Scheduling (32nd note subdivisions) ===
         // Ratchets fire mid-step (half of stepDurationSamples_) after primary trigger
         // Conditions for ratcheting:
@@ -690,16 +694,13 @@ std::array<float, 2> Sequencer::ProcessAudio()
                 ratchetShimmerVel_     = vel1 * 0.7f;
             }
         }
-#endif
     }
 
     // Process swing delayed triggers (must run every sample)
     ProcessSwingDelay();
     
-#ifdef USE_PULSE_FIELD_V3
     // Process ratchet triggers (32nd note subdivisions)
     ProcessRatchet();
-#endif
 
     ProcessGates();
 
@@ -856,7 +857,6 @@ int Sequencer::HoldMsToSamples(float milliseconds) const
 
 void Sequencer::UpdateSwingParameters()
 {
-#ifdef USE_PULSE_FIELD_V3
     // v3: Swing is derived from BROKEN parameter, fine-tuned by swingTaste_
     // GetSwingFromBroken returns 0.50-0.66 based on BROKEN level
     float baseSwing = GetSwingFromBroken(broken_);
@@ -865,10 +865,6 @@ void Sequencer::UpdateSwingParameters()
     // swingTaste=0.5 = no change, 0=reduce swing, 1=increase swing
     float tasteAdjust = (swingTaste_ - 0.5f) * 0.08f; // ±4%
     currentSwing_ = Clamp(baseSwing + tasteAdjust, 0.5f, 0.70f);
-#else
-    // v2: Calculate swing from terrain (genre) and taste
-    currentSwing_ = CalculateSwing(terrain_, swingTaste_);
-#endif
 
     // Calculate step duration in samples (16th note at current BPM)
     // BPM = beats per minute, 4 16th notes per beat
@@ -925,94 +921,6 @@ float Sequencer::NextHumanizeRandom()
     humanizeRngState_ ^= humanizeRngState_ << 5;
     return static_cast<float>(humanizeRngState_ & 0xFFFF) / 65535.0f;
 }
-
-void Sequencer::GetSkeletonTriggers(int step, float anchorDens, float shimmerDens,
-                                    bool& anchorTrig, bool& shimmerTrig,
-                                    float& anchorVel, float& shimmerVel)
-{
-    // Get the current pattern
-    const PatternSkeleton& pattern = GetPattern(currentPatternIndex_);
-
-    // Wrap step to pattern length (32 steps)
-    int wrappedStep = step % kPatternSteps;
-
-    // Apply density threshold to determine if each step fires
-    // Low density = only high-intensity steps fire
-    // High density = all steps including ghosts fire
-    anchorTrig = ShouldStepFire(pattern.anchorIntensity, wrappedStep, anchorDens);
-    shimmerTrig = ShouldStepFire(pattern.shimmerIntensity, wrappedStep, shimmerDens);
-
-    // Get intensity levels for potential ghost note generation
-    uint8_t anchorIntensity = GetStepIntensity(pattern.anchorIntensity, wrappedStep);
-    uint8_t shimmerIntensity = GetStepIntensity(pattern.shimmerIntensity, wrappedStep);
-    IntensityLevel anchorLevel = GetIntensityLevel(anchorIntensity);
-    IntensityLevel shimmerLevel = GetIntensityLevel(shimmerIntensity);
-
-    // FLUX probabilistic ghost note generation
-    // If a ghost-level step (intensity 1-4) didn't fire via density, FLUX can trigger it
-    if(!anchorTrig && anchorLevel == IntensityLevel::Ghost && flux_ > 0.0f)
-    {
-        if(ShouldTriggerGhost(flux_, NextHumanizeRandom()))
-        {
-            anchorTrig = true;
-        }
-    }
-    if(!shimmerTrig && shimmerLevel == IntensityLevel::Ghost && flux_ > 0.0f)
-    {
-        if(ShouldTriggerGhost(flux_, NextHumanizeRandom()))
-        {
-            shimmerTrig = true;
-        }
-    }
-
-    // Get velocity from step intensity
-    if(anchorTrig)
-    {
-        anchorVel = IntensityToVelocity(anchorIntensity);
-
-        // Apply accent parameter - boosts velocity for accent-eligible steps
-        if(IsAccentEligible(pattern.accentMask, wrappedStep))
-        {
-            // Accent parameter scales the boost (0.5 = neutral, 1.0 = max accent)
-            float accentBoost = (anchorAccent_ - 0.5f) * 0.4f; // ±0.2 range
-            anchorVel = Clamp(anchorVel + accentBoost, 0.3f, 1.0f);
-        }
-
-        // Apply FLUX velocity jitter (up to ±20%)
-        if(flux_ > 0.0f)
-        {
-            anchorVel = ApplyVelocityJitter(anchorVel, flux_, NextHumanizeRandom());
-        }
-    }
-    else
-    {
-        anchorVel = 0.0f;
-    }
-
-    if(shimmerTrig)
-    {
-        shimmerVel = IntensityToVelocity(shimmerIntensity);
-
-        // Apply accent parameter
-        if(IsAccentEligible(pattern.accentMask, wrappedStep))
-        {
-            float accentBoost = (shimmerAccent_ - 0.5f) * 0.4f;
-            shimmerVel = Clamp(shimmerVel + accentBoost, 0.3f, 1.0f);
-        }
-
-        // Apply FLUX velocity jitter
-        if(flux_ > 0.0f)
-        {
-            shimmerVel = ApplyVelocityJitter(shimmerVel, flux_, NextHumanizeRandom());
-        }
-    }
-    else
-    {
-        shimmerVel = 0.0f;
-    }
-}
-
-#ifdef USE_PULSE_FIELD_V3
 
 void Sequencer::GetPulseFieldTriggers(int step, float anchorDens, float shimmerDens,
                                       bool& anchorTrig, bool& shimmerTrig,
@@ -1170,7 +1078,5 @@ void Sequencer::ProcessRatchet()
         }
     }
 }
-
-#endif // USE_PULSE_FIELD_V3
 
 } // namespace daisysp_idm_grids
