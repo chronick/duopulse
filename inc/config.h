@@ -85,5 +85,5 @@
 // 3 = Full generation with guard rails
 // 4 = Add timing effects (swing/jitter)
 // 5 = Full feature set (production mode)
-#define DEBUG_FEATURE_LEVEL 5
+#define DEBUG_FEATURE_LEVEL 0
 

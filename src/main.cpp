@@ -32,7 +32,7 @@
 #include "daisy_patch_sm.h"
 #include "daisysp.h"
 #include "Engine/Sequencer.h"
-#include "Engine/LedIndicator.h"
+// #include "Engine/LedIndicator.h"  // LED system simplified
 #include "Engine/ControlUtils.h"
 #include "Engine/GateScaler.h"
 #include "Engine/SoftKnob.h"
@@ -58,8 +58,9 @@ GateScaler     shimmerGate;
 VelocityOutput velocityOutput;
 AuxOutput      auxOutput;
 
-LedIndicator ledIndicator;
-LedState     ledState;
+// LED system simplified - no longer using LedIndicator or LedState
+// LedIndicator ledIndicator;
+// LedState     ledState;
 
 // Persistence
 PersistentConfig currentConfig;
@@ -67,7 +68,6 @@ AutoSaveState    autoSaveState;
 bool             configLoaded = false;
 
 bool lastGateIn1 = false;
-bool lastAnchorGate = false; // For detecting trigger edges
 
 // Control Mode indices for soft knob array
 enum class ControlMode : uint8_t
@@ -82,9 +82,9 @@ constexpr int kKnobsPerMode = 4;
 constexpr int kNumModes     = 4;
 constexpr int kTotalKnobs   = kKnobsPerMode * kNumModes; // 16
 
-// Shift/Tap timing thresholds
-constexpr uint32_t kShiftThresholdMs = 150;   // Hold >150ms = shift, tap <150ms = fill/tap-tempo
-constexpr uint32_t kDoubleTapWindowMs = 400;  // Max gap between taps for double-tap (reseed)
+// Shift timing threshold
+// B7 is shift-only: hold for shift layer, no tap tempo
+constexpr uint32_t kShiftThresholdMs = 100;   // Hold >100ms = shift active
 
 struct MainControlState
 {
@@ -156,15 +156,10 @@ SoftKnob     softKnobs[kTotalKnobs]; // 16 slots: 4 knobs × 4 mode/shift combin
 uint32_t lastInteractionTime  = 0;
 float    activeParameterValue = 0.0f;
 
-// Shift Button State (B7)
+// Shift Button State (B7) - shift-only, no tap tempo
 uint32_t buttonPressTime   = 0;     // When button was pressed (ms)
 bool     buttonWasPressed  = false; // Previous button state
 bool     shiftEngaged      = false; // True once hold threshold passed
-bool     fillTriggered     = false; // Prevent double-trigger on release
-
-// Double-tap detection for reseed
-uint32_t lastTapTime       = 0;     // Time of last tap release
-uint8_t  tapCount          = 0;     // Number of taps in window
 
 // Helper functions for discrete parameter mapping
 int MapToPatternLength(float value)
@@ -315,8 +310,8 @@ void ProcessControls()
     bool newConfigMode = modeSwitch.Pressed();
     controlState.configMode = newConfigMode;
 
-    // Shift Detection (B7 button: tap <150ms vs hold >150ms)
-    // Double-tap detection for reseed
+    // Shift Detection (B7 button: hold for shift layer)
+    // Simplified: no tap tempo, just shift-only
     bool     buttonPressed = tapButton.Pressed();
     uint32_t now           = System::GetNow();
 
@@ -325,7 +320,6 @@ void ProcessControls()
         // Button just pressed - start timing
         buttonPressTime = now;
         shiftEngaged    = false;
-        fillTriggered   = false;
     }
     else if(buttonPressed && buttonWasPressed)
     {
@@ -338,42 +332,11 @@ void ProcessControls()
     }
     else if(!buttonPressed && buttonWasPressed)
     {
-        // Button just released
-        if(!shiftEngaged && !fillTriggered)
-        {
-            // Short tap (<150ms) - check for double-tap (reseed)
-            fillTriggered = true;
-
-            // Check if this is a double-tap
-            if((now - lastTapTime) < kDoubleTapWindowMs && tapCount > 0)
-            {
-                // Double-tap detected - trigger reseed
-                sequencer.TriggerReseed();
-                tapCount = 0;
-            }
-            else
-            {
-                // Single tap - queue fill or tap tempo
-                tapCount = 1;
-                if(!controlState.configMode)
-                {
-                    // Performance mode: short tap = tap tempo
-                    sequencer.TriggerTapTempo(now);
-                }
-            }
-            lastTapTime = now;
-        }
-        // Always clear shift on release
+        // Button released - clear shift
         controlState.shiftActive = false;
         shiftEngaged             = false;
     }
     buttonWasPressed = buttonPressed;
-
-    // Clear tap count if window expired
-    if(tapCount > 0 && (now - lastTapTime) > kDoubleTapWindowMs)
-    {
-        tapCount = 0;
-    }
 
     // If mode changed, load new targets into soft knobs
     ControlMode currentMode = controlState.GetCurrentMode();
@@ -482,7 +445,7 @@ void ProcessControls()
         }
     }
 
-    // Tap Tempo is now handled in shift detection above (short tap <150ms)
+    // Tap Tempo removed - tempo is internal-only or external clock
 
     // Reset Trigger
     if(patch.gate_in_2.Trig())
@@ -490,58 +453,43 @@ void ProcessControls()
         sequencer.TriggerReset();
     }
 
-    // === LED Feedback System (DuoPulse v4) ===
-    // Updates LedState based on current mode, parameters, and phrase position
-    
-    // Detect anchor trigger edge (rising edge)
+    // === LED Feedback System (Simplified) ===
+    // Config mode: solid on
+    // Anchor trigger (Gate 1): 50% brightness
+    // Shimmer trigger (Gate 2): 30% brightness
+    // Otherwise: off
+
     bool anchorGateHigh = sequencer.IsGateHigh(0);
     bool shimmerGateHigh = sequencer.IsGateHigh(1);
-    ledState.anchorTriggered = anchorGateHigh && !lastAnchorGate;
-    ledState.shimmerTriggered = shimmerGateHigh;
-    lastAnchorGate = anchorGateHigh;
-    
-    // Set LED mode based on current state
-    if(System::GetNow() - lastInteractionTime < 1000)
+
+    float ledBrightness = 0.0f;
+
+    if(controlState.configMode)
     {
-        ledState.mode = LedMode::Interaction;
-        ledState.interactionValue = activeParameterValue;
+        // Config mode: solid on
+        ledBrightness = 1.0f;
     }
-    else if(controlState.shiftActive)
+    else if(anchorGateHigh)
     {
-        ledState.mode = LedMode::ShiftHeld;
+        // Anchor trigger: 50% brightness
+        ledBrightness = 0.5f;
     }
-    else if(controlState.configMode)
+    else if(shimmerGateHigh)
     {
-        ledState.mode = LedMode::Config;
+        // Shimmer trigger: 30% brightness
+        ledBrightness = 0.3f;
     }
-    else
-    {
-        ledState.mode = LedMode::Performance;
-    }
-    
-    // Set parameter values for LED behavior
-    ledState.broken = flavorCV;  // Flavor affects LED chaos
-    ledState.drift = controlState.drift;
-    ledState.anchorDensity = finalEnergy;
-    ledState.shimmerDensity = 1.0f - controlState.balance;  // Inverse for shimmer focus
-    
-    // Set phrase position for phrase-aware feedback
-    const auto& phrasePos = sequencer.GetPhrasePosition();
-    ledState.phraseProgress = phrasePos.phraseProgress;
-    ledState.isDownbeat = phrasePos.isDownbeat;
-    ledState.isFillZone = phrasePos.isFillZone;
-    ledState.isBuildZone = phrasePos.isBuildZone;
-    
-    // Process LED and output to CV_OUT_2
-    float ledBrightness = ledIndicator.Process(ledState);
-    float ledVoltage = LedIndicator::BrightnessToVoltage(ledBrightness);
-    bool  ledDigital = (ledBrightness > 0.3f);
+
+    // Convert brightness to voltage (0-5V range)
+    float ledVoltage = ledBrightness * 5.0f;
+    bool  ledDigital = (ledBrightness > 0.1f);
 
     patch.SetLed(ledDigital);
     patch.WriteCvOut(patch_sm::CV_OUT_2, ledVoltage);
 
     // === AUX Output (CV_OUT_1) ===
     // Mode-dependent output: HAT trigger, FILL_GATE, PHRASE_CV ramp, or EVENT trigger
+    const auto& phrasePos = sequencer.GetPhrasePosition();
     float auxVoltage = 0.0f;
     AuxMode currentAuxMode = GetAuxModeFromValue(controlState.auxMode);
     
@@ -656,13 +604,13 @@ int main(void)
     sequencer.SetAccentHoldMs(10.0f);
     sequencer.SetHihatHoldMs(10.0f);
     
-    // Initialize LED feedback system (using control rate ~1kHz)
-    ledIndicator.Init(1000.0f);
+    // LED feedback simplified - no initialization needed
+    // ledIndicator.Init(1000.0f);
 
     // Ensure LEDs start in a known state
     patch.SetLed(false);
-    patch.WriteCvOut(patch_sm::CV_OUT_2, LedIndicator::kLedOffVoltage);
-    patch.WriteCvOut(patch_sm::CV_OUT_1, 0.0f);
+    patch.WriteCvOut(patch_sm::CV_OUT_2, 0.0f);  // LED output
+    patch.WriteCvOut(patch_sm::CV_OUT_1, 0.0f);  // AUX output
 
     // Initialize Controls
     // Button B7 (tap/shift)
@@ -698,8 +646,6 @@ int main(void)
     
     // Initialize interaction state
     lastInteractionTime = 0; // Ensures we start in default mode
-    lastTapTime = 0;
-    tapCount = 0;
 
     patch.StartAudio(AudioCallback);
 

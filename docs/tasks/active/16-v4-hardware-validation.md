@@ -42,8 +42,8 @@
 │    Vel)    Vel)                                     │
 │                                                     │
 │   [B7]  [B8]                   ← BUTTONS           │
-│   Tap/   Mode                                       │
-│   Shift  Switch                                     │
+│   Shift  Mode                                       │
+│   Layer  Switch                                     │
 │                                                     │
 │   ● CV1   ● CV2                ← CV OUTPUTS        │
 │   (AUX)   (LED)                                     │
@@ -129,6 +129,85 @@ graph TD
 
 ---
 
+## 🔄 Iterative Testing Methodology
+
+**This document is a living test plan.** Hardware testing often reveals issues that require immediate code changes. The workflow is:
+
+1. **Run test** → Observe behavior
+2. **Document findings** → Note what works, what doesn't
+3. **Modify code** → Fix issues as you discover them
+4. **Re-test** → Verify the fix works
+5. **Update this document** → Record changes made and new expected behavior
+
+### Important Notes
+
+- **Expect to modify code during testing** - this is normal and expected
+- **Always rebuild and reflash** after code changes: `make clean && make && make program-dfu`
+- **Keep notes in the Test Log** section at the bottom
+- Tests build on each other - don't advance to Level N+1 until Level N passes
+
+---
+
+## 🛠️ Test 0: Pre-Test Modifications
+
+This section documents simplifications made to reduce complexity before hardware testing.
+
+### Modification 0.1: Remove Tap Tempo (2024-12-20)
+
+**Problem**: Button B7 was handling tap tempo, shift layer, and double-tap reseed. This complex state machine made debugging difficult and button behavior felt erratic.
+
+**Changes Made**:
+- **Removed tap tempo** - Internal clock runs at fixed 120 BPM (external clock via Gate In 1 still works)
+- **Removed double-tap reseed** - Simplifies button logic
+- **B7 is now shift-only** - Hold >100ms to activate shift layer, release to deactivate
+
+**Files Modified**:
+- `src/main.cpp` - Simplified button handling logic
+- `inc/config.h` - DEBUG_FEATURE_LEVEL set to 0
+
+**Expected Behavior After This Change**:
+- B7 button: Hold to access shift layer, release returns to normal
+- No tap tempo - tempo is fixed at 120 BPM internal clock
+- External clock (Gate In 1) still works for tempo sync
+
+**Build and Flash**:
+```bash
+make clean && make && make program-dfu
+```
+
+---
+
+### Modification 0.2: Simplify LED Feedback (2024-12-20)
+
+**Problem**: LED system was complex with multiple modes, making it hard to debug basic sequencer behavior.
+
+**Changes Made**:
+- **Simplified LED logic** - Removed complex LedIndicator state machine
+- **Config mode**: LED solid on (100% brightness)
+- **Anchor trigger (Gate Out 1)**: LED 50% brightness
+- **Shimmer trigger (Gate Out 2)**: LED 30% brightness
+- **Otherwise**: LED off
+
+**Files Modified**:
+- `src/main.cpp` - Replaced LedIndicator with simple brightness logic
+
+**Expected Behavior After This Change**:
+- Flip B8 switch UP → LED solid on (config mode)
+- Flip B8 switch DOWN → LED blinks with triggers (performance mode)
+- Gate Out 1 fires → LED at 50% brightness
+- Gate Out 2 fires → LED at 30% brightness
+
+**Switch Direction Confirmed**:
+- **B8 UP** = Config mode (LED solid on)
+- **B8 DOWN** = Performance mode (LED blinks with triggers)
+
+**Build and Flash**:
+```bash
+make clean && make && make program-dfu
+```
+
+---
+
 ## 🧪 Part 1: Hardware Testing
 
 ### Test Flow Overview
@@ -211,37 +290,48 @@ At Level 0, the knobs don't affect the pattern. The simple 4-on-floor runs regar
 
 #### Checklist
 
+**Switch & LED Tests**:
+- [ ] B8 switch UP → LED solid on (config mode)
+- [ ] B8 switch DOWN → LED blinks with triggers (performance mode)
+
+**Performance Mode (B8 DOWN)**:
 - [ ] LED blinks at regular tempo (~120 BPM = 2 Hz for quarter notes)
+- [ ] LED at 50% brightness when Gate Out 1 fires
+- [ ] LED at 30% brightness when Gate Out 2 fires
 - [ ] Gate Out 1 fires on every beat (4 times per bar)
 - [ ] Gate Out 2 fires on beats 2 and 4 only
 - [ ] Audio Out L holds ~5V after each anchor trigger
 - [ ] Audio Out R holds ~5V after each shimmer trigger
-- [ ] Tap B7 twice quickly → tempo speeds up
+
+**Button Test**:
+- [ ] B7 button: Hold to activate shift layer (no tap tempo)
 
 ---
 
-### Test 2: Tempo & External Clock (Level 0)
+### Test 2: External Clock & Reset (Level 0)
 
-**Goal**: Verify tap tempo and external clock sync work correctly.
+**Goal**: Verify external clock sync and reset work correctly.
 
 Same config as Test 1 (Level 0).
 
-#### Tap Tempo Test
-
-1. Tap B7 twice with ~0.5 second gap → tempo should be ~120 BPM
-2. Tap B7 twice with ~1.0 second gap → tempo should slow to ~60 BPM
-3. Tap B7 twice with ~0.25 second gap → tempo should speed to ~240 BPM
+**Note**: Tap tempo has been removed. Tempo is fixed at 120 BPM internal clock or follows external clock.
 
 #### External Clock Test
 
-1. Patch a clock source to Gate In 1
+1. Patch a clock source (16th notes) to Gate In 1
 2. Module should sync to external clock within a few pulses
-3. Stop external clock → module should return to internal clock after ~2 seconds
+3. Stop external clock → module should return to internal 120 BPM after ~2 seconds
 
 #### Reset Test
 
 1. Patch a trigger/gate to Gate In 2
 2. When gate goes high, pattern should restart from step 1
+
+#### Shift Button Test
+
+1. Hold B7 for >100ms → shift layer should activate (LED may change behavior)
+2. Release B7 → returns to normal mode
+3. Short taps on B7 do nothing (tap tempo removed)
 
 ---
 
@@ -606,6 +696,10 @@ flowchart TD
 - [x] Update default control values to musical center
 - [x] Verify build compiles with all debug levels
 - [x] Verify unit tests pass
+- [x] Remove tap tempo (Test 0 modification - 2024-12-20)
+- [x] Simplify B7 to shift-only behavior
+- [x] Simplify LED feedback (Test 0 modification - 2024-12-20)
+- [x] Verify switch direction (UP=config, DOWN=perf)
 - [ ] **Hardware Test Level 0**: Basic clock
 - [ ] **Hardware Test Level 1**: Direct archetype
 - [ ] **Hardware Test Level 2-3**: Full generation
@@ -642,7 +736,10 @@ Use this section to record your findings:
 
 | Date | Level | Result | Notes |
 |------|-------|--------|-------|
-|      |   0   |        |       |
+| 2024-12-20 | Pre | MODIFY | Removed tap tempo, simplified B7 to shift-only. Button was erratic. |
+| 2024-12-20 | Pre | MODIFY | Simplified LED: 50% on anchor, 30% on shimmer, solid on config. |
+| 2024-12-20 | Pre | VERIFY | Switch UP=config (LED solid), DOWN=perf (LED blinks). |
+| 2024-12-20 | 0 | TESTING | Initial test after simplifications... |
 |      |   1   |        |       |
 |      |   2   |        |       |
 |      |   3   |        |       |
