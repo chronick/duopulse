@@ -15,7 +15,7 @@ volatile Level currentLevel = static_cast<Level>(LOG_DEFAULT_LEVEL);
 
 void Init(bool wait_for_pc)
 {
-    daisy::DaisyPatchSM::StartLog(wait_for_pc);
+    daisy::patch_sm::DaisyPatchSM::StartLog(wait_for_pc);
 }
 
 void SetLevel(Level lvl)
@@ -82,7 +82,7 @@ void Print(Level lvl, const char* file, int line, const char* fmt, ...)
     va_end(args);
 
     // Print via DaisyPatchSM logger (static method, no instance needed)
-    daisy::DaisyPatchSM::PrintLine("%s", buffer);
+    daisy::patch_sm::DaisyPatchSM::PrintLine("%s", buffer);
 }
 
 } // namespace logging
