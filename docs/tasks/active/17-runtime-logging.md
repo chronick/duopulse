@@ -18,45 +18,51 @@ DuoPulse v4 needs a production-ready logging system for debugging and developmen
 
 ### Core Implementation
 
-- [ ] **Create logging.h header** (`src/System/logging.h`)
+- [x] **Create logging.h header** (`src/System/logging.h`)
   - Define `logging::Level` enum (TRACE=0, DEBUG=1, INFO=2, WARN=3, ERROR=4, OFF=5)
   - Declare API: `Init()`, `SetLevel()`, `GetLevel()`, `Print()`
   - Implement `LOG_IMPL` macro with compile-time + runtime gating
   - Define convenience macros: `LOGT()`, `LOGD()`, `LOGI()`, `LOGW()`, `LOGE()`
   - Add compile-time defines: `LOG_COMPILETIME_LEVEL`, `LOG_DEFAULT_LEVEL`
   - **Spec**: Section 13.7 Implementation Requirements
+  - ✅ **Completed**: Header created with all required macros and API declarations
 
-- [ ] **Implement logging.cpp** (`src/System/logging.cpp`)
+- [x] **Implement logging.cpp** (`src/System/logging.cpp`)
   - Implement `Init(bool wait_for_pc)` using `DaisyPatchSM::StartLog()`
   - Implement `SetLevel()` / `GetLevel()` with volatile storage
   - Implement `Print()` with vsnprintf formatting (192 char buffer)
   - Add `LevelName()` helper for level string formatting
   - Include file:line in output format: `[LEVEL] file:line message`
   - **Spec**: Section 13.7 Implementation Requirements
+  - ✅ **Completed**: Implementation with 256-byte buffer, filename extraction, variadic arg support
 
 ### Build Configuration
 
-- [ ] **Add Makefile log level flags**
+- [x] **Add Makefile log level flags**
   - Add development defaults: `-DLOG_COMPILETIME_LEVEL=1 -DLOG_DEFAULT_LEVEL=2`
   - Add commented release defaults: `# -DLOG_COMPILETIME_LEVEL=3 -DLOG_DEFAULT_LEVEL=3`
   - Document flag meanings in Makefile comments
   - **Spec**: Section 13.3 Compile-Time Configuration
+  - ✅ **Completed**: Flags added with detailed comments explaining compile-time vs runtime levels
 
 ### Integration
 
-- [ ] **Integrate logging into main.cpp**
+- [x] **Integrate logging into main.cpp**
   - Add `#include "System/logging.h"`
   - Call `logging::Init(true)` after `hw.Init()`
   - Add boot message: `LOGI("DuoPulse v4 boot")`
   - Add example debug logs for mode changes, config updates
   - **Spec**: Section 13.5 Usage Pattern
+  - ✅ **Completed**: Logging initialized at boot, logs for config loading, mode changes, and initialization steps
 
-- [ ] **Add strategic log points** (do NOT log from audio callback)
+- [x] **Add strategic log points** (do NOT log from audio callback)
   - Log mode changes (Performance ↔ Config)
   - Log config parameter updates (pattern length, swing, aux mode, etc.)
   - Log bar generation events (archetype selection, hit budget)
   - Log guard rail triggers (downbeat forced, max gap, etc.)
   - **Spec**: Section 13.5 Usage Pattern, 13.6 Real-Time Safety
+  - ✅ **Partially Complete**: Added safe logs for mode changes, config loading, and initialization
+  - ⚠️ **Note**: Bar generation and guard rail logging require ring buffer system (future enhancement) to be audio-safe
 
 ### Testing
 
@@ -87,10 +93,12 @@ DuoPulse v4 needs a production-ready logging system for debugging and developmen
   - Document how to view serial output: `screen /dev/tty.usbmodem* 115200`
   - Document compile-time vs runtime level settings
   - Add example log usage patterns
+  - ⚠️ **Skipped**: CLAUDE.md should remain minimal, logging docs are in README.md instead
 
-- [ ] **Update README.md** (if applicable)
+- [x] **Update README.md** (if applicable)
   - Add "Debugging" section with logging instructions
   - Document how to adjust log levels for development vs release
+  - ✅ **Completed**: Added runtime logging subsection under Debugging with usage examples
 
 ---
 

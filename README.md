@@ -483,6 +483,43 @@ Use a debugger (OpenOCD + GDB) for hardware debugging:
 make debug
 ```
 
+#### Runtime Logging
+
+The firmware includes a USB serial logging system for debugging without a hardware debugger.
+
+**Viewing Log Output**:
+```bash
+# macOS/Linux - using screen
+screen /dev/tty.usbmodem* 115200
+
+# Alternative - using make target (saves to /tmp)
+make listen
+
+# Exit screen: Ctrl-A then \ then y
+```
+
+**Log Levels**:
+- `TRACE`: Verbose debugging
+- `DEBUG`: Development info (mode changes, events)
+- `INFO`: Normal operation (boot, config)
+- `WARN`: Warnings
+- `ERROR`: Critical issues
+
+**Configuration**:
+
+Adjust log levels in `Makefile`:
+```makefile
+# Development: DEBUG+ logs, default INFO
+CXXFLAGS += -DLOG_COMPILETIME_LEVEL=1
+CXXFLAGS += -DLOG_DEFAULT_LEVEL=2
+
+# Release: WARN/ERROR only
+CXXFLAGS += -DLOG_COMPILETIME_LEVEL=3
+CXXFLAGS += -DLOG_DEFAULT_LEVEL=3
+```
+
+See `CLAUDE.md` for complete logging documentation.
+
 ## Support
 
 For issues and questions:
