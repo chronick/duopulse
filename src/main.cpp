@@ -558,8 +558,8 @@ int main(void)
     LOGI("Build: %s %s", __DATE__, __TIME__);
 
     // Initialize Audio
-    patch.SetAudioBlockSize(4);
-    patch.SetAudioSampleRate(SaiHandle::Config::SampleRate::SAI_48KHZ);
+    patch.SetAudioBlockSize(32);
+    patch.SetAudioSampleRate(SaiHandle::Config::SampleRate::SAI_32KHZ);
     float sampleRate = patch.AudioSampleRate();
 
     // === Load Config from Flash ===
