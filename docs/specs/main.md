@@ -605,9 +605,162 @@ Config changes are automatically persisted to flash with 2-second debouncing to 
 
 ---
 
-## 13. Testing Requirements
+## 13. Runtime Logging System [runtime-logging]
 
-### 13.1 Unit Tests
+### 13.1 Overview
+
+DuoPulse v4 includes a compile-time and runtime configurable logging system for debugging and development without needing to rebuild firmware. The system follows embedded best practices:
+
+- **Compile-time level cap**: Strip debug logs from release builds (zero cost)
+- **Runtime level control**: Adjust verbosity without rebuilding firmware
+- **USB serial transport**: Uses libDaisy's logger (StartLog/PrintLine)
+- **Real-time safe**: No logging from audio callback (main loop only)
+
+### 13.2 Log Levels
+
+The system provides five log levels:
+
+| Level | Value | Purpose | Example Use Case |
+|-------|-------|---------|------------------|
+| **TRACE** | 0 | Verbose debugging | Per-step state dumps, loop internals |
+| **DEBUG** | 1 | Development info | Bar generation, archetype selection, pattern changes |
+| **INFO** | 2 | Normal operation | Boot messages, mode changes, config updates |
+| **WARN** | 3 | Warnings | Constraint violations, soft repair triggers |
+| **ERROR** | 4 | Critical issues | Hardware init failures, invalid state |
+| **OFF** | 5 | Disable logging | Production builds |
+
+### 13.3 Compile-Time Configuration
+
+Build-time flags in `Makefile` control what gets compiled into the binary:
+
+```makefile
+# Development build (keep DEBUG+ logs, default to INFO at runtime)
+CFLAGS += -DLOG_COMPILETIME_LEVEL=1  # 0=TRACE, 1=DEBUG, 2=INFO, etc.
+CFLAGS += -DLOG_DEFAULT_LEVEL=2      # Default runtime level
+
+# Release build (only WARN/ERROR, quiet by default)
+CFLAGS += -DLOG_COMPILETIME_LEVEL=3
+CFLAGS += -DLOG_DEFAULT_LEVEL=3
+```
+
+**Acceptance Criteria**:
+- ✅ Logs below `LOG_COMPILETIME_LEVEL` are stripped at compile time (zero code size)
+- ✅ `LOG_DEFAULT_LEVEL` sets initial runtime filter level
+
+### 13.4 Runtime Control
+
+Runtime log level can be adjusted programmatically:
+
+```cpp
+logging::SetLevel(logging::DEBUG);  // Show DEBUG+ logs
+logging::SetLevel(logging::WARN);   // Only show WARN/ERROR
+```
+
+**Future enhancement**: Add control via button combo (e.g., Shift + double-tap cycles levels)
+
+**Acceptance Criteria**:
+- ✅ Runtime level filter works even if compile-time level allows logs
+- ✅ Changing runtime level takes effect immediately
+- ✅ Runtime level defaults to `LOG_DEFAULT_LEVEL` on boot
+
+### 13.5 Usage Pattern
+
+Logging macros include file/line info for easy debugging:
+
+```cpp
+#include "logging.h"
+
+// In main.cpp Init():
+logging::Init(true);  // Wait for host to open serial (optional)
+
+// In application code:
+LOGT("Trace: per-step state dump");           // TRACE
+LOGD("Debug: selected archetype [%d,%d]", x, y);  // DEBUG
+LOGI("Info: mode changed to %s", modeName);   // INFO
+LOGW("Warning: guard rail triggered");        // WARN
+LOGE("Error: hardware init failed");          // ERROR
+```
+
+**Output format**:
+```
+[INFO] main.cpp:142 boot
+[DEBUG] Engine/GenerationPipeline.cpp:87 selected archetype [1,2]
+[WARN] Engine/GuardRails.cpp:45 downbeat missing, forcing anchor
+```
+
+### 13.6 Real-Time Safety
+
+**Critical Rule**: Never log from audio callback. USB serial I/O is blocking and will cause audio dropouts.
+
+**Accepted patterns**:
+- ✅ Log from `main()` loop during initialization
+- ✅ Log from control processing (button/knob handlers)
+- ✅ Log before/after bar generation (outside audio callback)
+
+**Forbidden**:
+- ❌ Logging inside `AudioCallback()`
+- ❌ `PrintLine()` directly from sample processing
+
+**Future enhancement**: Ring buffer event system for audio-safe logging (push events from callback, flush from main loop)
+
+**Acceptance Criteria**:
+- ✅ No logging calls in audio callback path
+- ✅ Audio timing unaffected by logging activity
+
+### 13.7 Implementation Requirements
+
+**Core Files**:
+- `src/System/logging.h` - Level enum, macros, API declarations
+- `src/System/logging.cpp` - Implementation using DaisyPatchSM::StartLog/PrintLine
+
+**API**:
+```cpp
+namespace logging {
+    void Init(bool wait_for_pc = true);  // Call after hw.Init()
+    void SetLevel(Level lvl);
+    Level GetLevel();
+    void Print(Level lvl, const char* file, int line, const char* fmt, ...);
+}
+```
+
+**Macros** (compile-time + runtime gating):
+```cpp
+LOGT(...) // TRACE
+LOGD(...) // DEBUG
+LOGI(...) // INFO
+LOGW(...) // WARN
+LOGE(...) // ERROR
+```
+
+**Acceptance Criteria**:
+- ✅ `logging::Init()` initializes USB serial logger
+- ✅ Macros include file:line info automatically
+- ✅ Printf-style formatting supported (`%d`, `%s`, `%f`, etc.)
+- ✅ Message buffer sized to avoid truncation (192 chars minimum)
+- ✅ Stack-only allocation (no heap, safe for embedded)
+
+### 13.8 Testing Requirements
+
+**Unit Tests**:
+- Verify compile-time gating strips logs below threshold
+- Verify runtime filter prevents logs below current level
+- Test all five log levels produce correct output format
+
+**Integration Tests**:
+- Boot with wait_for_pc=true, verify no messages missed
+- Change runtime level, verify immediate effect
+- Stress test: 100+ logs in main loop, verify no buffer overruns
+
+**Hardware Validation**:
+- Connect USB serial (screen/minicom), verify boot messages appear
+- Adjust runtime level, verify log verbosity changes
+- Confirm audio performance unaffected by logging
+
+---
+
+## 14. Testing Requirements
+
+### 14.1 Unit Tests
 
 | Test Area | Tests Required |
 |-----------|----------------|
