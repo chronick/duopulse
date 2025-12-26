@@ -122,10 +122,53 @@ graph TD
    - `energy = 0.6` (Higher in GROOVE zone for more hits)
 
 2. Added debug compile flags in `config.h`:
-   - `DEBUG_BASELINE_MODE` - Forces known-good values
-   - `DEBUG_SIMPLE_TRIGGERS` - Bypasses generation, simple 4-on-floor
-   - `DEBUG_FIXED_SEED` - Reproducible patterns
-   - `DEBUG_FEATURE_LEVEL` (0-5) - Progressive feature enablement
+   - `DEBUG_FEATURE_LEVEL` (0-5) - Progressive feature enablement (primary flag)
+   - `DEBUG_BASELINE_MODE` - Forces known-good knob values
+   - `DEBUG_FIXED_SEED` - Reproducible patterns for debugging
+
+3. Code cleanup (2024-12-25):
+   - Consolidated `DEBUG_SIMPLE_TRIGGERS` into `DEBUG_FEATURE_LEVEL 0`
+   - Refactored feature level checks to use `>=` pattern for clarity
+   - Improved config.h documentation with per-level descriptions
+
+---
+
+## 🎚️ Debug Flag Reference
+
+### DEBUG_FEATURE_LEVEL Quick Reference
+
+| Level | Name | What It Tests | Knobs Active |
+|-------|------|---------------|--------------|
+| 0 | CLOCK | Audio callback, gates, LED, tempo | None (fixed pattern) |
+| 1 | ARCHETYPE | Knob reading, archetype blending | K3 (Field X), K4 (Field Y) |
+| 2 | SAMPLING | Hit budget, density scaling | K1 (Energy), K3, K4 |
+| 3 | GUARD RAILS | Voice coupling, beat-1 anchor | K1, K3, K4 |
+| 4 | TIMING | Swing/jitter from FLAVOR CV | K1, K3, K4 + Audio In R |
+| 5 | PRODUCTION | Full system (same as no flag) | All knobs |
+
+### Recommended Flag Combinations
+
+```
+# Level 0: Clock test - minimal config
+#define DEBUG_FEATURE_LEVEL 0
+// No other flags needed
+
+# Level 1: Archetype test - add fixed seed for reproducibility
+#define DEBUG_FEATURE_LEVEL 1
+// #define DEBUG_FIXED_SEED 1  // Optional: same pattern each time
+
+# Level 2-3: Generation test - add baseline mode to isolate sampling
+#define DEBUG_FEATURE_LEVEL 2  // or 3
+// #define DEBUG_BASELINE_MODE 1  // Optional: known control values
+// #define DEBUG_FIXED_SEED 1     // Optional: reproducible patterns
+
+# Level 4: Timing test
+#define DEBUG_FEATURE_LEVEL 4
+// No extra flags needed - test FLAVOR CV input
+
+# Level 5 / Production: Remove all debug flags
+// #define DEBUG_FEATURE_LEVEL 5  // Or just comment out
+```
 
 ---
 
@@ -692,7 +735,7 @@ flowchart TD
 ## ✅ Completed Checklist
 
 - [x] Add DEBUG_FEATURE_LEVEL compile flag
-- [x] Add DEBUG_SIMPLE_TRIGGERS bypass
+- [x] ~~Add DEBUG_SIMPLE_TRIGGERS bypass~~ (consolidated into Level 0)
 - [x] Update default control values to musical center
 - [x] Verify build compiles with all debug levels
 - [x] Verify unit tests pass
@@ -700,6 +743,8 @@ flowchart TD
 - [x] Simplify B7 to shift-only behavior
 - [x] Simplify LED feedback (Test 0 modification - 2024-12-20)
 - [x] Verify switch direction (UP=config, DOWN=perf)
+- [x] Refactor DEBUG_FEATURE_LEVEL to use >= pattern (2024-12-25)
+- [x] Add flag reference table to task doc (2024-12-25)
 - [ ] **Hardware Test Level 0**: Basic clock
 - [ ] **Hardware Test Level 1**: Direct archetype
 - [ ] **Hardware Test Level 2-3**: Full generation
@@ -740,6 +785,8 @@ Use this section to record your findings:
 | 2024-12-20 | Pre | MODIFY | Simplified LED: 50% on anchor, 30% on shimmer, solid on config. |
 | 2024-12-20 | Pre | VERIFY | Switch UP=config (LED solid), DOWN=perf (LED blinks). |
 | 2024-12-20 | 0 | TESTING | Initial test after simplifications... |
+| 2024-12-25 | Pre | REFACTOR | Consolidated DEBUG_SIMPLE_TRIGGERS into Level 0. Refactored to >= pattern. |
+|      |   0   |        |       |
 |      |   1   |        |       |
 |      |   2   |        |       |
 |      |   3   |        |       |

@@ -54,36 +54,69 @@
 // #define USE_PULSE_FIELD_V3 1  // DISABLED: v3 code removed for v4 migration
 
 // =============================================================================
-// Debug Configuration Flags
+// Debug Configuration Flags for Hardware Validation
 // =============================================================================
-// Uncomment to enable debug/baseline modes for hardware testing
+// See docs/tasks/active/16-v4-hardware-validation.md for full testing guide
+//
+// QUICK START:
+//   1. Set DEBUG_FEATURE_LEVEL to the level you want to test
+//   2. Build and flash: make clean && make && make program-dfu
+//   3. Test at that level, then increment and repeat
+// =============================================================================
+
+// -----------------------------------------------------------------------------
+// DEBUG_FEATURE_LEVEL: Progressive Feature Enablement (0-5)
+// -----------------------------------------------------------------------------
+// Each level adds features on top of previous levels.
+// Test from Level 0 upward - don't skip levels!
+//
+// Level 0: CLOCK TEST
+//   - Simple 4-on-floor pattern (Anchor on 1,2,3,4; Shimmer on 2,4)
+//   - Knobs are IGNORED - pattern is fixed
+//   - Tests: Audio callback runs, gates fire, LED blinks, outputs work
+//
+// Level 1: ARCHETYPE TEST
+//   - Pattern responds to FIELD X/Y knobs (K3, K4)
+//   - No hit budget sampling - weights converted directly to hits
+//   - Tests: Knob reading works, archetype blending works
+//
+// Level 2: SAMPLING TEST
+//   - Hit budget with Gumbel Top-K sampling enabled
+//   - ENERGY knob (K1) now controls hit density
+//   - Tests: Hit budget scales correctly, sampling produces varied patterns
+//
+// Level 3: GUARD RAILS TEST
+//   - Voice relationships and guard rails enabled
+//   - Beat 1 always has anchor, no excessive gaps
+//   - Tests: Musical rules enforced, coupling works
+//
+// Level 4: TIMING TEST
+//   - Swing and microtiming jitter from FLAVOR CV (Audio In R)
+//   - Tests: Swing audible, jitter humanizes feel
+//
+// Level 5: PRODUCTION MODE (default when flag removed)
+//   - All features enabled, ready for performance
+//   - Same as removing the DEBUG_FEATURE_LEVEL definition
+//
+#define DEBUG_FEATURE_LEVEL 0
+
+// -----------------------------------------------------------------------------
+// Other Debug Flags (Optional - use alongside DEBUG_FEATURE_LEVEL)
+// -----------------------------------------------------------------------------
 
 // DEBUG_BASELINE_MODE: Forces known-good control values on startup
-// This bypasses knob readings and sets predictable "musical" defaults:
-//   - ENERGY=0.75 (BUILD zone, active density)
-//   - FIELD X/Y=0.5 (center of grid = Groovy archetype)
-//   - Four-on-floor pattern at 120 BPM
+// Bypasses knob readings and sets predictable "musical" defaults:
+//   - ENERGY=0.75, FIELD X/Y=0.5 (center of grid = Groovy archetype)
+// Recommended: Use with Level 2+ to test generation with known inputs
 // #define DEBUG_BASELINE_MODE 1
 
-// DEBUG_SIMPLE_TRIGGERS: Bypasses generation pipeline entirely
-// Fires anchor on beats 1,2,3,4 and shimmer on 2,4 only
-// Use to verify: clock is running, triggers fire, outputs work
-// #define DEBUG_SIMPLE_TRIGGERS 1
-
 // DEBUG_FIXED_SEED: Uses constant seed for reproducible patterns
-// Helps isolate randomness from pattern generation logic
+// Helps compare patterns across builds - same seed = same pattern
+// Recommended: Use with Level 2+ when debugging sampling logic
 // #define DEBUG_FIXED_SEED 1
 
 // DEBUG_LOG_MASKS: Log pattern masks to velocity output for scope debugging
-// Outputs anchor/shimmer masks as stepped voltages on velocity outputs
+// Outputs anchor/shimmer masks as stepped voltages on Audio Out L/R
+// Recommended: Use with Level 1+ to visualize patterns on oscilloscope
 // #define DEBUG_LOG_MASKS 1
-
-// DEBUG_FEATURE_LEVEL: Progressive feature enablement (0-5)
-// 0 = Simple 4-on-floor only (no generation pipeline)
-// 1 = Fixed archetype patterns (no blending)
-// 2 = Archetype blending (no guard rails)
-// 3 = Full generation with guard rails
-// 4 = Add timing effects (swing/jitter)
-// 5 = Full feature set (production mode)
-#define DEBUG_FEATURE_LEVEL 0
 
