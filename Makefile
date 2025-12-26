@@ -71,12 +71,13 @@ CXXFLAGS += -DFILEIO_ENABLE_FATFS_READER
 #   - Can be changed at runtime with logging::SetLevel()
 #
 # Development build (keep DEBUG+ logs, default to INFO at runtime):
-CXXFLAGS += -DLOG_COMPILETIME_LEVEL=1
-CXXFLAGS += -DLOG_DEFAULT_LEVEL=2
+LOG_COMPILETIME_LEVEL ?= 1
+LOG_DEFAULT_LEVEL ?= 2
+CXXFLAGS += -DLOG_COMPILETIME_LEVEL=$(LOG_COMPILETIME_LEVEL)
+CXXFLAGS += -DLOG_DEFAULT_LEVEL=$(LOG_DEFAULT_LEVEL)
 #
 # Release build (only WARN/ERROR, quiet by default):
-# CXXFLAGS += -DLOG_COMPILETIME_LEVEL=3
-# CXXFLAGS += -DLOG_DEFAULT_LEVEL=3
+# LOG_COMPILETIME_LEVEL=3 LOG_DEFAULT_LEVEL=3 make
 
 # Include Directories
 INCLUDES := -I$(INC_DIR)
@@ -155,7 +156,7 @@ LOGDIR ?= /tmp
 # Build Targets
 ###############################################################################
 
-.PHONY: all clean rebuild daisy-build daisy-update libdaisy-build libdaisy-update program test test-coverage listen ports help
+.PHONY: all clean rebuild daisy-build daisy-update libdaisy-build libdaisy-update program build-debug program-debug test test-coverage listen ports help
 
 # Default target
 all: $(ELF) $(BIN) $(HEX)
@@ -230,6 +231,20 @@ libdaisy-update:
 # Flash firmware to device (requires DFU mode)
 program: $(BIN)
 	@echo "Flashing firmware to Patch.Init module..."
+	@dfu-util -a 0 -s 0x08000000:leave -D $(BIN)
+
+# Build with DEBUG-level logging enabled at compile-time and runtime
+# Sets LOG_COMPILETIME_LEVEL=1 (DEBUG) and LOG_DEFAULT_LEVEL=1 (DEBUG)
+# Also enables DEBUG=1 for full debug symbols and no optimizations
+build-debug:
+	@echo "Building firmware with DEBUG-level logging..."
+	@$(MAKE) clean
+	@$(MAKE) all DEBUG=1 LOG_COMPILETIME_LEVEL=1 LOG_DEFAULT_LEVEL=1
+	@echo "Debug build complete with DEBUG-level logging enabled"
+
+# Build debug firmware and flash to device
+program-debug: build-debug
+	@echo "Flashing debug firmware to Patch.Init module..."
 	@dfu-util -a 0 -s 0x08000000:leave -D $(BIN)
 
 # Listen to serial output from device and log to temp file
@@ -391,11 +406,13 @@ help:
 	@echo "  all              - Build firmware (default)"
 	@echo "  clean            - Remove build artifacts"
 	@echo "  rebuild          - Clean and rebuild"
+	@echo "  build-debug      - Build with DEBUG-level logging (DEBUG=1, log level=DEBUG)"
 	@echo "  daisy-build      - Build DaisySP library"
 	@echo "  daisy-update     - Update DaisySP to latest version"
 	@echo "  libdaisy-build   - Build libDaisy library"
 	@echo "  libdaisy-update  - Update libDaisy to latest version"
 	@echo "  program          - Flash firmware to device (DFU mode)"
+	@echo "  program-debug    - Build debug firmware and flash to device"
 	@echo "  listen           - Monitor serial output and log to temp file"
 	@echo "  ports            - List available USB serial ports"
 	@echo "  test             - Build and run unit tests"
@@ -403,22 +420,28 @@ help:
 	@echo "  help             - Show this help message"
 	@echo ""
 	@echo "Variables:"
-	@echo "  DEBUG=1          - Enable debug symbols and disable optimizations"
-	@echo "  BUILD_DIR=dir    - Set build directory (default: build)"
-	@echo "  DAISYSP_PATH=dir - Set DaisySP path (default: ./DaisySP)"
-	@echo "  GCC_PATH=dir     - Set ARM GCC toolchain path (default: use PATH)"
-	@echo "  BAUD=rate        - Set serial baud rate (default: 115200)"
-	@echo "  PORT=device      - Set serial port (default: auto-detect)"
-	@echo "  LOGDIR=dir       - Set log directory (default: /tmp)"
+	@echo "  DEBUG=1                   - Enable debug symbols and disable optimizations"
+	@echo "  LOG_COMPILETIME_LEVEL=N   - Min compile-time log level (default: 1=DEBUG)"
+	@echo "                              0=TRACE, 1=DEBUG, 2=INFO, 3=WARN, 4=ERROR, 5=OFF"
+	@echo "  LOG_DEFAULT_LEVEL=N       - Default runtime log level (default: 2=INFO)"
+	@echo "  BUILD_DIR=dir             - Set build directory (default: build)"
+	@echo "  DAISYSP_PATH=dir          - Set DaisySP path (default: ./DaisySP)"
+	@echo "  GCC_PATH=dir              - Set ARM GCC toolchain path (default: use PATH)"
+	@echo "  BAUD=rate                 - Set serial baud rate (default: 115200)"
+	@echo "  PORT=device               - Set serial port (default: auto-detect)"
+	@echo "  LOGDIR=dir                - Set log directory (default: /tmp)"
 	@echo ""
 	@echo "Examples:"
-	@echo "  make                    - Build firmware"
-	@echo "  make DEBUG=1           - Build with debug symbols"
-	@echo "  make test               - Run tests"
-	@echo "  make daisy-update       - Update DaisySP"
-	@echo "  make program            - Flash firmware"
-	@echo "  make listen             - Monitor serial output (Ctrl-A \\ y to quit)"
-	@echo "  make ports              - Check available serial ports"
+	@echo "  make                              - Build firmware"
+	@echo "  make DEBUG=1                     - Build with debug symbols"
+	@echo "  make build-debug                 - Build with DEBUG-level logging"
+	@echo "  make program-debug               - Build debug and flash to device"
+	@echo "  make test                         - Run tests"
+	@echo "  make daisy-update                 - Update DaisySP"
+	@echo "  make program                      - Flash firmware"
+	@echo "  make listen                       - Monitor serial output (Ctrl-A \\ y to quit)"
+	@echo "  make ports                        - Check available serial ports"
+	@echo "  LOG_COMPILETIME_LEVEL=0 make     - Build with TRACE-level logging"
 
 ###############################################################################
 # Dependency Tracking

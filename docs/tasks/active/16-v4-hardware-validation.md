@@ -778,6 +778,27 @@ flowchart TD
 
 ## ⚡ Quick Start Commands
 
+### Debug Build Commands (2024-12-26)
+
+New Makefile targets for DEBUG-level logging:
+
+```bash
+# Build with DEBUG-level logging (LOG_COMPILETIME_LEVEL=1, LOG_DEFAULT_LEVEL=1)
+make build-debug
+
+# Build debug and flash to device in one command
+make program-debug
+
+# These commands automatically set:
+#   - DEBUG=1 (debug symbols, no optimizations)
+#   - LOG_COMPILETIME_LEVEL=1 (compile DEBUG+ logs)
+#   - LOG_DEFAULT_LEVEL=1 (output DEBUG+ logs at runtime)
+```
+
+### Manual Debug Level Testing
+
+For testing specific feature levels, manually edit `inc/config.h`:
+
 ```bash
 # 1. Edit config.h to set debug level
 #    nano inc/config.h
@@ -793,6 +814,8 @@ make clean && make && make program-dfu
 # Run unit tests after any code changes:
 make test
 ```
+
+**Note**: `make build-debug` sets log verbosity but doesn't affect `DEBUG_FEATURE_LEVEL`. Use it when you need verbose logging output alongside your chosen feature level.
 
 ### Serial Monitoring (2024-12-26)
 
@@ -829,6 +852,7 @@ Use this section to record your findings:
 | 2024-12-20 | Pre | VERIFY | Switch UP=config (LED solid), DOWN=perf (LED blinks). |
 | 2024-12-20 | 0 | TESTING | Initial test after simplifications... |
 | 2024-12-25 | Pre | REFACTOR | Consolidated DEBUG_SIMPLE_TRIGGERS into Level 0. Refactored to >= pattern. |
+| 2024-12-26 | Pre | ENHANCE | Added `make build-debug` and `make program-debug` commands for DEBUG-level logging. |
 |      |   0   |        |       |
 |      |   1   |        |       |
 |      |   2   |        |       |
