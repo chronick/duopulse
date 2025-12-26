@@ -68,6 +68,13 @@ PersistentConfig currentConfig;
 AutoSaveState    autoSaveState;
 bool             configLoaded = false;
 
+// Deferred flash save - prevents blocking in audio callback
+struct DeferredSave {
+    bool pending = false;
+    PersistentConfig configToSave;
+};
+DeferredSave deferredSave;
+
 bool lastGateIn1 = false;
 
 // Control Mode indices for soft knob array
@@ -219,10 +226,10 @@ void AudioCallback(AudioHandle::InputBuffer  in,
         out[0][i] = GateScaler::VoltageToCodecSample(velocities[0] * 5.0f); // Anchor velocity
         out[1][i] = GateScaler::VoltageToCodecSample(velocities[1] * 5.0f); // Shimmer velocity
 
-        // Process auto-save (sample-rate timing)
+        // Auto-save timing check ONLY - no flash write here!
         if(ProcessAutoSave(autoSaveState))
         {
-            // Build current config from control state
+            // Build current config from control state (cheap operation)
             PackConfig(
                 MapToPatternLength(controlState.patternLengthKnob),
                 controlState.swing,
@@ -237,11 +244,11 @@ void AudioCallback(AudioHandle::InputBuffer  in,
                 currentConfig
             );
 
-            // Save to flash (only if changed from last saved)
+            // Check if save needed - if so, DEFER to main loop
             if(ConfigChanged(currentConfig, autoSaveState.lastSaved))
             {
-                SaveConfigToFlash(currentConfig);
-                autoSaveState.lastSaved = currentConfig;
+                deferredSave.configToSave = currentConfig;
+                deferredSave.pending = true;  // Flag for main loop
             }
             autoSaveState.ClearPending();
         }
@@ -683,6 +690,17 @@ int main(void)
     while(1)
     {
         ProcessControls();
+
+        // Handle deferred flash write (safe here, outside audio callback)
+        if(deferredSave.pending)
+        {
+            SaveConfigToFlash(deferredSave.configToSave);
+            autoSaveState.lastSaved = deferredSave.configToSave;
+            deferredSave.pending = false;
+
+            LOGD("Config saved to flash");
+        }
+
         System::Delay(1);
     }
 }

@@ -665,3 +665,172 @@ TEST_CASE("Complete persistence workflow", "[persistence][integration]")
         REQUIRE(rebootConfig.patternLength == 64);
     }
 }
+
+TEST_CASE("Deferred flash write pattern workflow", "[persistence][integration]")
+{
+    // This test documents the deferred save pattern used in main.cpp
+    // to prevent blocking flash writes in the audio callback.
+
+    EraseConfigFromFlash();
+
+    SECTION("Audio callback defers save, main loop executes it")
+    {
+        // Simulate main.cpp state
+        PersistentConfig currentConfig;
+        currentConfig.Init();
+
+        AutoSaveState autoSaveState;
+        autoSaveState.Init(48000.0f);
+        autoSaveState.lastSaved = currentConfig;
+
+        // Deferred save state (audio callback -> main loop communication)
+        struct DeferredSave {
+            bool pending = false;
+            PersistentConfig configToSave;
+        };
+        DeferredSave deferredSave;
+
+        // Simulate user interaction in control processing
+        currentConfig.patternLength = 24;
+        MarkConfigDirty(autoSaveState);
+
+        // === Simulate Audio Callback (runs at 48kHz, must be non-blocking) ===
+        bool audioCallbackFlaggedSave = false;
+        for (int sample = 0; sample < 100000; ++sample)
+        {
+            // Audio callback timing check
+            if (ProcessAutoSave(autoSaveState))
+            {
+                // Build current config (cheap operation ~1μs)
+                PersistentConfig testConfig = currentConfig;
+                testConfig.checksum = ComputeConfigChecksum(testConfig);
+
+                // Check if save needed - if so, DEFER to main loop
+                if (ConfigChanged(testConfig, autoSaveState.lastSaved))
+                {
+                    deferredSave.configToSave = testConfig;
+                    deferredSave.pending = true;  // Flag for main loop
+                    audioCallbackFlaggedSave = true;
+                }
+                autoSaveState.ClearPending();
+                break;
+            }
+        }
+
+        REQUIRE(audioCallbackFlaggedSave == true);
+        REQUIRE(deferredSave.pending == true);
+
+        // === Simulate Main Loop (runs at ~1kHz, can handle blocking operations) ===
+        // Handle deferred flash write (safe here, outside audio callback)
+        if (deferredSave.pending)
+        {
+            // This is where the 10-100ms blocking flash write happens
+            bool saved = SaveConfigToFlash(deferredSave.configToSave);
+            REQUIRE(saved == true);
+
+            autoSaveState.lastSaved = deferredSave.configToSave;
+            deferredSave.pending = false;
+        }
+
+        REQUIRE(deferredSave.pending == false);
+
+        // Verify config was actually saved to flash
+        PersistentConfig loadedConfig;
+        bool loaded = LoadConfigFromFlash(loadedConfig);
+        REQUIRE(loaded == true);
+        REQUIRE(loadedConfig.patternLength == 24);
+    }
+
+    SECTION("No save when config unchanged")
+    {
+        PersistentConfig currentConfig;
+        currentConfig.Init();
+
+        AutoSaveState autoSaveState;
+        autoSaveState.Init(48000.0f);
+        autoSaveState.lastSaved = currentConfig;
+
+        struct DeferredSave {
+            bool pending = false;
+            PersistentConfig configToSave;
+        };
+        DeferredSave deferredSave;
+
+        // Mark dirty but don't actually change config
+        MarkConfigDirty(autoSaveState);
+
+        // Process auto-save timing
+        for (int sample = 0; sample < 100000; ++sample)
+        {
+            if (ProcessAutoSave(autoSaveState))
+            {
+                PersistentConfig testConfig = currentConfig;
+                testConfig.checksum = ComputeConfigChecksum(testConfig);
+
+                // Config unchanged - should NOT set pending flag
+                if (ConfigChanged(testConfig, autoSaveState.lastSaved))
+                {
+                    deferredSave.configToSave = testConfig;
+                    deferredSave.pending = true;
+                }
+                autoSaveState.ClearPending();
+                break;
+            }
+        }
+
+        // No flash write should be pending
+        REQUIRE(deferredSave.pending == false);
+    }
+
+    SECTION("Multiple changes coalesce into single save")
+    {
+        PersistentConfig currentConfig;
+        currentConfig.Init();
+
+        AutoSaveState autoSaveState;
+        autoSaveState.Init(48000.0f);
+        autoSaveState.lastSaved = currentConfig;
+
+        struct DeferredSave {
+            bool pending = false;
+            PersistentConfig configToSave;
+        };
+        DeferredSave deferredSave;
+
+        // Simulate rapid changes (e.g., user turning knob)
+        currentConfig.patternLength = 24;
+        MarkConfigDirty(autoSaveState);
+
+        // Advance 1 second (not enough for debounce)
+        for (int i = 0; i < 48000; ++i)
+        {
+            ProcessAutoSave(autoSaveState);
+        }
+
+        // User makes another change
+        currentConfig.patternLength = 64;
+        MarkConfigDirty(autoSaveState);  // Resets debounce timer
+
+        // Now advance past debounce period
+        for (int sample = 0; sample < 100000; ++sample)
+        {
+            if (ProcessAutoSave(autoSaveState))
+            {
+                PersistentConfig testConfig = currentConfig;
+                testConfig.checksum = ComputeConfigChecksum(testConfig);
+
+                if (ConfigChanged(testConfig, autoSaveState.lastSaved))
+                {
+                    deferredSave.configToSave = testConfig;
+                    deferredSave.pending = true;
+                }
+                autoSaveState.ClearPending();
+                break;
+            }
+        }
+
+        REQUIRE(deferredSave.pending == true);
+        // Should save final value (64), not intermediate (24)
+        REQUIRE(deferredSave.configToSave.patternLength == 64);
+    }
+}

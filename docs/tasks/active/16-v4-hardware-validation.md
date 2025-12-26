@@ -108,11 +108,14 @@ graph TD
     D --> D1[Quarter notes only<br/>at mid-energy]
     E --> E1[2-step minimum<br/>at GROOVE zone]
     F --> F1[Zero swing/jitter<br/>= robotic feel]
+
+    classDef problemStyle fill:#fae5e5,stroke:#586e75,color:#002b36
+    classDef defaultStyle fill:#e6f2ff,stroke:#586e75,color:#002b36
+    classDef errorStyle fill:#f2cccc,stroke:#586e75,color:#002b36
     
-    style A fill:#f66,stroke:#333
-    style B1 fill:#faa,stroke:#333
-    style C1 fill:#faa,stroke:#333
-    style D1 fill:#faa,stroke:#333
+    class A problemStyle
+    class B,C,D,E,F defaultStyle
+    class B1,C1,D1,E1,F1 errorStyle
 ```
 
 ### Fixes Applied
@@ -130,6 +133,18 @@ graph TD
    - Consolidated `DEBUG_SIMPLE_TRIGGERS` into `DEBUG_FEATURE_LEVEL 0`
    - Refactored feature level checks to use `>=` pattern for clarity
    - Improved config.h documentation with per-level descriptions
+
+4. **Deferred Flash Write Pattern (2024-12-26)**:
+   - **Problem**: `SaveConfigToFlash()` was called inside the audio callback, causing 10-100ms blocking operations that glitch audio
+   - **Solution**: Implemented deferred save pattern
+     - Audio callback only sets `deferredSave.pending = true` flag (non-blocking)
+     - Main loop handles actual flash write during idle time
+     - Eliminates audio glitches from flash operations
+   - **Files Modified**: `src/main.cpp`
+     - Added `DeferredSave` struct in anonymous namespace (lines 71-76)
+     - Modified `AudioCallback()` to defer save instead of blocking (lines 229-254)
+     - Added flash write handler in main loop (lines 694-702)
+   - **Reference**: `docs/chats/daisy-flash-writes.md`
 
 ---
 
@@ -268,13 +283,14 @@ flowchart LR
     L2 -.->|FAIL| F2[Check:<br/>HitBudget<br/>GumbelSampler]
     L3 -.->|FAIL| F3[Check:<br/>GuardRails<br/>VoiceRelation]
     L4 -.->|FAIL| F4[Check:<br/>BrokenEffects<br/>Flavor CV]
+
+    classDef defaultStyle fill:#e6f2ff,stroke:#586e75,color:#002b36
+    classDef warningStyle fill:#f5f0e0,stroke:#586e75,color:#002b36
+    classDef errorStyle fill:#f2cccc,stroke:#586e75,color:#002b36
     
-    style L0 fill:#4a9,stroke:#333
-    style L1 fill:#4a9,stroke:#333
-    style L2 fill:#49a,stroke:#333
-    style L3 fill:#49a,stroke:#333
-    style L4 fill:#94a,stroke:#333
-    style L5 fill:#a94,stroke:#333
+    class L0,L1,L2,L3,L4 defaultStyle
+    class L5 warningStyle
+    class F0,F1,F2,F3,F4 errorStyle
 ```
 
 ---
@@ -685,13 +701,15 @@ graph TB
         F2 -->|No| FF[Tune archetypes<br/>Phase 12]
     end
     
-    style DONE fill:#4a4,stroke:#333
-    style AF fill:#f66,stroke:#333
-    style BF fill:#f66,stroke:#333
-    style CF fill:#f66,stroke:#333
-    style DF fill:#f66,stroke:#333
-    style EF fill:#f66,stroke:#333
-    style FF fill:#fa6,stroke:#333
+    classDef defaultStyle fill:#e6f2ff,stroke:#586e75,color:#002b36
+    classDef errorStyle fill:#f2cccc,stroke:#586e75,color:#002b36
+    classDef warningStyle fill:#f5f0e0,stroke:#586e75,color:#002b36
+    classDef successStyle fill:#d4f1d4,stroke:#586e75,color:#002b36
+    
+    class A1,A2,B1,B2,C1,C2,D1,D2,E1,E2,F1,F2 defaultStyle
+    class AF,BF,CF,DF,EF errorStyle
+    class FF warningStyle
+    class DONE successStyle
 ```
 
 ---
@@ -719,15 +737,18 @@ flowchart TD
     
     T6 -->|Feels wrong| FIX6[Tune archetype<br/>weights Phase 12]
     T6 -->|Yes| DONE[✓ All working!]
+
+    classDef problemStyle fill:#fae5e5,stroke:#586e75,color:#002b36
+    classDef defaultStyle fill:#e6f2ff,stroke:#586e75,color:#002b36
+    classDef errorStyle fill:#f2cccc,stroke:#586e75,color:#002b36
+    classDef warningStyle fill:#f5f0e0,stroke:#586e75,color:#002b36
+    classDef successStyle fill:#d4f1d4,stroke:#586e75,color:#002b36
     
-    style START fill:#f66
-    style DONE fill:#4a4
-    style FIX1 fill:#faa
-    style FIX2 fill:#faa
-    style FIX3 fill:#faa
-    style FIX4 fill:#faa
-    style FIX5 fill:#faa
-    style FIX6 fill:#fa6
+    class START problemStyle
+    class T1,T2,T3,T4,T5,T6 defaultStyle
+    class FIX1,FIX2,FIX3,FIX4,FIX5 errorStyle
+    class FIX6 warningStyle
+    class DONE successStyle
 ```
 
 ---
@@ -772,6 +793,28 @@ make clean && make && make program-dfu
 # Run unit tests after any code changes:
 make test
 ```
+
+### Serial Monitoring (2024-12-26)
+
+New `make listen` command added for serial debugging:
+
+```bash
+# Monitor serial output from device and log to temp file
+make listen
+
+# List available USB serial ports
+make ports
+
+# Custom baud rate or log directory
+make listen BAUD=9600 LOGDIR=logs
+```
+
+**Usage**:
+- Logs are saved to `/tmp/daisy_YYYYMMDD_HHMMSS.log` by default
+- Press `Ctrl-A` then `\` then `y` to quit
+- Log file path is displayed on exit
+- Automatically detects `/dev/cu.usbmodem*` devices
+- Uses `screen + tee` for reliable capture (see `docs/chats/daisy-debugging.md`)
 
 ---
 
