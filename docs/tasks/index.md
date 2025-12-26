@@ -19,4 +19,4 @@
 | 14 | v3-ratchet-fixes | v3 Fixes: RATCHET parameter, DENSITY=0/DRIFT=0 bug fixes, header/cpp code quality | completed | 2025-12-17 | 2025-12-19 | completed/14-v3-ratchet-fixes.md |
 | 15 | duopulse-v4 | DuoPulse v4: Complete architecture overhaul — 2D pattern field, hit budgets, Gumbel sampling, PUNCH/BUILD/BALANCE controls | in-progress | 2025-12-19 | 2025-12-19 | active/15-duopulse-v4.md |
 | 16 | v4-hardware-validation | DuoPulse v4 Hardware Validation & Debug — progressive feature testing, debug flags, hardware validation guide | in-progress | 2025-12-26 | 2025-12-26 | active/16-v4-hardware-validation.md |
-| 17 | runtime-logging | Runtime Logging System — compile-time + runtime configurable logging via USB serial (TRACE/DEBUG/INFO/WARN/ERROR) | pending | 2025-12-26 | 2025-12-26 | active/17-runtime-logging.md |
+| 17 | runtime-logging | Runtime Logging System — compile-time + runtime configurable logging via USB serial (TRACE/DEBUG/INFO/WARN/ERROR) | in-progress | 2025-12-26 | 2025-12-26 | active/17-runtime-logging.md |

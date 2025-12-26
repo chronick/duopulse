@@ -64,6 +64,20 @@ CXXFLAGS += -DHSE_VALUE=16000000
 CXXFLAGS += -DUSE_FATFS
 CXXFLAGS += -DFILEIO_ENABLE_FATFS_READER
 
+# Logging Configuration
+# LOG_COMPILETIME_LEVEL: Minimum log level to compile (0=TRACE, 1=DEBUG, 2=INFO, 3=WARN, 4=ERROR, 5=OFF)
+#   - Logs below this level are stripped at compile time (zero binary size cost)
+# LOG_DEFAULT_LEVEL: Default runtime filter level (same values as above)
+#   - Can be changed at runtime with logging::SetLevel()
+#
+# Development build (keep DEBUG+ logs, default to INFO at runtime):
+CXXFLAGS += -DLOG_COMPILETIME_LEVEL=1
+CXXFLAGS += -DLOG_DEFAULT_LEVEL=2
+#
+# Release build (only WARN/ERROR, quiet by default):
+# CXXFLAGS += -DLOG_COMPILETIME_LEVEL=3
+# CXXFLAGS += -DLOG_DEFAULT_LEVEL=3
+
 # Include Directories
 INCLUDES := -I$(INC_DIR)
 INCLUDES += -I$(DAISYSP_PATH)/Source
@@ -130,10 +144,18 @@ BIN := $(BUILD_DIR)/$(PROJECT_NAME).bin
 HEX := $(BUILD_DIR)/$(PROJECT_NAME).hex
 
 ###############################################################################
+# Serial Monitor Configuration
+###############################################################################
+
+BAUD ?= 115200
+PORT ?= $(shell ls -t /dev/cu.usbmodem* 2>/dev/null | head -n 1)
+LOGDIR ?= /tmp
+
+###############################################################################
 # Build Targets
 ###############################################################################
 
-.PHONY: all clean rebuild daisy-build daisy-update libdaisy-build libdaisy-update program test test-coverage help
+.PHONY: all clean rebuild daisy-build daisy-update libdaisy-build libdaisy-update program test test-coverage listen ports help
 
 # Default target
 all: $(ELF) $(BIN) $(HEX)
@@ -209,6 +231,25 @@ libdaisy-update:
 program: $(BIN)
 	@echo "Flashing firmware to Patch.Init module..."
 	@dfu-util -a 0 -s 0x08000000:leave -D $(BIN)
+
+# Listen to serial output from device and log to temp file
+listen:
+	@test -n "$(PORT)" || (echo "No /dev/cu.usbmodem* found. Is device connected?"; exit 1)
+	@mkdir -p "$(LOGDIR)"
+	@ts=$$(date +%Y%m%d_%H%M%S); \
+	  logfile="$(LOGDIR)/daisy_$$ts.log"; \
+	  echo "Listening on $(PORT) @ $(BAUD) baud"; \
+	  echo "Log file: $$logfile"; \
+	  echo ""; \
+	  echo "Press Ctrl-A then \\ then y to quit"; \
+	  echo ""; \
+	  trap "echo ''; echo 'Log saved to: $$logfile'" EXIT; \
+	  screen "$(PORT)" "$(BAUD)" | tee -a "$$logfile"
+
+# List available serial ports
+ports:
+	@echo "Available USB serial ports:"
+	@ls -1 /dev/cu.usbmodem* 2>/dev/null || echo "  (none found)"
 
 # Clean build artifacts
 clean:
@@ -355,6 +396,8 @@ help:
 	@echo "  libdaisy-build   - Build libDaisy library"
 	@echo "  libdaisy-update  - Update libDaisy to latest version"
 	@echo "  program          - Flash firmware to device (DFU mode)"
+	@echo "  listen           - Monitor serial output and log to temp file"
+	@echo "  ports            - List available USB serial ports"
 	@echo "  test             - Build and run unit tests"
 	@echo "  test-coverage    - Generate test coverage report"
 	@echo "  help             - Show this help message"
@@ -364,6 +407,9 @@ help:
 	@echo "  BUILD_DIR=dir    - Set build directory (default: build)"
 	@echo "  DAISYSP_PATH=dir - Set DaisySP path (default: ./DaisySP)"
 	@echo "  GCC_PATH=dir     - Set ARM GCC toolchain path (default: use PATH)"
+	@echo "  BAUD=rate        - Set serial baud rate (default: 115200)"
+	@echo "  PORT=device      - Set serial port (default: auto-detect)"
+	@echo "  LOGDIR=dir       - Set log directory (default: /tmp)"
 	@echo ""
 	@echo "Examples:"
 	@echo "  make                    - Build firmware"
@@ -371,6 +417,8 @@ help:
 	@echo "  make test               - Run tests"
 	@echo "  make daisy-update       - Update DaisySP"
 	@echo "  make program            - Flash firmware"
+	@echo "  make listen             - Monitor serial output (Ctrl-A \\ y to quit)"
+	@echo "  make ports              - Check available serial ports"
 
 ###############################################################################
 # Dependency Tracking

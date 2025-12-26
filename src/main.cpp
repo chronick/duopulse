@@ -39,6 +39,7 @@
 #include "Engine/VelocityOutput.h"
 #include "Engine/AuxOutput.h"
 #include "Engine/Persistence.h"
+#include "System/logging.h"
 
 using namespace daisy;
 using namespace daisysp;
@@ -342,6 +343,25 @@ void ProcessControls()
     ControlMode currentMode = controlState.GetCurrentMode();
     if(currentMode != previousMode)
     {
+        // Log mode change
+        const char* modeName = "";
+        switch(currentMode)
+        {
+            case ControlMode::PerformancePrimary:
+                modeName = "Performance";
+                break;
+            case ControlMode::PerformanceShift:
+                modeName = "Performance+Shift";
+                break;
+            case ControlMode::ConfigPrimary:
+                modeName = "Config";
+                break;
+            case ControlMode::ConfigShift:
+                modeName = "Config+Shift";
+                break;
+        }
+        LOGD("Mode: %s", modeName);
+
         int baseIdx = controlState.GetSoftKnobBaseIndex();
         for(int i = 0; i < kKnobsPerMode; i++)
         {
@@ -525,6 +545,11 @@ int main(void)
 {
     patch.Init();
 
+    // Initialize Logging
+    logging::Init(true);  // Wait for host to connect
+    LOGI("DuoPulse v4 boot");
+    LOGI("Build: %s %s", __DATE__, __TIME__);
+
     // Initialize Audio
     patch.SetAudioBlockSize(4);
     patch.SetAudioSampleRate(SaiHandle::Config::SampleRate::SAI_48KHZ);
@@ -533,9 +558,10 @@ int main(void)
     // === Load Config from Flash ===
     currentConfig.Init();  // Initialize with defaults
     configLoaded = LoadConfigFromFlash(currentConfig);
-    
+
     if(configLoaded)
     {
+        LOGI("Config loaded from flash (CRC valid)");
         // Unpack saved config values into control state
         int patternLength, phraseLength, clockDivision;
         float swing;
@@ -580,7 +606,11 @@ int main(void)
         controlState.voiceCoupling = static_cast<float>(voiceCoupling) / 2.0f;
         controlState.genre = static_cast<float>(genre) / 2.0f;
     }
-    
+    else
+    {
+        LOGI("No valid config in flash, using defaults");
+    }
+
     // Initialize auto-save state
     autoSaveState.Init(sampleRate);
     autoSaveState.lastSaved = currentConfig;
@@ -647,6 +677,7 @@ int main(void)
     // Initialize interaction state
     lastInteractionTime = 0; // Ensures we start in default mode
 
+    LOGI("Initialization complete, starting audio");
     patch.StartAudio(AudioCallback);
 
     while(1)
