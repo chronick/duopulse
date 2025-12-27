@@ -245,6 +245,48 @@ Audio inputs are repurposed as CV inputs for additional control:
 | IN_L | **Fill CV** | Gate (>1V) triggers fill; CV level (0-5V) = fill intensity |
 | IN_R | **Flavor CV** | 0-5V maps to FLAVOR/BROKEN parameter (straight → broken) |
 
+### 3.4 Clock and Reset Behavior [exclusive-external-clock]
+
+The sequencer supports both internal and external clock sources with **exclusive** operation:
+
+#### Clock Source Selection
+
+| Condition | Clock Source | Step Advancement |
+|-----------|--------------|------------------|
+| **Gate In 1 unpatched** | Internal Metro at configured BPM | Steps advance on internal clock ticks |
+| **Gate In 1 patched** | External clock only | Steps advance ONLY on rising edges, internal clock disabled |
+
+**Acceptance Criteria**:
+- ✅ When external clock is patched, internal Metro is completely disabled (not just suppressed)
+- ✅ Steps advance only on rising edges detected at Gate In 1
+- ✅ No timeout-based fallback to internal clock while external clock is patched
+- ✅ Unplugging external clock restores internal clock operation immediately
+- ✅ Clock source detection is deterministic and predictable
+
+#### Reset Behavior
+
+Reset (Gate In 2) operates identically regardless of clock source:
+
+| Reset Mode | Behavior | Clock Source Independence |
+|------------|----------|---------------------------|
+| **PHRASE** | Reset to step 0, bar 0, regenerate pattern | ✅ Works with internal or external clock |
+| **BAR** | Reset to step 0, keep current bar | ✅ Works with internal or external clock |
+| **STEP** | Reset to step 0 only | ✅ Works with internal or external clock |
+
+**Acceptance Criteria**:
+- ✅ Reset detects rising edges reliably
+- ✅ Reset behavior is identical whether using internal or external clock
+- ✅ Reset respects configured reset mode in all cases
+
+#### Implementation Simplifications
+
+To ensure predictable behavior:
+
+1. **No parallel clock operation**: Internal Metro stops completely when external clock detected
+2. **No timeout logic**: External clock remains active until physically unplugged
+3. **Simple rising edge detection**: Both clock and reset use consistent edge detection
+4. **Immediate switchover**: Clock source changes take effect within one audio callback cycle
+
 ---
 
 ## 4. Control System

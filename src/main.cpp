@@ -119,7 +119,10 @@ struct GateEventBuffer {
 
 GateEventBuffer gateEventBuffer;
 
+// External clock detection state
 bool lastGateIn1 = false;
+int  externalClockLowCounter = 0;  // Counts samples with Gate In 1 low
+constexpr int kExternalClockUnpatchThreshold = 32000;  // 1 second at 32kHz
 
 // Control Mode indices for soft knob array
 enum class ControlMode : uint8_t
@@ -250,12 +253,31 @@ void AudioCallback(AudioHandle::InputBuffer  in,
     // NOTE: Do NOT log from audio callback - blocks and crashes!
     for(size_t i = 0; i < size; i++)
     {
-        // Handle External Clock (Gate In 1)
+        // Handle External Clock (Gate In 1) - Exclusive mode (spec section 3.4)
         bool gateIn1 = patch.gate_in_1.State();
+
+        // Detect rising edge → enable external clock
         if(gateIn1 && !lastGateIn1)
         {
             sequencer.TriggerExternalClock();
+            externalClockLowCounter = 0;  // Reset unpatch detection
         }
+
+        // Detect prolonged low state → cable unplugged, restore internal clock
+        if(!gateIn1)
+        {
+            externalClockLowCounter++;
+            if(externalClockLowCounter >= kExternalClockUnpatchThreshold)
+            {
+                sequencer.DisableExternalClock();
+                externalClockLowCounter = 0;  // Reset counter
+            }
+        }
+        else
+        {
+            externalClockLowCounter = 0;  // Reset on high
+        }
+
         lastGateIn1 = gateIn1;
 
         // Process one audio sample (returns velocity values)

@@ -52,10 +52,9 @@ void Sequencer::Init(float sampleRate)
     // Initialize phrase position
     phrasePos_ = CalculatePhrasePosition(0, state_.controls.phraseLength);
 
-    // External clock state
-    usingExternalClock_ = false;
-    externalClockTimeout_ = 0;
-    mustTick_ = false;
+    // External clock state (exclusive mode)
+    externalClockActive_ = false;
+    externalClockTick_ = false;
     lastTapTime_ = 0;
 
     // Force trigger state
@@ -83,24 +82,21 @@ std::array<float, 2> Sequencer::ProcessAudio()
 {
     bool tick = false;
 
-    // Handle external vs internal clock
-    if (usingExternalClock_)
+    // Handle external vs internal clock (exclusive mode - spec section 3.4)
+    if (externalClockActive_)
     {
-        if (mustTick_)
+        // External clock mode: steps advance ONLY on rising edges
+        // Internal Metro is completely disabled (no parallel operation)
+        if (externalClockTick_)
         {
             tick = true;
-            mustTick_ = false;
+            externalClockTick_ = false;  // Consume the tick
         }
-
-        externalClockTimeout_--;
-        if (externalClockTimeout_ <= 0)
-        {
-            usingExternalClock_ = false;
-            metro_.Reset();
-        }
+        // Note: No timeout logic - external clock remains active until explicitly disabled
     }
     else
     {
+        // Internal clock mode: Metro drives step advancement
         tick = metro_.Process();
     }
 
@@ -509,9 +505,22 @@ void Sequencer::TriggerReset()
 
 void Sequencer::TriggerExternalClock()
 {
-    externalClockTimeout_ = static_cast<int>(sampleRate_ * 2.0f);  // 2 second timeout
-    usingExternalClock_ = true;
-    mustTick_ = true;
+    // Enable exclusive external clock mode (spec section 3.4)
+    // - Internal Metro is disabled
+    // - Steps advance only on external clock rising edges
+    // - No timeout-based fallback
+    externalClockActive_ = true;
+    externalClockTick_ = true;  // Queue one step tick
+}
+
+void Sequencer::DisableExternalClock()
+{
+    // Restore internal clock immediately (spec section 3.4)
+    // - No delay or timeout
+    // - Metro resumes driving step advancement
+    externalClockActive_ = false;
+    externalClockTick_ = false;  // Clear any pending external ticks
+    // Note: Metro continues running, so internal clock resumes seamlessly
 }
 
 void Sequencer::TriggerTapTempo(uint32_t nowMs)

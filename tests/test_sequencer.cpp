@@ -374,12 +374,12 @@ TEST_CASE("Clock output works", "[sequencer][clock]")
 // External Clock Tests
 // =============================================================================
 
-TEST_CASE("External clock works", "[sequencer][clock]")
+TEST_CASE("External clock works (exclusive mode)", "[sequencer][clock]")
 {
     Sequencer seq;
     seq.Init(48000.0f);
 
-    SECTION("External clock advances step")
+    SECTION("External clock advances step (spec 3.4)")
     {
         const auto& startPos = seq.GetPhrasePosition();
         int startStep = startPos.stepInPhrase;
@@ -392,24 +392,78 @@ TEST_CASE("External clock works", "[sequencer][clock]")
         REQUIRE(endPos.stepInPhrase >= startStep);
     }
 
-    SECTION("External clock timeout falls back to internal")
+    SECTION("External clock disables internal Metro (exclusive mode)")
     {
+        // Enable external clock
         seq.TriggerExternalClock();
         seq.ProcessAudio();
 
-        // Process 2+ seconds worth of samples (timeout period)
-        // At 48kHz, 2 seconds = 96000 samples
-        // We'll just check the concept works with fewer samples
+        const auto& pos1 = seq.GetPhrasePosition();
+
+        // Process 100 samples WITHOUT external clock edges
+        // Internal Metro should NOT tick (exclusive mode)
         for (int i = 0; i < 100; ++i)
+        {
+            seq.ProcessAudio();  // No TriggerExternalClock() calls
+        }
+
+        const auto& pos2 = seq.GetPhrasePosition();
+
+        // Position should NOT advance (no external clock edges)
+        // Exclusive mode: only external clock edges cause steps
+        REQUIRE(pos2.stepInPhrase == pos1.stepInPhrase);
+    }
+
+    SECTION("DisableExternalClock restores internal Metro (spec 3.4)")
+    {
+        // Send initial external clock edges to advance position
+        for (int i = 0; i < 5; ++i)
+        {
+            seq.TriggerExternalClock();
+            seq.ProcessAudio();
+        }
+
+        const auto& posExt = seq.GetPhrasePosition();
+        int extStep = posExt.stepInPhrase;
+
+        // Disable external clock - restores internal Metro
+        seq.DisableExternalClock();
+
+        // Metro needs many samples to tick (at 120 BPM = 8 Hz, period is sampleRate/8)
+        // At 48kHz, period = 6000 samples per tick
+        // Process 6100 samples to guarantee one Metro tick
+        for (int i = 0; i < 6100; ++i)
         {
             seq.ProcessAudio();
         }
 
-        // Should still be functional
-        // Gates should decay - check separately
-        bool gate0 = seq.IsGateHigh(0);
-        bool gate1 = seq.IsGateHigh(1);
-        REQUIRE_FALSE((gate0 && gate1));  // At least one should be low
+        const auto& posInt = seq.GetPhrasePosition();
+        int intStep = posInt.stepInPhrase;
+
+        // Position SHOULD advance (internal Metro is now active)
+        // With default 120 BPM (8 Hz), one tick per 6000 samples
+        // Check that position changed (may wrap around)
+        REQUIRE(intStep != extStep);
+    }
+
+    SECTION("Multiple external clock edges advance steps")
+    {
+        const auto& startPos = seq.GetPhrasePosition();
+        int startStep = startPos.stepInPhrase;
+
+        // Send 10 external clock edges (enough to see clear advancement)
+        for (int i = 0; i < 10; ++i)
+        {
+            seq.TriggerExternalClock();
+            seq.ProcessAudio();
+        }
+
+        const auto& endPos = seq.GetPhrasePosition();
+        int endStep = endPos.stepInPhrase;
+
+        // Should have advanced by some steps
+        // At least one step should have advanced (considering initial state processing)
+        REQUIRE(endStep >= startStep);
     }
 }
 

@@ -266,6 +266,36 @@ make clean && make && make program-dfu
 
 ---
 
+### Modification 0.3: Exclusive External Clock Mode (2025-12-27)
+
+**Problem**: Clock system used timeout-based fallback (2-second timeout), causing unpredictable behavior. When external clock was patched, internal Metro continued running in parallel, making it hard to test and debug clock behavior.
+
+**Changes Made (Task 19)**:
+- **Removed timeout logic** - No more 2-second fallback to internal clock
+- **Implemented exclusive mode** - When external clock is patched, internal Metro is completely disabled
+- **Simplified clock state** - Replaced 3 complex variables (`usingExternalClock_`, `externalClockTimeout_`, `mustTick_`) with 2 simple flags (`externalClockActive_`, `externalClockTick_`)
+- **Added unpatch detection** - When Gate In 1 low for 1 second, restores internal clock immediately
+
+**Files Modified**:
+- `src/Engine/Sequencer.h` - New clock state variables, added `DisableExternalClock()` method
+- `src/Engine/Sequencer.cpp` - Simplified `ProcessAudio()` clock logic, rewrote `TriggerExternalClock()`, added `DisableExternalClock()`
+- `src/main.cpp` - Added external clock unpatch detection with 1-second counter
+
+**Expected Behavior After This Change**:
+- **No external clock patched**: Internal 120 BPM clock drives sequencer
+- **External clock patched**: Steps advance ONLY on rising edges, internal Metro completely disabled
+- **External clock unplugged (1+ second low)**: Internal clock resumes immediately, seamlessly
+- **No timeout behavior**: Exclusive mode lasts until cable is physically unplugged
+
+**Spec Reference**: `docs/specs/main.md` section 3.4 [exclusive-external-clock]
+
+**Build and Flash**:
+```bash
+make clean && make && make program-dfu
+```
+
+---
+
 ## 🧪 Part 1: Hardware Testing
 
 ### Test Flow Overview
@@ -382,28 +412,83 @@ Recommendations:
 
 ### Test 2: External Clock & Reset (Level 0)
 
-**Goal**: Verify external clock sync and reset work correctly.
+**Goal**: Verify exclusive external clock behavior and reset functionality.
 
 Same config as Test 1 (Level 0).
 
-**Note**: Tap tempo has been removed. Tempo is fixed at 120 BPM internal clock or follows external clock.
+**Note**: The clock system uses **exclusive** mode — when external clock is patched, internal Metro is completely disabled. No timeout, no parallel operation.
 
-#### External Clock Test
+#### External Clock Test: Exclusive Mode
 
-1. Patch a clock source (16th notes) to Gate In 1
-2. Module should sync to external clock within a few pulses
-3. Stop external clock → module should return to internal 120 BPM after ~2 seconds
+**Spec Reference**: Section 3.4 [exclusive-external-clock]
+
+**Setup**:
+1. Start with no cable in Gate In 1 (internal clock active)
+2. Verify internal 120 BPM clock is running (LED blinks every 500ms)
+
+**Test A: External Clock Engagement**
+1. Patch a clock source (16th notes, any tempo) to Gate In 1
+2. Module should sync to external clock **immediately** (within one audio callback cycle)
+3. Steps should advance **only** on rising edges of external clock
+4. Internal Metro should be **completely disabled** (no parallel operation)
+
+**Test B: Clock Source Exclusivity**
+1. With external clock still patched and running
+2. Observe that step timing follows **only** the external clock
+3. Pattern should maintain 4-on-floor at whatever tempo the external clock provides
+4. No drift or timeout behavior
+
+**Test C: Immediate Internal Clock Restoration**
+1. Unplug the external clock cable from Gate In 1
+2. Internal 120 BPM clock should resume **immediately** (no delay)
+3. Pattern should continue seamlessly with internal timing
+4. ✅ **No 2-second timeout** (old behavior removed)
+
+**Test D: Clock Stability at Various Tempos**
+1. Patch external clock at ~60 BPM (slow)
+2. Verify pattern tracks correctly
+3. Change to ~200 BPM (fast)
+4. Verify pattern tracks correctly
+5. Try irregular clock (e.g., humanized/swung)
+6. Verify steps advance only on rising edges
 
 #### Reset Test
 
-1. Patch a trigger/gate to Gate In 2
-2. When gate goes high, pattern should restart from step 1
+**Spec Reference**: Section 3.4 — Reset behavior identical for both clock sources
+
+**Test E: Reset with Internal Clock**
+1. Unplug external clock (internal 120 BPM active)
+2. Patch a trigger/gate to Gate In 2
+3. When gate goes high → pattern restarts from step 0
+4. Verify reset happens on rising edge
+
+**Test F: Reset with External Clock**
+1. Patch external clock to Gate In 1
+2. Trigger reset via Gate In 2
+3. Pattern should restart from step 0 (same behavior as internal)
+4. Reset should work identically regardless of clock source
 
 #### Shift Button Test
 
 1. Hold B7 for >100ms → shift layer should activate (LED may change behavior)
 2. Release B7 → returns to normal mode
 3. Short taps on B7 do nothing (tap tempo removed)
+
+#### Acceptance Criteria
+
+From spec section 3.4:
+
+**Clock Source**:
+- [ ] External clock patched → internal Metro completely disabled
+- [ ] Steps advance only on rising edges at Gate In 1
+- [ ] No timeout-based fallback while external clock patched
+- [ ] Unplugging external clock restores internal immediately
+- [ ] Clock source switching is deterministic and predictable
+
+**Reset**:
+- [ ] Reset detects rising edges reliably
+- [ ] Reset behavior identical with internal or external clock
+- [ ] Reset works at step 0 (PHRASE mode)
 
 ---
 
@@ -780,6 +865,8 @@ flowchart TD
 - [x] Refactor DEBUG_FEATURE_LEVEL to use >= pattern (2024-12-25)
 - [x] Add flag reference table to task doc (2024-12-25)
 - [x] **Hardware Test Level 0**: Basic clock (2025-12-27 - ✅ PASS)
+- [x] Implement exclusive external clock mode (Test 0 modification - 2025-12-27, Task 19)
+- [ ] **Hardware Test Level 0 Repeat**: External clock behavior (exclusive mode)
 - [ ] **Hardware Test Level 1**: Direct archetype
 - [ ] **Hardware Test Level 2-3**: Full generation
 - [ ] **Hardware Test Level 4**: Timing effects
@@ -870,6 +957,7 @@ Use this section to record your findings:
 | 2024-12-26 | Pre | ENHANCE | Added `make build-debug` and `make program-debug` commands for DEBUG-level logging. |
 | 2024-12-26 | Pre | FIX | Renamed logging enum values (DEBUG→LOG_DEBUG, etc.) to avoid macro conflict with -DDEBUG. |
 | 2025-12-27 | 0 | ✅ PASS | All Level 0 tests passing! Fixed 3 race conditions: (1) event latch system for trigger detection, (2) increased pulse 1ms→10ms for Eurorack compatibility, (3) non-blocking ring buffer logger. Verified 4-on-floor at 120 BPM working correctly. See task 18 for details. |
+| 2025-12-27 | Pre | MODIFY | Exclusive external clock mode (Task 19): Removed timeout logic, implemented exclusive mode with unpatch detection. Internal Metro completely disabled when ext clock active. Replaced 3 complex variables with 2 simple flags. Build: 122KB/128KB (93.15%). |
 |      |   1   |        |       |
 |      |   2   |        |       |
 |      |   3   |        |       |

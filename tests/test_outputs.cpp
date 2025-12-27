@@ -482,7 +482,9 @@ TEST_CASE("OutputState Process advances all components", "[outputs][integration]
     REQUIRE(output.shimmerTrigger.high == true);
 
     // Process enough samples to expire triggers
-    for (int i = 0; i < 100; ++i)
+    // Trigger pulse duration is 10ms (from task 18)
+    // At 48kHz, that's 480 samples. Process 500 to be safe.
+    for (int i = 0; i < 500; ++i)
     {
         output.Process(48000.0f);
     }
