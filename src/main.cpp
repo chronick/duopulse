@@ -75,6 +75,50 @@ struct DeferredSave {
 };
 DeferredSave deferredSave;
 
+// =============================================================================
+// Non-Blocking Gate Event Logger
+// =============================================================================
+// Ring buffer to capture gate events with true timestamps, flushed rate-limited.
+// This prevents UART blocking from affecting timestamp accuracy.
+
+struct GateEvent {
+    uint32_t timestamp;   // System::GetNow() at event time
+    uint8_t  gateType;    // 0=anchor, 1=shimmer
+    uint8_t  step;        // Step number when event occurred
+    bool     valid;       // Whether this slot has data
+};
+
+constexpr size_t kGateEventBufferSize = 32;  // Enough for 2 full bars
+
+struct GateEventBuffer {
+    GateEvent events[kGateEventBufferSize];
+    size_t    writeIdx = 0;
+    size_t    readIdx  = 0;
+    size_t    count    = 0;
+
+    void Push(uint32_t timestamp, uint8_t gateType, uint8_t step) {
+        if (count < kGateEventBufferSize) {
+            events[writeIdx] = {timestamp, gateType, step, true};
+            writeIdx = (writeIdx + 1) % kGateEventBufferSize;
+            count++;
+        }
+        // If full, oldest events are dropped (acceptable for debugging)
+    }
+
+    bool Pop(GateEvent& out) {
+        if (count == 0) return false;
+        out = events[readIdx];
+        events[readIdx].valid = false;
+        readIdx = (readIdx + 1) % kGateEventBufferSize;
+        count--;
+        return true;
+    }
+
+    bool HasEvents() const { return count > 0; }
+};
+
+GateEventBuffer gateEventBuffer;
+
 bool lastGateIn1 = false;
 
 // Control Mode indices for soft knob array
@@ -203,6 +247,7 @@ void AudioCallback(AudioHandle::InputBuffer  in,
                    AudioHandle::OutputBuffer out,
                    size_t                    size)
 {
+    // NOTE: Do NOT log from audio callback - blocks and crashes!
     for(size_t i = 0; i < size; i++)
     {
         // Handle External Clock (Gate In 1)
@@ -369,6 +414,17 @@ void ProcessControls()
         }
         LOGD("Mode: %s", modeName);
 
+        // Log config values when entering config mode (for debugging)
+        if (currentMode == ControlMode::ConfigPrimary || currentMode == ControlMode::ConfigShift)
+        {
+            // Note: cast to int*100 for percentage display (nano.specs doesn't support %f)
+            LOGD("Config: AuxMode=%d%% ResetMode=%d%% PatLen=%d%% Swing=%d%%",
+                 static_cast<int>(controlState.auxMode * 100),
+                 static_cast<int>(controlState.resetMode * 100),
+                 static_cast<int>(controlState.patternLengthKnob * 100),
+                 static_cast<int>(controlState.swing * 100));
+        }
+
         int baseIdx = controlState.GetSoftKnobBaseIndex();
         for(int i = 0; i < kKnobsPerMode; i++)
         {
@@ -489,6 +545,20 @@ void ProcessControls()
     bool anchorGateHigh = sequencer.IsGateHigh(0);
     bool shimmerGateHigh = sequencer.IsGateHigh(1);
 
+    // Gate event capture using LATCHED events (survives after pulse ends)
+    // This fixes the race condition where trigger pulse fits in one audio block
+    // and completes before main loop can detect it.
+    uint8_t step = static_cast<uint8_t>(sequencer.GetPhrasePosition().stepInBar);
+
+    if (sequencer.HasPendingTrigger(0)) {
+        gateEventBuffer.Push(now, 0, step);  // 0 = anchor
+        sequencer.AcknowledgeTrigger(0);
+    }
+    if (sequencer.HasPendingTrigger(1)) {
+        gateEventBuffer.Push(now, 1, step);  // 1 = shimmer
+        sequencer.AcknowledgeTrigger(1);
+    }
+
     float ledBrightness = 0.0f;
 
     if(controlState.configMode)
@@ -515,11 +585,16 @@ void ProcessControls()
     patch.WriteCvOut(patch_sm::CV_OUT_2, ledVoltage);
 
     // === AUX Output (CV_OUT_1) ===
-    // Mode-dependent output: HAT trigger, FILL_GATE, PHRASE_CV ramp, or EVENT trigger
-    const auto& phrasePos = sequencer.GetPhrasePosition();
     float auxVoltage = 0.0f;
+
+#if DEBUG_FEATURE_LEVEL < 1
+    // Level 0: Fixed clock output, ignore config mode settings
+    auxVoltage = sequencer.IsClockHigh() ? 5.0f : 0.0f;
+#else
+    // Level 1+: Mode-dependent output (HAT trigger, FILL_GATE, PHRASE_CV ramp, or EVENT trigger)
+    const auto& phrasePos = sequencer.GetPhrasePosition();
     AuxMode currentAuxMode = GetAuxModeFromValue(controlState.auxMode);
-    
+
     switch(currentAuxMode)
     {
         case AuxMode::HAT:
@@ -528,23 +603,24 @@ void ProcessControls()
             // Real implementation uses aux hit mask from sequencer
             auxVoltage = sequencer.IsClockHigh() ? 5.0f : 0.0f;
             break;
-        
+
         case AuxMode::FILL_GATE:
             // Gate high during fill zones
             auxVoltage = phrasePos.isFillZone ? 5.0f : 0.0f;
             break;
-        
+
         case AuxMode::PHRASE_CV:
             // Ramp 0-5V over phrase
             auxVoltage = phrasePos.phraseProgress * 5.0f;
             break;
-        
+
         default:
             // COUNT or unknown - default to 0V
             auxVoltage = 0.0f;
             break;
     }
-    
+#endif
+
     patch.WriteCvOut(patch_sm::CV_OUT_1, auxVoltage);
 }
 
@@ -553,14 +629,17 @@ int main(void)
     patch.Init();
 
     // Initialize Logging
-    logging::Init(true);  // Wait for host to connect
+    // Don't block waiting for host - allows normal boot without serial monitor
+    logging::Init(false);
     LOGI("DuoPulse v4 boot");
     LOGI("Build: %s %s", __DATE__, __TIME__);
 
     // Initialize Audio
     patch.SetAudioBlockSize(32);
     patch.SetAudioSampleRate(SaiHandle::Config::SampleRate::SAI_32KHZ);
-    float sampleRate = patch.AudioSampleRate();
+    // NOTE: patch.AudioSampleRate() returns 0 before StartAudio()!
+    // Use hardcoded constant matching SAI_32KHZ instead.
+    constexpr float sampleRate = 32000.0f;
 
     // === Load Config from Flash ===
     currentConfig.Init();  // Initialize with defaults
@@ -624,7 +703,11 @@ int main(void)
 
     // Initialize Sequencer
     sequencer.Init(sampleRate);
-    
+
+    // Log tempo information for verification
+    LOGI("Clock: 120 BPM, 8 Hz (16th notes), Pattern: 32 steps = 8 beats = 4s loop");
+    LOGI("Sample rate: %d Hz, Block size: 32", static_cast<int>(sampleRate));
+
     // Initialize gate scalers
     anchorGate.Init(sampleRate);
     shimmerGate.Init(sampleRate);
@@ -690,6 +773,18 @@ int main(void)
     while(1)
     {
         ProcessControls();
+
+        // Flush gate events from ring buffer (rate-limited: 1 per loop iteration)
+        // This prevents UART blocking while preserving true timestamps
+        GateEvent evt;
+        if (gateEventBuffer.Pop(evt)) {
+            const char* gateName = (evt.gateType == 0) ? "Anchor" : "Shimmer";
+            LOGD("[%lu] GATE%d (%s) ON @ step %d",
+                 static_cast<unsigned long>(evt.timestamp),
+                 evt.gateType + 1,
+                 gateName,
+                 evt.step);
+        }
 
         // Handle deferred flash write (safe here, outside audio callback)
         if(deferredSave.pending)
