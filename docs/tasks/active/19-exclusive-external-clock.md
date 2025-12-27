@@ -1,7 +1,7 @@
 # Task 19: Exclusive External Clock Mode
 
-**Status**: PENDING
-**Branch**: `feature/exclusive-external-clock`
+**Status**: IN-PROGRESS
+**Branch**: `task/19-exclusive-external-clock`
 **Spec Reference**: `docs/specs/main.md` section 3.4 [exclusive-external-clock]
 
 ---
@@ -16,8 +16,8 @@ Currently, the sequencer uses a 2-second timeout to switch between internal and 
 
 ### Spec and Planning
 - [x] Update spec in `docs/specs/main.md` (section 3.4 "Clock and Reset Behavior [exclusive-external-clock]") with acceptance criteria
-- [ ] Review current implementation with agent (done via codebase exploration)
-- [ ] Identify all files that need modification
+- [x] Review current implementation with agent (done via codebase exploration)
+- [x] Identify all files that need modification
 
 ### Core Implementation
 - [x] **Sequencer.h**: Add simple boolean flag `externalClockActive_` to replace timeout logic
@@ -38,9 +38,14 @@ Currently, the sequencer uses a 2-second timeout to switch between internal and 
   - Calls `DisableExternalClock()` when threshold reached
 
 ### Edge Detection Improvements
-- [ ] **main.cpp**: Ensure consistent rising edge detection for both clock (Gate In 1) and reset (Gate In 2)
-- [ ] **main.cpp**: Add debouncing if needed to prevent multiple triggers per pulse
-- [ ] Verify edge detection works at audio callback sample rate (32kHz)
+- [x] **main.cpp**: Ensure consistent rising edge detection for both clock (Gate In 1) and reset (Gate In 2)
+  - Both use `patch.gate_in_X.State()` with `lastGateInX` tracking
+  - Rising edge detected as `(current && !last)`
+- [x] **main.cpp**: Add debouncing if needed to prevent multiple triggers per pulse
+  - No debouncing needed: Daisy SDK handles hardware debouncing
+  - Edge detection happens per-sample (32kHz), reliable for typical Eurorack pulses (1-10ms)
+- [x] Verify edge detection works at audio callback sample rate (32kHz)
+  - Verified via unit tests and hardware testing at Level 0
 
 ### Testing
 - [x] **Unit tests**: Test clock source switching logic
@@ -62,8 +67,12 @@ Currently, the sequencer uses a 2-second timeout to switch between internal and 
   - Removed references to 2-second timeout fallback
   - Added acceptance criteria matching spec section 3.4
   - Split reset test into internal vs external clock scenarios
-- [ ] Add note to hardware validation guide about simplified clock logic
-- [ ] Update any relevant comments in code explaining clock source selection
+- [x] Add note to hardware validation guide about simplified clock logic
+  - Added Modification 0.3: Exclusive External Clock Mode (2025-12-27)
+  - Documented in test log entry
+- [x] Update any relevant comments in code explaining clock source selection
+  - All new code includes comments referencing spec section 3.4
+  - ProcessAudio(), TriggerExternalClock(), DisableExternalClock() documented
 
 ---
 
@@ -106,17 +115,17 @@ Based on codebase exploration:
 
 ## Implementation Notes
 
-### Current Issues
-1. Internal Metro continues running when external clock is active
-2. 2-second timeout creates fallback behavior that's hard to predict
-3. `mustTick_` is set/cleared per sample, may miss multi-sample pulses
+### Issues Resolved ✅
+1. ~~Internal Metro continues running when external clock is active~~ → Metro disabled when `externalClockActive_ == true`
+2. ~~2-second timeout creates fallback behavior that's hard to predict~~ → No timeout, uses 1-second low state counter for unpatch detection
+3. ~~`mustTick_` is set/cleared per sample, may miss multi-sample pulses~~ → Replaced with `externalClockTick_` flag, consumed on ProcessAudio()
 
-### Proposed Solution
-1. Replace `externalClockTimeout_` and `mustTick_` with simple `externalClockActive_` boolean
-2. Detect external clock presence by monitoring Gate In 1 state
+### Implementation Summary
+1. Replaced `externalClockTimeout_` and `mustTick_` with simple `externalClockActive_` boolean
+2. Detect external clock presence by monitoring Gate In 1 rising edges
 3. Completely disable Metro processing when `externalClockActive_ == true`
 4. Queue one tick per rising edge, consume on next `ProcessAudio()` call
-5. When external clock unplugged (detected by prolonged low state), set `externalClockActive_ = false` and resume Metro
+5. When external clock unplugged (detected by 1-second low state), set `externalClockActive_ = false` and resume Metro
 
 ---
 
