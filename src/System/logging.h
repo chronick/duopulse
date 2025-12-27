@@ -10,15 +10,17 @@ namespace logging
 /**
  * Log levels for runtime logging system.
  * Lower numeric values = more verbose.
+ *
+ * Note: Prefixed with LOG_ to avoid conflicts with common macros (e.g., DEBUG)
  */
 enum Level
 {
-    TRACE = 0, // Verbose debugging (per-step dumps, loop internals)
-    DEBUG = 1, // Development info (bar generation, archetype selection)
-    INFO  = 2, // Normal operation (boot, mode changes, config updates)
-    WARN  = 3, // Warnings (constraint violations, soft repairs)
-    ERROR = 4, // Critical issues (hardware init failures, invalid state)
-    OFF   = 5  // Disable all logging
+    LOG_TRACE = 0, // Verbose debugging (per-step dumps, loop internals)
+    LOG_DEBUG = 1, // Development info (bar generation, archetype selection)
+    LOG_INFO  = 2, // Normal operation (boot, mode changes, config updates)
+    LOG_WARN  = 3, // Warnings (constraint violations, soft repairs)
+    LOG_ERROR = 4, // Critical issues (hardware init failures, invalid state)
+    LOG_OFF   = 5  // Disable all logging
 };
 
 /**
@@ -114,8 +116,8 @@ void Print(Level lvl, const char* file, int line, const char* fmt, ...);
     } while(0)
 
 // Convenience macros for each log level
-#define LOGT(...) LOG_IMPL(::daisysp_idm_grids::logging::TRACE, __VA_ARGS__)
-#define LOGD(...) LOG_IMPL(::daisysp_idm_grids::logging::DEBUG, __VA_ARGS__)
-#define LOGI(...) LOG_IMPL(::daisysp_idm_grids::logging::INFO, __VA_ARGS__)
-#define LOGW(...) LOG_IMPL(::daisysp_idm_grids::logging::WARN, __VA_ARGS__)
-#define LOGE(...) LOG_IMPL(::daisysp_idm_grids::logging::ERROR, __VA_ARGS__)
+#define LOGT(...) LOG_IMPL(::daisysp_idm_grids::logging::LOG_TRACE, __VA_ARGS__)
+#define LOGD(...) LOG_IMPL(::daisysp_idm_grids::logging::LOG_DEBUG, __VA_ARGS__)
+#define LOGI(...) LOG_IMPL(::daisysp_idm_grids::logging::LOG_INFO, __VA_ARGS__)
+#define LOGW(...) LOG_IMPL(::daisysp_idm_grids::logging::LOG_WARN, __VA_ARGS__)
+#define LOGE(...) LOG_IMPL(::daisysp_idm_grids::logging::LOG_ERROR, __VA_ARGS__)
