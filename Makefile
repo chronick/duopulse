@@ -80,24 +80,25 @@ CXXFLAGS += -DLOG_DEFAULT_LEVEL=$(LOG_DEFAULT_LEVEL)
 # LOG_COMPILETIME_LEVEL=3 LOG_DEFAULT_LEVEL=3 make
 
 # Include Directories
+# Use -I for our own headers, -isystem for external libs (suppresses warnings)
 INCLUDES := -I$(INC_DIR)
-INCLUDES += -I$(DAISYSP_PATH)/Source
-INCLUDES += -I$(DAISYSP_PATH)/Source/daisysp
-INCLUDES += -I$(LIBDAISY_PATH)
-INCLUDES += -I$(LIBDAISY_PATH)/src
-INCLUDES += -I$(LIBDAISY_PATH)/src/sys
-INCLUDES += -I$(LIBDAISY_PATH)/src/usbd
-INCLUDES += -I$(LIBDAISY_PATH)/src/usbh
-INCLUDES += -I$(LIBDAISY_PATH)/Drivers/CMSIS_5/CMSIS/Core/Include
-INCLUDES += -I$(LIBDAISY_PATH)/Drivers/CMSIS-DSP/Include
-INCLUDES += -I$(LIBDAISY_PATH)/Drivers/CMSIS-Device/ST/STM32H7xx/Include
-INCLUDES += -I$(LIBDAISY_PATH)/Drivers/STM32H7xx_HAL_Driver/Inc
-INCLUDES += -I$(LIBDAISY_PATH)/Drivers/STM32H7xx_HAL_Driver/Inc/Legacy
-INCLUDES += -I$(LIBDAISY_PATH)/Middlewares/ST/STM32_USB_Device_Library/Core/Inc
-INCLUDES += -I$(LIBDAISY_PATH)/Middlewares/ST/STM32_USB_Host_Library/Core/Inc
-INCLUDES += -I$(LIBDAISY_PATH)/Middlewares/ST/STM32_USB_Host_Library/Class/MSC/Inc
-INCLUDES += -I$(LIBDAISY_PATH)/Middlewares/ST/STM32_USB_Host_Library/Class/MIDI/Inc
-INCLUDES += -I$(LIBDAISY_PATH)/Middlewares/Third_Party/FatFs/src
+INCLUDES += -isystem $(DAISYSP_PATH)/Source
+INCLUDES += -isystem $(DAISYSP_PATH)/Source/daisysp
+INCLUDES += -isystem $(LIBDAISY_PATH)
+INCLUDES += -isystem $(LIBDAISY_PATH)/src
+INCLUDES += -isystem $(LIBDAISY_PATH)/src/sys
+INCLUDES += -isystem $(LIBDAISY_PATH)/src/usbd
+INCLUDES += -isystem $(LIBDAISY_PATH)/src/usbh
+INCLUDES += -isystem $(LIBDAISY_PATH)/Drivers/CMSIS_5/CMSIS/Core/Include
+INCLUDES += -isystem $(LIBDAISY_PATH)/Drivers/CMSIS-DSP/Include
+INCLUDES += -isystem $(LIBDAISY_PATH)/Drivers/CMSIS-Device/ST/STM32H7xx/Include
+INCLUDES += -isystem $(LIBDAISY_PATH)/Drivers/STM32H7xx_HAL_Driver/Inc
+INCLUDES += -isystem $(LIBDAISY_PATH)/Drivers/STM32H7xx_HAL_Driver/Inc/Legacy
+INCLUDES += -isystem $(LIBDAISY_PATH)/Middlewares/ST/STM32_USB_Device_Library/Core/Inc
+INCLUDES += -isystem $(LIBDAISY_PATH)/Middlewares/ST/STM32_USB_Host_Library/Core/Inc
+INCLUDES += -isystem $(LIBDAISY_PATH)/Middlewares/ST/STM32_USB_Host_Library/Class/MSC/Inc
+INCLUDES += -isystem $(LIBDAISY_PATH)/Middlewares/ST/STM32_USB_Host_Library/Class/MIDI/Inc
+INCLUDES += -isystem $(LIBDAISY_PATH)/Middlewares/Third_Party/FatFs/src
 
 # Source Files
 SRCS := $(wildcard $(SRC_DIR)/*.cpp)
@@ -135,6 +136,10 @@ LDFLAGS += --specs=nano.specs --specs=nosys.specs
 # Debug Flags
 ifeq ($(DEBUG),1)
     CXXFLAGS += -DDEBUG -g3 -O0
+else ifeq ($(DEBUG_FLASH),1)
+    # Debug build optimized for flash-constrained devices
+    # Uses -Og (optimize for debugging) instead of -O0 to reduce code size
+    CXXFLAGS += -DDEBUG -g3 -Og
 else
     CXXFLAGS += -DNDEBUG
 endif
@@ -235,11 +240,11 @@ program: $(BIN)
 
 # Build with DEBUG-level logging enabled at compile-time and runtime
 # Sets LOG_COMPILETIME_LEVEL=1 (DEBUG) and LOG_DEFAULT_LEVEL=1 (DEBUG)
-# Also enables DEBUG=1 for full debug symbols and no optimizations
+# Uses DEBUG_FLASH=1 for debug symbols with -Og optimization (fits in flash)
 build-debug:
 	@echo "Building firmware with DEBUG-level logging..."
 	@$(MAKE) clean
-	@$(MAKE) all DEBUG=1 LOG_COMPILETIME_LEVEL=1 LOG_DEFAULT_LEVEL=1
+	@$(MAKE) all DEBUG_FLASH=1 LOG_COMPILETIME_LEVEL=1 LOG_DEFAULT_LEVEL=1
 	@echo "Debug build complete with DEBUG-level logging enabled"
 
 # Build debug firmware and flash to device
@@ -248,6 +253,7 @@ program-debug: build-debug
 	@dfu-util -a 0 -s 0x08000000:leave -D $(BIN)
 
 # Listen to serial output from device and log to temp file
+# Uses 'cat' for logging (screen doesn't pipe to tee properly)
 listen:
 	@test -n "$(PORT)" || (echo "No /dev/cu.usbmodem* found. Is device connected?"; exit 1)
 	@mkdir -p "$(LOGDIR)"
@@ -256,10 +262,11 @@ listen:
 	  echo "Listening on $(PORT) @ $(BAUD) baud"; \
 	  echo "Log file: $$logfile"; \
 	  echo ""; \
-	  echo "Press Ctrl-A then \\ then y to quit"; \
+	  echo "Press Ctrl-C to quit"; \
 	  echo ""; \
 	  trap "echo ''; echo 'Log saved to: $$logfile'" EXIT; \
-	  screen "$(PORT)" "$(BAUD)" | tee -a "$$logfile"
+	  stty -f "$(PORT)" $(BAUD) cs8 -cstopb -parenb raw; \
+	  cat "$(PORT)" | tee -a "$$logfile"
 
 # List available serial ports
 ports:
@@ -282,6 +289,7 @@ rebuild: clean all
 # Host compiler for tests (not ARM)
 HOST_CXX := g++
 HOST_CXXFLAGS := -std=c++17 -Wall -Wextra -g -O0
+HOST_CXXFLAGS += -DHOST_BUILD  # Define for host-side builds
 HOST_CXXFLAGS += -I$(INC_DIR)
 HOST_CXXFLAGS += -I$(SRC_DIR)
 HOST_CXXFLAGS += -I$(DAISYSP_PATH)/Source
@@ -302,6 +310,7 @@ TEST_OBJS := $(TEST_SRCS:$(TEST_DIR)/%.cpp=$(BUILD_DIR)/test_%.o)
 
 # Project sources needed for host-side tests
 TEST_APP_SRCS := $(wildcard $(SRC_DIR)/Engine/*.cpp)
+TEST_APP_SRCS += $(SRC_DIR)/System/logging.cpp
 TEST_APP_OBJS := $(patsubst $(SRC_DIR)/%.cpp,$(BUILD_DIR)/test_app_%.o,$(TEST_APP_SRCS))
 
 # DaisySP sources needed for tests (compiled for host)
@@ -406,7 +415,7 @@ help:
 	@echo "  all              - Build firmware (default)"
 	@echo "  clean            - Remove build artifacts"
 	@echo "  rebuild          - Clean and rebuild"
-	@echo "  build-debug      - Build with DEBUG-level logging (DEBUG=1, log level=DEBUG)"
+	@echo "  build-debug      - Build with DEBUG-level logging (DEBUG_FLASH=1, log level=DEBUG)"
 	@echo "  daisy-build      - Build DaisySP library"
 	@echo "  daisy-update     - Update DaisySP to latest version"
 	@echo "  libdaisy-build   - Build libDaisy library"
@@ -420,7 +429,8 @@ help:
 	@echo "  help             - Show this help message"
 	@echo ""
 	@echo "Variables:"
-	@echo "  DEBUG=1                   - Enable debug symbols and disable optimizations"
+	@echo "  DEBUG=1                   - Debug symbols + no optimization (-g3 -O0)"
+	@echo "  DEBUG_FLASH=1             - Debug symbols + -Og optimization (fits in flash)"
 	@echo "  LOG_COMPILETIME_LEVEL=N   - Min compile-time log level (default: 1=DEBUG)"
 	@echo "                              0=TRACE, 1=DEBUG, 2=INFO, 3=WARN, 4=ERROR, 5=OFF"
 	@echo "  LOG_DEFAULT_LEVEL=N       - Default runtime log level (default: 2=INFO)"
@@ -433,9 +443,9 @@ help:
 	@echo ""
 	@echo "Examples:"
 	@echo "  make                              - Build firmware"
-	@echo "  make DEBUG=1                     - Build with debug symbols"
-	@echo "  make build-debug                 - Build with DEBUG-level logging"
-	@echo "  make program-debug               - Build debug and flash to device"
+	@echo "  make DEBUG=1                      - Build with debug symbols"
+	@echo "  make build-debug                  - Build with DEBUG-level logging"
+	@echo "  make program-debug                - Build debug and flash to device"
 	@echo "  make test                         - Run tests"
 	@echo "  make daisy-update                 - Update DaisySP"
 	@echo "  make program                      - Flash firmware"
