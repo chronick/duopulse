@@ -34,7 +34,7 @@
     <line x1="0" y1="0" x2="-10" y2="10" stroke="#ff00ff" stroke-width="4" stroke-linecap="round"/>
     <circle cx="-10" cy="10" r="4" fill="#ff00ff"/>
     <text x="0" y="48" text-anchor="middle" fill="#ff00ff" font-family="monospace" font-size="11" font-weight="bold">K3</text>
-    <text x="0" y="62" text-anchor="middle" fill="#d33682" font-family="monospace" font-size="9">FIELD X Ä</text>
+    <text x="0" y="62" text-anchor="middle" fill="#d33682" font-family="monospace" font-size="9">FIELD X</text>
   </g>
   
   <!-- Knob K4 - Active/highlighted -->
@@ -45,7 +45,7 @@
     <line x1="0" y1="0" x2="-10" y2="10" stroke="#ff00ff" stroke-width="4" stroke-linecap="round"/>
     <circle cx="-10" cy="10" r="4" fill="#ff00ff"/>
     <text x="0" y="48" text-anchor="middle" fill="#ff00ff" font-family="monospace" font-size="11" font-weight="bold">K4</text>
-    <text x="0" y="62" text-anchor="middle" fill="#d33682" font-family="monospace" font-size="9">FIELD Y Ä</text>
+    <text x="0" y="62" text-anchor="middle" fill="#d33682" font-family="monospace" font-size="9">FIELD Y</text>
   </g>
   
   <!-- Info badge -->

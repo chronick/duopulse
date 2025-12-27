@@ -32,13 +32,14 @@
 #include "daisy_patch_sm.h"
 #include "daisysp.h"
 #include "Engine/Sequencer.h"
-#include "Engine/LedIndicator.h"
+// #include "Engine/LedIndicator.h"  // LED system simplified
 #include "Engine/ControlUtils.h"
 #include "Engine/GateScaler.h"
 #include "Engine/SoftKnob.h"
 #include "Engine/VelocityOutput.h"
 #include "Engine/AuxOutput.h"
 #include "Engine/Persistence.h"
+#include "System/logging.h"
 
 using namespace daisy;
 using namespace daisysp;
@@ -58,16 +59,67 @@ GateScaler     shimmerGate;
 VelocityOutput velocityOutput;
 AuxOutput      auxOutput;
 
-LedIndicator ledIndicator;
-LedState     ledState;
+// LED system simplified - no longer using LedIndicator or LedState
+// LedIndicator ledIndicator;
+// LedState     ledState;
 
 // Persistence
 PersistentConfig currentConfig;
 AutoSaveState    autoSaveState;
 bool             configLoaded = false;
 
+// Deferred flash save - prevents blocking in audio callback
+struct DeferredSave {
+    bool pending = false;
+    PersistentConfig configToSave;
+};
+DeferredSave deferredSave;
+
+// =============================================================================
+// Non-Blocking Gate Event Logger
+// =============================================================================
+// Ring buffer to capture gate events with true timestamps, flushed rate-limited.
+// This prevents UART blocking from affecting timestamp accuracy.
+
+struct GateEvent {
+    uint32_t timestamp;   // System::GetNow() at event time
+    uint8_t  gateType;    // 0=anchor, 1=shimmer
+    uint8_t  step;        // Step number when event occurred
+    bool     valid;       // Whether this slot has data
+};
+
+constexpr size_t kGateEventBufferSize = 32;  // Enough for 2 full bars
+
+struct GateEventBuffer {
+    GateEvent events[kGateEventBufferSize];
+    size_t    writeIdx = 0;
+    size_t    readIdx  = 0;
+    size_t    count    = 0;
+
+    void Push(uint32_t timestamp, uint8_t gateType, uint8_t step) {
+        if (count < kGateEventBufferSize) {
+            events[writeIdx] = {timestamp, gateType, step, true};
+            writeIdx = (writeIdx + 1) % kGateEventBufferSize;
+            count++;
+        }
+        // If full, oldest events are dropped (acceptable for debugging)
+    }
+
+    bool Pop(GateEvent& out) {
+        if (count == 0) return false;
+        out = events[readIdx];
+        events[readIdx].valid = false;
+        readIdx = (readIdx + 1) % kGateEventBufferSize;
+        count--;
+        return true;
+    }
+
+    bool HasEvents() const { return count > 0; }
+};
+
+GateEventBuffer gateEventBuffer;
+
 bool lastGateIn1 = false;
-bool lastAnchorGate = false; // For detecting trigger edges
 
 // Control Mode indices for soft knob array
 enum class ControlMode : uint8_t
@@ -82,9 +134,9 @@ constexpr int kKnobsPerMode = 4;
 constexpr int kNumModes     = 4;
 constexpr int kTotalKnobs   = kKnobsPerMode * kNumModes; // 16
 
-// Shift/Tap timing thresholds
-constexpr uint32_t kShiftThresholdMs = 150;   // Hold >150ms = shift, tap <150ms = fill/tap-tempo
-constexpr uint32_t kDoubleTapWindowMs = 400;  // Max gap between taps for double-tap (reseed)
+// Shift timing threshold
+// B7 is shift-only: hold for shift layer, no tap tempo
+constexpr uint32_t kShiftThresholdMs = 100;   // Hold >100ms = shift active
 
 struct MainControlState
 {
@@ -156,15 +208,10 @@ SoftKnob     softKnobs[kTotalKnobs]; // 16 slots: 4 knobs × 4 mode/shift combin
 uint32_t lastInteractionTime  = 0;
 float    activeParameterValue = 0.0f;
 
-// Shift Button State (B7)
+// Shift Button State (B7) - shift-only, no tap tempo
 uint32_t buttonPressTime   = 0;     // When button was pressed (ms)
 bool     buttonWasPressed  = false; // Previous button state
 bool     shiftEngaged      = false; // True once hold threshold passed
-bool     fillTriggered     = false; // Prevent double-trigger on release
-
-// Double-tap detection for reseed
-uint32_t lastTapTime       = 0;     // Time of last tap release
-uint8_t  tapCount          = 0;     // Number of taps in window
 
 // Helper functions for discrete parameter mapping
 int MapToPatternLength(float value)
@@ -200,6 +247,7 @@ void AudioCallback(AudioHandle::InputBuffer  in,
                    AudioHandle::OutputBuffer out,
                    size_t                    size)
 {
+    // NOTE: Do NOT log from audio callback - blocks and crashes!
     for(size_t i = 0; i < size; i++)
     {
         // Handle External Clock (Gate In 1)
@@ -223,10 +271,10 @@ void AudioCallback(AudioHandle::InputBuffer  in,
         out[0][i] = GateScaler::VoltageToCodecSample(velocities[0] * 5.0f); // Anchor velocity
         out[1][i] = GateScaler::VoltageToCodecSample(velocities[1] * 5.0f); // Shimmer velocity
 
-        // Process auto-save (sample-rate timing)
+        // Auto-save timing check ONLY - no flash write here!
         if(ProcessAutoSave(autoSaveState))
         {
-            // Build current config from control state
+            // Build current config from control state (cheap operation)
             PackConfig(
                 MapToPatternLength(controlState.patternLengthKnob),
                 controlState.swing,
@@ -241,11 +289,11 @@ void AudioCallback(AudioHandle::InputBuffer  in,
                 currentConfig
             );
 
-            // Save to flash (only if changed from last saved)
+            // Check if save needed - if so, DEFER to main loop
             if(ConfigChanged(currentConfig, autoSaveState.lastSaved))
             {
-                SaveConfigToFlash(currentConfig);
-                autoSaveState.lastSaved = currentConfig;
+                deferredSave.configToSave = currentConfig;
+                deferredSave.pending = true;  // Flag for main loop
             }
             autoSaveState.ClearPending();
         }
@@ -315,8 +363,8 @@ void ProcessControls()
     bool newConfigMode = modeSwitch.Pressed();
     controlState.configMode = newConfigMode;
 
-    // Shift Detection (B7 button: tap <150ms vs hold >150ms)
-    // Double-tap detection for reseed
+    // Shift Detection (B7 button: hold for shift layer)
+    // Simplified: no tap tempo, just shift-only
     bool     buttonPressed = tapButton.Pressed();
     uint32_t now           = System::GetNow();
 
@@ -325,7 +373,6 @@ void ProcessControls()
         // Button just pressed - start timing
         buttonPressTime = now;
         shiftEngaged    = false;
-        fillTriggered   = false;
     }
     else if(buttonPressed && buttonWasPressed)
     {
@@ -338,47 +385,46 @@ void ProcessControls()
     }
     else if(!buttonPressed && buttonWasPressed)
     {
-        // Button just released
-        if(!shiftEngaged && !fillTriggered)
-        {
-            // Short tap (<150ms) - check for double-tap (reseed)
-            fillTriggered = true;
-
-            // Check if this is a double-tap
-            if((now - lastTapTime) < kDoubleTapWindowMs && tapCount > 0)
-            {
-                // Double-tap detected - trigger reseed
-                sequencer.TriggerReseed();
-                tapCount = 0;
-            }
-            else
-            {
-                // Single tap - queue fill or tap tempo
-                tapCount = 1;
-                if(!controlState.configMode)
-                {
-                    // Performance mode: short tap = tap tempo
-                    sequencer.TriggerTapTempo(now);
-                }
-            }
-            lastTapTime = now;
-        }
-        // Always clear shift on release
+        // Button released - clear shift
         controlState.shiftActive = false;
         shiftEngaged             = false;
     }
     buttonWasPressed = buttonPressed;
 
-    // Clear tap count if window expired
-    if(tapCount > 0 && (now - lastTapTime) > kDoubleTapWindowMs)
-    {
-        tapCount = 0;
-    }
-
     // If mode changed, load new targets into soft knobs
     ControlMode currentMode = controlState.GetCurrentMode();
     if(currentMode != previousMode)
     {
+        // Log mode change
+        const char* modeName = "";
+        switch(currentMode)
+        {
+            case ControlMode::PerformancePrimary:
+                modeName = "Performance";
+                break;
+            case ControlMode::PerformanceShift:
+                modeName = "Performance+Shift";
+                break;
+            case ControlMode::ConfigPrimary:
+                modeName = "Config";
+                break;
+            case ControlMode::ConfigShift:
+                modeName = "Config+Shift";
+                break;
+        }
+        LOGD("Mode: %s", modeName);
+
+        // Log config values when entering config mode (for debugging)
+        if (currentMode == ControlMode::ConfigPrimary || currentMode == ControlMode::ConfigShift)
+        {
+            // Note: cast to int*100 for percentage display (nano.specs doesn't support %f)
+            LOGD("Config: AuxMode=%d%% ResetMode=%d%% PatLen=%d%% Swing=%d%%",
+                 static_cast<int>(controlState.auxMode * 100),
+                 static_cast<int>(controlState.resetMode * 100),
+                 static_cast<int>(controlState.patternLengthKnob * 100),
+                 static_cast<int>(controlState.swing * 100));
+        }
+
         int baseIdx = controlState.GetSoftKnobBaseIndex();
         for(int i = 0; i < kKnobsPerMode; i++)
         {
@@ -482,7 +528,7 @@ void ProcessControls()
         }
     }
 
-    // Tap Tempo is now handled in shift detection above (short tap <150ms)
+    // Tap Tempo removed - tempo is internal-only or external clock
 
     // Reset Trigger
     if(patch.gate_in_2.Trig())
@@ -490,61 +536,65 @@ void ProcessControls()
         sequencer.TriggerReset();
     }
 
-    // === LED Feedback System (DuoPulse v4) ===
-    // Updates LedState based on current mode, parameters, and phrase position
-    
-    // Detect anchor trigger edge (rising edge)
+    // === LED Feedback System (Simplified) ===
+    // Config mode: solid on
+    // Anchor trigger (Gate 1): 50% brightness
+    // Shimmer trigger (Gate 2): 30% brightness
+    // Otherwise: off
+
     bool anchorGateHigh = sequencer.IsGateHigh(0);
     bool shimmerGateHigh = sequencer.IsGateHigh(1);
-    ledState.anchorTriggered = anchorGateHigh && !lastAnchorGate;
-    ledState.shimmerTriggered = shimmerGateHigh;
-    lastAnchorGate = anchorGateHigh;
-    
-    // Set LED mode based on current state
-    if(System::GetNow() - lastInteractionTime < 1000)
-    {
-        ledState.mode = LedMode::Interaction;
-        ledState.interactionValue = activeParameterValue;
+
+    // Gate event capture using LATCHED events (survives after pulse ends)
+    // This fixes the race condition where trigger pulse fits in one audio block
+    // and completes before main loop can detect it.
+    uint8_t step = static_cast<uint8_t>(sequencer.GetPhrasePosition().stepInBar);
+
+    if (sequencer.HasPendingTrigger(0)) {
+        gateEventBuffer.Push(now, 0, step);  // 0 = anchor
+        sequencer.AcknowledgeTrigger(0);
     }
-    else if(controlState.shiftActive)
-    {
-        ledState.mode = LedMode::ShiftHeld;
+    if (sequencer.HasPendingTrigger(1)) {
+        gateEventBuffer.Push(now, 1, step);  // 1 = shimmer
+        sequencer.AcknowledgeTrigger(1);
     }
-    else if(controlState.configMode)
+
+    float ledBrightness = 0.0f;
+
+    if(controlState.configMode)
     {
-        ledState.mode = LedMode::Config;
+        // Config mode: solid on
+        ledBrightness = 1.0f;
     }
-    else
+    else if(anchorGateHigh)
     {
-        ledState.mode = LedMode::Performance;
+        // Anchor trigger: 50% brightness
+        ledBrightness = 0.5f;
     }
-    
-    // Set parameter values for LED behavior
-    ledState.broken = flavorCV;  // Flavor affects LED chaos
-    ledState.drift = controlState.drift;
-    ledState.anchorDensity = finalEnergy;
-    ledState.shimmerDensity = 1.0f - controlState.balance;  // Inverse for shimmer focus
-    
-    // Set phrase position for phrase-aware feedback
-    const auto& phrasePos = sequencer.GetPhrasePosition();
-    ledState.phraseProgress = phrasePos.phraseProgress;
-    ledState.isDownbeat = phrasePos.isDownbeat;
-    ledState.isFillZone = phrasePos.isFillZone;
-    ledState.isBuildZone = phrasePos.isBuildZone;
-    
-    // Process LED and output to CV_OUT_2
-    float ledBrightness = ledIndicator.Process(ledState);
-    float ledVoltage = LedIndicator::BrightnessToVoltage(ledBrightness);
-    bool  ledDigital = (ledBrightness > 0.3f);
+    else if(shimmerGateHigh)
+    {
+        // Shimmer trigger: 30% brightness
+        ledBrightness = 0.3f;
+    }
+
+    // Convert brightness to voltage (0-5V range)
+    float ledVoltage = ledBrightness * 5.0f;
+    bool  ledDigital = (ledBrightness > 0.1f);
 
     patch.SetLed(ledDigital);
     patch.WriteCvOut(patch_sm::CV_OUT_2, ledVoltage);
 
     // === AUX Output (CV_OUT_1) ===
-    // Mode-dependent output: HAT trigger, FILL_GATE, PHRASE_CV ramp, or EVENT trigger
     float auxVoltage = 0.0f;
+
+#if DEBUG_FEATURE_LEVEL < 1
+    // Level 0: Fixed clock output, ignore config mode settings
+    auxVoltage = sequencer.IsClockHigh() ? 5.0f : 0.0f;
+#else
+    // Level 1+: Mode-dependent output (HAT trigger, FILL_GATE, PHRASE_CV ramp, or EVENT trigger)
+    const auto& phrasePos = sequencer.GetPhrasePosition();
     AuxMode currentAuxMode = GetAuxModeFromValue(controlState.auxMode);
-    
+
     switch(currentAuxMode)
     {
         case AuxMode::HAT:
@@ -553,23 +603,24 @@ void ProcessControls()
             // Real implementation uses aux hit mask from sequencer
             auxVoltage = sequencer.IsClockHigh() ? 5.0f : 0.0f;
             break;
-        
+
         case AuxMode::FILL_GATE:
             // Gate high during fill zones
             auxVoltage = phrasePos.isFillZone ? 5.0f : 0.0f;
             break;
-        
+
         case AuxMode::PHRASE_CV:
             // Ramp 0-5V over phrase
             auxVoltage = phrasePos.phraseProgress * 5.0f;
             break;
-        
+
         default:
             // COUNT or unknown - default to 0V
             auxVoltage = 0.0f;
             break;
     }
-    
+#endif
+
     patch.WriteCvOut(patch_sm::CV_OUT_1, auxVoltage);
 }
 
@@ -577,17 +628,26 @@ int main(void)
 {
     patch.Init();
 
+    // Initialize Logging
+    // Don't block waiting for host - allows normal boot without serial monitor
+    logging::Init(false);
+    LOGI("DuoPulse v4 boot");
+    LOGI("Build: %s %s", __DATE__, __TIME__);
+
     // Initialize Audio
-    patch.SetAudioBlockSize(4);
-    patch.SetAudioSampleRate(SaiHandle::Config::SampleRate::SAI_48KHZ);
-    float sampleRate = patch.AudioSampleRate();
+    patch.SetAudioBlockSize(32);
+    patch.SetAudioSampleRate(SaiHandle::Config::SampleRate::SAI_32KHZ);
+    // NOTE: patch.AudioSampleRate() returns 0 before StartAudio()!
+    // Use hardcoded constant matching SAI_32KHZ instead.
+    constexpr float sampleRate = 32000.0f;
 
     // === Load Config from Flash ===
     currentConfig.Init();  // Initialize with defaults
     configLoaded = LoadConfigFromFlash(currentConfig);
-    
+
     if(configLoaded)
     {
+        LOGI("Config loaded from flash (CRC valid)");
         // Unpack saved config values into control state
         int patternLength, phraseLength, clockDivision;
         float swing;
@@ -632,14 +692,22 @@ int main(void)
         controlState.voiceCoupling = static_cast<float>(voiceCoupling) / 2.0f;
         controlState.genre = static_cast<float>(genre) / 2.0f;
     }
-    
+    else
+    {
+        LOGI("No valid config in flash, using defaults");
+    }
+
     // Initialize auto-save state
     autoSaveState.Init(sampleRate);
     autoSaveState.lastSaved = currentConfig;
 
     // Initialize Sequencer
     sequencer.Init(sampleRate);
-    
+
+    // Log tempo information for verification
+    LOGI("Clock: 120 BPM, 8 Hz (16th notes), Pattern: 32 steps = 8 beats = 4s loop");
+    LOGI("Sample rate: %d Hz, Block size: 32", static_cast<int>(sampleRate));
+
     // Initialize gate scalers
     anchorGate.Init(sampleRate);
     shimmerGate.Init(sampleRate);
@@ -656,13 +724,13 @@ int main(void)
     sequencer.SetAccentHoldMs(10.0f);
     sequencer.SetHihatHoldMs(10.0f);
     
-    // Initialize LED feedback system (using control rate ~1kHz)
-    ledIndicator.Init(1000.0f);
+    // LED feedback simplified - no initialization needed
+    // ledIndicator.Init(1000.0f);
 
     // Ensure LEDs start in a known state
     patch.SetLed(false);
-    patch.WriteCvOut(patch_sm::CV_OUT_2, LedIndicator::kLedOffVoltage);
-    patch.WriteCvOut(patch_sm::CV_OUT_1, 0.0f);
+    patch.WriteCvOut(patch_sm::CV_OUT_2, 0.0f);  // LED output
+    patch.WriteCvOut(patch_sm::CV_OUT_1, 0.0f);  // AUX output
 
     // Initialize Controls
     // Button B7 (tap/shift)
@@ -698,14 +766,36 @@ int main(void)
     
     // Initialize interaction state
     lastInteractionTime = 0; // Ensures we start in default mode
-    lastTapTime = 0;
-    tapCount = 0;
 
+    LOGI("Initialization complete, starting audio");
     patch.StartAudio(AudioCallback);
 
     while(1)
     {
         ProcessControls();
+
+        // Flush gate events from ring buffer (rate-limited: 1 per loop iteration)
+        // This prevents UART blocking while preserving true timestamps
+        GateEvent evt;
+        if (gateEventBuffer.Pop(evt)) {
+            const char* gateName = (evt.gateType == 0) ? "Anchor" : "Shimmer";
+            LOGD("[%lu] GATE%d (%s) ON @ step %d",
+                 static_cast<unsigned long>(evt.timestamp),
+                 evt.gateType + 1,
+                 gateName,
+                 evt.step);
+        }
+
+        // Handle deferred flash write (safe here, outside audio callback)
+        if(deferredSave.pending)
+        {
+            SaveConfigToFlash(deferredSave.configToSave);
+            autoSaveState.lastSaved = deferredSave.configToSave;
+            deferredSave.pending = false;
+
+            LOGD("Config saved to flash");
+        }
+
         System::Delay(1);
     }
 }

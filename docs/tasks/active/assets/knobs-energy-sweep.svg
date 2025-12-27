@@ -15,10 +15,10 @@
     <line x1="0" y1="0" x2="0" y2="-14" stroke="#00ffff" stroke-width="4" stroke-linecap="round"/>
     <circle cx="0" cy="-14" r="4" fill="#00ffff"/>
     <!-- Sweep arrows -->
-    <text x="-30" y="5" fill="#00ffff" font-family="monospace" font-size="14">º</text>
-    <text x="22" y="5" fill="#00ffff" font-family="monospace" font-size="14">»</text>
+    <text x="-30" y="5" fill="#00ffff" font-family="monospace" font-size="14">&lt;</text>
+    <text x="22" y="5" fill="#00ffff" font-family="monospace" font-size="14">&gt;</text>
     <text x="0" y="50" text-anchor="middle" fill="#00ffff" font-family="monospace" font-size="11" font-weight="bold">K1</text>
-    <text x="0" y="64" text-anchor="middle" fill="#2aa198" font-family="monospace" font-size="9">SWEEP •</text>
+    <text x="0" y="64" text-anchor="middle" fill="#2aa198" font-family="monospace" font-size="9">SWEEP</text>
   </g>
   
   <!-- Knob K2 - Inactive -->

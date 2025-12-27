@@ -62,3 +62,6 @@ scripts/manual_generator/post_generate.sh
 # Generated manuals
 scripts/manual_generator/output/
 
+# Temporary files
+tmp/
+

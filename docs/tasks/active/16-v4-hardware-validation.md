@@ -42,8 +42,8 @@
 │    Vel)    Vel)                                     │
 │                                                     │
 │   [B7]  [B8]                   ← BUTTONS           │
-│   Tap/   Mode                                       │
-│   Shift  Switch                                     │
+│   Shift  Mode                                       │
+│   Layer  Switch                                     │
 │                                                     │
 │   ● CV1   ● CV2                ← CV OUTPUTS        │
 │   (AUX)   (LED)                                     │
@@ -108,11 +108,14 @@ graph TD
     D --> D1[Quarter notes only<br/>at mid-energy]
     E --> E1[2-step minimum<br/>at GROOVE zone]
     F --> F1[Zero swing/jitter<br/>= robotic feel]
+
+    classDef problemStyle fill:#fae5e5,stroke:#586e75,color:#002b36
+    classDef defaultStyle fill:#e6f2ff,stroke:#586e75,color:#002b36
+    classDef errorStyle fill:#f2cccc,stroke:#586e75,color:#002b36
     
-    style A fill:#f66,stroke:#333
-    style B1 fill:#faa,stroke:#333
-    style C1 fill:#faa,stroke:#333
-    style D1 fill:#faa,stroke:#333
+    class A problemStyle
+    class B,C,D,E,F defaultStyle
+    class B1,C1,D1,E1,F1 errorStyle
 ```
 
 ### Fixes Applied
@@ -122,10 +125,144 @@ graph TD
    - `energy = 0.6` (Higher in GROOVE zone for more hits)
 
 2. Added debug compile flags in `config.h`:
-   - `DEBUG_BASELINE_MODE` - Forces known-good values
-   - `DEBUG_SIMPLE_TRIGGERS` - Bypasses generation, simple 4-on-floor
-   - `DEBUG_FIXED_SEED` - Reproducible patterns
-   - `DEBUG_FEATURE_LEVEL` (0-5) - Progressive feature enablement
+   - `DEBUG_FEATURE_LEVEL` (0-5) - Progressive feature enablement (primary flag)
+   - `DEBUG_BASELINE_MODE` - Forces known-good knob values
+   - `DEBUG_FIXED_SEED` - Reproducible patterns for debugging
+
+3. Code cleanup (2024-12-25):
+   - Consolidated `DEBUG_SIMPLE_TRIGGERS` into `DEBUG_FEATURE_LEVEL 0`
+   - Refactored feature level checks to use `>=` pattern for clarity
+   - Improved config.h documentation with per-level descriptions
+
+4. **Deferred Flash Write Pattern (2024-12-26)**:
+   - **Problem**: `SaveConfigToFlash()` was called inside the audio callback, causing 10-100ms blocking operations that glitch audio
+   - **Solution**: Implemented deferred save pattern
+     - Audio callback only sets `deferredSave.pending = true` flag (non-blocking)
+     - Main loop handles actual flash write during idle time
+     - Eliminates audio glitches from flash operations
+   - **Files Modified**: `src/main.cpp`
+     - Added `DeferredSave` struct in anonymous namespace (lines 71-76)
+     - Modified `AudioCallback()` to defer save instead of blocking (lines 229-254)
+     - Added flash write handler in main loop (lines 694-702)
+   - **Reference**: `docs/chats/daisy-flash-writes.md`
+
+---
+
+## 🎚️ Debug Flag Reference
+
+### DEBUG_FEATURE_LEVEL Quick Reference
+
+| Level | Name | What It Tests | Knobs Active |
+|-------|------|---------------|--------------|
+| 0 | CLOCK | Audio callback, gates, LED, tempo | None (fixed pattern) |
+| 1 | ARCHETYPE | Knob reading, archetype blending | K3 (Field X), K4 (Field Y) |
+| 2 | SAMPLING | Hit budget, density scaling | K1 (Energy), K3, K4 |
+| 3 | GUARD RAILS | Voice coupling, beat-1 anchor | K1, K3, K4 |
+| 4 | TIMING | Swing/jitter from FLAVOR CV | K1, K3, K4 + Audio In R |
+| 5 | PRODUCTION | Full system (same as no flag) | All knobs |
+
+### Recommended Flag Combinations
+
+```
+# Level 0: Clock test - minimal config
+#define DEBUG_FEATURE_LEVEL 0
+// No other flags needed
+
+# Level 1: Archetype test - add fixed seed for reproducibility
+#define DEBUG_FEATURE_LEVEL 1
+// #define DEBUG_FIXED_SEED 1  // Optional: same pattern each time
+
+# Level 2-3: Generation test - add baseline mode to isolate sampling
+#define DEBUG_FEATURE_LEVEL 2  // or 3
+// #define DEBUG_BASELINE_MODE 1  // Optional: known control values
+// #define DEBUG_FIXED_SEED 1     // Optional: reproducible patterns
+
+# Level 4: Timing test
+#define DEBUG_FEATURE_LEVEL 4
+// No extra flags needed - test FLAVOR CV input
+
+# Level 5 / Production: Remove all debug flags
+// #define DEBUG_FEATURE_LEVEL 5  // Or just comment out
+```
+
+---
+
+## 🔄 Iterative Testing Methodology
+
+**This document is a living test plan.** Hardware testing often reveals issues that require immediate code changes. The workflow is:
+
+1. **Run test** → Observe behavior
+2. **Document findings** → Note what works, what doesn't
+3. **Modify code** → Fix issues as you discover them
+4. **Re-test** → Verify the fix works
+5. **Update this document** → Record changes made and new expected behavior
+
+### Important Notes
+
+- **Expect to modify code during testing** - this is normal and expected
+- **Always rebuild and reflash** after code changes: `make clean && make && make program-dfu`
+- **Keep notes in the Test Log** section at the bottom
+- Tests build on each other - don't advance to Level N+1 until Level N passes
+
+---
+
+## 🛠️ Test 0: Pre-Test Modifications
+
+This section documents simplifications made to reduce complexity before hardware testing.
+
+### Modification 0.1: Remove Tap Tempo (2024-12-20)
+
+**Problem**: Button B7 was handling tap tempo, shift layer, and double-tap reseed. This complex state machine made debugging difficult and button behavior felt erratic.
+
+**Changes Made**:
+- **Removed tap tempo** - Internal clock runs at fixed 120 BPM (external clock via Gate In 1 still works)
+- **Removed double-tap reseed** - Simplifies button logic
+- **B7 is now shift-only** - Hold >100ms to activate shift layer, release to deactivate
+
+**Files Modified**:
+- `src/main.cpp` - Simplified button handling logic
+- `inc/config.h` - DEBUG_FEATURE_LEVEL set to 0
+
+**Expected Behavior After This Change**:
+- B7 button: Hold to access shift layer, release returns to normal
+- No tap tempo - tempo is fixed at 120 BPM internal clock
+- External clock (Gate In 1) still works for tempo sync
+
+**Build and Flash**:
+```bash
+make clean && make && make program-dfu
+```
+
+---
+
+### Modification 0.2: Simplify LED Feedback (2024-12-20)
+
+**Problem**: LED system was complex with multiple modes, making it hard to debug basic sequencer behavior.
+
+**Changes Made**:
+- **Simplified LED logic** - Removed complex LedIndicator state machine
+- **Config mode**: LED solid on (100% brightness)
+- **Anchor trigger (Gate Out 1)**: LED 50% brightness
+- **Shimmer trigger (Gate Out 2)**: LED 30% brightness
+- **Otherwise**: LED off
+
+**Files Modified**:
+- `src/main.cpp` - Replaced LedIndicator with simple brightness logic
+
+**Expected Behavior After This Change**:
+- Flip B8 switch UP → LED solid on (config mode)
+- Flip B8 switch DOWN → LED blinks with triggers (performance mode)
+- Gate Out 1 fires → LED at 50% brightness
+- Gate Out 2 fires → LED at 30% brightness
+
+**Switch Direction Confirmed**:
+- **B8 UP** = Config mode (LED solid on)
+- **B8 DOWN** = Performance mode (LED blinks with triggers)
+
+**Build and Flash**:
+```bash
+make clean && make && make program-dfu
+```
 
 ---
 
@@ -146,13 +283,14 @@ flowchart LR
     L2 -.->|FAIL| F2[Check:<br/>HitBudget<br/>GumbelSampler]
     L3 -.->|FAIL| F3[Check:<br/>GuardRails<br/>VoiceRelation]
     L4 -.->|FAIL| F4[Check:<br/>BrokenEffects<br/>Flavor CV]
+
+    classDef defaultStyle fill:#e6f2ff,stroke:#586e75,color:#002b36
+    classDef warningStyle fill:#f5f0e0,stroke:#586e75,color:#002b36
+    classDef errorStyle fill:#f2cccc,stroke:#586e75,color:#002b36
     
-    style L0 fill:#4a9,stroke:#333
-    style L1 fill:#4a9,stroke:#333
-    style L2 fill:#49a,stroke:#333
-    style L3 fill:#49a,stroke:#333
-    style L4 fill:#94a,stroke:#333
-    style L5 fill:#a94,stroke:#333
+    class L0,L1,L2,L3,L4 defaultStyle
+    class L5 warningStyle
+    class F0,F1,F2,F3,F4 errorStyle
 ```
 
 ---
@@ -211,37 +349,61 @@ At Level 0, the knobs don't affect the pattern. The simple 4-on-floor runs regar
 
 #### Checklist
 
-- [ ] LED blinks at regular tempo (~120 BPM = 2 Hz for quarter notes)
-- [ ] Gate Out 1 fires on every beat (4 times per bar)
-- [ ] Gate Out 2 fires on beats 2 and 4 only
-- [ ] Audio Out L holds ~5V after each anchor trigger
-- [ ] Audio Out R holds ~5V after each shimmer trigger
-- [ ] Tap B7 twice quickly → tempo speeds up
+**Switch & LED Tests**:
+- [x] B8 switch UP → LED solid on (config mode)
+- [x] B8 switch DOWN → LED blinks with triggers (performance mode)
+
+**Performance Mode (B8 DOWN)**:
+- [x] LED blinks at regular tempo (~120 BPM = 2 Hz for quarter notes)
+- [x] LED at 50% brightness when Gate Out 1 fires
+- [x] LED at 30% brightness when Gate Out 2 fires
+- [x] Gate Out 1 fires on every beat (4 times per bar)
+- [x] Gate Out 2 fires on beats 2 and 4 only
+- [x] Audio Out L holds ~5V after each anchor trigger
+- [x] Audio Out R holds ~5V after each shimmer trigger
+
+**Button Test**:
+- [x] B7 button: Hold to activate shift layer (no tap tempo)
+
+#### Hardware Testing Feedback
+- Mode switching appears to work correctly based on logs
+- LED not blinking at regular 120 Hz
+- LED brightness fluctuates but does not seem to correlate with timing of each hit
+- Gates do fire (albeit not correct timing)
+- Drum pattern seems erratic: shimmer hits when anchor does not, not detecting regular pattern.
+- Aux output (CV_OUT_1) affected by Config + K3 while gate_in_1 (clock in) unpatched (should reflect clock only regardless of setting)
+
+Recommendations:
+- remove clock-based LED blinking, only blink on hits (Gate 1 and 2)
+- Add logging for each gate out event with timestamp
+- Add logging for config mode value changes
 
 ---
 
-### Test 2: Tempo & External Clock (Level 0)
+### Test 2: External Clock & Reset (Level 0)
 
-**Goal**: Verify tap tempo and external clock sync work correctly.
+**Goal**: Verify external clock sync and reset work correctly.
 
 Same config as Test 1 (Level 0).
 
-#### Tap Tempo Test
-
-1. Tap B7 twice with ~0.5 second gap → tempo should be ~120 BPM
-2. Tap B7 twice with ~1.0 second gap → tempo should slow to ~60 BPM
-3. Tap B7 twice with ~0.25 second gap → tempo should speed to ~240 BPM
+**Note**: Tap tempo has been removed. Tempo is fixed at 120 BPM internal clock or follows external clock.
 
 #### External Clock Test
 
-1. Patch a clock source to Gate In 1
+1. Patch a clock source (16th notes) to Gate In 1
 2. Module should sync to external clock within a few pulses
-3. Stop external clock → module should return to internal clock after ~2 seconds
+3. Stop external clock → module should return to internal 120 BPM after ~2 seconds
 
 #### Reset Test
 
 1. Patch a trigger/gate to Gate In 2
 2. When gate goes high, pattern should restart from step 1
+
+#### Shift Button Test
+
+1. Hold B7 for >100ms → shift layer should activate (LED may change behavior)
+2. Release B7 → returns to normal mode
+3. Short taps on B7 do nothing (tap tempo removed)
 
 ---
 
@@ -552,13 +714,15 @@ graph TB
         F2 -->|No| FF[Tune archetypes<br/>Phase 12]
     end
     
-    style DONE fill:#4a4,stroke:#333
-    style AF fill:#f66,stroke:#333
-    style BF fill:#f66,stroke:#333
-    style CF fill:#f66,stroke:#333
-    style DF fill:#f66,stroke:#333
-    style EF fill:#f66,stroke:#333
-    style FF fill:#fa6,stroke:#333
+    classDef defaultStyle fill:#e6f2ff,stroke:#586e75,color:#002b36
+    classDef errorStyle fill:#f2cccc,stroke:#586e75,color:#002b36
+    classDef warningStyle fill:#f5f0e0,stroke:#586e75,color:#002b36
+    classDef successStyle fill:#d4f1d4,stroke:#586e75,color:#002b36
+    
+    class A1,A2,B1,B2,C1,C2,D1,D2,E1,E2,F1,F2 defaultStyle
+    class AF,BF,CF,DF,EF errorStyle
+    class FF warningStyle
+    class DONE successStyle
 ```
 
 ---
@@ -586,15 +750,18 @@ flowchart TD
     
     T6 -->|Feels wrong| FIX6[Tune archetype<br/>weights Phase 12]
     T6 -->|Yes| DONE[✓ All working!]
+
+    classDef problemStyle fill:#fae5e5,stroke:#586e75,color:#002b36
+    classDef defaultStyle fill:#e6f2ff,stroke:#586e75,color:#002b36
+    classDef errorStyle fill:#f2cccc,stroke:#586e75,color:#002b36
+    classDef warningStyle fill:#f5f0e0,stroke:#586e75,color:#002b36
+    classDef successStyle fill:#d4f1d4,stroke:#586e75,color:#002b36
     
-    style START fill:#f66
-    style DONE fill:#4a4
-    style FIX1 fill:#faa
-    style FIX2 fill:#faa
-    style FIX3 fill:#faa
-    style FIX4 fill:#faa
-    style FIX5 fill:#faa
-    style FIX6 fill:#fa6
+    class START problemStyle
+    class T1,T2,T3,T4,T5,T6 defaultStyle
+    class FIX1,FIX2,FIX3,FIX4,FIX5 errorStyle
+    class FIX6 warningStyle
+    class DONE successStyle
 ```
 
 ---
@@ -602,11 +769,17 @@ flowchart TD
 ## ✅ Completed Checklist
 
 - [x] Add DEBUG_FEATURE_LEVEL compile flag
-- [x] Add DEBUG_SIMPLE_TRIGGERS bypass
+- [x] ~~Add DEBUG_SIMPLE_TRIGGERS bypass~~ (consolidated into Level 0)
 - [x] Update default control values to musical center
 - [x] Verify build compiles with all debug levels
 - [x] Verify unit tests pass
-- [ ] **Hardware Test Level 0**: Basic clock
+- [x] Remove tap tempo (Test 0 modification - 2024-12-20)
+- [x] Simplify B7 to shift-only behavior
+- [x] Simplify LED feedback (Test 0 modification - 2024-12-20)
+- [x] Verify switch direction (UP=config, DOWN=perf)
+- [x] Refactor DEBUG_FEATURE_LEVEL to use >= pattern (2024-12-25)
+- [x] Add flag reference table to task doc (2024-12-25)
+- [x] **Hardware Test Level 0**: Basic clock (2025-12-27 - ✅ PASS)
 - [ ] **Hardware Test Level 1**: Direct archetype
 - [ ] **Hardware Test Level 2-3**: Full generation
 - [ ] **Hardware Test Level 4**: Timing effects
@@ -617,6 +790,29 @@ flowchart TD
 ---
 
 ## ⚡ Quick Start Commands
+
+### Debug Build Commands (2024-12-26)
+
+New Makefile targets for DEBUG-level logging:
+
+```bash
+# Build with DEBUG-level logging (LOG_COMPILETIME_LEVEL=1, LOG_DEFAULT_LEVEL=1)
+make build-debug
+
+# Build debug and flash to device in one command
+make program-debug
+
+# These commands automatically set:
+#   - DEBUG_FLASH=1 (debug symbols -g3, optimize for debugging -Og)
+#   - LOG_COMPILETIME_LEVEL=1 (compile DEBUG+ logs)
+#   - LOG_DEFAULT_LEVEL=1 (output DEBUG+ logs at runtime)
+#
+# Note: Uses -Og instead of -O0 to fit in 128KB flash
+```
+
+### Manual Debug Level Testing
+
+For testing specific feature levels, manually edit `inc/config.h`:
 
 ```bash
 # 1. Edit config.h to set debug level
@@ -634,6 +830,30 @@ make clean && make && make program-dfu
 make test
 ```
 
+**Note**: `make build-debug` sets log verbosity but doesn't affect `DEBUG_FEATURE_LEVEL`. Use it when you need verbose logging output alongside your chosen feature level.
+
+### Serial Monitoring (2024-12-26)
+
+New `make listen` command added for serial debugging:
+
+```bash
+# Monitor serial output from device and log to temp file
+make listen
+
+# List available USB serial ports
+make ports
+
+# Custom baud rate or log directory
+make listen BAUD=9600 LOGDIR=logs
+```
+
+**Usage**:
+- Logs are saved to `/tmp/daisy_YYYYMMDD_HHMMSS.log` by default
+- Press `Ctrl-A` then `\` then `y` to quit
+- Log file path is displayed on exit
+- Automatically detects `/dev/cu.usbmodem*` devices
+- Uses `screen + tee` for reliable capture (see `docs/chats/daisy-debugging.md`)
+
 ---
 
 ## 📝 Test Log
@@ -642,7 +862,14 @@ Use this section to record your findings:
 
 | Date | Level | Result | Notes |
 |------|-------|--------|-------|
-|      |   0   |        |       |
+| 2024-12-20 | Pre | MODIFY | Removed tap tempo, simplified B7 to shift-only. Button was erratic. |
+| 2024-12-20 | Pre | MODIFY | Simplified LED: 50% on anchor, 30% on shimmer, solid on config. |
+| 2024-12-20 | Pre | VERIFY | Switch UP=config (LED solid), DOWN=perf (LED blinks). |
+| 2024-12-20 | 0 | TESTING | Initial test after simplifications... |
+| 2024-12-25 | Pre | REFACTOR | Consolidated DEBUG_SIMPLE_TRIGGERS into Level 0. Refactored to >= pattern. |
+| 2024-12-26 | Pre | ENHANCE | Added `make build-debug` and `make program-debug` commands for DEBUG-level logging. |
+| 2024-12-26 | Pre | FIX | Renamed logging enum values (DEBUG→LOG_DEBUG, etc.) to avoid macro conflict with -DDEBUG. |
+| 2025-12-27 | 0 | ✅ PASS | All Level 0 tests passing! Fixed 3 race conditions: (1) event latch system for trigger detection, (2) increased pulse 1ms→10ms for Eurorack compatibility, (3) non-blocking ring buffer logger. Verified 4-on-floor at 120 BPM working correctly. See task 18 for details. |
 |      |   1   |        |       |
 |      |   2   |        |       |
 |      |   3   |        |       |

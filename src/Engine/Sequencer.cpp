@@ -1,5 +1,6 @@
 #include "Sequencer.h"
 #include "config.h"
+#include "../System/logging.h"
 
 #include <algorithm>
 #include <cmath>
@@ -24,8 +25,12 @@ void Sequencer::Init(float sampleRate)
 {
     sampleRate_ = sampleRate;
 
+    // Log sample rate for debugging (cast to int - nano.specs doesn't support %f)
+    LOGI("Sequencer::Init called with sampleRate=%d", static_cast<int>(sampleRate_));
+
     // Initialize internal clock (16th notes at 120 BPM = 8 Hz)
     metro_.Init(8.0f, sampleRate_);
+    LOGD("Metro initialized: freq=8 Hz, period=%d samples", static_cast<int>(sampleRate_ / 8.0f));
 
     // Initialize state
     state_.Init(sampleRate_);
@@ -181,26 +186,30 @@ std::array<float, 2> Sequencer::ProcessAudio()
 
 void Sequencer::GenerateBar()
 {
-#if defined(DEBUG_SIMPLE_TRIGGERS)
-    // DEBUG MODE: Simple 4-on-floor pattern, bypass entire generation pipeline
-    // Anchor: beats 1,2,3,4 (steps 0, 8, 16, 24)
-    // Shimmer: beats 2,4 (steps 8, 24)
-    // Aux: 8th notes
-    state_.sequencer.anchorMask = 0x01010101;    // Four-on-floor
-    state_.sequencer.shimmerMask = 0x01000100;   // Backbeat
-    state_.sequencer.auxMask = 0x55555555;       // All 8th notes
-    state_.sequencer.anchorAccentMask = 0x01000001;  // Accent on 1 and 3
-    state_.sequencer.shimmerAccentMask = 0x01000100; // Accent on 2 and 4
-    return;
-#endif
+    // =========================================================================
+    // DEBUG_FEATURE_LEVEL Progressive Enablement
+    // =========================================================================
+    // Level 0: Simple 4-on-floor pattern (clock test)
+    // Level 1+: Archetype-based patterns (no sampling)
+    // Level 2+: Hit budget with Gumbel sampling
+    // Level 3+: Guard rails and voice relationships
+    // Level 4+: Timing effects (swing/jitter)
+    // Level 5: Full production mode
+    // =========================================================================
 
-#if DEBUG_FEATURE_LEVEL == 0
-    // Level 0: Simple 4-on-floor, no generation
-    state_.sequencer.anchorMask = 0x01010101;
-    state_.sequencer.shimmerMask = 0x01000100;
-    state_.sequencer.auxMask = 0x55555555;
-    state_.sequencer.anchorAccentMask = 0x01000001;
-    state_.sequencer.shimmerAccentMask = 0x01000100;
+#if DEBUG_FEATURE_LEVEL < 1
+    // Level 0: Simple 4-on-floor pattern, bypass entire generation pipeline
+    // Use this to verify: clock runs, triggers fire, outputs work
+    // 32 steps = 8 beats at 4 steps per beat (16th note resolution)
+    // Anchor: every beat (steps 0, 4, 8, 12, 16, 20, 24, 28)
+    // Shimmer: backbeat (steps 4, 12, 20, 28 = beats 2, 4, 6, 8)
+    // Aux: 8th notes (every 2 steps)
+    state_.sequencer.anchorMask = 0x11111111;     // Every beat (0b00010001000100010001000100010001)
+    state_.sequencer.shimmerMask = 0x10101010;    // Backbeat (0b00010000000100000001000000010000)
+    state_.sequencer.auxMask = 0x55555555;        // 8th notes (unchanged)
+    state_.sequencer.anchorAccentMask = 0x01010101;  // Accent on beats 1, 3, 5, 7
+    state_.sequencer.shimmerAccentMask = 0x10101010; // Accent all backbeats
+    // NOTE: Do NOT log here - called from audio ISR!
     return;
 #endif
 
@@ -218,31 +227,37 @@ void Sequencer::GenerateBar()
     const AuxDensity auxDensity = state_.controls.auxDensity;
     const Genre genre = state_.controls.genre;
 
+    // Suppress unused variable warnings - reserved for future feature levels
+    (void)coupling;
+    (void)genre;
+
     // Get phrase progress for BUILD modifiers
     const float phraseProgress = state_.GetPhraseProgress();
     state_.controls.UpdateDerived(phraseProgress);
 
-#if DEBUG_FEATURE_LEVEL == 1
+#if DEBUG_FEATURE_LEVEL < 2
     // Level 1: Use archetype weights directly (no budget/sampling)
-    // Convert weights > 0.5 to hits
-    uint32_t anchorMask = 0;
-    uint32_t shimmerMask = 0;
-    uint32_t auxMask = 0;
-    for (int step = 0; step < patternLength && step < 32; ++step)
+    // Convert weights > threshold to hits. Use this to verify archetype blending.
     {
-        if (state_.blendedArchetype.anchorWeights[step] > 0.5f)
-            anchorMask |= (1U << step);
-        if (state_.blendedArchetype.shimmerWeights[step] > 0.5f)
-            shimmerMask |= (1U << step);
-        if (state_.blendedArchetype.auxWeights[step] > 0.4f)
-            auxMask |= (1U << step);
+        uint32_t anchorMask = 0;
+        uint32_t shimmerMask = 0;
+        uint32_t auxMask = 0;
+        for (int step = 0; step < patternLength && step < 32; ++step)
+        {
+            if (state_.blendedArchetype.anchorWeights[step] > 0.5f)
+                anchorMask |= (1U << step);
+            if (state_.blendedArchetype.shimmerWeights[step] > 0.5f)
+                shimmerMask |= (1U << step);
+            if (state_.blendedArchetype.auxWeights[step] > 0.4f)
+                auxMask |= (1U << step);
+        }
+        state_.sequencer.anchorMask = anchorMask;
+        state_.sequencer.shimmerMask = shimmerMask;
+        state_.sequencer.auxMask = auxMask;
+        state_.sequencer.anchorAccentMask = state_.blendedArchetype.anchorAccentMask;
+        state_.sequencer.shimmerAccentMask = state_.blendedArchetype.shimmerAccentMask;
+        return;
     }
-    state_.sequencer.anchorMask = anchorMask;
-    state_.sequencer.shimmerMask = shimmerMask;
-    state_.sequencer.auxMask = auxMask;
-    state_.sequencer.anchorAccentMask = state_.blendedArchetype.anchorAccentMask;
-    state_.sequencer.shimmerAccentMask = state_.blendedArchetype.shimmerAccentMask;
-    return;
 #endif
 
     // 1. Compute hit budget
@@ -336,6 +351,8 @@ void Sequencer::GenerateBar()
 void Sequencer::ProcessStep()
 {
     const int step = state_.sequencer.currentStep;
+    // NOTE: Do NOT log here - called from audio ISR!
+
     const float phraseProgress = state_.GetPhraseProgress();
     const uint32_t seed = SelectSeed(
         state_.sequencer.driftState,
@@ -708,6 +725,23 @@ bool Sequencer::IsClockHigh() const
     return clockTimer_ > 0;
 }
 
+bool Sequencer::HasPendingTrigger(int channel) const
+{
+    if (channel == 0)
+        return state_.outputs.anchorTrigger.HasPendingEvent();
+    if (channel == 1)
+        return state_.outputs.shimmerTrigger.HasPendingEvent();
+    return false;
+}
+
+void Sequencer::AcknowledgeTrigger(int channel)
+{
+    if (channel == 0)
+        state_.outputs.anchorTrigger.AcknowledgeEvent();
+    else if (channel == 1)
+        state_.outputs.shimmerTrigger.AcknowledgeEvent();
+}
+
 float Sequencer::GetSwingPercent() const
 {
     return ComputeSwing(state_.controls.flavorCV, state_.controls.energyZone);
@@ -790,16 +824,8 @@ void Sequencer::BlendArchetype()
 
 void Sequencer::ComputeTimingOffsets()
 {
-#if DEBUG_FEATURE_LEVEL < 4
-    // Levels 0-3: No timing effects, zero all offsets
-    for (int step = 0; step < kMaxSteps; ++step)
-    {
-        state_.sequencer.swingOffsets[step] = 0;
-        state_.sequencer.jitterOffsets[step] = 0;
-    }
-    return;
-#endif
-
+#if DEBUG_FEATURE_LEVEL >= 4
+    // Level 4+: Apply swing and microtiming jitter from FLAVOR CV
     const int patternLength = state_.controls.patternLength;
     const float flavor = state_.controls.flavorCV;
     const EnergyZone zone = state_.controls.energyZone;
@@ -822,6 +848,14 @@ void Sequencer::ComputeTimingOffsets()
         state_.sequencer.swingOffsets[step] = static_cast<int16_t>(swingOffset);
         state_.sequencer.jitterOffsets[step] = static_cast<int16_t>(jitterOffset);
     }
+#else
+    // Levels 0-3: No timing effects, zero all offsets
+    for (int step = 0; step < kMaxSteps; ++step)
+    {
+        state_.sequencer.swingOffsets[step] = 0;
+        state_.sequencer.jitterOffsets[step] = 0;
+    }
+#endif
 }
 
 void Sequencer::UpdateDerivedControls()
