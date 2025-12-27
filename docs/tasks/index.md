@@ -20,3 +20,4 @@
 | 15 | duopulse-v4 | DuoPulse v4: Complete architecture overhaul — 2D pattern field, hit budgets, Gumbel sampling, PUNCH/BUILD/BALANCE controls | in-progress | 2025-12-19 | 2025-12-19 | active/15-duopulse-v4.md |
 | 16 | v4-hardware-validation | DuoPulse v4 Hardware Validation & Debug — progressive feature testing, debug flags, hardware validation guide | in-progress | 2025-12-26 | 2025-12-26 | active/16-v4-hardware-validation.md |
 | 17 | runtime-logging | Runtime Logging System — compile-time + runtime configurable logging via USB serial (TRACE/DEBUG/INFO/WARN/ERROR) | completed | 2025-12-26 | 2025-12-26T18:00:00Z | completed/17-runtime-logging.md |
+| 18 | level0-debug-fixes | Level 0 Debug Fixes — correct 4-on-floor pattern masks, add gate logging, fix aux bypass | in-progress | 2025-12-26 | 2025-12-26 | active/18-level0-debug-fixes.md |

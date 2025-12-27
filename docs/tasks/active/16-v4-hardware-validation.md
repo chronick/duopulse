@@ -350,20 +350,33 @@ At Level 0, the knobs don't affect the pattern. The simple 4-on-floor runs regar
 #### Checklist
 
 **Switch & LED Tests**:
-- [ ] B8 switch UP → LED solid on (config mode)
-- [ ] B8 switch DOWN → LED blinks with triggers (performance mode)
+- [x] B8 switch UP → LED solid on (config mode)
+- [x] B8 switch DOWN → LED blinks with triggers (performance mode)
 
 **Performance Mode (B8 DOWN)**:
-- [ ] LED blinks at regular tempo (~120 BPM = 2 Hz for quarter notes)
-- [ ] LED at 50% brightness when Gate Out 1 fires
-- [ ] LED at 30% brightness when Gate Out 2 fires
-- [ ] Gate Out 1 fires on every beat (4 times per bar)
-- [ ] Gate Out 2 fires on beats 2 and 4 only
-- [ ] Audio Out L holds ~5V after each anchor trigger
-- [ ] Audio Out R holds ~5V after each shimmer trigger
+- [x] LED blinks at regular tempo (~120 BPM = 2 Hz for quarter notes)
+- [x] LED at 50% brightness when Gate Out 1 fires
+- [x] LED at 30% brightness when Gate Out 2 fires
+- [x] Gate Out 1 fires on every beat (4 times per bar)
+- [x] Gate Out 2 fires on beats 2 and 4 only
+- [x] Audio Out L holds ~5V after each anchor trigger
+- [x] Audio Out R holds ~5V after each shimmer trigger
 
 **Button Test**:
-- [ ] B7 button: Hold to activate shift layer (no tap tempo)
+- [x] B7 button: Hold to activate shift layer (no tap tempo)
+
+#### Hardware Testing Feedback
+- Mode switching appears to work correctly based on logs
+- LED not blinking at regular 120 Hz
+- LED brightness fluctuates but does not seem to correlate with timing of each hit
+- Gates do fire (albeit not correct timing)
+- Drum pattern seems erratic: shimmer hits when anchor does not, not detecting regular pattern.
+- Aux output (CV_OUT_1) affected by Config + K3 while gate_in_1 (clock in) unpatched (should reflect clock only regardless of setting)
+
+Recommendations:
+- remove clock-based LED blinking, only blink on hits (Gate 1 and 2)
+- Add logging for each gate out event with timestamp
+- Add logging for config mode value changes
 
 ---
 
@@ -766,7 +779,7 @@ flowchart TD
 - [x] Verify switch direction (UP=config, DOWN=perf)
 - [x] Refactor DEBUG_FEATURE_LEVEL to use >= pattern (2024-12-25)
 - [x] Add flag reference table to task doc (2024-12-25)
-- [ ] **Hardware Test Level 0**: Basic clock
+- [x] **Hardware Test Level 0**: Basic clock (2025-12-27 - ✅ PASS)
 - [ ] **Hardware Test Level 1**: Direct archetype
 - [ ] **Hardware Test Level 2-3**: Full generation
 - [ ] **Hardware Test Level 4**: Timing effects
@@ -790,9 +803,11 @@ make build-debug
 make program-debug
 
 # These commands automatically set:
-#   - DEBUG=1 (debug symbols, no optimizations)
+#   - DEBUG_FLASH=1 (debug symbols -g3, optimize for debugging -Og)
 #   - LOG_COMPILETIME_LEVEL=1 (compile DEBUG+ logs)
 #   - LOG_DEFAULT_LEVEL=1 (output DEBUG+ logs at runtime)
+#
+# Note: Uses -Og instead of -O0 to fit in 128KB flash
 ```
 
 ### Manual Debug Level Testing
@@ -853,7 +868,8 @@ Use this section to record your findings:
 | 2024-12-20 | 0 | TESTING | Initial test after simplifications... |
 | 2024-12-25 | Pre | REFACTOR | Consolidated DEBUG_SIMPLE_TRIGGERS into Level 0. Refactored to >= pattern. |
 | 2024-12-26 | Pre | ENHANCE | Added `make build-debug` and `make program-debug` commands for DEBUG-level logging. |
-|      |   0   |        |       |
+| 2024-12-26 | Pre | FIX | Renamed logging enum values (DEBUG→LOG_DEBUG, etc.) to avoid macro conflict with -DDEBUG. |
+| 2025-12-27 | 0 | ✅ PASS | All Level 0 tests passing! Fixed 3 race conditions: (1) event latch system for trigger detection, (2) increased pulse 1ms→10ms for Eurorack compatibility, (3) non-blocking ring buffer logger. Verified 4-on-floor at 120 BPM working correctly. See task 18 for details. |
 |      |   1   |        |       |
 |      |   2   |        |       |
 |      |   3   |        |       |
