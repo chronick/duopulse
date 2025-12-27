@@ -1,5 +1,6 @@
 #include "Sequencer.h"
 #include "config.h"
+#include "../System/logging.h"
 
 #include <algorithm>
 #include <cmath>
@@ -24,8 +25,12 @@ void Sequencer::Init(float sampleRate)
 {
     sampleRate_ = sampleRate;
 
+    // Log sample rate for debugging (cast to int - nano.specs doesn't support %f)
+    LOGI("Sequencer::Init called with sampleRate=%d", static_cast<int>(sampleRate_));
+
     // Initialize internal clock (16th notes at 120 BPM = 8 Hz)
     metro_.Init(8.0f, sampleRate_);
+    LOGD("Metro initialized: freq=8 Hz, period=%d samples", static_cast<int>(sampleRate_ / 8.0f));
 
     // Initialize state
     state_.Init(sampleRate_);
@@ -195,11 +200,16 @@ void Sequencer::GenerateBar()
 #if DEBUG_FEATURE_LEVEL < 1
     // Level 0: Simple 4-on-floor pattern, bypass entire generation pipeline
     // Use this to verify: clock runs, triggers fire, outputs work
-    state_.sequencer.anchorMask = 0x01010101;    // Four-on-floor (beats 1,2,3,4)
-    state_.sequencer.shimmerMask = 0x01000100;   // Backbeat (beats 2,4)
-    state_.sequencer.auxMask = 0x55555555;       // All 8th notes
-    state_.sequencer.anchorAccentMask = 0x01000001;  // Accent on 1 and 3
-    state_.sequencer.shimmerAccentMask = 0x01000100; // Accent on 2 and 4
+    // 32 steps = 8 beats at 4 steps per beat (16th note resolution)
+    // Anchor: every beat (steps 0, 4, 8, 12, 16, 20, 24, 28)
+    // Shimmer: backbeat (steps 4, 12, 20, 28 = beats 2, 4, 6, 8)
+    // Aux: 8th notes (every 2 steps)
+    state_.sequencer.anchorMask = 0x11111111;     // Every beat (0b00010001000100010001000100010001)
+    state_.sequencer.shimmerMask = 0x10101010;    // Backbeat (0b00010000000100000001000000010000)
+    state_.sequencer.auxMask = 0x55555555;        // 8th notes (unchanged)
+    state_.sequencer.anchorAccentMask = 0x01010101;  // Accent on beats 1, 3, 5, 7
+    state_.sequencer.shimmerAccentMask = 0x10101010; // Accent all backbeats
+    // NOTE: Do NOT log here - called from audio ISR!
     return;
 #endif
 
@@ -216,6 +226,10 @@ void Sequencer::GenerateBar()
     const VoiceCoupling coupling = state_.controls.voiceCoupling;
     const AuxDensity auxDensity = state_.controls.auxDensity;
     const Genre genre = state_.controls.genre;
+
+    // Suppress unused variable warnings - reserved for future feature levels
+    (void)coupling;
+    (void)genre;
 
     // Get phrase progress for BUILD modifiers
     const float phraseProgress = state_.GetPhraseProgress();
@@ -337,6 +351,8 @@ void Sequencer::GenerateBar()
 void Sequencer::ProcessStep()
 {
     const int step = state_.sequencer.currentStep;
+    // NOTE: Do NOT log here - called from audio ISR!
+
     const float phraseProgress = state_.GetPhraseProgress();
     const uint32_t seed = SelectSeed(
         state_.sequencer.driftState,
@@ -707,6 +723,23 @@ bool Sequencer::IsGateHigh(int channel) const
 bool Sequencer::IsClockHigh() const
 {
     return clockTimer_ > 0;
+}
+
+bool Sequencer::HasPendingTrigger(int channel) const
+{
+    if (channel == 0)
+        return state_.outputs.anchorTrigger.HasPendingEvent();
+    if (channel == 1)
+        return state_.outputs.shimmerTrigger.HasPendingEvent();
+    return false;
+}
+
+void Sequencer::AcknowledgeTrigger(int channel)
+{
+    if (channel == 0)
+        state_.outputs.anchorTrigger.AcknowledgeEvent();
+    else if (channel == 1)
+        state_.outputs.shimmerTrigger.AcknowledgeEvent();
 }
 
 float Sequencer::GetSwingPercent() const

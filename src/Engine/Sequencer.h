@@ -186,6 +186,20 @@ public:
     bool IsGateHigh(int channel) const;
     bool IsClockHigh() const;
 
+    /**
+     * Check if a trigger event is pending (latched, survives after pulse ends)
+     * Use this for reliable edge detection from main loop.
+     * @param channel 0=anchor, 1=shimmer
+     */
+    bool HasPendingTrigger(int channel) const;
+
+    /**
+     * Acknowledge a pending trigger event (clears the latch)
+     * Call this after detecting and logging the event.
+     * @param channel 0=anchor, 1=shimmer
+     */
+    void AcknowledgeTrigger(int channel);
+
     float GetBpm() const { return state_.currentBpm; }
     float GetSwingPercent() const;
     float GetBroken() const { return state_.controls.flavorCV; }
