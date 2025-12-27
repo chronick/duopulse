@@ -25,6 +25,10 @@ struct TriggerState
     /// Configured trigger duration in samples
     int triggerDurationSamples;
 
+    /// Event latch: set on Fire(), cleared by main loop via AcknowledgeEvent()
+    /// This prevents race conditions where pulse completes before main loop checks
+    bool eventPending;
+
     /**
      * Initialize trigger state
      *
@@ -35,6 +39,7 @@ struct TriggerState
         high                    = false;
         samplesRemaining        = 0;
         triggerDurationSamples  = durationSamples;
+        eventPending            = false;
     }
 
     /**
@@ -44,6 +49,7 @@ struct TriggerState
     {
         high             = true;
         samplesRemaining = triggerDurationSamples;
+        eventPending     = true;  // Latch for main loop detection
     }
 
     /**
@@ -59,6 +65,23 @@ struct TriggerState
                 high = false;
             }
         }
+    }
+
+    /**
+     * Check if an event is pending (for main loop edge detection)
+     * @return true if a trigger has fired since last acknowledgment
+     */
+    bool HasPendingEvent() const
+    {
+        return eventPending;
+    }
+
+    /**
+     * Acknowledge the pending event (call from main loop after detecting)
+     */
+    void AcknowledgeEvent()
+    {
+        eventPending = false;
     }
 
     /**
@@ -415,8 +438,9 @@ struct OutputState
      */
     void Init(float sampleRate = 48000.0f)
     {
-        // Standard trigger duration: 1ms
-        int triggerSamples = static_cast<int>(sampleRate / 1000.0f);
+        // Standard trigger duration: 10ms (matches main branch)
+        // Many Eurorack drum modules need at least 2-5ms to reliably trigger
+        int triggerSamples = static_cast<int>(sampleRate * 0.01f);  // 10ms
 
         anchorTrigger.Init(triggerSamples);
         shimmerTrigger.Init(triggerSamples);
