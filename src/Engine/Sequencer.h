@@ -229,6 +229,27 @@ public:
 
     void ForceNextStepTriggers(bool kick, bool snare, bool hh, bool kickAccent = false);
 
+    // =========================================================================
+    // Debug Getters (safe to call from main loop)
+    // =========================================================================
+
+    /** Get current anchor mask (for debug logging) */
+    uint32_t GetAnchorMask() const { return state_.sequencer.anchorMask; }
+
+    /** Get current shimmer mask (for debug logging) */
+    uint32_t GetShimmerMask() const { return state_.sequencer.shimmerMask; }
+
+    /** Get blended archetype weight at step (for debug logging) */
+    float GetBlendedAnchorWeight(int step) const {
+        return (step >= 0 && step < 32) ? state_.blendedArchetype.anchorWeights[step] : 0.0f;
+    }
+
+    /** Get current bar number (for detecting bar boundaries in main loop) */
+    int GetCurrentBar() const { return state_.sequencer.currentBar; }
+
+    /** Get current step within bar */
+    int GetCurrentStep() const { return state_.sequencer.currentStep; }
+
 private:
     // =========================================================================
     // Internal Methods
