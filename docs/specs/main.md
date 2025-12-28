@@ -364,7 +364,7 @@ BUILD = 100%: Dramatic arc. Big builds, intense fills, energy peaks.
 | Mode | Parameter | Values | Function |
 |------|-----------|--------|----------|
 | Primary | **SWING** | 0-100% | Base swing amount (combined with FLAVOR) |
-| Shift | **CLOCK DIV** | 1 / 2 / 4 / 8 | Internal clock division (ignored with ext clock) |
+| Shift | **CLOCK DIV** | ÷8 / ÷4 / ÷2 / ×1 / ×2 / ×4 / ×8 | Clock division/multiplication (applies to both internal and external clock) |
 
 #### K3: OUTPUT Domain (Signal Configuration)
 

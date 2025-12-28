@@ -314,6 +314,12 @@ private:
     bool externalClockActive_ = false;  // true = external clock controls steps, internal Metro disabled
     bool externalClockTick_ = false;    // true = external clock rising edge detected, consume on next ProcessAudio()
 
+    // Clock division/multiplication state
+    int clockPulseCounter_ = 0;         // Counts pulses for division (÷2, ÷4, ÷8)
+    uint32_t lastExternalClockTime_ = 0; // For measuring external clock interval (multiplication)
+    uint32_t externalClockInterval_ = 0; // Measured interval between pulses (in samples)
+    int multiplicationSubdivCounter_ = 0; // Counts subdivisions for multiplication
+
     // Tap tempo state
     uint32_t lastTapTime_ = 0;
 

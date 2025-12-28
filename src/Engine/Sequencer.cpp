@@ -57,6 +57,18 @@ void Sequencer::Init(float sampleRate)
     externalClockTick_ = false;
     lastTapTime_ = 0;
 
+    // Clock division/multiplication state
+    clockPulseCounter_ = 0;
+    lastExternalClockTime_ = 0;
+    externalClockInterval_ = 0;
+    multiplicationSubdivCounter_ = 0;
+
+    // Log initial clock state for debugging
+    LOGI("Clock init: div=%d, externalActive=%d, BPM=%d",
+         state_.controls.clockDivision,
+         externalClockActive_ ? 1 : 0,
+         static_cast<int>(state_.currentBpm));
+
     // Force trigger state
     forceNextTriggers_ = false;
     for (int i = 0; i < 3; ++i)
@@ -85,19 +97,64 @@ std::array<float, 2> Sequencer::ProcessAudio()
     // Handle external vs internal clock (exclusive mode - spec section 3.4)
     if (externalClockActive_)
     {
-        // External clock mode: steps advance ONLY on rising edges
+        // External clock mode: steps advance based on rising edges and clock division
         // Internal Metro is completely disabled (no parallel operation)
         if (externalClockTick_)
         {
             tick = true;
             externalClockTick_ = false;  // Consume the tick
         }
+
+        // Handle external clock multiplication: generate subdivided ticks
+        int clockDiv = state_.controls.clockDivision;
+        if (clockDiv < 0 && externalClockInterval_ > 0)
+        {
+            int multiplier = std::abs(clockDiv);
+            uint32_t subdivInterval = externalClockInterval_ / static_cast<uint32_t>(multiplier);
+
+            // Increment subdivision counter every sample
+            multiplicationSubdivCounter_++;
+
+            // Check if it's time for next subdivision tick
+            if (static_cast<uint32_t>(multiplicationSubdivCounter_) >= subdivInterval &&
+                static_cast<uint32_t>(multiplicationSubdivCounter_) < externalClockInterval_)
+            {
+                tick = true;
+                multiplicationSubdivCounter_ += subdivInterval;  // Advance to next subdivision
+            }
+        }
         // Note: No timeout logic - external clock remains active until explicitly disabled
     }
     else
     {
         // Internal clock mode: Metro drives step advancement
-        tick = metro_.Process();
+        bool metroPulse = metro_.Process();
+
+        int clockDiv = state_.controls.clockDivision;
+
+        if (clockDiv > 1)
+        {
+            // DIVISION mode: Count Metro pulses, only tick when threshold reached
+            if (metroPulse)
+            {
+                clockPulseCounter_++;
+                if (clockPulseCounter_ >= clockDiv)
+                {
+                    tick = true;
+                    clockPulseCounter_ = 0;
+                }
+            }
+        }
+        else if (clockDiv < 0)
+        {
+            // MULTIPLICATION mode: Metro frequency already multiplied in SetClockDivision()
+            tick = metroPulse;
+        }
+        else
+        {
+            // 1:1 mode: Direct pass-through
+            tick = metroPulse;
+        }
     }
 
     // Process step on clock tick
@@ -507,19 +564,53 @@ void Sequencer::TriggerExternalClock()
 {
     // Enable exclusive external clock mode (spec section 3.4)
     // - Internal Metro is disabled
-    // - Steps advance only on external clock rising edges
-    // - No timeout-based fallback
+    // - Steps advance based on external clock rising edges and clock division setting
     externalClockActive_ = true;
-    externalClockTick_ = true;  // Queue one step tick
+
+    int clockDiv = state_.controls.clockDivision;
+
+    if (clockDiv > 0)
+    {
+        // DIVISION mode (÷2, ÷4, ÷8): Count pulses, only tick when threshold reached
+        clockPulseCounter_++;
+        if (clockPulseCounter_ >= clockDiv)
+        {
+            externalClockTick_ = true;  // Queue one step tick
+            clockPulseCounter_ = 0;      // Reset counter
+        }
+    }
+    else if (clockDiv < 0)
+    {
+        // MULTIPLICATION mode (×2, ×4, ×8): Measure interval and subdivide
+        uint32_t now = stepSampleCounter_;  // Use sample counter as timestamp
+
+        if (lastExternalClockTime_ != 0)
+        {
+            // Measure interval between this pulse and last pulse
+            externalClockInterval_ = now - lastExternalClockTime_;
+
+            // Reset subdivision counter for new interval
+            multiplicationSubdivCounter_ = 0;
+        }
+
+        lastExternalClockTime_ = now;
+
+        // Always tick once on the pulse itself
+        externalClockTick_ = true;
+    }
+    else
+    {
+        // 1:1 mode: Direct pass-through
+        externalClockTick_ = true;
+    }
 }
 
 void Sequencer::DisableExternalClock()
 {
     // Restore internal clock immediately (spec section 3.4)
-    // - No delay or timeout
-    // - Metro resumes driving step advancement
     externalClockActive_ = false;
     externalClockTick_ = false;  // Clear any pending external ticks
+    clockPulseCounter_ = 0;       // Reset clock division counter
     // Note: Metro continues running, so internal clock resumes seamlessly
 }
 
@@ -633,9 +724,30 @@ void Sequencer::SetPhraseLength(int bars)
 
 void Sequencer::SetClockDivision(int div)
 {
-    if (div < 1) div = 1;
+    // Accept division (1, 2, 4, 8) and multiplication (-2, -4, -8)
+    // Clamp to valid range: ÷8 to ×8
+    if (div < -8) div = -8;
     if (div > 8) div = 8;
+    if (div == 0) div = 1;  // 0 is invalid, default to 1:1
+    // Only allow specific values: -8, -4, -2, 1, 2, 4, 8
+    if (div > 0 && div != 1 && div != 2 && div != 4 && div != 8) div = 1;
+    if (div < 0 && div != -2 && div != -4 && div != -8) div = 1;
+
     state_.controls.clockDivision = div;
+
+    // Update Metro frequency if using internal clock and multiplication
+    if (!externalClockActive_ && div < 0)
+    {
+        // Multiply internal clock frequency
+        float baseFreq = state_.currentBpm / 60.0f * 4.0f;  // 16th notes
+        metro_.SetFreq(baseFreq * std::abs(div));
+    }
+    else if (!externalClockActive_ && div > 0)
+    {
+        // Division handled by pulse counter, restore base frequency
+        float baseFreq = state_.currentBpm / 60.0f * 4.0f;
+        metro_.SetFreq(baseFreq);
+    }
 }
 
 void Sequencer::SetAuxDensity(float value)
@@ -762,7 +874,20 @@ void Sequencer::SetBpm(float bpm)
     state_.SetBpm(bpm);
 
     // Update metro frequency (16th notes = BPM * 4 / 60)
-    metro_.SetFreq(bpm / 60.0f * 4.0f);
+    // If clock multiplication is active, multiply the frequency
+    float baseFreq = bpm / 60.0f * 4.0f;
+    int clockDiv = state_.controls.clockDivision;
+
+    if (clockDiv < 0)
+    {
+        // Multiplication mode: multiply Metro frequency
+        metro_.SetFreq(baseFreq * std::abs(clockDiv));
+    }
+    else
+    {
+        // Division or 1:1 mode: use base frequency (division handled by pulse counter)
+        metro_.SetFreq(baseFreq);
+    }
 
     // Update samples per step
     samplesPerStep_ = (sampleRate_ * 60.0f) / (bpm * 4.0f);
