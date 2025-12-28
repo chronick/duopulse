@@ -75,6 +75,9 @@ struct DeferredSave {
 };
 DeferredSave deferredSave;
 
+// Debug: Track bar changes for deferred pattern logging
+int lastLoggedBar = -1;
+
 // =============================================================================
 // Non-Blocking Gate Event Logger
 // =============================================================================
@@ -867,6 +870,20 @@ int main(void)
                  static_cast<int>(controlState.energy * 100),
                  static_cast<int>(controlState.fieldX * 100),
                  static_cast<int>(controlState.fieldY * 100));
+        }
+
+        // Debug: Log pattern info on bar boundaries (deferred from audio callback)
+        int currentBar = sequencer.GetCurrentBar();
+        if (currentBar != lastLoggedBar)
+        {
+            lastLoggedBar = currentBar;
+            LOGI("PATTERN: bar=%d anc=0x%08X shm=0x%08X w0=%d w4=%d w8=%d",
+                 currentBar,
+                 sequencer.GetAnchorMask(),
+                 sequencer.GetShimmerMask(),
+                 static_cast<int>(sequencer.GetBlendedAnchorWeight(0) * 100),
+                 static_cast<int>(sequencer.GetBlendedAnchorWeight(4) * 100),
+                 static_cast<int>(sequencer.GetBlendedAnchorWeight(8) * 100));
         }
 
         System::Delay(1);
