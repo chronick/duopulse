@@ -158,7 +158,7 @@ graph TD
 | 1 | ARCHETYPE | Knob reading, archetype blending | K3 (Field X), K4 (Field Y) |
 | 2 | SAMPLING | Hit budget, density scaling | K1 (Energy), K3, K4 |
 | 3 | GUARD RAILS | Voice coupling, beat-1 anchor | K1, K3, K4 |
-| 4 | TIMING | Swing/jitter from FLAVOR CV | K1, K3, K4 + Audio In R |
+| 4 | TIMING | Swing/jitter via GENRE + SWING config | K1, K3, K4 + Config K2 + Shift K2 |
 | 5 | PRODUCTION | Full system (same as no flag) | All knobs |
 
 ### Recommended Flag Combinations
@@ -179,7 +179,7 @@ graph TD
 
 # Level 4: Timing test
 #define DEBUG_FEATURE_LEVEL 4
-// No extra flags needed - test FLAVOR CV input
+// No extra flags needed - test GENRE + SWING config (no CV)
 
 # Level 5 / Production: Remove all debug flags
 // #define DEBUG_FEATURE_LEVEL 5  // Or just comment out
@@ -730,7 +730,9 @@ Update to Level 3 and reflash:
 
 ### Test 5: Timing Effects (Level 4)
 
-**Goal**: Verify swing and microtiming work with FLAVOR CV.
+**Goal**: Verify swing and microtiming work based on GENRE and SWING config.
+
+**Note**: Audio In R (FLAVOR CV) removed in v4. Timing is now controlled by GENRE selection and SWING configuration only.
 
 #### Setup
 
@@ -738,42 +740,57 @@ Update to Level 3 and reflash:
 #define DEBUG_FEATURE_LEVEL 4
 ```
 
-#### Patching for Flavor CV
+#### Config Mode: Set Swing Amount
 
-The FLAVOR CV input is on **Audio In R** (right audio input jack):
-
-```
-                    ┌─────────────────┐
-   [Any CV source]──┤ Audio In R      │
-   (0-5V)           │ (FLAVOR CV)     │
-                    └─────────────────┘
-```
-
-Try patching:
-- A steady +5V for maximum swing
-- An LFO for evolving timing feel
-- Leave unpatched for perfectly quantized (clinical) patterns
-
-#### Timing Effect Ranges
+Flip B8 switch UP (Config Mode). Turn K2 (SWING) to test different swing amounts:
 
 ```
-FLAVOR CV Level → Timing Effect
+K2 (SWING) Position → Timing Feel
 
- 0V          1.5V         3V          4.5V        5V
-  │            │           │            │          │
-  ▼            ▼           ▼            ▼          ▼
-┌─────────────────────────────────────────────────────┐
-│ Quantized │  Light    │  Medium   │  Heavy   │ Max │
-│ (robotic) │  Swing    │  Swing    │  Jitter  │Chaos│
-└─────────────────────────────────────────────────────┘
+ CCW         25%          50%          75%        CW
+  │           │            │            │          │
+  ▼           ▼            ▼            ▼          ▼
+┌──────────────────────────────────────────────────┐
+│ Straight │  Light   │  Medium  │  Heavy   │ Max │
+│ (robotic)│  Swing   │  Swing   │  Swing   │Swing│
+│   50%    │   ~54%   │   ~58%   │   ~62%   │ 66% │
+└──────────────────────────────────────────────────┘
 ```
+
+#### Performance Mode: Test Genre Timing Profiles
+
+Flip B8 switch DOWN (Performance Mode). Hold B7 (Shift), turn K2 (GENRE):
+
+| GENRE Position | Timing Profile | Expected Feel |
+|----------------|----------------|---------------|
+| 0% (Techno) | Tight, minimal jitter | Robotic, quantized, driving |
+| 50% (Tribal) | Medium jitter, syncopated | Slightly loose, organic |
+| 100% (IDM) | Heavy jitter, displacement | "Drunk", broken, chaotic |
+
+#### Test Sequence
+
+1. **Baseline Test** (Config Mode):
+   - Set SWING=0% (CCW) → Pattern should be perfectly on-grid (clinical)
+   - Set SWING=50% (noon) → Audible shuffle/swing feel
+   - Set SWING=100% (CW) → Heavy swing, triplet feel
+
+2. **Genre Test** (Performance Mode + Shift):
+   - Set GENRE=0% (Techno) → Tight timing, minimal humanization
+   - Set GENRE=50% (Tribal) → Moderate timing variation
+   - Set GENRE=100% (IDM) → Maximum jitter, displaced steps
+
+3. **Combined Test**:
+   - SWING=70%, GENRE=IDM → Maximum chaos, "broken" feel
+   - SWING=30%, GENRE=Techno → Subtle groove, tight but musical
 
 #### Checklist
 
-- [ ] At 0V (unpatched): Pattern is perfectly on-grid (clinical)
-- [ ] At ~2.5V: Audible shuffle/swing feel
-- [ ] At 5V: Maximum humanization, some notes feel "drunk"
+- [ ] SWING knob creates audible timing difference (straight → triplet)
+- [ ] GENRE knob changes timing character (tight → loose → chaotic)
 - [ ] Swing primarily affects off-beats (the "e" and "a" subdivisions)
+- [ ] Techno genre feels quantized and driving
+- [ ] IDM genre feels humanized and broken
+- [ ] Combined SWING + GENRE creates expected interaction
 
 ---
 

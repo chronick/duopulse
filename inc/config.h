@@ -91,8 +91,9 @@
 //   - Tests: Musical rules enforced, coupling works
 //
 // Level 4: TIMING TEST
-//   - Swing and microtiming jitter from FLAVOR CV (Audio In R)
-//   - Tests: Swing audible, jitter humanizes feel
+//   - Swing and microtiming jitter based on GENRE + SWING config
+//   - Tests: Swing audible, genre timing profiles working, jitter humanizes feel
+//   - Note: Audio In R (FLAVOR CV) removed - timing is GENRE/config-based only
 //
 // Level 5: PRODUCTION MODE (default when flag removed)
 //   - All features enabled, ready for performance

@@ -43,7 +43,7 @@
 | **Clock** | Gate In 1 | External clock (if patched, enables AUX modes) |
 | **Reset** | Gate In 2 | Reset to step 0 |
 | **Fill CV** | Audio In L | Pressure-sensitive fill trigger (0-5V = intensity) |
-| **Flavor CV** | Audio In R | Timing feel override (0-5V = straight→broken) |
+| ~~**Flavor CV**~~ | ~~Audio In R~~ | ~~Removed in v4~~ (timing now controlled by GENRE + SWING config) |
 
 ### Performance Mode (Switch A) — Ergonomic Pairings
 | Knob | Domain | Primary (CV-able) | +Shift |
@@ -78,7 +78,7 @@
 DuoPulse v4 is an **opinionated drum sequencer** that prioritizes:
 
 1. **Musicality over flexibility**: Every output should be danceable/usable. No "probability soup."
-2. **Playability**: Controls map directly to musical intent. ENERGY = tension. FLAVOR = feel.
+2. **Playability**: Controls map directly to musical intent. ENERGY = tension. GENRE = feel.
 3. **Deterministic variation**: Same settings + same seed = identical output. Variation is controlled, not random.
 4. **Constraint-first generation**: Define what's *possible* (eligibility), then what's *probable* (weights).
 5. **Hit budgets over coin flips**: Guarantee density matches intent; vary placement, not count.
@@ -97,7 +97,7 @@ The sequencer is optimized for:
 | Pattern variety | Discrete, abrupt transitions | Too much variety, hard to control | 2D field with smooth morphing |
 | Musicality | Good patterns but hard to navigate | Probability can produce bad patterns | Eligibility masks + guard rails |
 | Density control | Unpredictable | Clumping/silence from coin flips | Hit budgets with weighted sampling |
-| Genre coherence | Terrain/grid mismatch | Genre emerges unpredictably | FLAVOR selects constraints; BROKEN is timing-only |
+| Genre coherence | Terrain/grid mismatch | Genre emerges unpredictably | GENRE selects timing profile; patterns use archetype grid |
 | Repeatability | No determinism | DRIFT=0 works but fragile | Seed-controlled everything |
 
 ---
@@ -111,7 +111,7 @@ The sequencer is optimized for:
 │                           CONTROL LAYER                                  │
 │                                                                          │
 │   ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐                    │
-│   │ ENERGY  │  │ FLAVOR  │  │ FIELD X │  │ FIELD Y │                    │
+│   │ ENERGY  │  │  BUILD  │  │ FIELD X │  │ FIELD Y │                    │
 │   │  (K1)   │  │  (K2)   │  │  (K3)   │  │  (K4)   │                    │
 │   └────┬────┘  └────┬────┘  └────┬────┘  └────┬────┘                    │
 │        │            │            │            │                          │
@@ -130,9 +130,9 @@ The sequencer is optimized for:
 │                                                                          │
 │  ┌────────────────┐  ┌────────────────┐  ┌────────────────┐             │
 │  │   HIT BUDGET   │  │  ELIGIBILITY   │  │  STEP WEIGHTS  │             │
-│  │ (from ENERGY   │  │     MASK       │  │ (from morph +  │             │
-│  │  + BALANCE)    │  │ (from ENERGY   │  │  FLAVOR)       │             │
-│  │                │  │  + FLAVOR)     │  │                │             │
+│  │ (from ENERGY   │  │     MASK       │  │ (from archetype│             │
+│  │  + BALANCE)    │  │ (from ENERGY)  │  │   morph)       │             │
+│  │                │  │                │  │                │             │
 │  └───────┬────────┘  └───────┬────────┘  └───────┬────────┘             │
 │          │                   │                   │                       │
 │          └───────────────────┼───────────────────┘                       │
@@ -187,7 +187,7 @@ The sequencer is optimized for:
 ### 2.2 Processing Flow Per Bar
 
 1. **Compute hit budgets** for Anchor, Shimmer, Aux based on ENERGY + BALANCE + zone
-2. **Compute eligibility mask** based on ENERGY + FLAVOR (which steps *can* fire)
+2. **Compute eligibility mask** based on ENERGY (which steps *can* fire)
 3. **Get blended weights** from pattern field based on FIELD X/Y position
 4. **Select hits via Gumbel Top-K** sampling (deterministic, seeded by DRIFT)
 5. **Apply voice relationship** (archetype-driven, suppress/boost based on voice relationship)
@@ -213,7 +213,7 @@ The sequencer is optimized for:
 | CV In 3 | CV_3 | FIELD X CV modulation |
 | CV In 4 | CV_4 | FIELD Y CV modulation |
 | Audio In L | IN_L | FILL CV input (0-5V = fill intensity, pressure-sensitive) |
-| Audio In R | IN_R | FLAVOR CV input (0-5V = straight→broken) |
+| ~~Audio In R~~ | ~~IN_R~~ | ~~Removed~~ (timing controlled by GENRE + SWING config) |
 | Gate In 1 | GATE_IN_1 | Clock input |
 | Gate In 2 | GATE_IN_2 | Reset input |
 | Gate Out 1 | GATE_OUT_1 | Anchor trigger |
@@ -243,7 +243,7 @@ Audio inputs are repurposed as CV inputs for additional control:
 | Audio Input | Function | Behavior |
 |-------------|----------|----------|
 | IN_L | **Fill CV** | Gate (>1V) triggers fill; CV level (0-5V) = fill intensity |
-| IN_R | **Flavor CV** | 0-5V maps to FLAVOR/BROKEN parameter (straight → broken) |
+| ~~IN_R~~ | ~~**Flavor CV**~~ | ~~Removed~~ (timing controlled by GENRE + SWING config) |
 
 ### 3.4 Clock and Reset Behavior [exclusive-external-clock]
 
@@ -494,7 +494,7 @@ Hit budgets guarantee density matches intent. Budget is calculated from ENERGY +
 
 ### 6.2 Eligibility Mask Computation
 
-Standard masks for 32-step patterns define which metric positions can fire based on ENERGY level and FLAVOR setting.
+Standard masks for 32-step patterns define which metric positions can fire based on ENERGY level.
 
 ### 6.3 Gumbel Top-K Selection
 
@@ -532,14 +532,16 @@ DRIFT controls pattern evolution:
 
 ### 7.1 BROKEN Stack Overview
 
-FLAVOR controls four timing layers, each bounded by energy zone:
+Timing is controlled by **GENRE** (Performance+Shift K2) and **SWING** (Config K2):
 
-| Layer | FLAVOR 0% | FLAVOR 100% | Zone Limit |
-|-------|-----------|-------------|------------|
-| **Swing** | 50% (straight) | 66% (heavy triplet) | GROOVE: max 58% |
-| **Microtiming Jitter** | ±0ms | ±12ms | GROOVE: max ±3ms |
-| **Step Displacement** | Never | 40% chance, ±2 steps | GROOVE: never |
-| **Velocity Chaos** | ±0% | ±25% | Always allowed |
+| Layer | Control | Range | Zone Limit |
+|-------|---------|-------|------------|
+| **Swing** | Config K2 (SWING) | 0-100% (straight → heavy triplet) | GENRE-dependent max |
+| **Microtiming Jitter** | GENRE-based | ±0ms (Techno) to ±12ms (IDM) | Genre profiles |
+| **Step Displacement** | GENRE-based | Never (Techno) to 40% chance (IDM) | Genre profiles |
+| **Velocity Chaos** | PUNCH parameter | ±0% to ±25% variation | Always allowed |
+
+**Note**: Audio In R (FLAVOR CV) removed in v4. Timing feel is now determined by GENRE selection and SWING config only.
 
 ### 7.2 Velocity Computation (PUNCH-driven)
 
@@ -643,7 +645,6 @@ Config changes are automatically persisted to flash with 2-second debouncing to 
 **Not Saved** (read from knobs on boot):
 - ENERGY, BUILD, FIELD X/Y (primary performance controls)
 - PUNCH, DRIFT, BALANCE (shift performance controls)
-- FLAVOR (from Audio In R)
 
 ---
 
@@ -830,8 +831,8 @@ LOGE(...) // ERROR
 
 | Test | Expected Outcome |
 |------|------------------|
-| **ENERGY=30%, FLAVOR=20%** | Steady techno groove, tight timing, predictable |
-| **ENERGY=80%, FLAVOR=50%** | Busy broken beat, fills at phrase end, loose timing |
+| **ENERGY=30%, GENRE=Techno** | Steady techno groove, tight timing, predictable |
+| **ENERGY=80%, GENRE=IDM, SWING=70%** | Busy broken beat, fills at phrase end, loose timing |
 | **DRIFT=0%** | Identical pattern every phrase |
 | **DRIFT=100%** | Varied pattern but same density feel |
 | **Field [0,0] → [2,2]** | Clear progression from minimal to chaos |
