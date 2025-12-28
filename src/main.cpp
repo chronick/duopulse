@@ -866,7 +866,7 @@ int main(void)
                  static_cast<int>(sequencer.GetBpm()),
                  clockDiv,
                  clockMode,
-                 gateIn1High ? "ACTIVE" : "internal",
+                 wasExternalClockActive ? "ACTIVE" : "internal",
                  static_cast<int>(controlState.energy * 100),
                  static_cast<int>(controlState.fieldX * 100),
                  static_cast<int>(controlState.fieldY * 100));
