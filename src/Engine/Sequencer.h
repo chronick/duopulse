@@ -94,8 +94,21 @@ public:
 
     /**
      * Process external clock pulse (rising edge)
+     *
+     * When called, enables exclusive external clock mode:
+     * - Internal Metro is completely disabled
+     * - Steps advance only on external clock rising edges
+     * - No timeout-based fallback
      */
     void TriggerExternalClock();
+
+    /**
+     * Disable external clock and restore internal Metro
+     *
+     * Called when external clock is unplugged. Immediately restores
+     * internal clock operation with no delay.
+     */
+    void DisableExternalClock();
 
     /**
      * Process tap tempo
@@ -297,10 +310,15 @@ private:
     /// Pending accent flags for delayed triggers
     bool pendingAccent_[3] = {false, false, false};
 
-    // External clock state
-    bool usingExternalClock_ = false;
-    int  externalClockTimeout_ = 0;
-    bool mustTick_ = false;
+    // External clock state (exclusive mode - see spec section 3.4)
+    bool externalClockActive_ = false;  // true = external clock controls steps, internal Metro disabled
+    bool externalClockTick_ = false;    // true = external clock rising edge detected, consume on next ProcessAudio()
+
+    // Clock division/multiplication state
+    int clockPulseCounter_ = 0;         // Counts pulses for division (÷2, ÷4, ÷8)
+    uint32_t lastExternalClockTime_ = 0; // For measuring external clock interval (multiplication)
+    uint32_t externalClockInterval_ = 0; // Measured interval between pulses (in samples)
+    int multiplicationSubdivCounter_ = 0; // Counts subdivisions for multiplication
 
     // Tap tempo state
     uint32_t lastTapTime_ = 0;

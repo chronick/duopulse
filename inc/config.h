@@ -98,7 +98,7 @@
 //   - All features enabled, ready for performance
 //   - Same as removing the DEBUG_FEATURE_LEVEL definition
 //
-#define DEBUG_FEATURE_LEVEL 0
+#define DEBUG_FEATURE_LEVEL 0  // Disable for hardware testing
 
 // -----------------------------------------------------------------------------
 // Other Debug Flags (Optional - use alongside DEBUG_FEATURE_LEVEL)
@@ -109,6 +109,12 @@
 //   - ENERGY=0.75, FIELD X/Y=0.5 (center of grid = Groovy archetype)
 // Recommended: Use with Level 2+ to test generation with known inputs
 // #define DEBUG_BASELINE_MODE 1
+
+// DEBUG_RESET_CONFIG: Ignores saved flash config and uses defaults
+// Forces fresh config on every boot - useful when testing new features
+// or when flash config is corrupted/incompatible with code changes
+// Recommended: Enable when adding new config parameters or debugging clock issues
+#define DEBUG_RESET_CONFIG 1
 
 // DEBUG_FIXED_SEED: Uses constant seed for reproducible patterns
 // Helps compare patterns across builds - same seed = same pattern

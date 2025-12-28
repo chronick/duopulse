@@ -119,7 +119,17 @@ struct GateEventBuffer {
 
 GateEventBuffer gateEventBuffer;
 
+// External clock detection state
 bool lastGateIn1 = false;
+
+// Periodic status logging (every 5 seconds)
+uint32_t lastStatusLogTime = 0;
+constexpr uint32_t kStatusLogInterval = 5000;  // 5 seconds in ms
+
+// External clock monitoring (main loop only, not in audio callback)
+uint32_t lastExternalClockTime = 0;
+bool wasExternalClockActive = false;
+constexpr uint32_t kExternalClockTimeout = 5000;  // 5 seconds
 
 // Control Mode indices for soft knob array
 enum class ControlMode : uint8_t
@@ -170,9 +180,9 @@ struct MainControlState
     float resetMode         = 0.0f; // K4: Reset behavior (PHRASE/BAR/STEP)
 
     // === Config Mode Shift (Switch UP + B7 held) ===
-    float phraseLengthKnob = 0.5f; // K1+Shift: Phrase length (1/2/4/8 bars)
-    float clockDivKnob     = 0.0f; // K2+Shift: Clock division (1/2/4/8)
-    float auxDensity       = 0.5f; // K3+Shift: AUX density (SPARSE/NORMAL/DENSE/BUSY)
+    float phraseLengthKnob = 0.5f;  // K1+Shift: Phrase length (1/2/4/8 bars)
+    float clockDivKnob     = 0.35f; // K2+Shift: Clock division (0.35 = ×1, matches BPM)
+    float auxDensity       = 0.5f;  // K3+Shift: AUX density (SPARSE/NORMAL/DENSE/BUSY)
     float voiceCoupling    = 0.0f; // K4+Shift: Voice coupling (INDEPENDENT/INTERLOCK/SHADOW)
 
     // === Mode State ===
@@ -234,11 +244,16 @@ int MapToPhraseLength(float value)
 
 int MapToClockDivision(float value)
 {
-    // 1, 2, 4, 8
-    if(value < 0.25f) return 1;
-    if(value < 0.5f) return 2;
-    if(value < 0.75f) return 4;
-    return 8;
+    // Map knob to clock division/multiplication: ÷8, ÷4, ÷2, ×1, ×2, ×4, ×8
+    // Skewed toward multiplication (60% of knob range)
+    // Negative values = multiplication, positive = division, 1 = no change
+    if(value < 0.10f) return 8;   // ÷8 (slowest) - 0-10%
+    if(value < 0.20f) return 4;   // ÷4 - 10-20%
+    if(value < 0.30f) return 2;   // ÷2 - 20-30%
+    if(value < 0.40f) return 1;   // ×1 (1:1) - 30-40%
+    if(value < 0.55f) return -2;  // ×2 - 40-55%
+    if(value < 0.75f) return -4;  // ×4 - 55-75% ← wider range
+    return -8;                     // ×8 (fastest) - 75-100%
 }
 
 } // namespace
@@ -250,12 +265,16 @@ void AudioCallback(AudioHandle::InputBuffer  in,
     // NOTE: Do NOT log from audio callback - blocks and crashes!
     for(size_t i = 0; i < size; i++)
     {
-        // Handle External Clock (Gate In 1)
+        // Handle External Clock (Gate In 1) - Exclusive mode
+        // Simple rising edge detection, no timeout in audio callback
         bool gateIn1 = patch.gate_in_1.State();
+
+        // Detect rising edge → trigger external clock
         if(gateIn1 && !lastGateIn1)
         {
             sequencer.TriggerExternalClock();
         }
+
         lastGateIn1 = gateIn1;
 
         // Process one audio sample (returns velocity values)
@@ -643,7 +662,13 @@ int main(void)
 
     // === Load Config from Flash ===
     currentConfig.Init();  // Initialize with defaults
+#if defined(DEBUG_RESET_CONFIG)
+    // DEBUG_RESET_CONFIG: Skip flash load, use defaults
+    LOGI("DEBUG_RESET_CONFIG enabled - skipping flash load, using defaults");
+    configLoaded = false;
+#else
     configLoaded = LoadConfigFromFlash(currentConfig);
+#endif
 
     if(configLoaded)
     {
@@ -682,11 +707,15 @@ int main(void)
         else if(phraseLength == 4) controlState.phraseLengthKnob = 0.625f;
         else controlState.phraseLengthKnob = 0.875f;
         
-        // Clock division: 1=0.125, 2=0.375, 4=0.625, 8=0.875
-        if(clockDivision == 1) controlState.clockDivKnob = 0.125f;
-        else if(clockDivision == 2) controlState.clockDivKnob = 0.375f;
-        else if(clockDivision == 4) controlState.clockDivKnob = 0.625f;
-        else controlState.clockDivKnob = 0.875f;
+        // Clock division: Map stored value to knob position (center of each range)
+        // Skewed mapping favors multiplication (60% of knob range)
+        if(clockDivision == 8) controlState.clockDivKnob = 0.05f;        // ÷8 (0-10%)
+        else if(clockDivision == 4) controlState.clockDivKnob = 0.15f;   // ÷4 (10-20%)
+        else if(clockDivision == 2) controlState.clockDivKnob = 0.25f;   // ÷2 (20-30%)
+        else if(clockDivision == 1) controlState.clockDivKnob = 0.35f;   // ×1 (30-40%)
+        else if(clockDivision == -2) controlState.clockDivKnob = 0.475f; // ×2 (40-55%)
+        else if(clockDivision == -4) controlState.clockDivKnob = 0.65f;  // ×4 (55-75%)
+        else controlState.clockDivKnob = 0.875f;                         // ×8 (75-100%)
         
         controlState.auxDensity = static_cast<float>(auxDensity) / 3.0f;
         controlState.voiceCoupling = static_cast<float>(voiceCoupling) / 2.0f;
@@ -772,10 +801,14 @@ int main(void)
 
     while(1)
     {
+        uint32_t now = System::GetNow();
+
         ProcessControls();
 
-        // Flush gate events from ring buffer (rate-limited: 1 per loop iteration)
-        // This prevents UART blocking while preserving true timestamps
+        // Gate event logging disabled to prevent USB blocking freeze
+        // When USB serial disconnects, LOGD blocks forever causing system hang
+        // Uncomment for debugging, but expect freeze on Ctrl-C
+#if 0
         GateEvent evt;
         if (gateEventBuffer.Pop(evt)) {
             const char* gateName = (evt.gateType == 0) ? "Anchor" : "Shimmer";
@@ -785,6 +818,7 @@ int main(void)
                  gateName,
                  evt.step);
         }
+#endif
 
         // Handle deferred flash write (safe here, outside audio callback)
         if(deferredSave.pending)
@@ -792,8 +826,47 @@ int main(void)
             SaveConfigToFlash(deferredSave.configToSave);
             autoSaveState.lastSaved = deferredSave.configToSave;
             deferredSave.pending = false;
+            // Note: Removed LOGD here to avoid USB blocking on disconnect
+        }
 
-            LOGD("Config saved to flash");
+        // External clock monitoring (main loop, not audio callback)
+        // If Gate In 1 goes high, reset timeout. If low for 5 seconds, disable external clock.
+        bool gateIn1High = patch.gate_in_1.State();
+        if (gateIn1High)
+        {
+            lastExternalClockTime = now;
+            if (!wasExternalClockActive)
+            {
+                LOGI("External clock detected");
+                wasExternalClockActive = true;
+            }
+        }
+        else if (wasExternalClockActive && (now - lastExternalClockTime) >= kExternalClockTimeout)
+        {
+            // Gate In 1 has been low for 5 seconds, disable external clock
+            sequencer.DisableExternalClock();
+            LOGI("External clock timeout - restored internal clock");
+            wasExternalClockActive = false;
+        }
+
+        // Periodic status logging for debugging (every 5 seconds)
+        if ((now - lastStatusLogTime) >= kStatusLogInterval)
+        {
+            lastStatusLogTime = now;
+            int clockDiv = MapToClockDivision(controlState.clockDivKnob);
+            const char* clockMode = "";
+            if (clockDiv < 0) clockMode = "MULTIPLY";
+            else if (clockDiv > 1) clockMode = "DIVIDE";
+            else clockMode = "1:1";
+
+            LOGI("STATUS: BPM=%d ClockDiv=%d(%s) ExtClock=%s Energy=%d%% FieldX=%d%% FieldY=%d%%",
+                 static_cast<int>(sequencer.GetBpm()),
+                 clockDiv,
+                 clockMode,
+                 gateIn1High ? "ACTIVE" : "internal",
+                 static_cast<int>(controlState.energy * 100),
+                 static_cast<int>(controlState.fieldX * 100),
+                 static_cast<int>(controlState.fieldY * 100));
         }
 
         System::Delay(1);

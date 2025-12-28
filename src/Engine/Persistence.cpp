@@ -126,7 +126,7 @@ void PackConfig(
 
     // Config Mode Shift
     config.phraseLength  = static_cast<uint8_t>(phraseLength);
-    config.clockDivision = static_cast<uint8_t>(clockDivision);
+    config.clockDivision = static_cast<uint8_t>(static_cast<int8_t>(clockDivision));  // Handle negative values
     config.auxDensity    = static_cast<uint8_t>(auxDensity);
     config.voiceCoupling = static_cast<uint8_t>(voiceCoupling);
 
@@ -191,11 +191,12 @@ void UnpackConfig(
         phraseLength = 4;  // Default
     }
 
-    clockDivision = static_cast<int>(config.clockDivision);
-    if (clockDivision != 1 && clockDivision != 2 &&
-        clockDivision != 4 && clockDivision != 8)
+    clockDivision = static_cast<int>(static_cast<int8_t>(config.clockDivision));  // Handle negative values
+    // Validate: must be one of ÷8, ÷4, ÷2, ×1, ×2, ×4, ×8
+    if (clockDivision != -8 && clockDivision != -4 && clockDivision != -2 &&
+        clockDivision != 1 && clockDivision != 2 && clockDivision != 4 && clockDivision != 8)
     {
-        clockDivision = 1;  // Default
+        clockDivision = 1;  // Default to 1:1
     }
 
     auxDensity = static_cast<AuxDensity>(config.auxDensity);
