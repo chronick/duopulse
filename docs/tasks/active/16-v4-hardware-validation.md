@@ -274,25 +274,47 @@ make clean && make && make program-dfu
 - **Removed timeout logic** - No more 2-second fallback to internal clock
 - **Implemented exclusive mode** - When external clock is patched, internal Metro is completely disabled
 - **Simplified clock state** - Replaced 3 complex variables (`usingExternalClock_`, `externalClockTimeout_`, `mustTick_`) with 2 simple flags (`externalClockActive_`, `externalClockTick_`)
-- **Added unpatch detection** - When Gate In 1 low for 1 second, restores internal clock immediately
+- ~~**Added unpatch detection** - When Gate In 1 low for 1 second, restores internal clock immediately~~ **REMOVED** (see Update 2)
+
+**Update 1 - Hardware Testing Feedback (2025-12-27)**:
+Initial implementation had 1-second unpatch timeout, which broke slow/irregular external clocks.
+
+**Update 2 - Removed Unpatch Timeout (2025-12-27)**:
+- **Removed 1-second low state detection** - External clock stays active indefinitely
+- **Allows slow, irregular, or paused clocks** - No automatic revert to internal clock
+- External clock remains active until mode switch or power cycle
+
+**Update 3 - Clock Division/Multiplication (2025-12-27)**:
+- **Implemented full clock division/multiplication**: ÷8, ÷4, ÷2, ×1, ×2, ×4, ×8
+- **Applies to BOTH internal and external clock** (not just internal)
+- **Division**: Counter-based pulse counting
+- **Multiplication**:
+  - Internal: Metro frequency multiplied
+  - External: Interval measurement + subdivision generation
+- **Updated knob mapping**: 7 positions across full range (Config+Shift K2)
 
 **Files Modified**:
-- `src/Engine/Sequencer.h` - New clock state variables, added `DisableExternalClock()` method
-- `src/Engine/Sequencer.cpp` - Simplified `ProcessAudio()` clock logic, rewrote `TriggerExternalClock()`, added `DisableExternalClock()`
-- `src/main.cpp` - Added external clock unpatch detection with 1-second counter
+- `src/Engine/Sequencer.h` - Clock state variables, clock division counters
+- `src/Engine/Sequencer.cpp` - Clock logic in `ProcessAudio()`, `TriggerExternalClock()`, `SetClockDivision()`, `SetBpm()`
+- `src/main.cpp` - Removed unpatch timeout, updated clock division knob mapping
+- `src/Engine/Persistence.cpp` - Handle negative values (multiplication) in flash
+- `docs/specs/main.md` - Updated CLOCK DIV spec (line 367)
 
 **Expected Behavior After This Change**:
-- **No external clock patched**: Internal 120 BPM clock drives sequencer
-- **External clock patched**: Steps advance ONLY on rising edges, internal Metro completely disabled
-- **External clock unplugged (1+ second low)**: Internal clock resumes immediately, seamlessly
-- **No timeout behavior**: Exclusive mode lasts until cable is physically unplugged
+- **No external clock patched**: Internal 120 BPM clock drives sequencer (respects clock div/mult)
+- **External clock patched**: Steps advance ONLY on rising edges (respects clock div/mult), internal Metro completely disabled
+- **External clock paused/slow**: Sequencer waits indefinitely, no timeout
+- **Clock division (÷2, ÷4, ÷8)**: Steps advance every N pulses
+- **Clock multiplication (×2, ×4, ×8)**: Steps advance N times per pulse
 
-**Spec Reference**: `docs/specs/main.md` section 3.4 [exclusive-external-clock]
+**Spec Reference**: `docs/specs/main.md` section 3.4 [exclusive-external-clock], section 4.5 (K2 CLOCK DIV)
 
 **Build and Flash**:
 ```bash
 make clean && make && make program-dfu
 ```
+
+**Build Status**: 122664 B / 128 KB (93.59% flash usage)
 
 ---
 
