@@ -805,7 +805,7 @@ void Sequencer::AcknowledgeTrigger(int channel)
 
 float Sequencer::GetSwingPercent() const
 {
-    return ComputeSwing(state_.controls.flavorCV, state_.controls.energyZone);
+    return ComputeSwing(state_.controls.swing, state_.controls.energyZone);
 }
 
 void Sequencer::SetBpm(float bpm)
@@ -898,21 +898,22 @@ void Sequencer::BlendArchetype()
 
 void Sequencer::ComputeTimingOffsets()
 {
-    // Apply swing and microtiming jitter from FLAVOR CV
+    // Apply swing from config and microtiming jitter from FLAVOR CV
     const int patternLength = state_.controls.patternLength;
-    const float flavor = state_.controls.flavorCV;
+    const float swing = state_.controls.swing;      // Config K2: base swing amount
+    const float flavor = state_.controls.flavorCV;  // Audio In R: jitter modulation
     const EnergyZone zone = state_.controls.energyZone;
     const uint32_t seed = state_.sequencer.driftState.phraseSeed;
 
-    // Compute swing amount
-    float swingAmount = ComputeSwing(flavor, zone);
+    // Compute swing amount from config (not flavorCV)
+    float swingAmount = ComputeSwing(swing, zone);
 
     for (int step = 0; step < patternLength && step < kMaxSteps; ++step)
     {
         // Swing offset (only affects odd steps)
         float swingOffset = ApplySwingToStep(step, swingAmount, samplesPerStep_);
 
-        // Microtiming jitter
+        // Microtiming jitter (still uses flavorCV for humanization)
         float jitterOffset = ComputeMicrotimingOffset(
             flavor, zone, sampleRate_, seed, step
         );

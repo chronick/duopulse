@@ -181,5 +181,33 @@ inline int QuantizeClockDivision(float value)
     return 8;
 }
 
+/**
+ * Map a 0-1 knob value to clock division/multiplication
+ *
+ * Returns a value representing clock rate modification:
+ * - Positive values (2, 4, 8): divide clock (slower)
+ * - Value of 1: no change (1:1)
+ * - Negative values (-2, -4, -8): multiply clock (faster)
+ *
+ * The mapping is centered at ×1 (42-58% range) per spec Test 7F.
+ *
+ * @param value Knob value (0.0 to 1.0)
+ * @return Clock division/multiplication factor:
+ *         8 = ÷8 (slowest), 4 = ÷4, 2 = ÷2, 1 = ×1, -2 = ×2, -4 = ×4, -8 = ×8 (fastest)
+ */
+inline int MapClockDivision(float value)
+{
+    // Map knob to clock division/multiplication: ÷8, ÷4, ÷2, ×1, ×2, ×4, ×8
+    // Centered at ×1 (42-58% range) per spec Test 7F
+    // Negative values = multiplication, positive = division, 1 = no change
+    if (value < 0.14f) return 8;   // ÷8 (slowest) - 0-14%
+    if (value < 0.28f) return 4;   // ÷4 - 14-28%
+    if (value < 0.42f) return 2;   // ÷2 - 28-42%
+    if (value < 0.58f) return 1;   // ×1 (1:1) - 42-58% ← CENTERED
+    if (value < 0.72f) return -2;  // ×2 - 58-72%
+    if (value < 0.86f) return -4;  // ×4 - 72-86%
+    return -8;                      // ×8 (fastest) - 86-100%
+}
+
 } // namespace daisysp_idm_grids
 

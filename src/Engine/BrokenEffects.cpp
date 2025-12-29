@@ -258,13 +258,13 @@ float GetMaxJitterMsForZone(EnergyZone zone)
     }
 }
 
-float ComputeSwing(float flavor, EnergyZone zone)
+float ComputeSwing(float swing, EnergyZone zone)
 {
-    // Clamp flavor to valid range
-    flavor = Clamp(flavor, 0.0f, 1.0f);
+    // Clamp swing config to valid range
+    swing = Clamp(swing, 0.0f, 1.0f);
 
-    // Base swing scales with flavor: 50% (straight) to 66% (heavy triplet)
-    float baseSwing = 0.50f + flavor * 0.16f;
+    // Base swing scales with config: 50% (straight) to 66% (heavy triplet)
+    float baseSwing = 0.50f + swing * 0.16f;
 
     // Apply zone limit
     float maxSwing = GetMaxSwingForZone(zone);

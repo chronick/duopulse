@@ -40,6 +40,15 @@ From Task 20 Level 3 logs, typical anchor masks observed:
 - Shimmer patterns often minimal (`0x00000100`, `0x01000100`)
 - Weights cluster around 85-95% at beat positions (little differentiation)
 
+### Testing Mode Clarification (2025-12-28)
+When testing anchor/shimmer variation, note the different control locations:
+- **Balance** (shimmer hit count): Performance Mode + Shift + K4
+- **Voice Coupling** (relationship mode): Config Mode + Shift + K4
+
+Code review confirms both parameters ARE working correctly. The perceived "lack of variation" is due to:
+1. Balance only scales shimmer from 30%→100% of anchor (1→4 hits at typical energy)
+2. Voice coupling modes work but SHADOW produces a predictable delayed copy
+
 ---
 
 ## Areas to Investigate
@@ -93,15 +102,33 @@ Guard rails may be:
 - Should rules be configurable or softer?
 
 ### 5. Voice Relationships
-**File**: `src/Engine/VoiceRelation.h`, `VoiceRelation.cpp`
+**File**: `src/Engine/VoiceRelation.h`, `VoiceRelation.cpp`, `HitBudget.cpp`
 
-Coupling between anchor/shimmer may:
-- Be too tight, reducing independence
-- Force shimmer to always follow anchor
+#### Issue 5a: Balance Effect Too Subtle
+The BALANCE parameter (Performance+Shift K4) controls shimmer hit budget as a ratio of anchor budget:
+- `shimmerRatio = 0.3 + balance * 0.7`
+- At balance=0.0: shimmer gets 30% of anchor hits
+- At balance=1.0: shimmer gets 100% of anchor hits
+
+**Problem**: At typical GROOVE energy (anchor=4 hits), this only produces 1→4 shimmer hits. The 3-hit difference per bar is audibly subtle.
+
+**Potential Fixes**:
+1. Allow shimmer budget to exceed anchor (balance=1.0 → 150% of anchor)
+2. Add independent shimmer density control
+3. Increase base anchor budget so shimmer has more room to scale
+
+#### Issue 5b: Voice Coupling Modes Work But May Need Tuning
+VoiceCoupling (Config+Shift K4) correctly applies:
+- INDEPENDENT: Both patterns fire as generated
+- INTERLOCK: `shimmerMask &= ~anchorMask` (no overlap)
+- SHADOW: `shimmerMask = ShiftMaskLeft(anchorMask, 1)` (delayed copy)
+
+**Verified Working**: Code review confirms modes are applied in `ApplyVoiceRelationship()`.
 
 **Questions**:
 - What coupling creates interesting interplay?
 - Should shimmer have more autonomy?
+- Is SHADOW mode too "locked in" (same pattern, just shifted)?
 
 ### 6. Genre Field Design
 **File**: `src/Engine/PatternField.h`, `PatternField.cpp`

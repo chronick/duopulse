@@ -12,16 +12,33 @@ using Catch::Approx;
 // v4 Zone-Bounded Swing Tests
 // =============================================================================
 
-TEST_CASE("ComputeSwing scales with flavor", "[timing][swing]")
+TEST_CASE("ComputeSwing scales with swing config parameter", "[timing][swing][config]")
 {
-    // At flavor = 0, swing should be 50% (straight)
+    // At swing = 0, swing should be 50% (straight)
     REQUIRE(ComputeSwing(0.0f, EnergyZone::PEAK) == Approx(0.50f).margin(0.01f));
 
-    // At flavor = 1, swing should be 66% (triplet feel) in PEAK zone
+    // At swing = 1, swing should be 66% (triplet feel) in PEAK zone
     REQUIRE(ComputeSwing(1.0f, EnergyZone::PEAK) == Approx(0.66f).margin(0.01f));
 
-    // At flavor = 0.5, swing should be ~58%
+    // At swing = 0.5, swing should be ~58%
     REQUIRE(ComputeSwing(0.5f, EnergyZone::PEAK) == Approx(0.58f).margin(0.01f));
+}
+
+TEST_CASE("ComputeSwing uses swing config, not flavorCV", "[timing][swing][config][regression]")
+{
+    // This test documents the bug fix from Modification 0.6:
+    // ComputeSwing was incorrectly using flavorCV instead of swing config.
+    // The first parameter is now explicitly the swing CONFIG value (Config K2).
+
+    // Verify the full range mapping:
+    // Config K2 at 0% (CCW) -> 50% swing (straight)
+    REQUIRE(ComputeSwing(0.0f, EnergyZone::PEAK) == Approx(0.50f).margin(0.001f));
+
+    // Config K2 at 50% (noon) -> 58% swing (shuffle)
+    REQUIRE(ComputeSwing(0.5f, EnergyZone::PEAK) == Approx(0.58f).margin(0.001f));
+
+    // Config K2 at 100% (CW) -> 66% swing (heavy triplet)
+    REQUIRE(ComputeSwing(1.0f, EnergyZone::PEAK) == Approx(0.66f).margin(0.001f));
 }
 
 TEST_CASE("ComputeSwing is bounded by energy zone", "[timing][swing]")

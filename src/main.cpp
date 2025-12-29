@@ -176,7 +176,7 @@ struct MainControlState
 
     // === Config Mode Shift (Switch UP + B7 held) ===
     float phraseLengthKnob = 0.5f;  // K1+Shift: Phrase length (1/2/4/8 bars)
-    float clockDivKnob     = 0.35f; // K2+Shift: Clock division (0.35 = ×1, matches BPM)
+    float clockDivKnob     = 0.5f;  // K2+Shift: Clock division (center = ×1, normal speed)
     float auxDensity       = 0.5f;  // K3+Shift: AUX density (SPARSE/NORMAL/DENSE/BUSY)
     float voiceCoupling    = 0.0f; // K4+Shift: Voice coupling (INDEPENDENT/INTERLOCK/SHADOW)
 
@@ -237,19 +237,8 @@ int MapToPhraseLength(float value)
     return 8;
 }
 
-int MapToClockDivision(float value)
-{
-    // Map knob to clock division/multiplication: ÷8, ÷4, ÷2, ×1, ×2, ×4, ×8
-    // Skewed toward multiplication (60% of knob range)
-    // Negative values = multiplication, positive = division, 1 = no change
-    if(value < 0.10f) return 8;   // ÷8 (slowest) - 0-10%
-    if(value < 0.20f) return 4;   // ÷4 - 10-20%
-    if(value < 0.30f) return 2;   // ÷2 - 20-30%
-    if(value < 0.40f) return 1;   // ×1 (1:1) - 30-40%
-    if(value < 0.55f) return -2;  // ×2 - 40-55%
-    if(value < 0.75f) return -4;  // ×4 - 55-75% ← wider range
-    return -8;                     // ×8 (fastest) - 75-100%
-}
+// MapToClockDivision moved to ControlUtils.h as MapClockDivision
+// for testability (see Modification 0.5 in task 16)
 
 } // namespace
 
@@ -295,7 +284,7 @@ void AudioCallback(AudioHandle::InputBuffer  in,
                 GetAuxModeFromValue(controlState.auxMode),
                 GetResetModeFromValue(controlState.resetMode),
                 MapToPhraseLength(controlState.phraseLengthKnob),
-                MapToClockDivision(controlState.clockDivKnob),
+                MapClockDivision(controlState.clockDivKnob),
                 GetAuxDensityFromValue(controlState.auxDensity),
                 GetVoiceCouplingFromValue(controlState.voiceCoupling),
                 GetGenreFromValue(controlState.genre),
@@ -521,7 +510,7 @@ void ProcessControls()
 
     // Config Shift
     sequencer.SetPhraseLength(MapToPhraseLength(controlState.phraseLengthKnob));
-    sequencer.SetClockDivision(MapToClockDivision(controlState.clockDivKnob));
+    sequencer.SetClockDivision(MapClockDivision(controlState.clockDivKnob));
     sequencer.SetAuxDensity(controlState.auxDensity);
     sequencer.SetVoiceCoupling(controlState.voiceCoupling);
 
@@ -599,23 +588,21 @@ void ProcessControls()
     patch.WriteCvOut(patch_sm::CV_OUT_2, ledVoltage);
 
     // === AUX Output (CV_OUT_1) ===
-    float auxVoltage = 0.0f;
-
-    // Mode-dependent output (HAT trigger, FILL_GATE, PHRASE_CV ramp, or EVENT trigger)
+    // Mode-dependent output: HAT/EVENT use aux trigger, FILL_GATE/PHRASE_CV use phrase state
     const auto& phrasePos = sequencer.GetPhrasePosition();
     AuxMode currentAuxMode = GetAuxModeFromValue(controlState.auxMode);
+    float auxVoltage = 0.0f;
 
     switch(currentAuxMode)
     {
         case AuxMode::HAT:
         case AuxMode::EVENT:
-            // Trigger output - use clock high as proxy for now
-            // Real implementation uses aux hit mask from sequencer
-            auxVoltage = sequencer.IsClockHigh() ? 5.0f : 0.0f;
+            // Trigger output from aux hit mask (3rd voice pattern)
+            auxVoltage = sequencer.IsAuxHigh() ? 5.0f : 0.0f;
             break;
 
         case AuxMode::FILL_GATE:
-            // Gate high during fill zones
+            // Gate high during fill zones (last 12.5% of phrase)
             auxVoltage = phrasePos.isFillZone ? 5.0f : 0.0f;
             break;
 
@@ -625,7 +612,6 @@ void ProcessControls()
             break;
 
         default:
-            // COUNT or unknown - default to 0V
             auxVoltage = 0.0f;
             break;
     }
@@ -692,14 +678,14 @@ int main(void)
         else controlState.phraseLengthKnob = 0.875f;
         
         // Clock division: Map stored value to knob position (center of each range)
-        // Skewed mapping favors multiplication (60% of knob range)
-        if(clockDivision == 8) controlState.clockDivKnob = 0.05f;        // ÷8 (0-10%)
-        else if(clockDivision == 4) controlState.clockDivKnob = 0.15f;   // ÷4 (10-20%)
-        else if(clockDivision == 2) controlState.clockDivKnob = 0.25f;   // ÷2 (20-30%)
-        else if(clockDivision == 1) controlState.clockDivKnob = 0.35f;   // ×1 (30-40%)
-        else if(clockDivision == -2) controlState.clockDivKnob = 0.475f; // ×2 (40-55%)
-        else if(clockDivision == -4) controlState.clockDivKnob = 0.65f;  // ×4 (55-75%)
-        else controlState.clockDivKnob = 0.875f;                         // ×8 (75-100%)
+        // Centered mapping: ×1 at 42-58% (knob center)
+        if(clockDivision == 8) controlState.clockDivKnob = 0.07f;        // ÷8 (0-14%)
+        else if(clockDivision == 4) controlState.clockDivKnob = 0.21f;   // ÷4 (14-28%)
+        else if(clockDivision == 2) controlState.clockDivKnob = 0.35f;   // ÷2 (28-42%)
+        else if(clockDivision == 1) controlState.clockDivKnob = 0.50f;   // ×1 (42-58%) ← CENTER
+        else if(clockDivision == -2) controlState.clockDivKnob = 0.65f;  // ×2 (58-72%)
+        else if(clockDivision == -4) controlState.clockDivKnob = 0.79f;  // ×4 (72-86%)
+        else controlState.clockDivKnob = 0.93f;                          // ×8 (86-100%)
         
         controlState.auxDensity = static_cast<float>(auxDensity) / 3.0f;
         controlState.voiceCoupling = static_cast<float>(voiceCoupling) / 2.0f;
@@ -837,7 +823,7 @@ int main(void)
         if ((now - lastStatusLogTime) >= kStatusLogInterval)
         {
             lastStatusLogTime = now;
-            int clockDiv = MapToClockDivision(controlState.clockDivKnob);
+            int clockDiv = MapClockDivision(controlState.clockDivKnob);
             const char* clockMode = "";
             if (clockDiv < 0) clockMode = "MULTIPLY";
             else if (clockDiv > 1) clockMode = "DIVIDE";

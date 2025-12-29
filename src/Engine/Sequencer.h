@@ -250,6 +250,12 @@ public:
     /** Get current step within bar */
     int GetCurrentStep() const { return state_.sequencer.currentStep; }
 
+    /** Get AUX output voltage (0-5V, mode-dependent) */
+    float GetAuxVoltage() const { return state_.outputs.aux.GetVoltage(); }
+
+    /** Check if AUX trigger is high (for HAT/EVENT modes) */
+    bool IsAuxHigh() const { return state_.outputs.aux.trigger.high; }
+
 private:
     // =========================================================================
     // Internal Methods

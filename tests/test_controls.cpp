@@ -204,6 +204,69 @@ TEST_CASE("Discrete Parameter Quantization", "[ControlUtils][Quantize]")
 }
 
 // =============================================================================
+// Clock Division Mapping Tests (Modification 0.5 - Bug Fix)
+// =============================================================================
+
+TEST_CASE("MapClockDivision centered at 1:1", "[ControlUtils][ClockDiv][regression]")
+{
+    // This test documents the bug fix from Modification 0.5:
+    // Clock division was previously centered incorrectly (×1 at 30-40%).
+    // Now ×1 is centered at 42-58% per spec Test 7F.
+
+    SECTION("×1 (no change) in center range 42-58%")
+    {
+        // The center of the knob should produce 1:1 (no division/multiplication)
+        REQUIRE(MapClockDivision(0.42f) == 1);
+        REQUIRE(MapClockDivision(0.50f) == 1);  // Center of knob
+        REQUIRE(MapClockDivision(0.57f) == 1);
+    }
+
+    SECTION("Division (slower) on left side")
+    {
+        // Left of center = divide (slower playback)
+        REQUIRE(MapClockDivision(0.0f) == 8);   // ÷8 (slowest)
+        REQUIRE(MapClockDivision(0.07f) == 8);
+        REQUIRE(MapClockDivision(0.14f) == 4);  // ÷4
+        REQUIRE(MapClockDivision(0.21f) == 4);
+        REQUIRE(MapClockDivision(0.28f) == 2);  // ÷2
+        REQUIRE(MapClockDivision(0.35f) == 2);
+    }
+
+    SECTION("Multiplication (faster) on right side")
+    {
+        // Right of center = multiply (faster playback)
+        REQUIRE(MapClockDivision(0.58f) == -2);  // ×2
+        REQUIRE(MapClockDivision(0.65f) == -2);
+        REQUIRE(MapClockDivision(0.72f) == -4);  // ×4
+        REQUIRE(MapClockDivision(0.79f) == -4);
+        REQUIRE(MapClockDivision(0.86f) == -8);  // ×8 (fastest)
+        REQUIRE(MapClockDivision(1.0f) == -8);
+    }
+
+    SECTION("Symmetry around center")
+    {
+        // Verify approximately symmetric ranges around 0.5
+        // ÷8 range: 0.00-0.14 (14%)
+        // ÷4 range: 0.14-0.28 (14%)
+        // ÷2 range: 0.28-0.42 (14%)
+        // ×1 range: 0.42-0.58 (16%) - slightly wider for stability
+        // ×2 range: 0.58-0.72 (14%)
+        // ×4 range: 0.72-0.86 (14%)
+        // ×8 range: 0.86-1.00 (14%)
+
+        // Boundaries
+        REQUIRE(MapClockDivision(0.13f) == 8);   // Just under ÷4 threshold
+        REQUIRE(MapClockDivision(0.14f) == 4);   // At ÷4 threshold
+        REQUIRE(MapClockDivision(0.27f) == 4);   // Just under ÷2 threshold
+        REQUIRE(MapClockDivision(0.28f) == 2);   // At ÷2 threshold
+        REQUIRE(MapClockDivision(0.41f) == 2);   // Just under ×1 threshold
+        REQUIRE(MapClockDivision(0.42f) == 1);   // At ×1 threshold
+        REQUIRE(MapClockDivision(0.57f) == 1);   // Just under ×2 threshold
+        REQUIRE(MapClockDivision(0.58f) == -2);  // At ×2 threshold
+    }
+}
+
+// =============================================================================
 // Button Gesture Tests
 // =============================================================================
 

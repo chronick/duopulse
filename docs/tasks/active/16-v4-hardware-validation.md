@@ -351,6 +351,75 @@ make clean && make && make program-dfu
 
 ---
 
+### Modification 0.5: Config Mode Fixes (2025-12-28)
+
+**Problem**: Two config mode issues found during Test 7:
+1. Clock division control was inverted (slow in center, fast at extremes)
+2. AUX output not responding to mode changes (HAT/EVENT modes using wrong signal)
+
+**Root Causes**:
+1. `MapToClockDivision()` had ×1 at 30-40% range instead of centered at 42-58%
+2. AUX output was using `IsClockHigh()` (internal clock pulse) instead of `IsAuxHigh()` (aux trigger from pattern)
+
+**Changes Made**:
+1. **Clock Division Mapping** (`src/main.cpp`):
+   - Re-centered mapping: ×1 now at 42-58% (knob center)
+   - Updated default `clockDivKnob` from 0.35 to 0.5
+   - Updated flash restore mapping to match new ranges
+
+2. **AUX Output** (`src/main.cpp`, `src/Engine/Sequencer.h`):
+   - Added `IsAuxHigh()` method to Sequencer
+   - Added `GetAuxVoltage()` method for mode-independent output
+   - HAT/EVENT modes now use `IsAuxHigh()` (actual aux trigger state)
+
+**Files Modified**:
+- `src/main.cpp` - Clock division mapping, flash restore, AUX output
+- `src/Engine/Sequencer.h` - Added `GetAuxVoltage()` and `IsAuxHigh()` methods
+
+**Build Status**: 129164 B / 128 KB (98.54% flash usage)
+
+**Expected Behavior After This Change**:
+- Clock division: CCW=÷8 (slowest), Center=×1 (normal), CW=×8 (fastest)
+- AUX output HAT/EVENT modes fire triggers from aux pattern (not clock)
+- AUX output FILL_GATE/PHRASE_CV modes work as before
+
+**Build and Flash**:
+```bash
+make clean && make && make program-dfu
+```
+
+---
+
+### Modification 0.6: Swing Config Bug Fix (2025-12-29)
+
+**Problem**: Swing knob (Config K2) value was stored but never used! The `ComputeSwing()` function was using `flavorCV` (Audio In R) instead of the swing config parameter.
+
+**Root Cause**: Original v4 design used Flavor CV for all timing effects. When FLAVOR CV was removed in v4, the swing config knob was added but `ComputeSwing()` was never updated to use it.
+
+**Changes Made**:
+- `src/Engine/BrokenEffects.h` - Updated `ComputeSwing()` signature and docs
+- `src/Engine/BrokenEffects.cpp` - `ComputeSwing()` now uses swing config parameter
+- `src/Engine/Sequencer.cpp` - `ComputeTimingOffsets()` passes swing config instead of flavorCV
+- `src/Engine/Sequencer.cpp` - `GetSwingPercent()` now uses swing config
+
+**Other Config Params Verified Working**:
+- ✅ Pattern Length (K1) - used in generation, phrase tracking
+- ✅ AUX Mode (K3) - sets aux output behavior
+- ✅ Reset Mode (K4) - controls reset behavior (PHRASE/BAR/STEP)
+- ✅ Phrase Length (Shift K1) - controls phrase duration
+- ✅ Clock Division (Shift K2) - already fixed in 0.5
+- ✅ AUX Density (Shift K3) - multiplies aux hit budget
+- ✅ Voice Coupling (Shift K4) - verified in musicality analysis
+
+**Build Status**: 129164 B / 128 KB (98.54% flash usage)
+
+**Build and Flash**:
+```bash
+make clean && make && make program-dfu
+```
+
+---
+
 ## 🧪 Part 1: Hardware Testing
 
 ### Test Flow Overview
@@ -1228,3 +1297,5 @@ Use this section to record your findings:
 | 2025-12-28 | 5 | ⏳ TEST | Level 4-5 appear to work apart from config mode. Added comprehensive Test 7 for config validation. |
 | 2025-12-28 | Config | 📝 ADDED | Added Test 7: comprehensive config mode validation (8 sub-tests: pattern length, swing, aux mode, reset mode, phrase length, clock div, aux density, voice coupling, persistence). |
 | 2025-12-28 | Pre | 🧹 CLEANUP | Removed all DEBUG_FEATURE_LEVEL flags and related debug flags (DEBUG_BASELINE_MODE, DEBUG_FIXED_SEED, DEBUG_RESET_CONFIG, DEBUG_LOG_MASKS). Production firmware now runs full feature set (Level 5 behavior). Build: 129KB/128KB (98.56%). |
+| 2025-12-28 | Config | 🔧 FIX | Fixed 2 config mode issues: (1) Clock division mapping re-centered (×1 now at 42-58%), (2) AUX output HAT/EVENT modes now use aux trigger pattern instead of clock pulse. Build: 129KB/128KB (98.54%). |
+| 2025-12-29 | Config | 🐛 FIX | **SWING CONFIG BUG**: Swing knob (Config K2) value was stored but never used! `ComputeSwing()` was using flavorCV instead of swing config. Fixed to use swing config for base swing amount, flavorCV still used for jitter. All other config params verified working. |

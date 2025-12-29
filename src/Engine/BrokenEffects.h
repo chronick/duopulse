@@ -153,18 +153,18 @@ float GetVelocityVariationRange(float broken);
 // =============================================================================
 
 /**
- * Compute zone-bounded swing amount from FLAVOR parameter.
+ * Compute zone-bounded swing amount from SWING config parameter.
  *
- * Swing scales with FLAVOR but is bounded by energy zone:
+ * Swing is set by config knob, bounded by energy zone:
  * - MINIMAL/GROOVE zones: max 58% (tight timing)
  * - BUILD zone: max 62%
  * - PEAK zone: max 66% (full triplet swing allowed)
  *
- * @param flavor FLAVOR parameter (0.0-1.0, controls timing feel)
+ * @param swing SWING config parameter (0.0-1.0, 0=straight 50%, 1=triplet 66%)
  * @param zone Current energy zone
  * @return Swing amount (0.50 = straight, 0.66 = max lazy triplet)
  */
-float ComputeSwing(float flavor, EnergyZone zone);
+float ComputeSwing(float swing, EnergyZone zone);
 
 /**
  * Apply swing offset to a step's timing.
