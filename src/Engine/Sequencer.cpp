@@ -239,33 +239,6 @@ std::array<float, 2> Sequencer::ProcessAudio()
 
 void Sequencer::GenerateBar()
 {
-    // =========================================================================
-    // DEBUG_FEATURE_LEVEL Progressive Enablement
-    // =========================================================================
-    // Level 0: Simple 4-on-floor pattern (clock test)
-    // Level 1+: Archetype-based patterns (no sampling)
-    // Level 2+: Hit budget with Gumbel sampling
-    // Level 3+: Guard rails and voice relationships
-    // Level 4+: Timing effects (swing/jitter)
-    // Level 5: Full production mode
-    // =========================================================================
-
-#if DEBUG_FEATURE_LEVEL < 1
-    // Level 0: Simple 4-on-floor pattern, bypass entire generation pipeline
-    // Use this to verify: clock runs, triggers fire, outputs work
-    // 32 steps = 8 beats at 4 steps per beat (16th note resolution)
-    // Anchor: every beat (steps 0, 4, 8, 12, 16, 20, 24, 28)
-    // Shimmer: backbeat (steps 4, 12, 20, 28 = beats 2, 4, 6, 8)
-    // Aux: 8th notes (every 2 steps)
-    state_.sequencer.anchorMask = 0x11111111;     // Every beat (0b00010001000100010001000100010001)
-    state_.sequencer.shimmerMask = 0x10101010;    // Backbeat (0b00010000000100000001000000010000)
-    state_.sequencer.auxMask = 0x55555555;        // 8th notes (unchanged)
-    state_.sequencer.anchorAccentMask = 0x01010101;  // Accent on beats 1, 3, 5, 7
-    state_.sequencer.shimmerAccentMask = 0x10101010; // Accent all backbeats
-    // NOTE: Do NOT log here - called from audio ISR!
-    return;
-#endif
-
     // Get effective control values (with CV modulation)
     const float energy = state_.controls.GetEffectiveEnergy();
     const float balance = state_.controls.balance;
@@ -288,31 +261,6 @@ void Sequencer::GenerateBar()
     const float phraseProgress = state_.GetPhraseProgress();
     state_.controls.UpdateDerived(phraseProgress);
 
-#if DEBUG_FEATURE_LEVEL < 2
-    // Level 1: Use archetype weights directly (no budget/sampling)
-    // Convert weights > threshold to hits. Use this to verify archetype blending.
-    {
-        uint32_t anchorMask = 0;
-        uint32_t shimmerMask = 0;
-        uint32_t auxMask = 0;
-        for (int step = 0; step < patternLength && step < 32; ++step)
-        {
-            if (state_.blendedArchetype.anchorWeights[step] > 0.5f)
-                anchorMask |= (1U << step);
-            if (state_.blendedArchetype.shimmerWeights[step] > 0.5f)
-                shimmerMask |= (1U << step);
-            if (state_.blendedArchetype.auxWeights[step] > 0.4f)
-                auxMask |= (1U << step);
-        }
-        state_.sequencer.anchorMask = anchorMask;
-        state_.sequencer.shimmerMask = shimmerMask;
-        state_.sequencer.auxMask = auxMask;
-        state_.sequencer.anchorAccentMask = state_.blendedArchetype.anchorAccentMask;
-        state_.sequencer.shimmerAccentMask = state_.blendedArchetype.shimmerAccentMask;
-        return;
-    }
-#endif
-
     // 1. Compute hit budget
     BarBudget budget;
     ComputeBarBudget(
@@ -332,13 +280,9 @@ void Sequencer::GenerateBar()
     }
 
     // 2. Select seeds for generation
-#if defined(DEBUG_FIXED_SEED)
-    const uint32_t seed = 0x12345678;  // Fixed seed for reproducibility
-#else
     const uint32_t seed = SelectSeed(
         state_.sequencer.driftState, drift, 0, patternLength
     );
-#endif
 
     // 3. Generate anchor hits
     uint32_t anchorMask = SelectHitsGumbelTopK(
@@ -360,7 +304,6 @@ void Sequencer::GenerateBar()
         GetMinSpacingForZone(zone)
     );
 
-#if DEBUG_FEATURE_LEVEL >= 3
     // 5. Apply voice relationship
     ApplyVoiceRelationship(anchorMask, shimmerMask, coupling, patternLength);
 
@@ -374,7 +317,6 @@ void Sequencer::GenerateBar()
 
     // 7. Hard guard rails
     ApplyHardGuardRails(anchorMask, shimmerMask, zone, genre, patternLength);
-#endif
 
     // 8. Generate aux hits
     uint32_t auxMask = SelectHitsGumbelTopK(
@@ -386,10 +328,8 @@ void Sequencer::GenerateBar()
         0  // No spacing constraint for aux
     );
 
-#if DEBUG_FEATURE_LEVEL >= 3
     // Apply aux voice relationship
     ApplyAuxRelationship(anchorMask, shimmerMask, auxMask, coupling, patternLength);
-#endif
 
     // 9. Store hit masks in sequencer state
     state_.sequencer.anchorMask = anchorMask;
@@ -958,8 +898,7 @@ void Sequencer::BlendArchetype()
 
 void Sequencer::ComputeTimingOffsets()
 {
-#if DEBUG_FEATURE_LEVEL >= 4
-    // Level 4+: Apply swing and microtiming jitter from FLAVOR CV
+    // Apply swing and microtiming jitter from FLAVOR CV
     const int patternLength = state_.controls.patternLength;
     const float flavor = state_.controls.flavorCV;
     const EnergyZone zone = state_.controls.energyZone;
@@ -982,14 +921,6 @@ void Sequencer::ComputeTimingOffsets()
         state_.sequencer.swingOffsets[step] = static_cast<int16_t>(swingOffset);
         state_.sequencer.jitterOffsets[step] = static_cast<int16_t>(jitterOffset);
     }
-#else
-    // Levels 0-3: No timing effects, zero all offsets
-    for (int step = 0; step < kMaxSteps; ++step)
-    {
-        state_.sequencer.swingOffsets[step] = 0;
-        state_.sequencer.jitterOffsets[step] = 0;
-    }
-#endif
 }
 
 void Sequencer::UpdateDerivedControls()

@@ -156,19 +156,11 @@ struct MainControlState
     // === Performance Mode Primary (Switch DOWN, no shift) ===
     // CV-modulatable via CV1-CV4
     // NOTE: Defaults tuned for immediate musical results on power-up
-#if defined(DEBUG_BASELINE_MODE)
-    // Debug baseline: Active "groovy" center position
-    float energy = 0.75f; // K1: Hit density - BUILD zone for active patterns
-    float build  = 0.3f;  // K2: Phrase arc - moderate phrase development
-    float fieldX = 0.5f;  // K3: Syncopation axis - center = Groovy archetype
-    float fieldY = 0.5f;  // K4: Complexity axis - center = Groovy archetype
-#else
     // Production defaults: Musical starting point (not sparse minimal)
     float energy = 0.6f;  // K1: Hit density - mid-GROOVE zone
     float build  = 0.0f;  // K2: Phrase arc (0=flat, 1=dramatic build)
     float fieldX = 0.5f;  // K3: Center position = Groovy archetype
     float fieldY = 0.33f; // K4: Between minimal and driving = solid groove
-#endif
 
     // === Performance Mode Shift (Switch DOWN + B7 held) ===
     float punch   = 0.5f; // K1+Shift: Velocity dynamics (0=flat, 1=punchy)
@@ -609,11 +601,7 @@ void ProcessControls()
     // === AUX Output (CV_OUT_1) ===
     float auxVoltage = 0.0f;
 
-#if DEBUG_FEATURE_LEVEL < 1
-    // Level 0: Fixed clock output, ignore config mode settings
-    auxVoltage = sequencer.IsClockHigh() ? 5.0f : 0.0f;
-#else
-    // Level 1+: Mode-dependent output (HAT trigger, FILL_GATE, PHRASE_CV ramp, or EVENT trigger)
+    // Mode-dependent output (HAT trigger, FILL_GATE, PHRASE_CV ramp, or EVENT trigger)
     const auto& phrasePos = sequencer.GetPhrasePosition();
     AuxMode currentAuxMode = GetAuxModeFromValue(controlState.auxMode);
 
@@ -641,7 +629,6 @@ void ProcessControls()
             auxVoltage = 0.0f;
             break;
     }
-#endif
 
     patch.WriteCvOut(patch_sm::CV_OUT_1, auxVoltage);
 }
@@ -665,13 +652,7 @@ int main(void)
 
     // === Load Config from Flash ===
     currentConfig.Init();  // Initialize with defaults
-#if defined(DEBUG_RESET_CONFIG)
-    // DEBUG_RESET_CONFIG: Skip flash load, use defaults
-    LOGI("DEBUG_RESET_CONFIG enabled - skipping flash load, using defaults");
-    configLoaded = false;
-#else
     configLoaded = LoadConfigFromFlash(currentConfig);
-#endif
 
     if(configLoaded)
     {

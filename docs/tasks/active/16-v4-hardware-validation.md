@@ -150,6 +150,8 @@ graph TD
 
 ## 🎚️ Debug Flag Reference
 
+**NOTE (2025-12-28)**: All debug flags have been removed from the codebase (see Modification 0.4). Production firmware now runs the full feature set (former Level 5 behavior). The information below is kept for historical reference.
+
 ### DEBUG_FEATURE_LEVEL Quick Reference
 
 | Level | Name | What It Tests | Knobs Active |
@@ -315,6 +317,37 @@ make clean && make && make program-dfu
 ```
 
 **Build Status**: 122664 B / 128 KB (93.59% flash usage)
+
+---
+
+### Modification 0.4: Remove Debug Flags (2025-12-28)
+
+**Problem**: Hardware validation complete through Level 3. Debug flags (DEBUG_FEATURE_LEVEL, DEBUG_BASELINE_MODE, DEBUG_FIXED_SEED, DEBUG_RESET_CONFIG) no longer needed for production firmware.
+
+**Changes Made**:
+- **Removed all DEBUG_FEATURE_LEVEL conditionals** - Production code now runs all features (Level 5 behavior)
+- **Removed DEBUG_BASELINE_MODE** - Production defaults retained (energy=0.6, fieldX=0.5, fieldY=0.33)
+- **Removed DEBUG_FIXED_SEED** - Uses random seed generation for pattern variation
+- **Removed DEBUG_RESET_CONFIG** - Flash config loading enabled
+- **Removed DEBUG_LOG_MASKS** - Definition only, was not used in code
+
+**Files Modified**:
+- `inc/config.h` - Removed all debug flag definitions and documentation
+- `src/main.cpp` - Removed DEBUG_FEATURE_LEVEL (AUX output), DEBUG_BASELINE_MODE (control defaults), DEBUG_RESET_CONFIG (flash load)
+- `src/Engine/Sequencer.cpp` - Removed DEBUG_FEATURE_LEVEL (Levels 0-4 bypasses), DEBUG_FIXED_SEED (seed selection)
+
+**Build Status**: 129180 B / 128 KB (98.56% flash usage) - Compiles successfully
+
+**Expected Behavior After This Change**:
+- Full production feature set enabled (archetype blending, hit budget, guard rails, timing effects)
+- Pattern variation via random seed generation
+- Musical defaults on power-up (GROOVE zone, Groovy archetype)
+- Flash config persistence enabled
+
+**Build and Flash**:
+```bash
+make clean && make && make program-dfu
+```
 
 ---
 
@@ -1194,3 +1227,4 @@ Use this section to record your findings:
 | 2025-12-28 | 4 | ✅ PASS | Levels 2-3 reconfirmed working correctly. No issues observed during extended testing. |
 | 2025-12-28 | 5 | ⏳ TEST | Level 4-5 appear to work apart from config mode. Added comprehensive Test 7 for config validation. |
 | 2025-12-28 | Config | 📝 ADDED | Added Test 7: comprehensive config mode validation (8 sub-tests: pattern length, swing, aux mode, reset mode, phrase length, clock div, aux density, voice coupling, persistence). |
+| 2025-12-28 | Pre | 🧹 CLEANUP | Removed all DEBUG_FEATURE_LEVEL flags and related debug flags (DEBUG_BASELINE_MODE, DEBUG_FIXED_SEED, DEBUG_RESET_CONFIG, DEBUG_LOG_MASKS). Production firmware now runs full feature set (Level 5 behavior). Build: 129KB/128KB (98.56%). |
