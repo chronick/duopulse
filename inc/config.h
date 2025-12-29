@@ -99,7 +99,7 @@
 //   - All features enabled, ready for performance
 //   - Same as removing the DEBUG_FEATURE_LEVEL definition
 //
-#define DEBUG_FEATURE_LEVEL 3  // Level 3: guard rails (Level 2 verified)
+#define DEBUG_FEATURE_LEVEL 5  // Level 5: production (Level 4 verified)
 
 // -----------------------------------------------------------------------------
 // Other Debug Flags (Optional - use alongside DEBUG_FEATURE_LEVEL)

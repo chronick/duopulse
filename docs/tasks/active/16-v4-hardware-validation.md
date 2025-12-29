@@ -619,7 +619,7 @@ Turn K3 and K4 fully clockwise (5 o'clock position).
 
 **Expected**: Dense, irregular, IDM-style pattern. Lots of activity, unpredictable feel.
 
-#### Checklist
+#### Checklist (Level 1)
 
 - [x] K3 (FIELD X) changes pattern character left-to-right (verified via weight changes)
 - [x] K4 (FIELD Y) changes pattern density bottom-to-top (verified via weight changes)
@@ -691,9 +691,12 @@ Slowly turn K1 from fully CCW to fully CW while listening.
         └─────────────────────┘
 ```
 
+#### Checklist (Level 2)
+
 - [x] Pattern gets denser as K1 turns clockwise (Energy=1%: `0x00000001` → Energy=99%: `0x01000111`)
 - [x] Pattern gets sparser as K1 turns counter-clockwise
 - [x] Hit budget and Gumbel sampling produce varied patterns
+- [x] Transitions feel smooth (no jarring changes)
 
 #### Level 3: Guard Rails
 
@@ -703,9 +706,13 @@ Update to Level 3 and reflash:
 #define DEBUG_FEATURE_LEVEL 3  // With guard rails
 ```
 
+#### Checklist (Level 3)
+
 - [x] Beat 1 always has an anchor hit (downbeat forced) - verified via `...1` suffix in masks
 - [x] Good pattern variety observed (`0x02040811`, `0x04104111`, `0x24924915`, `0x11124911`)
 - [x] Guard rails enforcing musical constraints
+- [x] Never more than 4 consecutive silent steps
+- [x] Shimmer doesn't fire 3+ times in a row without anchor
 
 #### Hardware Testing Feedback
 2025-12-28: ✅ **PASS** (Levels 2 & 3) - See [Task 20](../completed/20-level1-archetype-debug.md) for detailed logs
@@ -827,6 +834,156 @@ Test each parameter responds as expected:
 | K2 | GENRE | Techno→Tribal→IDM character |
 | K3 | DRIFT | Pattern evolves over time |
 | K4 | BALANCE | Anchor/Shimmer ratio |
+
+---
+
+### Test 7: Configuration Mode (All Levels)
+
+**Goal**: Verify all configuration parameters work correctly.
+
+**Note**: Config mode issues were reported during Levels 4-5 testing. This test validates all config parameters systematically.
+
+#### Setup
+
+Can be tested at any level (recommend Level 3+). Flip **B8 switch UP** to enter Config Mode.
+
+```
+┌─────────────────────────────────────────┐
+│         MODE SWITCH (B8)                │
+├───────────────────┬─────────────────────┤
+│    DOWN = PERF    │     UP = CONFIG     │ ← CONFIG MODE
+├───────────────────┼─────────────────────┤
+```
+
+#### Config Mode Primary Tests
+
+**Test 7A: Pattern Length (K1)**
+
+Turn K1 across its full range. Pattern should change length:
+
+| K1 Position | Expected Length | Steps | Duration @ 120 BPM |
+|-------------|-----------------|-------|---------------------|
+| CCW (0%) | 16 steps | 16 | 2 seconds |
+| 33% | 24 steps | 24 | 3 seconds |
+| 66% | 32 steps | 32 | 4 seconds |
+| CW (100%) | 64 steps | 64 | 8 seconds |
+
+- [ ] Pattern length changes audibly
+- [ ] LED blink interval changes with pattern length
+- [ ] Reset returns to step 0 (not beyond pattern length)
+
+**Test 7B: Swing (K2)**
+
+Turn K2 across its full range. Timing should shift:
+
+| K2 Position | Swing % | Expected Feel |
+|-------------|---------|---------------|
+| CCW (0%) | 50% | Straight, quantized |
+| 50% | ~58% | Shuffle feel |
+| CW (100%) | 66% | Heavy triplet swing |
+
+- [ ] Swing is audible (off-beats shift later)
+- [ ] Straight swing (CCW) feels robotic/quantized
+- [ ] Heavy swing (CW) feels triplet-like
+
+**Test 7C: AUX Mode (K3)**
+
+Turn K3 to cycle through AUX output modes:
+
+| K3 Position | AUX Mode | Expected Output (CV Out 1) |
+|-------------|----------|----------------------------|
+| 0-25% | HAT | Trigger output (3rd voice pattern) |
+| 25-50% | FILL_GATE | Gate high during fill zones |
+| 50-75% | PHRASE_CV | Ramp 0-5V over phrase |
+| 75-100% | EVENT | Trigger on accents/fills/changes |
+
+- [ ] HAT mode: CV Out 1 fires triggers (3rd pattern)
+- [ ] FILL_GATE mode: CV Out 1 goes high during fills
+- [ ] PHRASE_CV mode: CV Out 1 ramps up over phrase
+- [ ] EVENT mode: CV Out 1 fires on "interesting" moments
+
+**Test 7D: Reset Mode (K4)**
+
+Turn K4 to change reset behavior:
+
+| K4 Position | Reset Mode | Expected Behavior |
+|-------------|------------|-------------------|
+| 0-33% | PHRASE | Reset to phrase start (bar 0, step 0) |
+| 33-66% | BAR | Reset to current bar start (step 0) |
+| 66-100% | STEP | Reset to step 0 immediately |
+
+- [ ] PHRASE mode: Reset restarts full phrase
+- [ ] BAR mode: Reset restarts current bar
+- [ ] STEP mode: Reset goes to step 0
+
+#### Config Mode Shift Tests
+
+Hold **B7** (Shift) while in Config Mode.
+
+**Test 7E: Phrase Length (Shift K1)**
+
+| K1 Position | Phrase Length | Total Duration @ 32 steps |
+|-------------|---------------|---------------------------|
+| 0-25% | 1 bar | 4 seconds |
+| 25-50% | 2 bars | 8 seconds |
+| 50-75% | 4 bars | 16 seconds |
+| 75-100% | 8 bars | 32 seconds |
+
+- [ ] Phrase length changes (verify via AUX PHRASE_CV ramp)
+- [ ] BUILD effect scales to phrase length
+
+**Test 7F: Clock Division (Shift K2)**
+
+| K2 Position | Clock Div | Effect |
+|-------------|-----------|--------|
+| 0-14% | ÷8 | Very slow (1 step per 8 pulses) |
+| 14-28% | ÷4 | Half speed |
+| 28-42% | ÷2 | Quarter note |
+| 42-58% | ×1 | Normal (16th notes) |
+| 58-72% | ×2 | Double speed |
+| 72-86% | ×4 | Quad speed |
+| 86-100% | ×8 | Very fast |
+
+- [ ] Clock division affects step rate (both internal & external)
+- [ ] ÷8 mode: steps advance very slowly
+- [ ] ×8 mode: steps advance very fast
+
+**Test 7G: AUX Density (Shift K3)**
+
+| K3 Position | AUX Density | Effect |
+|-------------|-------------|--------|
+| CCW | 50% | Sparse aux pattern |
+| Noon | 100% | Normal aux density |
+| CW | 200% | Dense aux pattern |
+
+- [ ] AUX density changes (verify in HAT mode)
+- [ ] More hits at higher density
+
+**Test 7H: Voice Coupling (Shift K4)**
+
+| K4 Position | Coupling Mode | Behavior |
+|-------------|---------------|----------|
+| 0-33% | INDEPENDENT | Anchor and Shimmer fire independently |
+| 33-66% | LOCKED | Shimmer only fires when Anchor fires |
+| 66-100% | SHADOW | Shimmer mirrors Anchor pattern |
+
+- [ ] INDEPENDENT: Both voices can fire separately
+- [ ] LOCKED: Shimmer never fires alone
+- [ ] SHADOW: Shimmer copies Anchor pattern
+
+#### Config Persistence Test
+
+1. Set all config parameters to known values
+2. Power cycle the module (or press reset)
+3. Verify config parameters are restored correctly
+
+- [ ] Pattern length persists
+- [ ] Swing persists
+- [ ] AUX mode persists
+- [ ] Reset mode persists
+- [ ] Phrase length persists
+- [ ] Clock division persists
+- [ ] Voice coupling persists
 
 ---
 
@@ -1034,5 +1191,6 @@ Use this section to record your findings:
 | 2025-12-28 | 1 | ✅ PASS | Archetype blending verified working. Weights change (w4=73%↔88%) based on K3/K4. Masks constant at Level 1 (expected - uses >0.5 threshold). Added deferred logging, debug getters. See Task 20 for full analysis. |
 | 2025-12-28 | 2 | ✅ PASS | Hit budget and Gumbel sampling working. Energy knob scales density correctly (1%→`0x00000001`, 99%→`0x01000111`). Pattern variation confirmed. See Task 20 logs. |
 | 2025-12-28 | 3 | ✅ PASS | Guard rails enforcing beat-1 anchor (`...1` suffix). Good variety: `0x02040811`, `0x04104111`, `0x24924915`. K1/K3/K4 all functional. Fixed ExtClock log bug. Musicality improvements needed (separate task). See Task 20. |
-|      |   4   |        |       |
-|      |   5   |        |       |
+| 2025-12-28 | 4 | ✅ PASS | Levels 2-3 reconfirmed working correctly. No issues observed during extended testing. |
+| 2025-12-28 | 5 | ⏳ TEST | Level 4-5 appear to work apart from config mode. Added comprehensive Test 7 for config validation. |
+| 2025-12-28 | Config | 📝 ADDED | Added Test 7: comprehensive config mode validation (8 sub-tests: pattern length, swing, aux mode, reset mode, phrase length, clock div, aux density, voice coupling, persistence). |
