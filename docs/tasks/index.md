@@ -27,3 +27,4 @@
 | 22 | control-simplification | Control Simplification — remove reset mode, auto-derive phrase, extend balance range, simplify coupling | ready | 2025-12-29 | 2025-12-30 | active/22-control-simplification.md |
 | 23 | immediate-field-updates | Immediate Field Updates — Field X/Y changes should update pattern immediately without waiting for reset | pending | 2025-12-29 | 2025-12-29 | active/23-immediate-field-updates.md |
 | 24 | power-on-behavior | Power-On Behavior — define boot defaults, reset to musical defaults on power cycle, read performance knobs on startup | pending | 2025-12-29 | 2025-12-30 | active/24-power-on-behavior.md |
+| 25 | voice-control-redesign | VOICE Control Redesign — merge balance + coupling into single 0-100% control (anchor solo → shimmer solo) | backlog | 2025-12-30 | 2025-12-30 | backlog/25-voice-control-redesign.md |
