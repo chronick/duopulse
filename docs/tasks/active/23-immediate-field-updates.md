@@ -1,0 +1,109 @@
+# Task 23: Immediate Field Updates
+
+**Status**: PENDING
+**Branch**: TBD
+**Parent Task**: Task 16 (Hardware Validation)
+
+---
+
+## Problem Statement
+
+During Level 5 hardware testing (Task 16 Test 6), user reported that Field X and Y knobs (K3/K4) only affect the pattern after a reset. The user expects to hear pattern changes immediately when turning these knobs.
+
+### User Feedback (from Task 16)
+> "Changing Field X and Y only appears to change the pattern after pattern reset. I want to be able to hear changes immediately after turning X and Y, and have the pattern continue with the new field settings."
+
+---
+
+## Current Behavior
+
+Pattern generation occurs:
+1. At phrase/bar boundaries
+2. After reset trigger
+3. When BUILD causes regeneration
+
+Field X/Y position is sampled at generation time, so mid-bar changes aren't reflected until next generation.
+
+---
+
+## Desired Behavior
+
+When Field X/Y changes significantly:
+1. Pattern should update within a short time (next beat or half-bar)
+2. Transition should feel smooth (not jarring mid-beat)
+3. Should not cause audio glitches or timing issues
+
+---
+
+## Implementation Options
+
+### Option A: Regenerate on Knob Change
+- Detect significant knob movement (e.g., >10% change)
+- Trigger pattern regeneration at next beat boundary
+- Pros: Immediate feedback
+- Cons: May feel unstable if knobs are noisy
+
+### Option B: Continuous Blending
+- Always blend between current and target pattern
+- Smooth interpolation over N steps
+- Pros: Smooth transitions
+- Cons: More complex, may feel "laggy"
+
+### Option C: Faster Generation Cycle
+- Reduce generation interval from full bar to half-bar or beat
+- Always uses current knob position
+- Pros: Simple, consistent behavior
+- Cons: Less rhythmic stability
+
+### Option D: "Performance Mode" Regeneration
+- Only regenerate on knob change in performance mode
+- Config mode changes wait for boundary
+- Pros: Expected behavior for live performance
+- Cons: Inconsistent between modes
+
+---
+
+## Recommended Approach
+
+**Option A** with debouncing:
+1. Track previous Field X/Y values
+2. If change > threshold (e.g., 0.1 or 10%), set regeneration flag
+3. At next beat-1 boundary, regenerate pattern
+4. Reset change tracking after regeneration
+
+This balances immediate feedback with rhythmic stability.
+
+---
+
+## Implementation Tasks
+
+- [ ] Add knob change detection for Field X/Y
+- [ ] Add regeneration trigger flag
+- [ ] Modify generation scheduling to check flag at beat boundaries
+- [ ] Add debounce/threshold to prevent noise-triggered regeneration
+- [ ] Test on hardware for responsive feel
+- [ ] Verify no audio glitches during regeneration
+
+---
+
+## Files to Modify
+
+- `src/main.cpp` - Knob change detection
+- `src/Engine/Sequencer.cpp` - Generation scheduling
+- `src/Engine/GenerationPipeline.cpp` - May need updates
+
+---
+
+## Success Criteria
+
+- [ ] Turning Field X/Y immediately (within 1 beat) changes pattern character
+- [ ] Transitions are smooth, not jarring
+- [ ] No audio glitches or timing issues
+- [ ] Noisy knobs don't cause constant regeneration
+- [ ] Performance feels responsive and musical
+
+---
+
+## Notes
+
+This change may interact with BUILD (K2) which also affects regeneration timing. Need to ensure both work together sensibly.

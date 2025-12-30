@@ -1,7 +1,7 @@
 # Task 16: DuoPulse v4 Hardware Validation & Debug
 
-**Status**: IN PROGRESS  
-**Branch**: `feature/duopulse-v4`  
+**Status**: COMPLETED
+**Branch**: `task/16-v4-hardware-validation`  
 **Spec Reference**: docs/specs/main.md sections 4-11
 
 ---
@@ -901,6 +901,15 @@ Flip B8 switch DOWN (Performance Mode). Hold B7 (Shift), turn K2 (GENRE):
 - [ ] IDM genre feels humanized and broken
 - [ ] Combined SWING + GENRE creates expected interaction
 
+#### Feedback
+- GENRE knob appears to affect beats somewhat in the intended direction (tight -> loose). Not quite IDM-chaotic, but good enough for now.
+- SWING knob does not feel like it affects timing very much by contrast.
+
+It may be working but its hard to distinguish some timing offsets, it may be too subtle.
+We don't want to overdo it though and want it to remain well-configured for music applications
+
+For later: we may want to free up SWING for something else and leave GENRE to be the only factor affecting microtiming.
+
 ---
 
 ### Test 6: Full Production Mode (Level 5)
@@ -936,6 +945,9 @@ Test each parameter responds as expected:
 | K2 | GENRE | Techno→Tribal→IDM character |
 | K3 | DRIFT | Pattern evolves over time |
 | K4 | BALANCE | Anchor/Shimmer ratio |
+
+#### Feedback
+- Changing Field X and Y only appears to change the pattern after pattern reset. I want to be able to hear changes immediately after turning X and Y, and have the pattern continue with the new field settings.
 
 ---
 
@@ -974,6 +986,9 @@ Turn K1 across its full range. Pattern should change length:
 - [ ] LED blink interval changes with pattern length
 - [ ] Reset returns to step 0 (not beyond pattern length)
 
+##### Test 7A Feedback:
+- turning the knob appears to change pattern, but when turning fully 100%, we expect a long pattern with variation, but, the latter half of the patterns are blank entrely. This behavior is consistent even when changing other settings. Pattern lengths feel not very musical either.
+
 **Test 7B: Swing (K2)**
 
 Turn K2 across its full range. Timing should shift:
@@ -988,6 +1003,9 @@ Turn K2 across its full range. Timing should shift:
 - [ ] Straight swing (CCW) feels robotic/quantized
 - [ ] Heavy swing (CW) feels triplet-like
 
+##### Test 7B Feedback:
+- As mentioned before, swing does not appear to change timings very much by perception. It may be just my perception, so just double check implementation and how it works with Genre. I'd expect SWING to act as a modifier against the existing swing settings in GENRE, from 0x to 2x of GENRE swing.
+
 **Test 7C: AUX Mode (K3)**
 
 Turn K3 to cycle through AUX output modes:
@@ -999,10 +1017,13 @@ Turn K3 to cycle through AUX output modes:
 | 50-75% | PHRASE_CV | Ramp 0-5V over phrase |
 | 75-100% | EVENT | Trigger on accents/fills/changes |
 
-- [ ] HAT mode: CV Out 1 fires triggers (3rd pattern)
-- [ ] FILL_GATE mode: CV Out 1 goes high during fills
-- [ ] PHRASE_CV mode: CV Out 1 ramps up over phrase
-- [ ] EVENT mode: CV Out 1 fires on "interesting" moments
+- [x] HAT mode: CV Out 1 fires triggers (3rd pattern)
+- [x] FILL_GATE mode: CV Out 1 goes high during fills
+- [x] PHRASE_CV mode: CV Out 1 ramps up over phrase
+- [x] EVENT mode: CV Out 1 fires on "interesting" moments
+
+#### Test 7C Feedback:
+- Overall the config modes appear to work correctly. May want some musicality tweaks to these events, and we may want to define "interesting" events more concretely in the future.
 
 **Test 7D: Reset Mode (K4)**
 
@@ -1017,6 +1038,10 @@ Turn K4 to change reset behavior:
 - [ ] PHRASE mode: Reset restarts full phrase
 - [ ] BAR mode: Reset restarts current bar
 - [ ] STEP mode: Reset goes to step 0
+
+##### Test 7D Feedback:
+- Not sure this setting is necessary after going through it, I'm ok removing it and freeing up a config space.
+Reset can move default to step 0, but keep the code.
 
 #### Config Mode Shift Tests
 
@@ -1034,6 +1059,9 @@ Hold **B7** (Shift) while in Config Mode.
 - [ ] Phrase length changes (verify via AUX PHRASE_CV ramp)
 - [ ] BUILD effect scales to phrase length
 
+#### Test 7E Feedback:
+- Not sure how phrase length and pattern length interact, I think they can be consolidated
+
 **Test 7F: Clock Division (Shift K2)**
 
 | K2 Position | Clock Div | Effect |
@@ -1046,9 +1074,12 @@ Hold **B7** (Shift) while in Config Mode.
 | 72-86% | ×4 | Quad speed |
 | 86-100% | ×8 | Very fast |
 
-- [ ] Clock division affects step rate (both internal & external)
-- [ ] ÷8 mode: steps advance very slowly
-- [ ] ×8 mode: steps advance very fast
+- [x] Clock division affects step rate (both internal & external)
+- [x] ÷8 mode: steps advance very slowly
+- [x] ×8 mode: steps advance very fast
+
+#### Test 7F Feedback:
+- Clock division appears to work well. May not need full range, and may benefit from global triplet in the grand scheme of things.
 
 **Test 7G: AUX Density (Shift K3)**
 
@@ -1058,8 +1089,11 @@ Hold **B7** (Shift) while in Config Mode.
 | Noon | 100% | Normal aux density |
 | CW | 200% | Dense aux pattern |
 
-- [ ] AUX density changes (verify in HAT mode)
-- [ ] More hits at higher density
+- [x] AUX density changes (verify in HAT mode)
+- [x] More hits at higher density
+
+#### Test 7G Feedback:
+- Appears to work correctly. Patterns feel reasonably musical and well configured, good job! Whatever modifications we make, lets keep this relationship in general.
 
 **Test 7H: Voice Coupling (Shift K4)**
 
@@ -1069,9 +1103,13 @@ Hold **B7** (Shift) while in Config Mode.
 | 33-66% | LOCKED | Shimmer only fires when Anchor fires |
 | 66-100% | SHADOW | Shimmer mirrors Anchor pattern |
 
-- [ ] INDEPENDENT: Both voices can fire separately
-- [ ] LOCKED: Shimmer never fires alone
-- [ ] SHADOW: Shimmer copies Anchor pattern
+- [x] INDEPENDENT: Both voices can fire separately
+- [~] LOCKED: Shimmer never fires alone
+- [x] SHADOW: Shimmer copies Anchor pattern
+
+#### Test 7H Feedback:
+- Low and high values appear to work correctly, not sure about LOCKED, as trigs are not technically 1:1.
+- Would appreciate a rethink of this setting, could it be combined with Anchor/Shimmer balance?
 
 #### Config Persistence Test
 
@@ -1086,6 +1124,9 @@ Hold **B7** (Shift) while in Config Mode.
 - [ ] Phrase length persists
 - [ ] Clock division persists
 - [ ] Voice coupling persists
+
+#### Config Persistence Feedback:
+- Settings do not appear to persist after power cycle. Lets defer power cycling behavior to new task. I'd like most settings to reset to good defaults after power cycle, and to read performance knob values upon power on.
 
 ---
 
@@ -1200,11 +1241,16 @@ flowchart TD
 - [x] **Hardware Test Level 1**: Direct archetype (2025-12-28 - ✅ PASS, Task 20)
 - [x] **Hardware Test Level 2**: Hit budget & sampling (2025-12-28 - ✅ PASS, Task 20)
 - [x] **Hardware Test Level 3**: Guard rails (2025-12-28 - ✅ PASS, Task 20)
-- [ ] **Hardware Test Level 4**: Timing effects
-- [ ] **Hardware Test Level 5**: Production mode
-- [x] Document any issues found (Task 20, ExtClock log bug fixed)
-- [x] Fix issues and iterate (Ongoing)
-- [ ] **Follow-up**: [Task 21 - Musicality Improvements](21-musicality-improvements.md) (after L4-5 complete)
+- [x] **Hardware Test Level 4**: Timing effects (2025-12-29 - ✅ PASS with notes)
+- [x] **Hardware Test Level 5**: Production mode (2025-12-29 - ✅ PASS with notes)
+- [x] **Hardware Test 7**: Config mode validation (2025-12-29 - ✅ PASS with notes)
+- [x] Document any issues found (Task 20, ExtClock log bug fixed, swing bug fixed)
+- [x] Fix issues and iterate (Completed - Modifications 0.5, 0.6)
+- [x] **Follow-up Tasks Created**:
+  - [Task 21 - Musicality Improvements](21-musicality-improvements.md) (pattern variety, swing, 64-step bug)
+  - [Task 22 - Control Simplification](22-control-simplification.md) (remove/consolidate config controls)
+  - [Task 23 - Immediate Field Updates](23-immediate-field-updates.md) (Field X/Y immediate response)
+  - [Task 24 - Power-On Behavior](24-power-on-behavior.md) (boot defaults, no persistence)
 
 ---
 

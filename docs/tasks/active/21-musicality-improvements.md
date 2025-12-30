@@ -9,10 +9,13 @@
 
 ## Problem Statement
 
-During Level 2-3 hardware testing (Task 20), user feedback indicated that generated patterns:
+During Level 2-3 hardware testing (Task 20) and config mode testing (Task 16 Test 7), user feedback indicated several musicality issues:
+
 1. **Lack variety** - Patterns feel repetitive, not enough differentiation across the archetype grid
 2. **Don't feel very musical** - Patterns lack the groove/feel expected from a techno sequencer
 3. **K2 (BUILD) effect hard to notice** - Density-over-phrase not audibly impactful
+4. **Pattern Length Bug** - At 64 steps (100%), latter half of patterns are blank
+5. **Swing effectiveness** - Config K2 (Swing) doesn't noticeably affect timing
 
 ### User Quotes (from Task 20)
 > "not feeling like I'm getting very musical beats, nor am I getting much variety"
@@ -20,6 +23,14 @@ During Level 2-3 hardware testing (Task 20), user feedback indicated that genera
 > "patterns are changing and are generally following the intended flow, though they don't seem to have a ton of variation"
 
 > "K2 does something but it's hard to notice much change"
+
+### User Quotes (from Task 16 Test 7)
+
+**Pattern Length (Test 7A)**:
+> "turning the knob appears to change pattern, but when turning fully 100%, we expect a long pattern with variation, but, the latter half of the patterns are blank entirely. This behavior is consistent even when changing other settings. Pattern lengths feel not very musical either."
+
+**Swing (Test 7B)**:
+> "As mentioned before, swing does not appear to change timings very much by perception. It may be just my perception, so just double check implementation and how it works with Genre. I'd expect SWING to act as a modifier against the existing swing settings in GENRE, from 0x to 2x of GENRE swing."
 
 ---
 
@@ -142,6 +153,44 @@ The 3x3 archetype grid may:
 - What archetypes should live at each grid position?
 - Is 3x3 the right grid size?
 
+### 7. Pattern Length Bug (64 Steps)
+**File**: `src/Engine/Sequencer.cpp`, `GenerationPipeline.cpp`
+
+At 64-step pattern length (Config K1 = 100%), the latter half of patterns are completely blank.
+
+**Potential Causes**:
+- Generation only produces 32 steps of pattern data
+- Mask wrapping issue at >32 steps
+- Hit budget not scaling with pattern length
+- Archetype weights only defined for 32 steps
+
+**Investigation**:
+- Check mask generation for >32 step patterns
+- Verify hit budget scales with pattern length
+- Test intermediate lengths (48 steps)
+
+### 8. Swing Effectiveness
+**File**: `src/Engine/BrokenEffects.cpp`
+
+Swing config (Config K2) doesn't produce noticeable timing change.
+
+**Note**: Modification 0.6 in Task 16 fixed the bug where swing config wasn't being used at all. This investigation is to determine if the effect is too subtle or needs different scaling.
+
+**Current Implementation**:
+- `ComputeSwing()` uses swing config for base swing amount
+- GENRE controls jitter separately
+- Swing range: 50% (straight) to 66% (triplet)
+
+**Questions**:
+- Is 50%-66% range too narrow?
+- Should swing be a multiplier of GENRE's swing instead?
+- Is the timing offset applied at the right point in the pipeline?
+
+**Investigation**:
+- Log actual timing offsets being applied
+- Compare with reference swing implementations
+- Test with external clock to verify timing changes
+
 ---
 
 ## Reference Material
@@ -188,6 +237,8 @@ src/Engine/
 - [ ] K3/K4 (FIELD X/Y) create distinct pattern characters
 - [ ] Patterns inspire movement/dancing at moderate settings
 - [ ] IDM/experimental feels chaotic but intentional at extreme settings
+- [ ] 64-step patterns have hits throughout (no blank sections)
+- [ ] Swing creates audible timing difference (straight → triplet feel)
 
 ---
 
