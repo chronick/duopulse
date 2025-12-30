@@ -667,6 +667,74 @@ TEST_CASE("Sequencer handles edge cases", "[sequencer][edge-cases]")
         REQUIRE(pos.currentBar >= 0);
     }
 
+    SECTION("64-step patterns have hits in second half")
+    {
+        seq.SetPatternLength(64);
+        seq.SetEnergy(0.7f);  // Higher energy = more hits
+        seq.GenerateBar();
+
+        // Get the masks
+        uint64_t anchorMask = seq.GetAnchorMask();
+        uint64_t shimmerMask = seq.GetShimmerMask();
+        uint64_t auxMask = seq.GetAuxMask();
+
+        // First half (steps 0-31)
+        uint32_t anchorFirstHalf = static_cast<uint32_t>(anchorMask & 0xFFFFFFFF);
+        uint32_t shimmerFirstHalf = static_cast<uint32_t>(shimmerMask & 0xFFFFFFFF);
+        uint32_t auxFirstHalf = static_cast<uint32_t>(auxMask & 0xFFFFFFFF);
+
+        // Second half (steps 32-63)
+        uint32_t anchorSecondHalf = static_cast<uint32_t>(anchorMask >> 32);
+        uint32_t shimmerSecondHalf = static_cast<uint32_t>(shimmerMask >> 32);
+        uint32_t auxSecondHalf = static_cast<uint32_t>(auxMask >> 32);
+
+        // First half should have hits
+        REQUIRE(anchorFirstHalf != 0);
+
+        // Second half should also have hits (this was the bug!)
+        REQUIRE(anchorSecondHalf != 0);
+
+        // Both halves should have aux hits at high energy
+        REQUIRE(auxFirstHalf != 0);
+        REQUIRE(auxSecondHalf != 0);
+
+        // The two halves should be different (different seeds used)
+        // Note: at very low energy they might both be just downbeat, so check anchor
+        bool halvesAreDifferent = (anchorFirstHalf != anchorSecondHalf) ||
+                                   (shimmerFirstHalf != shimmerSecondHalf);
+        // At least one mask should differ between halves
+        REQUIRE(halvesAreDifferent);
+    }
+
+    SECTION("64-step patterns fire triggers in second half")
+    {
+        seq.SetPatternLength(64);
+        seq.SetEnergy(0.8f);  // High energy for many hits
+        seq.GenerateBar();
+
+        bool anyHitInSecondHalf = false;
+
+        // Process all 64 steps
+        for (int step = 0; step < 64; ++step)
+        {
+            seq.TriggerExternalClock();
+            seq.ProcessAudio();
+
+            // Check if we're in second half (steps 32-63)
+            if (step >= 32)
+            {
+                // Check if any gate fired
+                if (seq.IsGateHigh(0) || seq.IsGateHigh(1))
+                {
+                    anyHitInSecondHalf = true;
+                }
+            }
+        }
+
+        // There should be hits in the second half
+        REQUIRE(anyHitInSecondHalf);
+    }
+
     SECTION("Single bar phrase")
     {
         seq.SetPatternLength(16);

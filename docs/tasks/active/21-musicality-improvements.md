@@ -153,21 +153,25 @@ The 3x3 archetype grid may:
 - What archetypes should live at each grid position?
 - Is 3x3 the right grid size?
 
-### 7. Pattern Length Bug (64 Steps)
-**File**: `src/Engine/Sequencer.cpp`, `GenerationPipeline.cpp`
+### 7. Pattern Length Bug (64 Steps) - FIXED
 
-At 64-step pattern length (Config K1 = 100%), the latter half of patterns are completely blank.
+**Status**: ✅ RESOLVED (2025-12-29)
 
-**Potential Causes**:
-- Generation only produces 32 steps of pattern data
-- Mask wrapping issue at >32 steps
-- Hit budget not scaling with pattern length
-- Archetype weights only defined for 32 steps
+**Root Cause**: `GenerateBar()` only generated 32-bit masks, but the sequencer state stores 64-bit masks. For 64-step patterns, steps 32-63 had no hits because the mask bits were never set.
 
-**Investigation**:
-- Check mask generation for >32 step patterns
-- Verify hit budget scales with pattern length
-- Test intermediate lengths (48 steps)
+**Fix Applied** (`src/Engine/Sequencer.cpp`):
+- For patterns > 32 steps, generate two 32-step halves with different seeds
+- Combine into 64-bit mask: `(uint64_t)secondHalf << 32 | firstHalf`
+- Each half gets its own hit budget, voice relationship, and guard rails
+- Second half uses `seed ^ 0xDEADBEEF` for pattern variation
+
+**Tests Added** (`tests/test_sequencer.cpp`):
+- "64-step patterns have hits in second half" - verifies second half mask is non-zero
+- "64-step patterns fire triggers in second half" - verifies gates fire in steps 32-63
+
+**Related Changes**:
+- Updated `Sequencer::GetAnchorMask()` and `GetShimmerMask()` to return `uint64_t`
+- Added `Sequencer::GetAuxMask()` method
 
 ### 8. Swing Effectiveness
 **File**: `src/Engine/BrokenEffects.cpp`
@@ -237,7 +241,7 @@ src/Engine/
 - [ ] K3/K4 (FIELD X/Y) create distinct pattern characters
 - [ ] Patterns inspire movement/dancing at moderate settings
 - [ ] IDM/experimental feels chaotic but intentional at extreme settings
-- [ ] 64-step patterns have hits throughout (no blank sections)
+- [x] 64-step patterns have hits throughout (no blank sections) - FIXED 2025-12-29
 - [ ] Swing creates audible timing difference (straight → triplet feel)
 
 ---

@@ -233,11 +233,14 @@ public:
     // Debug Getters (safe to call from main loop)
     // =========================================================================
 
-    /** Get current anchor mask (for debug logging) */
-    uint32_t GetAnchorMask() const { return state_.sequencer.anchorMask; }
+    /** Get current anchor mask (for debug logging, 64-bit for long patterns) */
+    uint64_t GetAnchorMask() const { return state_.sequencer.anchorMask; }
 
-    /** Get current shimmer mask (for debug logging) */
-    uint32_t GetShimmerMask() const { return state_.sequencer.shimmerMask; }
+    /** Get current shimmer mask (for debug logging, 64-bit for long patterns) */
+    uint64_t GetShimmerMask() const { return state_.sequencer.shimmerMask; }
+
+    /** Get current aux mask (for debug logging, 64-bit for long patterns) */
+    uint64_t GetAuxMask() const { return state_.sequencer.auxMask; }
 
     /** Get blended archetype weight at step (for debug logging) */
     float GetBlendedAnchorWeight(int step) const {

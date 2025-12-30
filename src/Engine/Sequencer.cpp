@@ -261,10 +261,14 @@ void Sequencer::GenerateBar()
     const float phraseProgress = state_.GetPhraseProgress();
     state_.controls.UpdateDerived(phraseProgress);
 
-    // 1. Compute hit budget
+    // For patterns > 32 steps, we generate two 32-step halves and combine
+    const bool isLongPattern = patternLength > 32;
+    const int halfLength = isLongPattern ? 32 : patternLength;
+
+    // 1. Compute hit budget (uses clamped length internally)
     BarBudget budget;
     ComputeBarBudget(
-        energy, balance, zone, auxDensity, patternLength,
+        energy, balance, zone, auxDensity, halfLength,
         state_.controls.buildModifiers.densityMultiplier, budget
     );
 
@@ -275,7 +279,7 @@ void Sequencer::GenerateBar()
             budget,
             state_.controls.buildModifiers.fillIntensity,
             state_.blendedArchetype.fillDensityMultiplier,
-            patternLength
+            halfLength
         );
     }
 
@@ -284,61 +288,147 @@ void Sequencer::GenerateBar()
         state_.sequencer.driftState, drift, 0, patternLength
     );
 
-    // 3. Generate anchor hits
-    uint32_t anchorMask = SelectHitsGumbelTopK(
+    // 3. Generate anchor hits (first half)
+    uint32_t anchorMask1 = SelectHitsGumbelTopK(
         state_.blendedArchetype.anchorWeights,
         budget.anchorEligibility,
         budget.anchorHits,
         seed,
-        patternLength,
+        halfLength,
         GetMinSpacingForZone(zone)
     );
 
-    // 4. Generate shimmer hits
-    uint32_t shimmerMask = SelectHitsGumbelTopK(
+    // 4. Generate shimmer hits (first half)
+    uint32_t shimmerMask1 = SelectHitsGumbelTopK(
         state_.blendedArchetype.shimmerWeights,
         budget.shimmerEligibility,
         budget.shimmerHits,
         seed ^ 0x12345678,  // Different seed for shimmer
-        patternLength,
+        halfLength,
         GetMinSpacingForZone(zone)
     );
 
-    // 5. Apply voice relationship
-    ApplyVoiceRelationship(anchorMask, shimmerMask, coupling, patternLength);
+    // 5. Apply voice relationship (first half)
+    ApplyVoiceRelationship(anchorMask1, shimmerMask1, coupling, halfLength);
 
-    // 6. Soft repair pass
+    // 6. Soft repair pass (first half)
     SoftRepairPass(
-        anchorMask, shimmerMask,
+        anchorMask1, shimmerMask1,
         state_.blendedArchetype.anchorWeights,
         state_.blendedArchetype.shimmerWeights,
-        zone, patternLength
+        zone, halfLength
     );
 
-    // 7. Hard guard rails
-    ApplyHardGuardRails(anchorMask, shimmerMask, zone, genre, patternLength);
+    // 7. Hard guard rails (first half)
+    ApplyHardGuardRails(anchorMask1, shimmerMask1, zone, genre, halfLength);
 
-    // 8. Generate aux hits
-    uint32_t auxMask = SelectHitsGumbelTopK(
+    // 8. Generate aux hits (first half)
+    uint32_t auxMask1 = SelectHitsGumbelTopK(
         state_.blendedArchetype.auxWeights,
         budget.auxEligibility,
         budget.auxHits,
         seed ^ 0x87654321,
-        patternLength,
+        halfLength,
         0  // No spacing constraint for aux
     );
 
-    // Apply aux voice relationship
-    ApplyAuxRelationship(anchorMask, shimmerMask, auxMask, coupling, patternLength);
+    // Apply aux voice relationship (first half)
+    ApplyAuxRelationship(anchorMask1, shimmerMask1, auxMask1, coupling, halfLength);
 
-    // 9. Store hit masks in sequencer state
-    state_.sequencer.anchorMask = anchorMask;
-    state_.sequencer.shimmerMask = shimmerMask;
-    state_.sequencer.auxMask = auxMask;
+    // For long patterns (>32 steps), generate second half with different seed
+    uint32_t anchorMask2 = 0;
+    uint32_t shimmerMask2 = 0;
+    uint32_t auxMask2 = 0;
 
-    // 10. Compute accent masks from archetype
-    state_.sequencer.anchorAccentMask = state_.blendedArchetype.anchorAccentMask;
-    state_.sequencer.shimmerAccentMask = state_.blendedArchetype.shimmerAccentMask;
+    if (isLongPattern)
+    {
+        // Use different seed for second half to create variation
+        const uint32_t seed2 = seed ^ 0xDEADBEEF;
+
+        // Recompute budget for second half (may differ slightly due to fill zones)
+        BarBudget budget2;
+        ComputeBarBudget(
+            energy, balance, zone, auxDensity, halfLength,
+            state_.controls.buildModifiers.densityMultiplier, budget2
+        );
+
+        if (state_.controls.buildModifiers.inFillZone)
+        {
+            ApplyFillBoost(
+                budget2,
+                state_.controls.buildModifiers.fillIntensity,
+                state_.blendedArchetype.fillDensityMultiplier,
+                halfLength
+            );
+        }
+
+        // Generate anchor (second half)
+        anchorMask2 = SelectHitsGumbelTopK(
+            state_.blendedArchetype.anchorWeights,
+            budget2.anchorEligibility,
+            budget2.anchorHits,
+            seed2,
+            halfLength,
+            GetMinSpacingForZone(zone)
+        );
+
+        // Generate shimmer (second half)
+        shimmerMask2 = SelectHitsGumbelTopK(
+            state_.blendedArchetype.shimmerWeights,
+            budget2.shimmerEligibility,
+            budget2.shimmerHits,
+            seed2 ^ 0x12345678,
+            halfLength,
+            GetMinSpacingForZone(zone)
+        );
+
+        // Apply voice relationship (second half)
+        ApplyVoiceRelationship(anchorMask2, shimmerMask2, coupling, halfLength);
+
+        // Soft repair (second half)
+        SoftRepairPass(
+            anchorMask2, shimmerMask2,
+            state_.blendedArchetype.anchorWeights,
+            state_.blendedArchetype.shimmerWeights,
+            zone, halfLength
+        );
+
+        // Hard guard rails (second half) - ensure downbeat at step 32 (bar 3 start)
+        ApplyHardGuardRails(anchorMask2, shimmerMask2, zone, genre, halfLength);
+
+        // Generate aux (second half)
+        auxMask2 = SelectHitsGumbelTopK(
+            state_.blendedArchetype.auxWeights,
+            budget2.auxEligibility,
+            budget2.auxHits,
+            seed2 ^ 0x87654321,
+            halfLength,
+            0
+        );
+
+        // Apply aux voice relationship (second half)
+        ApplyAuxRelationship(anchorMask2, shimmerMask2, auxMask2, coupling, halfLength);
+    }
+
+    // 9. Store hit masks in sequencer state (combine halves for 64-bit)
+    state_.sequencer.anchorMask = static_cast<uint64_t>(anchorMask1) |
+                                   (static_cast<uint64_t>(anchorMask2) << 32);
+    state_.sequencer.shimmerMask = static_cast<uint64_t>(shimmerMask1) |
+                                    (static_cast<uint64_t>(shimmerMask2) << 32);
+    state_.sequencer.auxMask = static_cast<uint64_t>(auxMask1) |
+                                (static_cast<uint64_t>(auxMask2) << 32);
+
+    // 10. Compute accent masks from archetype (replicate for 64-bit patterns)
+    uint64_t anchorAccent = state_.blendedArchetype.anchorAccentMask;
+    uint64_t shimmerAccent = state_.blendedArchetype.shimmerAccentMask;
+    if (isLongPattern)
+    {
+        // Replicate accent pattern for second half
+        anchorAccent |= (anchorAccent << 32);
+        shimmerAccent |= (shimmerAccent << 32);
+    }
+    state_.sequencer.anchorAccentMask = anchorAccent;
+    state_.sequencer.shimmerAccentMask = shimmerAccent;
 }
 
 void Sequencer::ProcessStep()
