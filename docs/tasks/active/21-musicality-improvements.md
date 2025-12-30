@@ -3,7 +3,7 @@
 **Status**: PENDING
 **Branch**: TBD
 **Parent Task**: Task 16 (Hardware Validation)
-**Related**: Task 20 (Level 1 Archetype Debug)
+**Related**: Task 20 (Level 1 Archetype Debug), Task 22 Phase D (Swing)
 
 ---
 

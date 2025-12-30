@@ -1,96 +1,230 @@
 # Task 22: Control Simplification
 
-**Status**: PENDING
-**Branch**: TBD
+**Status**: READY (Refined 2025-12-30)
+**Branch**: feature/control-simplification
 **Parent Task**: Task 16 (Hardware Validation)
-**Related**: Task 21 (Musicality Improvements)
+**Related**: Task 21 (Musicality), Task 23 (Field Updates), Task 24 (Power-On)
 
 ---
 
 ## Problem Statement
 
-Hardware validation (Task 16) revealed several config mode controls that are unnecessary, confusing, or could be consolidated:
+Hardware validation (Task 16) revealed config mode controls that are unnecessary or confusing:
 
-1. **Reset Mode (Config K4)** - Not useful, can be removed
-2. **Phrase Length vs Pattern Length** - Interaction unclear, could consolidate
-3. **Voice Coupling vs Balance** - Could be merged into single control
-4. **Swing Config** - Doesn't affect timing noticeably, consider removing or reworking
-
----
-
-## User Feedback (from Task 16)
-
-### Test 7D (Reset Mode)
-> "Not sure this setting is necessary after going through it, I'm ok removing it and freeing up a config space. Reset can move default to step 0, but keep the code."
-
-### Test 7E (Phrase Length)
-> "Not sure how phrase length and pattern length interact, I think they can be consolidated"
-
-### Test 7H (Voice Coupling)
-> "Low and high values appear to work correctly, not sure about LOCKED, as trigs are not technically 1:1. Would appreciate a rethink of this setting, could it be combined with Anchor/Shimmer balance?"
-
-### Test 5/7B (Swing)
-> "SWING knob does not feel like it affects timing very much by contrast... For later: we may want to free up SWING for something else and leave GENRE to be the only factor affecting microtiming."
+1. **Reset Mode (Config K4)** - Not useful, remove
+2. **Phrase Length (Config+Shift K1)** - Confusing interaction with Pattern Length, auto-derive instead
+3. **Voice Coupling** - INTERLOCK mode feels broken, simplify to 2 modes
+4. **Swing** - Doesn't noticeably affect timing, defer to Task 21 investigation
 
 ---
 
-## Proposed Changes
+## Refined Approach: Incremental Phases
 
-### 1. Remove Reset Mode (Config K4)
-- Default reset behavior to STEP (step 0)
-- Keep code in place but remove from control mapping
-- Frees up Config K4 for future use
+Instead of a big-bang redesign, we'll make small, safe, independently testable changes.
 
-### 2. Consolidate Phrase/Pattern Length
-Options:
-- **Option A**: Remove phrase length, pattern length controls full sequence
-- **Option B**: Single "Structure" control that sets both proportionally
-- **Option C**: Keep pattern length, make phrase auto-calculate (e.g., 4x pattern)
+### Phase A: Easy Wins (Config UI Cleanup)
+Remove unnecessary config knobs by defaulting internally. No code architecture changes.
 
-### 3. Rethink Voice Coupling + Balance
-Options:
-- **Option A**: Merge into single "Voice Relationship" control with continuous behavior
-- **Option B**: Remove coupling entirely, keep balance
-- **Option C**: INDEPENDENT/SHADOW only (remove LOCKED), balance controls shimmer density
+| Change | Risk | Benefit |
+|--------|------|---------|
+| Remove Reset Mode UI | None | Frees Config K4 |
+| Auto-derive Phrase Length | Low | Frees Config+Shift K1, simpler UX |
 
-### 4. Swing Decision
-Options:
-- **Option A**: Remove swing, GENRE controls all timing
-- **Option B**: Make swing a multiplier (0x-2x) of GENRE's swing amount
-- **Option C**: Repurpose Config K2 for something else (e.g., triplet mode)
+### Phase B: Balance Range Extension
+Extend current balance range instead of architectural VOICE redesign.
 
----
+| Current | New | Change |
+|---------|-----|--------|
+| Shimmer 30-100% of anchor | Shimmer 0-150% of anchor | One line in HitBudget.cpp |
 
-## Freed Controls After Simplification
+### Phase C: Coupling Simplification
+Remove broken INTERLOCK mode, keep INDEPENDENT and SHADOW.
 
-If we implement all removals:
-- **Config K2**: Formerly Swing (could become triplet mode, shuffle amount, or other)
-- **Config K4**: Formerly Reset Mode
-- **Config+Shift K4**: Formerly Voice Coupling (merged with Balance)
+| Current | New |
+|---------|-----|
+| 3 modes (INDEPENDENT/INTERLOCK/SHADOW) | 2 modes (INDEPENDENT/SHADOW) |
+
+### Phase D: Swing (Deferred)
+Wait for Task 21 spike to determine if swing is worth fixing or should be replaced.
 
 ---
 
-## Implementation Tasks
+## Phase A: Easy Wins
 
-- [ ] Remove Reset Mode from config mapping (keep code)
-- [ ] Consolidate phrase/pattern length (choose option)
-- [ ] Merge voice coupling with balance (choose option)
-- [ ] Decide swing fate (choose option)
-- [ ] Update spec documentation
-- [ ] Update persistence (remove/rename parameters)
-- [ ] Test on hardware
+### A1: Remove Reset Mode from Config UI
+
+**Current**: Config K4 primary = Reset Mode (PHRASE/BAR/STEP)
+**New**: Remove from UI, hardcode to STEP
+
+**Files to modify**:
+- `src/Engine/ControlProcessor.cpp`: Skip reset mode processing, always use STEP
+- `src/Engine/ControlState.h`: Keep field but don't expose in UI
+
+**Implementation**:
+```cpp
+// ControlProcessor.cpp - ProcessConfigPrimary()
+// BEFORE:
+float resetModeRaw = configPrimaryKnobs_[3].Process(input.knobs[3]);
+ResetMode newResetMode = GetResetModeFromValue(resetModeRaw);
+
+// AFTER:
+// Config K4 primary is now FREE - don't process reset mode
+// Reset mode is hardcoded to STEP in ControlState::Init()
+(void)input.knobs[3];  // K4 primary unused in config mode
+```
+
+**Test**: Reset input should always reset to step 0.
+
+---
+
+### A2: Auto-Derive Phrase Length from Pattern Length
+
+**Current**: Pattern Length (Config K1) and Phrase Length (Config+Shift K1) are separate
+**New**: Phrase Length auto-derived: `phraseBars = 8 / (patternSteps / 16)`
+
+| Pattern Steps | Bars per Pattern | Phrase Bars | Total Steps |
+|---------------|------------------|-------------|-------------|
+| 16 | 1 | 8 | 128 |
+| 24 | 1.5 | 5 | 120 |
+| 32 | 2 | 4 | 128 |
+| 64 | 4 | 2 | 128 |
+
+**Rationale**: Keep total phrase around 128 steps (8 bars at 16th notes) for consistent phrase arc timing.
+
+**Files to modify**:
+- `src/Engine/ControlProcessor.cpp`: Remove phrase length processing
+- `src/Engine/ControlState.h`: Derive `phraseLength` from `patternLength`
+
+**Implementation**:
+```cpp
+// Add to ControlState
+int GetDerivedPhraseLength() const {
+    // Target ~128 steps total, minimum 2 bars
+    switch (patternLength) {
+        case 16: return 8;   // 16 × 8 = 128 steps
+        case 24: return 5;   // 24 × 5 = 120 steps
+        case 32: return 4;   // 32 × 4 = 128 steps
+        case 64: return 2;   // 64 × 2 = 128 steps
+        default: return 4;
+    }
+}
+```
+
+**Test**: Changing pattern length should automatically adjust phrase behavior.
+
+---
+
+## Phase B: Balance Range Extension
+
+### B1: Extend Shimmer Ratio Range
+
+**Current** (`HitBudget.cpp:113-114`):
+```cpp
+float shimmerRatio = 0.3f + balance * 0.7f;  // 30% to 100%
+```
+
+**New**:
+```cpp
+float shimmerRatio = balance * 1.5f;  // 0% to 150%
+```
+
+| Balance | Current Shimmer | New Shimmer |
+|---------|-----------------|-------------|
+| 0% | 30% of anchor | 0% (silent) |
+| 50% | 65% of anchor | 75% of anchor |
+| 100% | 100% of anchor | 150% of anchor |
+
+**Files to modify**:
+- `src/Engine/HitBudget.cpp`: Change shimmer ratio formula
+
+**Test**:
+- Balance 0% should produce no shimmer triggers
+- Balance 100% should produce more shimmer than anchor
+
+---
+
+## Phase C: Coupling Simplification
+
+### C1: Remove INTERLOCK Mode
+
+User feedback: "LOCKED... trigs are not technically 1:1"
+
+**Current**: INDEPENDENT (0-33%), INTERLOCK (33-67%), SHADOW (67-100%)
+**New**: INDEPENDENT (0-50%), SHADOW (50-100%)
+
+**Files to modify**:
+- `src/Engine/DuoPulseTypes.h`: Remove INTERLOCK from enum (or keep but don't use)
+- `src/Engine/VoiceRelation.cpp`: Remove INTERLOCK case
+- `src/Engine/ControlProcessor.cpp`: Map knob to 2 modes instead of 3
+
+**Implementation**:
+```cpp
+// DuoPulseTypes.h
+inline VoiceCoupling GetVoiceCouplingFromValue(float value) {
+    if (value < 0.5f) return VoiceCoupling::INDEPENDENT;
+    return VoiceCoupling::SHADOW;
+}
+```
+
+**Test**: Coupling knob should switch cleanly between independent and shadow modes.
+
+---
+
+## Phase D: Swing (Deferred to Task 21)
+
+Task 21 is investigating why swing doesn't feel impactful. Possible outcomes:
+
+1. **Swing is broken** → Fix implementation
+2. **Swing range too narrow** → Widen 50-66% to 50-75%
+3. **GENRE already handles it** → Remove swing, let GENRE control timing
+
+**Decision**: Wait for Task 21 findings before changing swing.
+
+---
+
+## Freed Controls Summary
+
+After Phase A-C:
+
+| Freed Control | Previous Use | Available For |
+|---------------|--------------|---------------|
+| Config K4 Primary | Reset Mode | Future feature or leave empty |
+| Config+Shift K1 | Phrase Length | Future feature or leave empty |
+
+---
+
+## Implementation Order
+
+1. **A1**: Remove Reset Mode UI (safest, no behavior change)
+2. **A2**: Auto-derive Phrase Length (low risk, simplifies UX)
+3. **B1**: Extend Balance Range (medium risk, changes musical behavior)
+4. **C1**: Remove INTERLOCK (low risk, removes broken feature)
+
+Each phase should be a separate commit, tested on hardware before proceeding.
 
 ---
 
 ## Success Criteria
 
-- [ ] Fewer config controls = simpler UX
-- [ ] Remaining controls all have clear, audible effect
-- [ ] No unused/confusing config knob positions
-- [ ] Spec reflects actual control layout
+- [ ] Config mode has fewer confusing options
+- [ ] Balance 0% produces anchor-only patterns
+- [ ] Balance 100% produces shimmer-heavy patterns
+- [ ] Coupling switches cleanly between INDEPENDENT and SHADOW
+- [ ] No regressions in existing functionality
+- [ ] All changes tested on hardware
 
 ---
 
-## Notes
+## Appendix: Original Critical Review (2025-12-30)
 
-This task should be coordinated with Task 21 (Musicality) since some changes (like swing) affect musical output. May want to complete musicality tuning first to inform decisions here.
+The original Task 22 proposal had these issues that led to this refined approach:
+
+1. **VOICE Control was too ambitious**: Required architectural rewrite of HitBudget. Refined to simple balance range extension.
+
+2. **Pattern/Phrase math was wrong**: Original said "64 steps = 2 bars". Corrected: 64 steps = 4 bars at 16th notes.
+
+3. **Phase ordering would break build**: Original removed controls before updating code. Refined to update code in each phase.
+
+4. **VoiceCoupling had no migration plan**: Original merged coupling into VOICE. Refined to just remove broken INTERLOCK mode.
+
+5. **Sub-tasks 25-41 were too granular**: Created tracking confusion. Refined to 4 logical phases (A-D).

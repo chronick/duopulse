@@ -3,6 +3,7 @@
 **Status**: PENDING
 **Branch**: TBD
 **Parent Task**: Task 16 (Hardware Validation)
+**Related**: Task 22 (Control Simplification) - coordinate boot defaults with control changes
 
 ---
 
