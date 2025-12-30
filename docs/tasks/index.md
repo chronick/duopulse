@@ -17,7 +17,7 @@
 | 12 | aux-output-modes | Auxiliary Output Modes (CV Out 1) — superseded by task 15 (v4) | archived | 2025-12-16 | 2025-12-19 | archived/12-aux-output-modes.md |
 | 13 | pulse-field-v3 | DuoPulse v3: Algorithmic Pulse Field — BROKEN/DRIFT controls, weighted pulse field, COUPLE interlock | done | 2025-12-16 | 2025-12-17T22:00:00Z | completed/13-pulse-field-v3.md |
 | 14 | v3-ratchet-fixes | v3 Fixes: RATCHET parameter, DENSITY=0/DRIFT=0 bug fixes, header/cpp code quality | completed | 2025-12-17 | 2025-12-19 | completed/14-v3-ratchet-fixes.md |
-| 15 | duopulse-v4 | DuoPulse v4: Complete architecture overhaul — 2D pattern field, hit budgets, Gumbel sampling, PUNCH/BUILD/BALANCE controls | in-progress | 2025-12-19 | 2025-12-19 | active/15-duopulse-v4.md |
+| 15 | duopulse-v4 | DuoPulse v4: Complete architecture overhaul — 2D pattern field, hit budgets, Gumbel sampling, PUNCH/BUILD/BALANCE controls | completed | 2025-12-19 | 2025-12-29 | completed/15-duopulse-v4.md |
 | 16 | v4-hardware-validation | DuoPulse v4 Hardware Validation & Debug — progressive feature testing, debug flags, hardware validation guide | completed | 2025-12-26 | 2025-12-29 | completed/16-v4-hardware-validation.md |
 | 17 | runtime-logging | Runtime Logging System — compile-time + runtime configurable logging via USB serial (TRACE/DEBUG/INFO/WARN/ERROR) | completed | 2025-12-26 | 2025-12-26T18:00:00Z | completed/17-runtime-logging.md |
 | 18 | level0-debug-fixes | Level 0 Debug Fixes — correct 4-on-floor pattern masks, add gate logging, fix aux bypass, event latch system, 10ms triggers, non-blocking ring buffer logger | completed | 2025-12-26 | 2025-12-27 | completed/18-level0-debug-fixes.md |
