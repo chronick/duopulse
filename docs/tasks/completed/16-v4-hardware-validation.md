@@ -832,7 +832,7 @@ Update to Level 3 and reflash:
 - User feedback: "Patterns feel noticeably different... K1 changes energy and density, K3/K4 change pattern character"
 
 **Known Issues**:
-- Musicality concerns noted - patterns lack variety, don't feel very musical → **[Task 21: Musicality Improvements](21-musicality-improvements.md)**
+- Musicality concerns noted - patterns lack variety, don't feel very musical → **[Task 21: Musicality Improvements](../active/21-musicality/21-musicality-improvements.md)**
 - ExtClock log bug fixed (was showing "internal" when external active)
 
 ---
@@ -1247,7 +1247,7 @@ flowchart TD
 - [x] Document any issues found (Task 20, ExtClock log bug fixed, swing bug fixed)
 - [x] Fix issues and iterate (Completed - Modifications 0.5, 0.6)
 - [x] **Follow-up Tasks Created**:
-  - [Task 21 - Musicality Improvements](21-musicality-improvements.md) (pattern variety, swing, 64-step bug)
+  - [Task 21 - Musicality Improvements](../active/21-musicality/21-musicality-improvements.md) (pattern variety, swing, 64-step bug)
   - [Task 22 - Control Simplification](22-control-simplification.md) (remove/consolidate config controls)
   - [Task 23 - Immediate Field Updates](23-immediate-field-updates.md) (Field X/Y immediate response)
   - [Task 24 - Power-On Behavior](24-power-on-behavior.md) (boot defaults, no persistence)
