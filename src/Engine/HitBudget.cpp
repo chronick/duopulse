@@ -37,8 +37,8 @@ int ComputeAnchorBudget(float energy, EnergyZone zone, int patternLength)
     energy = std::max(0.0f, std::min(1.0f, energy));
 
     // Base hits scale with pattern length
-    // For 32 steps: MINIMAL=1-2, GROOVE=2-4, BUILD=4-6, PEAK=6-10
-    int maxHits = patternLength / 4;  // Max = quarter note density
+    // For 32 steps: MINIMAL=1-2, GROOVE=3-5, BUILD=5-8, PEAK=8-12
+    int maxHits = patternLength / 3;  // Max = 8th note density (expanded from /4)
 
     int minHits;
     int typicalHits;
@@ -51,18 +51,18 @@ int ComputeAnchorBudget(float energy, EnergyZone zone, int patternLength)
             break;
 
         case EnergyZone::GROOVE:
-            minHits = 2;
-            typicalHits = patternLength / 8;  // 8th note feel
+            minHits = 3;  // Raised from 2
+            typicalHits = patternLength / 6;  // Raised from /8
             break;
 
         case EnergyZone::BUILD:
-            minHits = 3;
-            typicalHits = patternLength / 6;
+            minHits = 4;  // Raised from 3
+            typicalHits = patternLength / 4;  // Raised from /6
             break;
 
         case EnergyZone::PEAK:
-            minHits = 4;
-            typicalHits = patternLength / 4;  // Dense
+            minHits = 6;  // Raised from 4
+            typicalHits = patternLength / 3;  // Raised from /4
             break;
 
         default:
@@ -107,11 +107,17 @@ int ComputeShimmerBudget(float energy, float balance, EnergyZone zone, int patte
     // Base shimmer budget is typically half of anchor
     int anchorBudget = ComputeAnchorBudget(energy, zone, patternLength);
 
-    // Balance shifts hits between voices
-    // balance = 0.0: shimmer gets 30% of anchor
-    // balance = 0.5: shimmer gets 60% of anchor
-    // balance = 1.0: shimmer gets 100% of anchor
-    float shimmerRatio = 0.3f + balance * 0.7f;
+    // Balance shifts hits between voices (expanded range to 150%)
+    // balance = 0.0: shimmer gets 0% of anchor
+    // balance = 0.5: shimmer gets 75% of anchor
+    // balance = 1.0: shimmer gets 150% of anchor
+    float shimmerRatio = balance * 1.5f;
+
+    // Zone-aware shimmer cap to prevent over-density in low-energy zones
+    if (zone == EnergyZone::GROOVE || zone == EnergyZone::MINIMAL)
+    {
+        shimmerRatio = std::min(shimmerRatio, 1.0f);
+    }
 
     int hits = static_cast<int>(anchorBudget * shimmerRatio + 0.5f);
 
@@ -186,8 +192,8 @@ void ComputeBarBudget(float energy,
         outBudget.auxHits = static_cast<int>(outBudget.auxHits * buildMultiplier + 0.5f);
     }
 
-    // Clamp to valid ranges
-    int maxHits = clampedLength / 2;  // Never more than half the steps
+    // Clamp to valid ranges (expanded from /2 to allow denser patterns)
+    int maxHits = clampedLength * 2 / 3;  // Up to 2/3 of steps
     outBudget.anchorHits  = std::min(outBudget.anchorHits, maxHits);
     outBudget.shimmerHits = std::min(outBudget.shimmerHits, maxHits);
     outBudget.auxHits     = std::min(outBudget.auxHits, clampedLength);

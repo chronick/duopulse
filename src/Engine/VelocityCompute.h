@@ -15,6 +15,8 @@ namespace daisysp_idm_grids
  * modulation, and accent masks determine which steps get emphasized.
  *
  * Reference: docs/specs/main.md section 7.2
+ *
+ * Note: BuildPhase enum is defined in ControlState.h to avoid circular dependency.
  */
 
 // =============================================================================
@@ -85,16 +87,19 @@ float ComputeVelocity(const PunchParams& punchParams,
  * Accents are controlled by:
  * 1. Accent eligibility mask (which steps CAN accent)
  * 2. Accent probability from PUNCH (how often eligible steps DO accent)
+ * 3. BUILD forceAccents flag (FILL phase at high BUILD forces all accents)
  *
  * @param step Step index (0-31)
  * @param accentMask Bitmask of accent-eligible steps
  * @param accentProbability Probability of accenting eligible steps (0.0-1.0)
+ * @param buildMods BUILD modifiers (for forceAccents flag)
  * @param seed Seed for deterministic randomness
  * @return true if step should be accented
  */
 bool ShouldAccent(int step,
                   uint32_t accentMask,
                   float accentProbability,
+                  const BuildModifiers& buildMods,
                   uint32_t seed);
 
 /**

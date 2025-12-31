@@ -895,7 +895,8 @@ void Sequencer::AcknowledgeTrigger(int channel)
 
 float Sequencer::GetSwingPercent() const
 {
-    return ComputeSwing(state_.controls.swing, state_.controls.energyZone);
+    float archetypeSwing = state_.blendedArchetype.swingAmount;
+    return ComputeSwing(state_.controls.swing, archetypeSwing, state_.controls.energyZone);
 }
 
 void Sequencer::SetBpm(float bpm)
@@ -995,8 +996,9 @@ void Sequencer::ComputeTimingOffsets()
     const EnergyZone zone = state_.controls.energyZone;
     const uint32_t seed = state_.sequencer.driftState.phraseSeed;
 
-    // Compute swing amount from config (not flavorCV)
-    float swingAmount = ComputeSwing(swing, zone);
+    // Compute swing amount from config and archetype base
+    float archetypeSwing = state_.blendedArchetype.swingAmount;
+    float swingAmount = ComputeSwing(swing, archetypeSwing, zone);
 
     for (int step = 0; step < patternLength && step < kMaxSteps; ++step)
     {

@@ -234,13 +234,14 @@ float GetMaxSwingForZone(EnergyZone zone)
     switch (zone)
     {
         case EnergyZone::MINIMAL:
+            return 0.60f;  // Tight timing (widened from 0.58)
         case EnergyZone::GROOVE:
-            return 0.58f;  // Tight timing
+            return 0.65f;  // Groovy timing (widened from 0.58)
         case EnergyZone::BUILD:
-            return 0.62f;  // Moderate looseness
+            return 0.68f;  // Moderate looseness (widened from 0.62)
         case EnergyZone::PEAK:
         default:
-            return 0.66f;  // Full triplet swing
+            return 0.70f;  // Full triplet swing (widened from 0.66)
     }
 }
 
@@ -259,18 +260,24 @@ float GetMaxJitterMsForZone(EnergyZone zone)
     }
 }
 
-float ComputeSwing(float swing, EnergyZone zone)
+float ComputeSwing(float configSwing, float archetypeSwing, EnergyZone zone)
 {
-    // Clamp swing config to valid range
-    swing = Clamp(swing, 0.0f, 1.0f);
+    // Clamp inputs to valid ranges
+    configSwing = Clamp(configSwing, 0.0f, 1.0f);
+    archetypeSwing = Clamp(archetypeSwing, 0.0f, 1.0f);
 
-    // Base swing scales with config: 50% (straight) to 66% (heavy triplet)
-    float baseSwing = 0.50f + swing * 0.16f;
+    // If archetype swing is zero/near-zero, default to 0.50 (straight)
+    if (archetypeSwing < 0.01f)
+        archetypeSwing = 0.50f;
 
-    // Apply zone limit
+    // Config swing multiplies archetype base: 1.0× to 2.0×
+    // configSwing 0% = 1.0× archetype, 100% = 2.0× archetype
+    float effectiveSwing = archetypeSwing * (1.0f + configSwing);
+
+    // Apply zone-specific maximum caps
     float maxSwing = GetMaxSwingForZone(zone);
 
-    return (baseSwing < maxSwing) ? baseSwing : maxSwing;
+    return Clamp(effectiveSwing, 0.50f, maxSwing);
 }
 
 float ApplySwingToStep(int step, float swingAmount, float samplesPerStep)

@@ -7,6 +7,23 @@ namespace daisysp_idm_grids
 {
 
 /**
+ * Build phase enumeration for 3-stage phrase arc.
+ *
+ * BUILD operates in three phases based on phrase progress:
+ * - GROOVE (0-60%): Stable pattern, no modification
+ * - BUILD (60-87.5%): Ramping density and velocity
+ * - FILL (87.5-100%): Maximum energy, forced accents
+ *
+ * Reference: Task 21 Phase D
+ */
+enum class BuildPhase
+{
+    GROOVE,   // 0-60%: stable
+    BUILD,    // 60-87.5%: ramping
+    FILL      // 87.5-100%: climax
+};
+
+/**
  * PunchParams: Velocity dynamics derived from PUNCH parameter
  *
  * PUNCH controls how dynamic the groove feels—the contrast between
@@ -81,6 +98,15 @@ struct BuildModifiers
     /// Current phrase progress (0.0-1.0)
     float phraseProgress;
 
+    /// Current build phase (GROOVE/BUILD/FILL)
+    BuildPhase phase;
+
+    /// Velocity floor boost (+0.0 to +0.15)
+    float velocityBoost;
+
+    /// Force all hits to be accented (FILL phase at high BUILD)
+    bool forceAccents;
+
     /**
      * Initialize with default values (no build)
      */
@@ -90,6 +116,9 @@ struct BuildModifiers
         fillIntensity     = 0.0f;
         inFillZone        = false;
         phraseProgress    = 0.0f;
+        phase             = BuildPhase::GROOVE;
+        velocityBoost     = 0.0f;
+        forceAccents      = false;
     }
 
     /**
