@@ -29,19 +29,20 @@ void ComputePunch(float punch, PunchParams& params)
 
     // PUNCH = 0%: Flat dynamics (all similar velocity)
     // PUNCH = 100%: Maximum dynamics (huge contrasts)
+    // Task 21 Phase B: Widened velocity contrast ranges
 
-    // Accent probability: 15% to 50%
-    params.accentProbability = 0.15f + punch * 0.35f;
+    // Accent probability: 20% to 50% (was 15%-50%)
+    params.accentProbability = 0.20f + punch * 0.30f;
 
-    // Velocity floor: 70% down to 30%
+    // Velocity floor: 65% down to 30% (was 70%-30%)
     // Low punch = high floor (flat), high punch = low floor (dynamics)
-    params.velocityFloor = 0.70f - punch * 0.40f;
+    params.velocityFloor = 0.65f - punch * 0.35f;
 
-    // Accent boost: +10% to +35%
-    params.accentBoost = 0.10f + punch * 0.25f;
+    // Accent boost: +15% to +45% (was +10%-35%)
+    params.accentBoost = 0.15f + punch * 0.30f;
 
-    // Velocity variation: ±5% to ±20%
-    params.velocityVariation = 0.05f + punch * 0.15f;
+    // Velocity variation: ±3% to ±15% (was ±5%-20%)
+    params.velocityVariation = 0.03f + punch * 0.12f;
 }
 
 // =============================================================================
@@ -132,8 +133,9 @@ float ComputeVelocity(const PunchParams& punchParams,
         velocity += variation;
     }
 
-    // Clamp to valid range (min 0.2 for audibility, max 1.0)
-    return Clamp(velocity, 0.2f, 1.0f);
+    // Clamp to valid range
+    // Task 21 Phase B: min raised to 0.30 for VCA audibility (was 0.2)
+    return Clamp(velocity, 0.30f, 1.0f);
 }
 
 uint32_t GetDefaultAccentMask(Voice voice)

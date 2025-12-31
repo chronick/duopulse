@@ -186,9 +186,10 @@ float GetVelocityWithVariation(float baseVel, float broken, uint32_t seed, int s
 
     float result = baseVel + variation;
 
-    // Clamp to valid velocity range (minimum 0.2 to ensure audibility)
-    if(result < 0.2f)
-        result = 0.2f;
+    // Clamp to valid velocity range
+    // Task 21 Phase B: minimum raised to 0.30 for VCA audibility (was 0.2)
+    if(result < 0.30f)
+        result = 0.30f;
     if(result > 1.0f)
         result = 1.0f;
 

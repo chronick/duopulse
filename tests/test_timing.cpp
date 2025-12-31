@@ -344,16 +344,17 @@ TEST_CASE("ComputePunch has expected range values", "[velocity][punch]")
     ComputePunch(1.0f, high);
 
     // At punch=0: flat dynamics
-    REQUIRE(low.accentProbability == Approx(0.15f).margin(0.01f));
-    REQUIRE(low.velocityFloor == Approx(0.70f).margin(0.01f));
-    REQUIRE(low.accentBoost == Approx(0.10f).margin(0.01f));
-    REQUIRE(low.velocityVariation == Approx(0.05f).margin(0.01f));
+    // Task 21 Phase B: Updated ranges for wider velocity contrast
+    REQUIRE(low.accentProbability == Approx(0.20f).margin(0.01f));  // was 0.15
+    REQUIRE(low.velocityFloor == Approx(0.65f).margin(0.01f));      // was 0.70
+    REQUIRE(low.accentBoost == Approx(0.15f).margin(0.01f));        // was 0.10
+    REQUIRE(low.velocityVariation == Approx(0.03f).margin(0.01f));  // was 0.05
 
     // At punch=1: maximum dynamics
     REQUIRE(high.accentProbability == Approx(0.50f).margin(0.01f));
     REQUIRE(high.velocityFloor == Approx(0.30f).margin(0.01f));
-    REQUIRE(high.accentBoost == Approx(0.35f).margin(0.01f));
-    REQUIRE(high.velocityVariation == Approx(0.20f).margin(0.01f));
+    REQUIRE(high.accentBoost == Approx(0.45f).margin(0.01f));       // was 0.35
+    REQUIRE(high.velocityVariation == Approx(0.15f).margin(0.01f)); // was 0.20
 }
 
 // =============================================================================

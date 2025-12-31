@@ -110,11 +110,11 @@ Current weight tables cluster around 0.5-0.7, creating similar patterns across a
 
 | ID | Task | File:Line | Status |
 |----|------|-----------|--------|
-| A0 | Add hit histogram test to benchmark current selection stats | `tests/test_generation.cpp` (new section) | ☐ |
-| A1 | Tune Techno Minimal weights (4/4 with blend gradients) | `src/Engine/ArchetypeData.h:77-84` | ☐ |
-| A2 | Tune Techno Groovy weights (viable ghost layers 0.50-0.60) | `src/Engine/ArchetypeData.h:190-196` | ☐ |
-| A3 | Tune Techno Chaos weights (more zeros, 0.5-0.9 range) | `src/Engine/ArchetypeData.h:302-308` | ☐ |
-| A4 | Tune Techno shimmer tables for complementary patterns | `src/Engine/ArchetypeData.h:86-92, 198-204, 310-316` | ☐ |
+| A0 | Add hit histogram test to benchmark current selection stats | `tests/test_generation.cpp` (new section) | ✅ |
+| A1 | Tune Techno Minimal weights (4/4 with blend gradients) | `src/Engine/ArchetypeData.h:77-84` | ✅ |
+| A2 | Tune Techno Groovy weights (viable ghost layers 0.50-0.60) | `src/Engine/ArchetypeData.h:190-196` | ✅ |
+| A3 | Tune Techno Chaos weights (more zeros, 0.5-0.9 range) | `src/Engine/ArchetypeData.h:302-308` | ✅ |
+| A4 | Tune Techno shimmer tables for complementary patterns | `src/Engine/ArchetypeData.h:86-92, 198-204, 310-316` | ✅ |
 | A5 | Apply consistent changes to Tribal genre bank | `src/Engine/ArchetypeData.h:380-633` | ☐ |
 | A6 | Apply consistent changes to IDM genre bank | `src/Engine/ArchetypeData.h:689-942` | ☐ |
 | A7 | Run hit histogram test, compare before/after | `tests/test_generation.cpp` | ☐ |
@@ -178,12 +178,12 @@ Ghost notes at 50-70% don't contrast enough with accents at 85-100%.
 
 | ID | Task | File:Line | Status |
 |----|------|-----------|--------|
-| B1 | Widen `velocityFloor` range (65% → 30%) | `src/Engine/VelocityCompute.cpp:30` | ☐ |
-| B2 | Widen `accentBoost` range (+15% → +45%) | `src/Engine/VelocityCompute.cpp:31` | ☐ |
-| B3 | Reduce `velocityVariation` range (±3% → ±15%) | `src/Engine/VelocityCompute.cpp:32` | ☐ |
-| B4 | Hardware test: prototype minimum floor at 0.30 | Hardware validation | ☐ |
-| B5 | Raise minimum clamp to 0.30 (or 0.32 per hw test) | `src/Engine/VelocityCompute.cpp:136` | ☐ |
-| B6 | Update `tests/test_timing.cpp` expectations | `tests/test_timing.cpp` | ☐ |
+| B1 | Widen `velocityFloor` range (65% → 30%) | `src/Engine/VelocityCompute.cpp:30` | ✅ |
+| B2 | Widen `accentBoost` range (+15% → +45%) | `src/Engine/VelocityCompute.cpp:31` | ✅ |
+| B3 | Reduce `velocityVariation` range (±3% → ±15%) | `src/Engine/VelocityCompute.cpp:32` | ✅ |
+| B4 | Hardware test: prototype minimum floor at 0.30 | Hardware validation | ⏭️ (deferred) |
+| B5 | Raise minimum clamp to 0.30 (or 0.32 per hw test) | `src/Engine/VelocityCompute.cpp:136` | ✅ |
+| B6 | Update `tests/test_timing.cpp` expectations | `tests/test_timing.cpp` | ✅ |
 
 ### Feedback Integration
 

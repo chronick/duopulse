@@ -73,22 +73,24 @@ namespace techno
 /**
  * [0,0] Minimal: Pure four-on-floor, quarter notes only
  * Classic minimal techno foundation - just the essentials
+ * Task 21 Phase A: Preserves blend gradients (0.90-1.0) for softmax morphing
  */
 constexpr float kMinimal_Anchor[32] = {
     // Bar 1: 1-e-&-a 2-e-&-a 3-e-&-a 4-e-&-a
-    1.0f, 0.0f, 0.0f, 0.0f,  0.9f, 0.0f, 0.0f, 0.0f,  // Beats 1, 2
-    0.95f,0.0f, 0.0f, 0.0f,  0.9f, 0.0f, 0.0f, 0.0f,  // Beats 3, 4
+    1.0f, 0.0f, 0.0f, 0.0f,  0.95f, 0.0f, 0.0f, 0.0f,  // Beats 1, 2
+    0.95f,0.0f, 0.0f, 0.0f,  0.90f, 0.0f, 0.0f, 0.0f,  // Beats 3, 4
     // Bar 2: repeat
-    1.0f, 0.0f, 0.0f, 0.0f,  0.9f, 0.0f, 0.0f, 0.0f,
-    0.95f,0.0f, 0.0f, 0.0f,  0.9f, 0.0f, 0.0f, 0.0f
+    1.0f, 0.0f, 0.0f, 0.0f,  0.95f, 0.0f, 0.0f, 0.0f,
+    0.95f,0.0f, 0.0f, 0.0f,  0.90f, 0.0f, 0.0f, 0.0f
 };
 
 constexpr float kMinimal_Shimmer[32] = {
-    // Classic backbeat on 2 and 4
+    // Classic backbeat on 2 and 4 (steps 8 and 24)
+    // Task 21 Phase A: Complement minimal anchor's 4-on-floor
     0.0f, 0.0f, 0.0f, 0.0f,  0.0f, 0.0f, 0.0f, 0.0f,
-    1.0f, 0.0f, 0.0f, 0.0f,  0.0f, 0.0f, 0.0f, 0.0f,
+    1.0f, 0.0f, 0.0f, 0.0f,  0.0f, 0.0f, 0.0f, 0.0f,  // Beat 3 (backbeat)
     0.0f, 0.0f, 0.0f, 0.0f,  0.0f, 0.0f, 0.0f, 0.0f,
-    1.0f, 0.0f, 0.0f, 0.0f,  0.0f, 0.0f, 0.0f, 0.0f
+    1.0f, 0.0f, 0.0f, 0.0f,  0.0f, 0.0f, 0.0f, 0.0f   // Beat 7 (backbeat)
 };
 
 constexpr float kMinimal_Aux[32] = {
@@ -186,21 +188,23 @@ constexpr float kDriving_Aux[32] = {
 /**
  * [1,1] Groovy: Shuffled feel with swing pocket
  * The sweet spot - danceable with character
+ * Task 21 Phase A: Ghost weights 0.50-0.60 can win Gumbel selection
  */
 constexpr float kGroovy_Anchor[32] = {
     // Swung feel - emphasis on "a" subdivisions (steps 3, 7, 11...)
-    1.0f, 0.0f, 0.0f, 0.45f, 0.85f,0.0f, 0.0f, 0.4f,
-    0.9f, 0.0f, 0.0f, 0.45f, 0.85f,0.0f, 0.0f, 0.4f,
-    1.0f, 0.0f, 0.0f, 0.45f, 0.85f,0.0f, 0.0f, 0.4f,
-    0.9f, 0.0f, 0.0f, 0.5f,  0.85f,0.0f, 0.0f, 0.45f
+    1.0f, 0.0f, 0.0f, 0.55f, 0.95f,0.0f, 0.0f, 0.50f,  // Beat 1 strong, "a" ghost
+    0.95f,0.0f, 0.0f, 0.55f, 0.90f,0.0f, 0.0f, 0.50f,  // Beats 2-3
+    1.0f, 0.0f, 0.0f, 0.55f, 0.95f,0.0f, 0.0f, 0.50f,  // Bar 2
+    0.95f,0.0f, 0.0f, 0.60f, 0.90f,0.0f, 0.0f, 0.55f   // End pickup
 };
 
 constexpr float kGroovy_Shimmer[32] = {
     // Shuffled backbeat with anticipation
-    0.0f, 0.0f, 0.0f, 0.35f, 0.0f, 0.0f, 0.0f, 0.4f,
-    1.0f, 0.0f, 0.0f, 0.35f, 0.0f, 0.0f, 0.0f, 0.0f,
-    0.0f, 0.0f, 0.0f, 0.35f, 0.0f, 0.0f, 0.0f, 0.4f,
-    1.0f, 0.0f, 0.0f, 0.4f,  0.0f, 0.0f, 0.0f, 0.0f
+    // Task 21 Phase A: Complement groovy anchor's ghost notes
+    0.0f, 0.0f, 0.0f, 0.50f, 0.0f, 0.0f, 0.0f, 0.55f,  // Pre-backbeat ghosts
+    1.0f, 0.0f, 0.0f, 0.50f, 0.0f, 0.0f, 0.0f, 0.0f,   // Beat 3 (backbeat)
+    0.0f, 0.0f, 0.0f, 0.50f, 0.0f, 0.0f, 0.0f, 0.55f,  // Bar 2 ghosts
+    1.0f, 0.0f, 0.0f, 0.55f, 0.0f, 0.0f, 0.0f, 0.0f    // Beat 7 (backbeat)
 };
 
 constexpr float kGroovy_Aux[32] = {
@@ -298,21 +302,23 @@ constexpr float kPolyrhythm_Aux[32] = {
 /**
  * [2,2] Chaos: Maximum irregularity, fragmented
  * Controlled chaos - still danceable but unpredictable
+ * Task 21 Phase A: More zeros, 0.5-0.9 range for contrast
  */
 constexpr float kChaos_Anchor[32] = {
-    // Irregular clusters with gaps
-    1.0f, 0.45f,0.0f, 0.6f,  0.0f, 0.55f,0.0f, 0.5f,
-    0.0f, 0.0f, 0.55f,0.0f,  0.65f,0.0f, 0.5f, 0.55f,
-    0.9f, 0.5f, 0.0f, 0.0f,  0.6f, 0.0f, 0.55f,0.0f,
-    0.0f, 0.55f,0.0f, 0.5f,  0.0f, 0.6f, 0.5f, 0.0f
+    // Irregular clusters with gaps - widened weight range
+    1.0f, 0.0f, 0.0f, 0.70f, 0.0f, 0.0f, 0.65f,0.0f,  // Beat 1 strong, sparse
+    0.0f, 0.0f, 0.60f,0.0f,  0.75f,0.0f, 0.0f, 0.70f,  // Beat 2-3 irregular
+    0.90f,0.55f,0.0f, 0.0f,  0.70f,0.0f, 0.0f, 0.60f,  // Bar 2 fragmented
+    0.0f, 0.65f,0.0f, 0.55f, 0.0f, 0.75f,0.60f,0.0f   // End scattered
 };
 
 constexpr float kChaos_Shimmer[32] = {
-    // Fragmented snares
-    0.0f, 0.0f, 0.5f, 0.0f,  0.55f,0.0f, 0.5f, 0.0f,
-    0.85f,0.0f, 0.0f, 0.5f,  0.0f, 0.5f, 0.0f, 0.0f,
-    0.0f, 0.0f, 0.5f, 0.55f, 0.0f, 0.5f, 0.0f, 0.5f,
-    0.9f, 0.0f, 0.5f, 0.0f,  0.5f, 0.0f, 0.0f, 0.0f
+    // Fragmented snares - asymmetric, avoiding anchor
+    // Task 21 Phase A: 0.5-0.9 range complements chaos anchor
+    0.0f, 0.0f, 0.60f,0.0f,  0.70f,0.0f, 0.0f, 0.0f,   // Fragmented
+    0.85f,0.0f, 0.0f, 0.65f, 0.0f, 0.60f,0.0f, 0.0f,   // Beat 3 strong
+    0.0f, 0.0f, 0.0f, 0.70f, 0.0f, 0.65f,0.0f, 0.60f,  // Bar 2 scattered
+    0.90f,0.0f, 0.65f,0.0f,  0.0f, 0.0f, 0.0f, 0.0f    // Beat 7 strong
 };
 
 constexpr float kChaos_Aux[32] = {
