@@ -42,9 +42,12 @@ constexpr uint32_t kVelocityHashMagic      = 0x56454C30; // "VEL0"
 // =============================================================================
 
 /**
- * Get the swing amount from the BROKEN parameter.
+ * Compute effective swing from config and archetype base.
  *
- * Swing is no longer a separate genre setting. It scales with BROKEN:
+ * Swing combines:
+ * 1. Archetype base swing (from blended pattern DNA)
+ * 2. Config swing multiplier (0-100% = 1.0× to 2.0× archetype base)
+ * 3. Energy zone caps (prevent excessive swing in low-energy zones)
  *
  * | BROKEN Range | Genre Feel | Swing %   | Character              |
  * |--------------|------------|-----------|------------------------|
@@ -153,18 +156,25 @@ float GetVelocityVariationRange(float broken);
 // =============================================================================
 
 /**
- * Compute zone-bounded swing amount from SWING config parameter.
+ * Compute zone-bounded swing amount from config and archetype base.
  *
- * Swing is set by config knob, bounded by energy zone:
- * - MINIMAL/GROOVE zones: max 58% (tight timing)
- * - BUILD zone: max 62%
- * - PEAK zone: max 66% (full triplet swing allowed)
+ * Swing combines archetype base with config multiplier:
+ * - effectiveSwing = archetypeSwing * (1.0 + configSwing)
+ * - Config swing 0% = 1.0× archetype base
+ * - Config swing 100% = 2.0× archetype base
  *
- * @param swing SWING config parameter (0.0-1.0, 0=straight 50%, 1=triplet 66%)
+ * Zone caps (widened in v4.1):
+ * - MINIMAL zone: max 60% (was 58%)
+ * - GROOVE zone: max 65% (was 58%)
+ * - BUILD zone: max 68% (was 62%)
+ * - PEAK zone: max 70% (was 66%)
+ *
+ * @param configSwing SWING config parameter (0.0-1.0)
+ * @param archetypeSwing Blended archetype base swing (0.0-1.0, typically 0.50-0.60)
  * @param zone Current energy zone
- * @return Swing amount (0.50 = straight, 0.66 = max lazy triplet)
+ * @return Swing amount (0.50 = straight, 0.70 = max lazy triplet)
  */
-float ComputeSwing(float swing, EnergyZone zone);
+float ComputeSwing(float configSwing, float archetypeSwing, EnergyZone zone);
 
 /**
  * Apply swing offset to a step's timing.

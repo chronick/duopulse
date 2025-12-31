@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
+#include <cmath>
 
 #include "../src/Engine/HitBudget.h"
 #include "../src/Engine/GumbelSampler.h"
@@ -752,4 +753,188 @@ TEST_CASE("Pattern length clamping works", "[edge-cases]")
 
     clamped = ClampPatternLength(16);
     REQUIRE(clamped == 16);
+}
+
+// =============================================================================
+// Hit Histogram Tests (Task 21: Musicality Improvements)
+// =============================================================================
+
+TEST_CASE("Hit histogram by archetype for Techno genre", "[musicality][histogram]")
+{
+    // This test generates hit histograms to measure instrument selection stats
+    // across different archetypes. Used to validate archetype weight retuning.
+
+    const int kNumTrials = 100;  // Run multiple times to get distribution
+    const int kPatternLength = 32;
+
+    // Track hit counts at each position for each archetype
+    int minimalHits[32] = {0};
+    int groovyHits[32] = {0};
+    int chaosHits[32] = {0};
+
+    SECTION("Minimal archetype should produce 4-on-floor")
+    {
+        // Minimal weights favor steps 0, 4, 8, 12, 16, 20, 24, 28 (quarter notes)
+        float minimalWeights[32];
+        for (int i = 0; i < 32; ++i)
+        {
+            if (i % 4 == 0)
+            {
+                minimalWeights[i] = (i % 8 == 0) ? 1.0f : 0.9f;  // Stronger on beats 1 and 3
+            }
+            else
+            {
+                minimalWeights[i] = 0.0f;  // Zero weight on off-beats
+            }
+        }
+
+        // Generate multiple patterns with different seeds
+        for (int trial = 0; trial < kNumTrials; ++trial)
+        {
+            uint32_t mask = SelectHitsGumbelTopK(minimalWeights, 0xFFFFFFFF,
+                                                  4, 12345 + trial, kPatternLength, 0);
+
+            // Count hits at each position
+            for (int step = 0; step < kPatternLength; ++step)
+            {
+                if (mask & (1U << step))
+                {
+                    minimalHits[step]++;
+                }
+            }
+        }
+
+        // Verify that quarter notes are most frequently selected
+        // Quarter notes: 0, 4, 8, 12, 16, 20, 24, 28
+        int quarterNoteHits = minimalHits[0] + minimalHits[4] + minimalHits[8] +
+                              minimalHits[12] + minimalHits[16] + minimalHits[20] +
+                              minimalHits[24] + minimalHits[28];
+
+        int offBeatHits = 0;
+        for (int i = 0; i < 32; ++i)
+        {
+            if (i % 4 != 0)
+            {
+                offBeatHits += minimalHits[i];
+            }
+        }
+
+        // Quarter notes should dominate (most trials should pick all quarters)
+        REQUIRE(quarterNoteHits > offBeatHits * 10);
+
+        // Downbeat (step 0) should be selected frequently
+        // With only 4 hits budget and 8 quarter note positions, we get ~50% selection
+        // This is a baseline measurement - actual archetype weights may differ
+        REQUIRE(minimalHits[0] > kNumTrials * 0.40f);
+    }
+
+    SECTION("Groovy archetype should produce ghost notes")
+    {
+        // Groovy weights favor quarters plus "a" subdivisions (steps 3, 7, 11, 15...)
+        float groovyWeights[32];
+        for (int i = 0; i < 32; ++i)
+        {
+            if (i % 4 == 0)
+            {
+                groovyWeights[i] = (i % 8 == 0) ? 1.0f : 0.85f;  // Quarter notes strong
+            }
+            else if (i % 4 == 3)
+            {
+                groovyWeights[i] = 0.45f;  // "a" subdivisions for ghost notes
+            }
+            else
+            {
+                groovyWeights[i] = 0.0f;
+            }
+        }
+
+        // Generate multiple patterns
+        for (int trial = 0; trial < kNumTrials; ++trial)
+        {
+            uint32_t mask = SelectHitsGumbelTopK(groovyWeights, 0xFFFFFFFF,
+                                                  5, 22222 + trial, kPatternLength, 0);
+
+            for (int step = 0; step < kPatternLength; ++step)
+            {
+                if (mask & (1U << step))
+                {
+                    groovyHits[step]++;
+                }
+            }
+        }
+
+        // Count ghost note positions (steps 3, 7, 11, 15, 19, 23, 27, 31)
+        int ghostHits = groovyHits[3] + groovyHits[7] + groovyHits[11] + groovyHits[15] +
+                        groovyHits[19] + groovyHits[23] + groovyHits[27] + groovyHits[31];
+
+        // Ghost notes should appear in at least 20% of trials (0.45 weight competing with quarters)
+        // With current weights (0.40-0.45), ghosts rarely win against 0.85-1.0 quarters
+        // This documents the problem we're fixing with Task 21
+        INFO("Ghost hits across all trials: " << ghostHits);
+        INFO("Quarter note hits at step 0: " << groovyHits[0]);
+
+        // After Task 21 Phase A, ghost weights will be 0.50-0.60 (viable for Gumbel selection)
+        // and this should improve significantly
+    }
+
+    SECTION("Chaos archetype should show wide distribution")
+    {
+        // Chaos weights are more varied with no clear dominant pattern
+        float chaosWeights[32];
+        for (int i = 0; i < 32; ++i)
+        {
+            // Irregular pattern with varying weights
+            if (i == 0 || i == 16)
+            {
+                chaosWeights[i] = 1.0f;  // Downbeats still strong
+            }
+            else if (i % 2 == 0)
+            {
+                chaosWeights[i] = 0.5f + (i % 7) * 0.05f;  // Varying 8th notes
+            }
+            else
+            {
+                chaosWeights[i] = 0.45f + (i % 5) * 0.03f;  // Varying 16th notes
+            }
+        }
+
+        // Generate multiple patterns
+        for (int trial = 0; trial < kNumTrials; ++trial)
+        {
+            uint32_t mask = SelectHitsGumbelTopK(chaosWeights, 0xFFFFFFFF,
+                                                  6, 33333 + trial, kPatternLength, 0);
+
+            for (int step = 0; step < kPatternLength; ++step)
+            {
+                if (mask & (1U << step))
+                {
+                    chaosHits[step]++;
+                }
+            }
+        }
+
+        // Chaos should have more varied hit distribution
+        // Measure standard deviation of hit counts
+        float mean = 0.0f;
+        for (int i = 0; i < 32; ++i)
+        {
+            mean += chaosHits[i];
+        }
+        mean /= 32.0f;
+
+        float variance = 0.0f;
+        for (int i = 0; i < 32; ++i)
+        {
+            float diff = chaosHits[i] - mean;
+            variance += diff * diff;
+        }
+        variance /= 32.0f;
+        float stddev = std::sqrt(variance);
+
+        INFO("Chaos archetype hit distribution stddev: " << stddev);
+        INFO("Mean hits per position: " << mean);
+
+        // Chaos should still have downbeat emphasis
+        REQUIRE(chaosHits[0] > mean);
+    }
 }

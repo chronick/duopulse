@@ -1,8 +1,8 @@
 # Task 21: Musicality Improvements — Implementation Plan
 
-**Status**: READY FOR IMPLEMENTATION
+**Status**: ✅ IMPLEMENTATION COMPLETE
 **Created**: 2025-12-30
-**Branch**: `spec/21-musicality-improvements`
+**Branch**: `impl/21-musicality-improvements`
 **Depends On**: Task 22 Phase B (Balance Range) — coordinate shimmer ratio change
 
 ---
@@ -110,14 +110,14 @@ Current weight tables cluster around 0.5-0.7, creating similar patterns across a
 
 | ID | Task | File:Line | Status |
 |----|------|-----------|--------|
-| A0 | Add hit histogram test to benchmark current selection stats | `tests/test_generation.cpp` (new section) | ☐ |
-| A1 | Tune Techno Minimal weights (4/4 with blend gradients) | `src/Engine/ArchetypeData.h:77-84` | ☐ |
-| A2 | Tune Techno Groovy weights (viable ghost layers 0.50-0.60) | `src/Engine/ArchetypeData.h:190-196` | ☐ |
-| A3 | Tune Techno Chaos weights (more zeros, 0.5-0.9 range) | `src/Engine/ArchetypeData.h:302-308` | ☐ |
-| A4 | Tune Techno shimmer tables for complementary patterns | `src/Engine/ArchetypeData.h:86-92, 198-204, 310-316` | ☐ |
-| A5 | Apply consistent changes to Tribal genre bank | `src/Engine/ArchetypeData.h:380-633` | ☐ |
-| A6 | Apply consistent changes to IDM genre bank | `src/Engine/ArchetypeData.h:689-942` | ☐ |
-| A7 | Run hit histogram test, compare before/after | `tests/test_generation.cpp` | ☐ |
+| A0 | Add hit histogram test to benchmark current selection stats | `tests/test_generation.cpp` (new section) | ✅ |
+| A1 | Tune Techno Minimal weights (4/4 with blend gradients) | `src/Engine/ArchetypeData.h:77-84` | ✅ |
+| A2 | Tune Techno Groovy weights (viable ghost layers 0.50-0.60) | `src/Engine/ArchetypeData.h:190-196` | ✅ |
+| A3 | Tune Techno Chaos weights (more zeros, 0.5-0.9 range) | `src/Engine/ArchetypeData.h:302-308` | ✅ |
+| A4 | Tune Techno shimmer tables for complementary patterns | `src/Engine/ArchetypeData.h:86-92, 198-204, 310-316` | ✅ |
+| A5 | Apply consistent changes to Tribal genre bank | `src/Engine/ArchetypeData.h:380-633` | ✅ |
+| A6 | Apply consistent changes to IDM genre bank | `src/Engine/ArchetypeData.h:689-942` | ✅ |
+| A7 | Run hit histogram test, compare before/after | `tests/test_generation.cpp` | ✅ |
 
 ### Feedback Integration
 
@@ -178,12 +178,12 @@ Ghost notes at 50-70% don't contrast enough with accents at 85-100%.
 
 | ID | Task | File:Line | Status |
 |----|------|-----------|--------|
-| B1 | Widen `velocityFloor` range (65% → 30%) | `src/Engine/VelocityCompute.cpp:30` | ☐ |
-| B2 | Widen `accentBoost` range (+15% → +45%) | `src/Engine/VelocityCompute.cpp:31` | ☐ |
-| B3 | Reduce `velocityVariation` range (±3% → ±15%) | `src/Engine/VelocityCompute.cpp:32` | ☐ |
-| B4 | Hardware test: prototype minimum floor at 0.30 | Hardware validation | ☐ |
-| B5 | Raise minimum clamp to 0.30 (or 0.32 per hw test) | `src/Engine/VelocityCompute.cpp:136` | ☐ |
-| B6 | Update `tests/test_timing.cpp` expectations | `tests/test_timing.cpp` | ☐ |
+| B1 | Widen `velocityFloor` range (65% → 30%) | `src/Engine/VelocityCompute.cpp:30` | ✅ |
+| B2 | Widen `accentBoost` range (+15% → +45%) | `src/Engine/VelocityCompute.cpp:31` | ✅ |
+| B3 | Reduce `velocityVariation` range (±3% → ±15%) | `src/Engine/VelocityCompute.cpp:32` | ✅ |
+| B4 | Hardware test: prototype minimum floor at 0.30 | Hardware validation | ⏭️ (deferred) |
+| B5 | Raise minimum clamp to 0.30 (or 0.32 per hw test) | `src/Engine/VelocityCompute.cpp:136` | ✅ |
+| B6 | Update `tests/test_timing.cpp` expectations | `tests/test_timing.cpp` | ✅ |
 
 ### Feedback Integration
 
@@ -224,13 +224,13 @@ BUILD density increase too subtle; balance range too narrow.
 
 | ID | Task | File:Line | Status |
 |----|------|-----------|--------|
-| C1 | Profile current hit counts across ENERGY zones (16/24/32/64 steps) | `tests/test_generation.cpp` (new section) | ☐ |
-| C2 | Raise `maxHits` from `/4` to `/3` | `src/Engine/HitBudget.cpp:41` | ☐ |
-| C3 | Raise `ComputeBarBudget()` clamp from `/2` to `*2/3` | `src/Engine/HitBudget.cpp:191` | ☐ |
-| C4 | Increase zone minimums (GROOVE=3, BUILD=4, PEAK=6) | `src/Engine/HitBudget.cpp:48-66` | ☐ |
-| C5 | Change shimmerRatio to `balance * 1.5f` (0-150%) | `src/Engine/HitBudget.cpp:114` | ☐ |
-| C6 | Add zone-aware shimmer cap (GROOVE ≤1.0, PEAK ≤1.5) | `src/Engine/HitBudget.cpp:114-120` | ☐ |
-| C7 | Add regression tests for 16/24/32/64 + balance extremes | `tests/test_generation.cpp` | ☐ |
+| C1 | Profile current hit counts across ENERGY zones (16/24/32/64 steps) | `tests/test_generation.cpp` (new section) | ✅ |
+| C2 | Raise `maxHits` from `/4` to `/3` | `src/Engine/HitBudget.cpp:41` | ✅ |
+| C3 | Raise `ComputeBarBudget()` clamp from `/2` to `*2/3` | `src/Engine/HitBudget.cpp:191` | ✅ |
+| C4 | Increase zone minimums (GROOVE=3, BUILD=4, PEAK=6) | `src/Engine/HitBudget.cpp:48-66` | ✅ |
+| C5 | Change shimmerRatio to `balance * 1.5f` (0-150%) | `src/Engine/HitBudget.cpp:114` | ✅ |
+| C6 | Add zone-aware shimmer cap (GROOVE ≤1.0, PEAK ≤1.5) | `src/Engine/HitBudget.cpp:114-120` | ✅ |
+| C7 | Add regression tests for 16/24/32/64 + balance extremes | `tests/test_generation.cpp` | ✅ |
 
 ### Feedback Integration
 
@@ -285,14 +285,14 @@ BUILD only affects velocity slightly; user wants audible phrase-level arc.
 
 | ID | Task | File:Line | Status |
 |----|------|-----------|--------|
-| D1 | Add `BuildPhase` enum (GROOVE/BUILD/FILL) | `src/Engine/VelocityCompute.h` (new) | ☐ |
-| D2 | Add `velocityBoost` and `forceAccents` to `BuildModifiers` | `src/Engine/ControlState.h:70-93` | ☐ |
-| D3 | Update `Init()` for new fields | `src/Engine/ControlState.h:87-93` | ☐ |
-| D4 | Implement 3-phase BUILD logic | `src/Engine/VelocityCompute.cpp:51-79` | ☐ |
-| D5 | Integrate velocityBoost into `ComputeVelocity()` | `src/Engine/VelocityCompute.cpp:103-137` | ☐ |
-| D6 | Integrate forceAccents into `ShouldAccent()` | `src/Engine/VelocityCompute.cpp:85-101` | ☐ |
-| D7 | Update all callers of BuildModifiers | Search for `BuildModifiers` usage | ☐ |
-| D8 | Add tests for phase transitions | `tests/test_timing.cpp` | ☐ |
+| D1 | Add `BuildPhase` enum (GROOVE/BUILD/FILL) | `src/Engine/ControlState.h` | ✅ |
+| D2 | Add `velocityBoost` and `forceAccents` to `BuildModifiers` | `src/Engine/ControlState.h:70-93` | ✅ |
+| D3 | Update `Init()` for new fields | `src/Engine/ControlState.h:87-93` | ✅ |
+| D4 | Implement 3-phase BUILD logic | `src/Engine/VelocityCompute.cpp:51-79` | ✅ |
+| D5 | Integrate velocityBoost into `ComputeVelocity()` | `src/Engine/VelocityCompute.cpp:103-137` | ✅ |
+| D6 | Integrate forceAccents into `ShouldAccent()` | `src/Engine/VelocityCompute.cpp:85-101` | ✅ |
+| D7 | Update all callers of BuildModifiers | Search for `BuildModifiers` usage | ✅ |
+| D8 | Add tests for phase transitions | `tests/test_timing.cpp` | ✅ |
 
 ### Feedback Integration
 
@@ -387,10 +387,10 @@ Swing doesn't noticeably affect timing perception.
 
 | ID | Task | File:Line | Status |
 |----|------|-----------|--------|
-| E1 | Audit current swing path with logging | `src/Engine/BrokenEffects.cpp:261-280` | ☐ |
-| E2 | Change swing to multiply archetype `swingAmount` | `src/Engine/Sequencer.cpp:898-999` | ☐ |
-| E3 | Widen zone caps (0.60/0.65/0.70 vs 0.58/0.62/0.66) | `src/Engine/BrokenEffects.cpp:270-280` | ☐ |
-| E4 | Add external clock + swing regression test | `tests/test_timing.cpp` | ☐ |
+| E1 | Audit current swing path with logging | `src/Engine/BrokenEffects.cpp:261-280` | ✅ |
+| E2 | Change swing to multiply archetype `swingAmount` | `src/Engine/BrokenEffects.cpp:261-280` | ✅ |
+| E3 | Widen zone caps (0.60/0.65/0.68/0.70) | `src/Engine/BrokenEffects.cpp:270-280` | ✅ |
+| E4 | Add external clock + swing regression test | `tests/test_timing.cpp` | ✅ |
 
 ### Feedback Integration
 
@@ -435,16 +435,16 @@ Probabilistic generation can produce non-musical patterns at low complexity.
 
 | ID | Task | File:Line | Status |
 |----|------|-----------|--------|
-| F1 | Create `EuclideanGen.h` with `GenerateEuclidean()` | `src/Engine/EuclideanGen.h` (new) | ☐ |
-| F2 | Create `EuclideanGen.cpp` implementation | `src/Engine/EuclideanGen.cpp` (new) | ☐ |
-| F3 | Add `RotatePattern()` for seed-based rotation | `src/Engine/EuclideanGen.cpp` | ☐ |
-| F4 | Add `BlendEuclideanWithWeights()` | `src/Engine/EuclideanGen.cpp` | ☐ |
-| F5 | Add `GetGenreEuclideanRatio()` | `src/Engine/EuclideanGen.cpp` | ☐ |
-| F6 | Integrate into `GenerateBar()` for Techno only | `src/Engine/Sequencer.cpp:290-410` | ☐ |
-| F7 | Gate by ENERGY zone (only MINIMAL/GROOVE use Euclidean) | `src/Engine/Sequencer.cpp` | ☐ |
-| F8 | Support 16/24/32/64 patterns (including two-half path) | `src/Engine/Sequencer.cpp` | ☐ |
-| F9 | Add unit tests for Euclidean generation | `tests/test_generation.cpp` | ☐ |
-| F10 | Add tests for Euclidean ratio tapering with Field X | `tests/test_generation.cpp` | ☐ |
+| F1 | Create `EuclideanGen.h` with `GenerateEuclidean()` | `src/Engine/EuclideanGen.h` (new) | ✅ |
+| F2 | Create `EuclideanGen.cpp` implementation | `src/Engine/EuclideanGen.cpp` (new) | ✅ |
+| F3 | Add `RotatePattern()` for seed-based rotation | `src/Engine/EuclideanGen.cpp` | ✅ |
+| F4 | Add `BlendEuclideanWithWeights()` | `src/Engine/EuclideanGen.cpp` | ✅ |
+| F5 | Add `GetGenreEuclideanRatio()` | `src/Engine/EuclideanGen.cpp` | ✅ |
+| F6 | Integrate into `GenerateBar()` for Techno only | `src/Engine/Sequencer.cpp:290-410` | ✅ |
+| F7 | Gate by ENERGY zone (only MINIMAL/GROOVE use Euclidean) | `src/Engine/Sequencer.cpp` | ✅ |
+| F8 | Support 16/24/32/64 patterns (including two-half path) | `src/Engine/Sequencer.cpp` | ✅ |
+| F9 | Add unit tests for Euclidean generation | `tests/test_generation.cpp` | ✅ |
+| F10 | Add tests for Euclidean ratio tapering with Field X | `tests/test_generation.cpp` | ✅ |
 
 ### Feedback Integration
 

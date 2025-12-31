@@ -9,19 +9,22 @@ using namespace daisysp_idm_grids;
 using Catch::Approx;
 
 // =============================================================================
-// v4 Zone-Bounded Swing Tests
+// v4.1 Zone-Bounded Swing Tests (with archetype base)
 // =============================================================================
 
-TEST_CASE("ComputeSwing scales with swing config parameter", "[timing][swing][config]")
+TEST_CASE("ComputeSwing multiplies archetype base by config", "[timing][swing][config]")
 {
-    // At swing = 0, swing should be 50% (straight)
-    REQUIRE(ComputeSwing(0.0f, EnergyZone::PEAK) == Approx(0.50f).margin(0.01f));
+    // archetype = 0.50 (straight), config = 0% -> 1.0× archetype = 0.50
+    REQUIRE(ComputeSwing(0.0f, 0.50f, EnergyZone::PEAK) == Approx(0.50f).margin(0.01f));
 
-    // At swing = 1, swing should be 66% (triplet feel) in PEAK zone
-    REQUIRE(ComputeSwing(1.0f, EnergyZone::PEAK) == Approx(0.66f).margin(0.01f));
+    // archetype = 0.50 (straight), config = 100% -> 2.0× archetype = 1.00 (capped at 0.70 for PEAK)
+    REQUIRE(ComputeSwing(1.0f, 0.50f, EnergyZone::PEAK) == Approx(0.70f).margin(0.01f));
 
-    // At swing = 0.5, swing should be ~58%
-    REQUIRE(ComputeSwing(0.5f, EnergyZone::PEAK) == Approx(0.58f).margin(0.01f));
+    // archetype = 0.55 (swung), config = 0% -> 1.0× archetype = 0.55
+    REQUIRE(ComputeSwing(0.0f, 0.55f, EnergyZone::PEAK) == Approx(0.55f).margin(0.01f));
+
+    // archetype = 0.55 (swung), config = 50% -> 1.5× archetype = 0.825 (capped at 0.70 for PEAK)
+    REQUIRE(ComputeSwing(0.5f, 0.55f, EnergyZone::PEAK) == Approx(0.70f).margin(0.01f));
 }
 
 TEST_CASE("ComputeSwing uses swing config, not flavorCV", "[timing][swing][config][regression]")
@@ -30,31 +33,34 @@ TEST_CASE("ComputeSwing uses swing config, not flavorCV", "[timing][swing][confi
     // ComputeSwing was incorrectly using flavorCV instead of swing config.
     // The first parameter is now explicitly the swing CONFIG value (Config K2).
 
-    // Verify the full range mapping:
-    // Config K2 at 0% (CCW) -> 50% swing (straight)
-    REQUIRE(ComputeSwing(0.0f, EnergyZone::PEAK) == Approx(0.50f).margin(0.001f));
+    // v4.1 update: Now multiplies archetype base instead of fixed offset
+    const float archetypeBase = 0.50f;  // Straight archetype
 
-    // Config K2 at 50% (noon) -> 58% swing (shuffle)
-    REQUIRE(ComputeSwing(0.5f, EnergyZone::PEAK) == Approx(0.58f).margin(0.001f));
+    // Config K2 at 0% (CCW) -> 1.0× archetype = 0.50 (straight)
+    REQUIRE(ComputeSwing(0.0f, archetypeBase, EnergyZone::PEAK) == Approx(0.50f).margin(0.001f));
 
-    // Config K2 at 100% (CW) -> 66% swing (heavy triplet)
-    REQUIRE(ComputeSwing(1.0f, EnergyZone::PEAK) == Approx(0.66f).margin(0.001f));
+    // Config K2 at 50% (noon) -> 1.5× archetype = 0.75 (capped at 0.70)
+    REQUIRE(ComputeSwing(0.5f, archetypeBase, EnergyZone::PEAK) == Approx(0.70f).margin(0.001f));
+
+    // Config K2 at 100% (CW) -> 2.0× archetype = 1.00 (capped at 0.70)
+    REQUIRE(ComputeSwing(1.0f, archetypeBase, EnergyZone::PEAK) == Approx(0.70f).margin(0.001f));
 }
 
-TEST_CASE("ComputeSwing is bounded by energy zone", "[timing][swing]")
+TEST_CASE("ComputeSwing is bounded by energy zone (v4.1 widened caps)", "[timing][swing]")
 {
-    // GROOVE zone: max 58%
-    REQUIRE(ComputeSwing(1.0f, EnergyZone::GROOVE) == Approx(0.58f).margin(0.01f));
-    REQUIRE(ComputeSwing(0.5f, EnergyZone::GROOVE) == Approx(0.58f).margin(0.01f));
+    const float archetypeBase = 0.50f;
 
-    // MINIMAL zone: max 58%
-    REQUIRE(ComputeSwing(1.0f, EnergyZone::MINIMAL) == Approx(0.58f).margin(0.01f));
+    // MINIMAL zone: max 60% (widened from 58%)
+    REQUIRE(ComputeSwing(1.0f, archetypeBase, EnergyZone::MINIMAL) == Approx(0.60f).margin(0.01f));
 
-    // BUILD zone: max 62%
-    REQUIRE(ComputeSwing(1.0f, EnergyZone::BUILD) == Approx(0.62f).margin(0.01f));
+    // GROOVE zone: max 65% (widened from 58%)
+    REQUIRE(ComputeSwing(1.0f, archetypeBase, EnergyZone::GROOVE) == Approx(0.65f).margin(0.01f));
 
-    // PEAK zone: max 66% (no limit)
-    REQUIRE(ComputeSwing(1.0f, EnergyZone::PEAK) == Approx(0.66f).margin(0.01f));
+    // BUILD zone: max 68% (widened from 62%)
+    REQUIRE(ComputeSwing(1.0f, archetypeBase, EnergyZone::BUILD) == Approx(0.68f).margin(0.01f));
+
+    // PEAK zone: max 70% (widened from 66%)
+    REQUIRE(ComputeSwing(1.0f, archetypeBase, EnergyZone::PEAK) == Approx(0.70f).margin(0.01f));
 }
 
 TEST_CASE("ApplySwingToStep only affects offbeats", "[timing][swing]")
@@ -344,16 +350,17 @@ TEST_CASE("ComputePunch has expected range values", "[velocity][punch]")
     ComputePunch(1.0f, high);
 
     // At punch=0: flat dynamics
-    REQUIRE(low.accentProbability == Approx(0.15f).margin(0.01f));
-    REQUIRE(low.velocityFloor == Approx(0.70f).margin(0.01f));
-    REQUIRE(low.accentBoost == Approx(0.10f).margin(0.01f));
-    REQUIRE(low.velocityVariation == Approx(0.05f).margin(0.01f));
+    // Task 21 Phase B: Updated ranges for wider velocity contrast
+    REQUIRE(low.accentProbability == Approx(0.20f).margin(0.01f));  // was 0.15
+    REQUIRE(low.velocityFloor == Approx(0.65f).margin(0.01f));      // was 0.70
+    REQUIRE(low.accentBoost == Approx(0.15f).margin(0.01f));        // was 0.10
+    REQUIRE(low.velocityVariation == Approx(0.03f).margin(0.01f));  // was 0.05
 
     // At punch=1: maximum dynamics
     REQUIRE(high.accentProbability == Approx(0.50f).margin(0.01f));
     REQUIRE(high.velocityFloor == Approx(0.30f).margin(0.01f));
-    REQUIRE(high.accentBoost == Approx(0.35f).margin(0.01f));
-    REQUIRE(high.velocityVariation == Approx(0.20f).margin(0.01f));
+    REQUIRE(high.accentBoost == Approx(0.45f).margin(0.01f));       // was 0.35
+    REQUIRE(high.velocityVariation == Approx(0.15f).margin(0.01f)); // was 0.20
 }
 
 // =============================================================================
@@ -362,34 +369,48 @@ TEST_CASE("ComputePunch has expected range values", "[velocity][punch]")
 
 TEST_CASE("ComputeBuildModifiers scales with build and progress", "[velocity][build]")
 {
-    BuildModifiers flat, building, peak;
+    // Task 21 Phase D: Test new 3-phase BUILD system
+    BuildModifiers groove, building, peak;
 
-    ComputeBuildModifiers(0.0f, 0.5f, flat);
-    ComputeBuildModifiers(0.5f, 0.5f, building);
-    ComputeBuildModifiers(1.0f, 1.0f, peak);
+    // GROOVE phase (0-60%): no density change
+    ComputeBuildModifiers(0.0f, 0.5f, groove);
+    REQUIRE(groove.densityMultiplier == Approx(1.0f).margin(0.01f));
+    REQUIRE(groove.phase == BuildPhase::GROOVE);
 
-    // Density multiplier increases with build × progress
-    REQUIRE(flat.densityMultiplier == Approx(1.0f).margin(0.01f));
+    // BUILD phase (60-87.5%): ramping density
+    ComputeBuildModifiers(0.5f, 0.7f, building);
     REQUIRE(building.densityMultiplier > 1.0f);
+    REQUIRE(building.phase == BuildPhase::BUILD);
+
+    // FILL phase (87.5-100%): maximum density
+    ComputeBuildModifiers(1.0f, 1.0f, peak);
     REQUIRE(peak.densityMultiplier > building.densityMultiplier);
+    REQUIRE(peak.phase == BuildPhase::FILL);
 }
 
 TEST_CASE("ComputeBuildModifiers identifies fill zone", "[velocity][build]")
 {
+    // Task 21 Phase D: Test new 3-phase BUILD system
     BuildModifiers early, beforeFill, inFill, endFill;
 
-    ComputeBuildModifiers(1.0f, 0.50f, early);
-    ComputeBuildModifiers(1.0f, 0.87f, beforeFill);
-    ComputeBuildModifiers(1.0f, 0.90f, inFill);
-    ComputeBuildModifiers(1.0f, 1.0f, endFill);
+    ComputeBuildModifiers(1.0f, 0.50f, early);      // GROOVE phase
+    ComputeBuildModifiers(1.0f, 0.87f, beforeFill); // BUILD phase
+    ComputeBuildModifiers(1.0f, 0.90f, inFill);     // FILL phase (start)
+    ComputeBuildModifiers(1.0f, 1.0f, endFill);     // FILL phase (end)
 
     REQUIRE(early.inFillZone == false);
     REQUIRE(beforeFill.inFillZone == false);
     REQUIRE(inFill.inFillZone == true);
     REQUIRE(endFill.inFillZone == true);
 
-    // Fill intensity increases toward phrase end
-    REQUIRE(inFill.fillIntensity < endFill.fillIntensity);
+    // In new 3-phase system, fillIntensity is constant in FILL phase (= build value)
+    // Both should equal 1.0 since build=1.0
+    REQUIRE(inFill.fillIntensity == Approx(1.0f).margin(0.01f));
+    REQUIRE(endFill.fillIntensity == Approx(1.0f).margin(0.01f));
+
+    // Velocity boost should be present in FILL
+    REQUIRE(inFill.velocityBoost > 0.0f);
+    REQUIRE(endFill.velocityBoost > 0.0f);
 }
 
 // =============================================================================
@@ -454,11 +475,15 @@ TEST_CASE("ShouldAccent respects accent mask", "[velocity][accent]")
     // Mask with only step 0 eligible
     uint32_t mask = 0x00000001;
 
+    // Task 21 Phase D: Create BuildModifiers with forceAccents=false
+    BuildModifiers buildMods;
+    buildMods.Init();
+
     // Step 0 should potentially accent (probability dependent)
     // Steps 1-31 should never accent
     for (int step = 1; step < 32; step++)
     {
-        REQUIRE(ShouldAccent(step, mask, 1.0f, seed) == false);
+        REQUIRE(ShouldAccent(step, mask, 1.0f, buildMods, seed) == false);
     }
 }
 
@@ -484,12 +509,12 @@ TEST_CASE("GetDefaultAccentMask returns valid masks", "[velocity][accent]")
 // v4 Helper Function Tests
 // =============================================================================
 
-TEST_CASE("GetMaxSwingForZone returns correct limits", "[timing][swing]")
+TEST_CASE("GetMaxSwingForZone returns correct limits (v4.1 widened)", "[timing][swing]")
 {
-    REQUIRE(GetMaxSwingForZone(EnergyZone::MINIMAL) == Approx(0.58f));
-    REQUIRE(GetMaxSwingForZone(EnergyZone::GROOVE) == Approx(0.58f));
-    REQUIRE(GetMaxSwingForZone(EnergyZone::BUILD) == Approx(0.62f));
-    REQUIRE(GetMaxSwingForZone(EnergyZone::PEAK) == Approx(0.66f));
+    REQUIRE(GetMaxSwingForZone(EnergyZone::MINIMAL) == Approx(0.60f));
+    REQUIRE(GetMaxSwingForZone(EnergyZone::GROOVE) == Approx(0.65f));
+    REQUIRE(GetMaxSwingForZone(EnergyZone::BUILD) == Approx(0.68f));
+    REQUIRE(GetMaxSwingForZone(EnergyZone::PEAK) == Approx(0.70f));
 }
 
 TEST_CASE("GetMaxJitterMsForZone returns correct limits", "[timing][jitter]")
@@ -513,4 +538,60 @@ TEST_CASE("IsOffbeat identifies correct steps", "[timing]")
     REQUIRE(IsOffbeat(3) == true);
     REQUIRE(IsOffbeat(5) == true);
     REQUIRE(IsOffbeat(31) == true);
+}
+
+// =============================================================================
+// v4.1 External Clock + Swing Regression Test (Task 21 Phase E4)
+// =============================================================================
+
+TEST_CASE("External clock timing not violated by swing", "[timing][swing][clock][regression]")
+{
+    // Regression test for Task 08 (Bulletproof Clock) compatibility.
+    // Swing should delay offbeat triggers but NEVER advance them beyond
+    // the next clock edge. This ensures external clock edge timing is respected.
+
+    const float samplesPerStep = 1000.0f;
+    const float maxAllowedSwing = 0.70f;  // PEAK zone maximum
+
+    // Test all swing values from 50% (straight) to 70% (max)
+    for (float swing = 0.50f; swing <= maxAllowedSwing + 0.01f; swing += 0.05f)
+    {
+        // Compute swing offset for an offbeat step (step 1)
+        float offset = ApplySwingToStep(1, swing, samplesPerStep);
+
+        // Swing should NEVER advance the trigger (negative offset)
+        REQUIRE(offset >= 0.0f);
+
+        // Swing should NEVER delay beyond the next step boundary
+        // (otherwise it would violate the next clock edge)
+        REQUIRE(offset < samplesPerStep);
+    }
+}
+
+TEST_CASE("Archetype swing blends correctly with config swing", "[timing][swing][archetype]")
+{
+    // Test that archetype base swing is correctly multiplied by config swing
+
+    // Case 1: Zero archetype swing (straight archetype)
+    // Should default to 0.50 and then multiply by config
+    float result1 = ComputeSwing(0.5f, 0.0f, EnergyZone::PEAK);
+    REQUIRE(result1 == Approx(0.70f).margin(0.01f));  // 0.50 * 1.5 = 0.75, capped at 0.70
+
+    // Case 2: Moderate archetype swing (0.55)
+    // Config 0% should preserve archetype base
+    float result2 = ComputeSwing(0.0f, 0.55f, EnergyZone::PEAK);
+    REQUIRE(result2 == Approx(0.55f).margin(0.01f));
+
+    // Config 50% should give 1.5× archetype
+    float result3 = ComputeSwing(0.5f, 0.55f, EnergyZone::PEAK);
+    REQUIRE(result3 == Approx(0.70f).margin(0.01f));  // 0.55 * 1.5 = 0.825, capped at 0.70
+
+    // Case 3: High archetype swing (0.60)
+    // Config 0% should preserve archetype base
+    float result4 = ComputeSwing(0.0f, 0.60f, EnergyZone::GROOVE);
+    REQUIRE(result4 == Approx(0.60f).margin(0.01f));
+
+    // Config 50% should exceed GROOVE cap and be clamped
+    float result5 = ComputeSwing(0.5f, 0.60f, EnergyZone::GROOVE);
+    REQUIRE(result5 == Approx(0.65f).margin(0.01f));  // 0.60 * 1.5 = 0.90, capped at 0.65
 }

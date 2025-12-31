@@ -29,19 +29,20 @@ void ComputePunch(float punch, PunchParams& params)
 
     // PUNCH = 0%: Flat dynamics (all similar velocity)
     // PUNCH = 100%: Maximum dynamics (huge contrasts)
+    // Task 21 Phase B: Widened velocity contrast ranges
 
-    // Accent probability: 15% to 50%
-    params.accentProbability = 0.15f + punch * 0.35f;
+    // Accent probability: 20% to 50% (was 15%-50%)
+    params.accentProbability = 0.20f + punch * 0.30f;
 
-    // Velocity floor: 70% down to 30%
+    // Velocity floor: 65% down to 30% (was 70%-30%)
     // Low punch = high floor (flat), high punch = low floor (dynamics)
-    params.velocityFloor = 0.70f - punch * 0.40f;
+    params.velocityFloor = 0.65f - punch * 0.35f;
 
-    // Accent boost: +10% to +35%
-    params.accentBoost = 0.10f + punch * 0.25f;
+    // Accent boost: +15% to +45% (was +10%-35%)
+    params.accentBoost = 0.15f + punch * 0.30f;
 
-    // Velocity variation: ±5% to ±20%
-    params.velocityVariation = 0.05f + punch * 0.15f;
+    // Velocity variation: ±3% to ±15% (was ±5%-20%)
+    params.velocityVariation = 0.03f + punch * 0.12f;
 }
 
 // =============================================================================
@@ -56,26 +57,39 @@ void ComputeBuildModifiers(float build, float phraseProgress, BuildModifiers& mo
 
     modifiers.phraseProgress = phraseProgress;
 
-    // BUILD = 0%: Flat throughout (no density change)
-    // BUILD = 100%: Dramatic arc (density increases toward end)
+    // Task 21 Phase D: 3-phase BUILD system
+    // GROOVE (0-60%): Stable
+    // BUILD (60-87.5%): Ramping density and velocity
+    // FILL (87.5-100%): Maximum energy
 
-    // Density ramps up toward phrase end
-    float rampAmount = build * phraseProgress * 0.5f;  // Up to 50% denser at end
-    modifiers.densityMultiplier = 1.0f + rampAmount;
-
-    // Fill zone is last 12.5% of phrase (last bar of 8-bar phrase)
-    modifiers.inFillZone = (phraseProgress > 0.875f);
-
-    // Fill intensity increases with BUILD and proximity to phrase end
-    if (modifiers.inFillZone)
+    if (phraseProgress < 0.60f)
     {
-        float fillProgress = (phraseProgress - 0.875f) / 0.125f;  // 0-1 within fill zone
-        modifiers.fillIntensity = build * fillProgress;
+        // GROOVE phase: stable, no modification
+        modifiers.phase = BuildPhase::GROOVE;
+        modifiers.densityMultiplier = 1.0f;
+        modifiers.velocityBoost = 0.0f;
+        modifiers.forceAccents = false;
+    }
+    else if (phraseProgress < 0.875f)
+    {
+        // BUILD phase: ramping density and velocity
+        modifiers.phase = BuildPhase::BUILD;
+        float phaseProgress = (phraseProgress - 0.60f) / 0.275f;  // 0-1 within phase
+        modifiers.densityMultiplier = 1.0f + build * 0.35f * phaseProgress;
+        modifiers.velocityBoost = build * 0.15f * phaseProgress;  // Task 21-05: increased from 0.08
+        modifiers.forceAccents = false;
     }
     else
     {
-        modifiers.fillIntensity = 0.0f;
+        // FILL phase: maximum energy
+        modifiers.phase = BuildPhase::FILL;
+        modifiers.densityMultiplier = 1.0f + build * 0.50f;
+        modifiers.velocityBoost = build * 0.20f;  // Task 21-05: increased from 0.12
+        modifiers.forceAccents = (build > 0.6f);
     }
+
+    modifiers.inFillZone = (modifiers.phase == BuildPhase::FILL);
+    modifiers.fillIntensity = modifiers.inFillZone ? build : 0.0f;
 }
 
 // =============================================================================
@@ -85,8 +99,13 @@ void ComputeBuildModifiers(float build, float phraseProgress, BuildModifiers& mo
 bool ShouldAccent(int step,
                   uint32_t accentMask,
                   float accentProbability,
+                  const BuildModifiers& buildMods,
                   uint32_t seed)
 {
+    // Task 21 Phase D: Force all hits to accent in FILL phase at high BUILD
+    if (buildMods.forceAccents)
+        return true;
+
     // Check if step is accent-eligible
     bool eligible = (accentMask & (1u << (step & 31))) != 0;
 
@@ -109,13 +128,16 @@ float ComputeVelocity(const PunchParams& punchParams,
     // Start with velocity floor
     float velocity = punchParams.velocityFloor;
 
+    // Task 21 Phase D: Apply BUILD velocityBoost to floor
+    velocity += buildMods.velocityBoost;
+
     // Add accent boost if accented
     if (isAccent)
     {
         velocity += punchParams.accentBoost;
     }
 
-    // Apply BUILD modifiers
+    // Apply BUILD modifiers (legacy fill boost, now redundant with velocityBoost)
     if (buildMods.inFillZone && buildMods.fillIntensity > 0.0f)
     {
         // In fill zone: boost velocity toward phrase end (fills get louder)
@@ -132,8 +154,9 @@ float ComputeVelocity(const PunchParams& punchParams,
         velocity += variation;
     }
 
-    // Clamp to valid range (min 0.2 for audibility, max 1.0)
-    return Clamp(velocity, 0.2f, 1.0f);
+    // Clamp to valid range
+    // Task 21 Phase B: min raised to 0.30 for VCA audibility (was 0.2)
+    return Clamp(velocity, 0.30f, 1.0f);
 }
 
 uint32_t GetDefaultAccentMask(Voice voice)
@@ -170,8 +193,8 @@ float ComputeAnchorVelocity(float punch,
     BuildModifiers buildMods;
     ComputeBuildModifiers(build, phraseProgress, buildMods);
 
-    // Determine accent status
-    bool isAccent = ShouldAccent(step, accentMask, punchParams.accentProbability, seed);
+    // Determine accent status (Task 21 Phase D: pass buildMods for forceAccents)
+    bool isAccent = ShouldAccent(step, accentMask, punchParams.accentProbability, buildMods, seed);
 
     // Compute final velocity
     return ComputeVelocity(punchParams, buildMods, isAccent, seed, step);
@@ -196,8 +219,8 @@ float ComputeShimmerVelocity(float punch,
     BuildModifiers buildMods;
     ComputeBuildModifiers(build, phraseProgress, buildMods);
 
-    // Determine accent status
-    bool isAccent = ShouldAccent(step, accentMask, punchParams.accentProbability, seed);
+    // Determine accent status (Task 21 Phase D: pass buildMods for forceAccents)
+    bool isAccent = ShouldAccent(step, accentMask, punchParams.accentProbability, buildMods, seed);
 
     // Compute final velocity
     return ComputeVelocity(punchParams, buildMods, isAccent, seed, step);
