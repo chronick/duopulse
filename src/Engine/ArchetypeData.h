@@ -389,21 +389,23 @@ namespace tribal
 /**
  * [0,0] Minimal: Sparse polyrhythmic foundation
  * Character: Afrobeat-influenced minimal - space with tension
+ * Task 21 Phase A: Preserves blend gradients (0.90-1.0) for softmax morphing
  */
 constexpr float kMinimal_Anchor[32] = {
-    // 3-2 Son Clave inspired spacing
-    1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.7f, 0.0f,  // Hit on 1 and "a" of 2
-    0.0f, 0.0f, 0.0f, 0.0f, 0.8f, 0.0f, 0.0f, 0.0f,  // Hit on "&" of 3
-    1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.7f, 0.0f,
-    0.0f, 0.0f, 0.0f, 0.0f, 0.8f, 0.0f, 0.0f, 0.0f
+    // 3-2 Son Clave inspired spacing - gradients for blend capability
+    1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.95f, 0.0f,  // Hit on 1 and "a" of 2
+    0.0f, 0.0f, 0.0f, 0.0f, 0.95f, 0.0f, 0.0f, 0.0f,  // Hit on "&" of 3
+    1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.95f, 0.0f,
+    0.0f, 0.0f, 0.0f, 0.0f, 0.90f, 0.0f, 0.0f, 0.0f
 };
 
 constexpr float kMinimal_Shimmer[32] = {
-    // Counter-rhythm to anchor
-    0.0f, 0.0f, 0.0f, 0.0f, 0.6f, 0.0f, 0.0f, 0.0f,  // Answer on "&" of 2
+    // Counter-rhythm to anchor - gradients preserved
+    // Task 21 Phase A: Complement minimal clave pattern
+    0.0f, 0.0f, 0.0f, 0.0f, 0.90f, 0.0f, 0.0f, 0.0f,  // Answer on "&" of 2
     0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
-    0.0f, 0.0f, 0.0f, 0.0f, 0.6f, 0.0f, 0.0f, 0.0f,
-    0.9f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f   // Strong on 4
+    0.0f, 0.0f, 0.0f, 0.0f, 0.90f, 0.0f, 0.0f, 0.0f,
+    1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f   // Strong on 4
 };
 
 constexpr float kMinimal_Aux[32] = {
@@ -501,21 +503,23 @@ constexpr float kDriving_Aux[32] = {
 /**
  * [1,1] Groovy: 3-2 Son Clave based feel
  * Character: The sweet spot - classic Afro-Cuban pocket
+ * Task 21 Phase A: Ghost weights 0.50-0.60 can win Gumbel selection
  */
 constexpr float kGroovy_Anchor[32] = {
-    // 3-2 Son Clave pattern
-    1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.8f, 0.0f,  // 1 ... and a
-    0.0f, 0.0f, 0.0f, 0.0f, 0.75f,0.0f, 0.0f, 0.0f,  //       &
-    1.0f, 0.0f, 0.0f, 0.0f, 0.7f, 0.0f, 0.0f, 0.0f,  // 1     &
-    0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.6f, 0.0f   //       a
+    // 3-2 Son Clave pattern - viable ghosts for groove
+    1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.95f, 0.0f,  // 1 ... and a (strong)
+    0.0f, 0.0f, 0.0f, 0.0f, 0.90f, 0.0f, 0.0f, 0.0f,  //       & (strong)
+    1.0f, 0.0f, 0.0f, 0.0f, 0.90f, 0.0f, 0.0f, 0.0f,  // 1     & (strong)
+    0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.85f, 0.0f   //       a (pickup)
 };
 
 constexpr float kGroovy_Shimmer[32] = {
-    // Conga-style response pattern
-    0.0f, 0.0f, 0.0f, 0.5f, 0.0f, 0.0f, 0.0f, 0.0f,
-    1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.5f, 0.0f, 0.0f,
-    0.0f, 0.0f, 0.0f, 0.5f, 0.0f, 0.0f, 0.0f, 0.0f,
-    1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.5f, 0.0f, 0.0f
+    // Conga-style response pattern - viable ghosts
+    // Task 21 Phase A: Ghost weights 0.50-0.60 create variation
+    0.0f, 0.0f, 0.0f, 0.55f, 0.0f, 0.0f, 0.0f, 0.0f,
+    1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.55f, 0.0f, 0.0f,
+    0.0f, 0.0f, 0.0f, 0.55f, 0.0f, 0.0f, 0.0f, 0.0f,
+    1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.60f, 0.0f, 0.0f
 };
 
 constexpr float kGroovy_Aux[32] = {
@@ -613,21 +617,23 @@ constexpr float kPolyrhythm_Aux[32] = {
 /**
  * [2,2] Chaos: Maximum polyrhythmic complexity
  * Character: Controlled chaos - multiple cross-rhythms
+ * Task 21 Phase A: More zeros, 0.5-0.9 range for contrast
  */
 constexpr float kChaos_Anchor[32] = {
-    // Irregular pattern with cluster accents
-    1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.6f, 0.0f, 0.55f,
-    0.0f, 0.0f, 0.6f, 0.0f, 0.0f, 0.0f, 0.55f,0.0f,
-    0.0f, 0.6f, 0.0f, 0.0f, 0.9f, 0.0f, 0.0f, 0.0f,
-    0.0f, 0.0f, 0.55f,0.0f, 0.0f, 0.6f, 0.0f, 0.0f
+    // Irregular pattern with cluster accents - widened weight range
+    1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.75f, 0.0f, 0.70f,  // Opening cluster
+    0.0f, 0.0f, 0.75f, 0.0f, 0.0f, 0.0f, 0.65f, 0.0f,  // Scattered hits
+    0.0f, 0.70f, 0.0f, 0.0f, 0.90f, 0.0f, 0.0f, 0.0f,  // Strong beat 3
+    0.0f, 0.0f, 0.65f, 0.0f, 0.0f, 0.75f, 0.0f, 0.0f   // Fragmented end
 };
 
 constexpr float kChaos_Shimmer[32] = {
     // Fills gaps in anchor - call and response
-    0.0f, 0.0f, 0.5f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
-    0.0f, 0.5f, 0.0f, 0.0f, 0.8f, 0.0f, 0.0f, 0.0f,
-    0.0f, 0.0f, 0.0f, 0.5f, 0.0f, 0.0f, 0.0f, 0.5f,
-    0.8f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.5f, 0.0f
+    // Task 21 Phase A: 0.5-0.9 range complements chaos anchor
+    0.0f, 0.0f, 0.60f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+    0.0f, 0.65f, 0.0f, 0.0f, 0.90f, 0.0f, 0.0f, 0.0f,  // Strong response
+    0.0f, 0.0f, 0.0f, 0.60f, 0.0f, 0.0f, 0.0f, 0.65f,
+    0.85f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.60f, 0.0f
 };
 
 constexpr float kChaos_Aux[32] = {
@@ -698,21 +704,23 @@ namespace idm
 /**
  * [0,0] Minimal: Sparse ambient glitch
  * Character: Autechre-influenced - space and tension
+ * Task 21 Phase A: Preserves blend gradients (0.90-1.0) for softmax morphing
  */
 constexpr float kMinimal_Anchor[32] = {
-    // Long gaps with unexpected placements
+    // Long gaps with unexpected placements - gradients for blend
     1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
-    0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.6f, 0.0f,  // Late hit
-    0.0f, 0.0f, 0.0f, 0.0f, 0.8f, 0.0f, 0.0f, 0.0f,  // Off beat 3
+    0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.90f, 0.0f,  // Late hit (gradient)
+    0.0f, 0.0f, 0.0f, 0.0f, 0.95f, 0.0f, 0.0f, 0.0f,  // Off beat 3 (gradient)
     0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f
 };
 
 constexpr float kMinimal_Shimmer[32] = {
-    // Distant, unexpected responses
+    // Distant, unexpected responses - gradients preserved
+    // Task 21 Phase A: Complement minimal anchor's sparse character
     0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
     0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
-    0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.5f, 0.0f, 0.0f,  // Answer
-    0.8f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f
+    0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.90f, 0.0f, 0.0f,  // Answer (gradient)
+    0.95f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f
 };
 
 constexpr float kMinimal_Aux[32] = {
@@ -810,21 +818,23 @@ constexpr float kDriving_Aux[32] = {
 /**
  * [1,1] Groovy: Complex but danceable IDM
  * Character: Aphex Twin-influenced - head-nodding chaos
+ * Task 21 Phase A: Ghost weights 0.50-0.60 can win Gumbel selection
  */
 constexpr float kGroovy_Anchor[32] = {
-    // Danceable but with displaced accents
-    1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.55f,0.0f, 0.0f,
-    0.0f, 0.0f, 0.0f, 0.5f, 0.0f, 0.0f, 0.0f, 0.0f,
-    0.9f, 0.0f, 0.0f, 0.0f, 0.0f, 0.55f,0.0f, 0.0f,
-    0.0f, 0.0f, 0.0f, 0.5f, 0.0f, 0.0f, 0.55f,0.0f
+    // Danceable but with displaced accents - viable ghosts
+    1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.60f, 0.0f, 0.0f,  // Strong 1, displaced ghost
+    0.0f, 0.0f, 0.0f, 0.55f, 0.0f, 0.0f, 0.0f, 0.0f,  // Off-grid ghost
+    0.95f, 0.0f, 0.0f, 0.0f, 0.0f, 0.60f, 0.0f, 0.0f,  // Strong bar 2
+    0.0f, 0.0f, 0.0f, 0.55f, 0.0f, 0.0f, 0.60f, 0.0f   // End pickups
 };
 
 constexpr float kGroovy_Shimmer[32] = {
     // Snare on 2 and 4 but with wrong-feeling ghosts
-    0.0f, 0.0f, 0.0f, 0.4f, 0.0f, 0.0f, 0.0f, 0.0f,
-    0.9f, 0.0f, 0.0f, 0.0f, 0.0f, 0.4f, 0.0f, 0.0f,
-    0.0f, 0.0f, 0.0f, 0.4f, 0.0f, 0.0f, 0.0f, 0.0f,
-    0.9f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.4f
+    // Task 21 Phase A: Ghost weights 0.50-0.60 create groove variation
+    0.0f, 0.0f, 0.0f, 0.50f, 0.0f, 0.0f, 0.0f, 0.0f,
+    1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.50f, 0.0f, 0.0f,
+    0.0f, 0.0f, 0.0f, 0.50f, 0.0f, 0.0f, 0.0f, 0.0f,
+    1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.55f
 };
 
 constexpr float kGroovy_Aux[32] = {
@@ -922,21 +932,23 @@ constexpr float kPolyrhythm_Aux[32] = {
 /**
  * [2,2] Chaos: Maximum IDM complexity
  * Character: Full Autechre - algorithmic destruction
+ * Task 21 Phase A: More zeros, 0.5-0.9 range for contrast
  */
 constexpr float kChaos_Anchor[32] = {
-    // Cluster-based hits with large gaps
-    1.0f, 0.55f,0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
-    0.0f, 0.0f, 0.6f, 0.55f,0.0f, 0.0f, 0.0f, 0.0f,
-    0.0f, 0.0f, 0.0f, 0.0f, 0.9f, 0.55f,0.0f, 0.0f,
-    0.6f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.55f,0.6f
+    // Cluster-based hits with large gaps - widened weight range
+    1.0f, 0.65f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,  // Opening cluster
+    0.0f, 0.0f, 0.75f, 0.65f, 0.0f, 0.0f, 0.0f, 0.0f,  // Mid cluster
+    0.0f, 0.0f, 0.0f, 0.0f, 0.90f, 0.70f, 0.0f, 0.0f,  // Strong cluster
+    0.75f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.65f, 0.70f  // End cluster
 };
 
 constexpr float kChaos_Shimmer[32] = {
     // Anti-pattern - fills gaps chaotically
-    0.0f, 0.0f, 0.0f, 0.5f, 0.55f,0.0f, 0.0f, 0.0f,
-    0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.5f, 0.0f, 0.55f,
-    0.8f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.5f, 0.0f,
-    0.0f, 0.0f, 0.55f,0.0f, 0.0f, 0.0f, 0.0f, 0.0f
+    // Task 21 Phase A: 0.5-0.9 range complements chaos anchor
+    0.0f, 0.0f, 0.0f, 0.60f, 0.65f, 0.0f, 0.0f, 0.0f,
+    0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.60f, 0.0f, 0.70f,  // Gaps filled
+    0.85f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.60f, 0.0f,
+    0.0f, 0.0f, 0.70f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f
 };
 
 constexpr float kChaos_Aux[32] = {
