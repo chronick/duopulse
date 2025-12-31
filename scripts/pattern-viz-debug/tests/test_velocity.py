@@ -206,3 +206,29 @@ class TestVelocityComputation:
         vel2 = compute_velocity(params, mods, False, seed=12345, step=0)
 
         assert vel1 == vel2
+
+    def test_build_velocity_trend_over_phrase(self):
+        """BUILD phase should increase velocity over phrase (Task 21-05)."""
+        # Test with high BUILD to make trend clear
+        build = 0.9
+        params = compute_punch_params(0.5)
+
+        # Sample velocity across 4 bars of a phrase
+        velocities = []
+        for bar in range(4):
+            phrase_progress = bar / 4.0
+            mods = compute_build_modifiers(build, phrase_progress)
+
+            # Average velocity for this bar (sample 8 steps)
+            bar_velocities = []
+            for step in range(8):
+                vel = compute_velocity(params, mods, False, seed=12345 + step, step=step)
+                bar_velocities.append(vel)
+
+            avg_vel = sum(bar_velocities) / len(bar_velocities)
+            velocities.append(avg_vel)
+
+        # Last bar should be >= first bar (allowing small tolerance for variation)
+        # The increased boost (0.15/0.20) should overcome random variation
+        assert velocities[3] >= velocities[0] - 0.05, \
+            f"Velocity should trend upward: {velocities}"

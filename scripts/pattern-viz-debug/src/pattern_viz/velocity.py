@@ -85,13 +85,13 @@ def compute_build_modifiers(build: float, phrase_progress: float) -> BuildModifi
         modifiers.phase = BuildPhase.BUILD
         phase_progress = (phrase_progress - 0.60) / 0.275  # 0-1 within phase
         modifiers.density_multiplier = 1.0 + build * 0.35 * phase_progress
-        modifiers.velocity_boost = build * 0.08 * phase_progress
+        modifiers.velocity_boost = build * 0.15 * phase_progress  # Task 21-05: increased from 0.08
         modifiers.force_accents = False
     else:
         # FILL phase: maximum energy
         modifiers.phase = BuildPhase.FILL
         modifiers.density_multiplier = 1.0 + build * 0.50
-        modifiers.velocity_boost = build * 0.12
+        modifiers.velocity_boost = build * 0.20  # Task 21-05: increased from 0.12
         modifiers.force_accents = build > 0.6
 
     modifiers.in_fill_zone = modifiers.phase == BuildPhase.FILL

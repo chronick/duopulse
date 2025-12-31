@@ -76,7 +76,7 @@ void ComputeBuildModifiers(float build, float phraseProgress, BuildModifiers& mo
         modifiers.phase = BuildPhase::BUILD;
         float phaseProgress = (phraseProgress - 0.60f) / 0.275f;  // 0-1 within phase
         modifiers.densityMultiplier = 1.0f + build * 0.35f * phaseProgress;
-        modifiers.velocityBoost = build * 0.08f * phaseProgress;
+        modifiers.velocityBoost = build * 0.15f * phaseProgress;  // Task 21-05: increased from 0.08
         modifiers.forceAccents = false;
     }
     else
@@ -84,7 +84,7 @@ void ComputeBuildModifiers(float build, float phraseProgress, BuildModifiers& mo
         // FILL phase: maximum energy
         modifiers.phase = BuildPhase::FILL;
         modifiers.densityMultiplier = 1.0f + build * 0.50f;
-        modifiers.velocityBoost = build * 0.12f;
+        modifiers.velocityBoost = build * 0.20f;  // Task 21-05: increased from 0.12
         modifiers.forceAccents = (build > 0.6f);
     }
 
