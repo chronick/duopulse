@@ -1,64 +1,57 @@
-# Command: SDD – Implement Task
+---
+name: sdd-implement-task
+agent: sdd-full-task
+description: Implement a complete SDD task from start to finish
+---
 
-You are implementing exactly ONE task from a feature task file in `docs/tasks/`.
+# SDD Task Implementation
 
-Inputs (from the user):
-- Either a task id from `docs/tasks/index.md`
-- Or:
-  - feature slug (e.g. `soft-pickup`)
-  - the exact task description as it appears in `docs/tasks/<slug>.md`
+You are implementing Task: {{{ ARGUMENTS }}}
 
-Always:
-- Use `docs/tasks/index.md` if a matching row exists, to read and update metadata.
+## Task Context
 
-Steps:
+The user has requested implementation of an SDD task. The task can be specified as:
+- Task ID (e.g., "Task 22")
+- Task slug (e.g., "control-simplification")
+- Task file path (e.g., "@docs/tasks/active/22-control-simplification.md")
 
-1. **Resolve the task**
-   - If a task id is provided:
-     - Look up the row in `docs/tasks/index.md` with that id.
-     - Determine `feature`, `description`, and `file` from the row.
-   - If no id is provided:
-     - Use the given feature slug and description to:
-       - Open `docs/tasks/<slug>.md`.
-       - Confirm the checklist item exists.
-       - Optionally cross-check `docs/tasks/index.md` for a matching row (same feature + description).
-   - Restate the task in your own words.
+## Your Mission
 
-2. **Understand context**
-   - Read the entire feature task file.
-   - Read the relevant section in `docs/specs/main.md` for this feature.
-   - If the task is too large, propose a small sub-task breakdown and confirm which one to do.
+Implement this task **completely from start to finish**:
 
-3. **Plan minimal changes**
-   - List the code and test files you will touch.
-   - List any doc/spec updates required.
+1. **Load task context**
+   - Read `docs/tasks/index.md` to locate the task
+   - Read the task file from `docs/tasks/<slug>.md`
+   - Read relevant spec sections from `docs/specs/main.md`
+   - Check git branch status
+   - Identify pending vs completed subtasks
 
-4. **Implement with tests**
-   - Prefer writing or updating tests first.
-   - Then implement code to satisfy tests and the spec.
-   - Keep changes limited to what is necessary for this task.
+2. **Implement each subtask**
+   - Delegate to `sdd-subtask` agent for code implementation
+   - Run tests after each subtask (`make test`)
+   - Fix any test failures
+   - Run periodic code reviews (every 2-3 subtasks)
 
-5. **Run tests (conceptually)**
-   - Show commands the user should run (e.g. `pytest`, `cargo test`, `npm test`, `make test`).
-   - Assume the user will run them.
+3. **Final quality gates**
+   - All subtasks complete
+   - All tests passing
+   - Code review passes (no CRITICAL/WARNING issues)
+   - No new compiler warnings
 
-6. **Update the feature task file**
-   - In `docs/tasks/<slug>.md`, change the corresponding checklist item from `- [ ]` to `- [x]`.
-   - Optionally add a brief note under the task with important details or TODOs.
+4. **Commit and track**
+   - Create git commit with proper message format
+   - Update task file status to complete
+   - Update `docs/tasks/index.md`
+   - Report completion summary
 
-7. **Update the tasks index metadata**
-   - In `docs/tasks/index.md`:
-     - Find the row for this task (by id if given, otherwise by matching `feature` and `description`).
-     - Set `status` to `done`.
-     - Update `updated_at` to today's date in ISO format (e.g. `2025-11-27T16:30:00Z`).
-     - Do not change `created_at` or the `id`.
+## Important
 
-8. **Suggest a commit message**
-   - Propose a short commit message that includes the feature slug and a hint about the task.
+- Use `sdd-subtask` for ALL code implementation (never write code yourself)
+- Use `daisysp-code-reviewer` for code quality checks
+- Verify every step with tool output (git status, git diff, make test)
+- Never narrate hypothetical actions - prove each step actually happened
+- Don't exit until task is FULLY complete
 
-Do not modify unrelated tasks or index rows. Stay within the spec and task description.
+## Task Acceptance Criteria
 
-Usage in Cursor:
-
-Open docs/tasks/soft-pickup.md, run sdd-implement-task, select an unchecked task, and let it go.
-
+Check the task file for specific acceptance criteria and ensure all are met before marking complete.
