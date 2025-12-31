@@ -2,8 +2,8 @@
 
 **Status**: READY FOR IMPLEMENTATION
 **Created**: 2025-12-30
-**Branch**: `feature/musicality-v1`
-**Dependencies**: Task 22 Phase B (Balance Range) should ship first or concurrently
+**Branch**: `spec/21-musicality-improvements`
+**Depends On**: Task 22 Phase B (Balance Range) — coordinate shimmer ratio change
 
 ---
 
@@ -14,15 +14,77 @@ This document consolidates ideation (21-02) and critical feedback (21-03) into a
 ### Core Principle
 **Fix contrast at the source**: Retune archetype weights and hit budgets before adding new modes or systems. Small, well-tested changes compound into significant musicality improvements.
 
-## Critical Review (spec + code checkpoints)
+---
 
-- Determinism guardrail from `docs/specs/main.md` ("same settings + same seed = same output") means Euclidean blend, BUILD phases, and swing changes must stay seed-stable and avoid hidden state.
-- Field blending in `src/Engine/PatternField.cpp` uses softmax interpolation; binary 0/1 weights (e.g., Minimal all-ones) collapse gradients and make Field X/Y morphing brittle, especially across 24/32/64-step variants.
-- Hit budgets in `src/Engine/HitBudget.cpp` are capped twice (anchor max = patternLength/4; final clamp = length/2) and 64-step bars are generated as two 32-step halves (Task 21-01 fix). Any /3 expansion needs to account for these clamps and guard-rail behaviour.
-- Swing today is config-driven: `ComputeSwing()` clamps 50–66% with zone caps (0.58/0.62/0.66) and jitter/displacement still come from `flavorCV` (`Sequencer.cpp`). Proposed swing changes should start from this pipeline rather than a new offset model.
-- Velocity floor currently clamps at 0.2 in `ComputeVelocity()`; raising to 0.35 would push PUNCH=0 toward ~0.7 floors and will require `tests/test_timing.cpp` updates plus hardware audibility checks (per 21-02 note about ~30% floors).
-- BuildModifiers live in `src/Engine/ControlState.h` and are used in Sequencer/tests; introducing `BuildPhase`/new fields needs a migration plan and back-compat for existing callers.
-- Variety may be limited by weight contrast and Gumbel temperature, not just budgets—adding Euclidean or new phases without measuring selection histograms risks papering over the real issue (see Task 21-03 guidance).
+## Critical Review Checklist
+
+Feedback from spec/code review pass. Items marked with ✅ are accepted; ~~strikethrough~~ indicates rejection with rationale.
+
+### Determinism & Architecture
+- [x] **Determinism guardrail**: Euclidean blend, BUILD phases, and swing changes must stay seed-stable and avoid hidden state (`docs/specs/main.md` section 1.3: "same settings + same seed = identical output")
+- [x] **Field blending**: Binary 0/1 weights collapse softmax gradients in `src/Engine/PatternField.cpp:251-252`; preserve small gradients for morphing
+- [x] **Hit budget clamps**: `ComputeAnchorBudget()` caps at `patternLength/4` (line 41), `ComputeBarBudget()` clamps to `length/2` (line 191); any `/3` expansion must raise caps too
+- [x] **64-step two-half generation**: Budget/eligibility applied per 32-step half in `src/Engine/Sequencer.cpp:290-410`
+
+### Swing Pipeline
+- [x] **Current swing path**: `ComputeSwing()` at `src/Engine/BrokenEffects.cpp:261` uses config knob, caps by zone (0.58/0.62/0.66), applies before jitter/displacement; start from existing pipeline, don't introduce new offset model
+- ~~**flavorCV still used for jitter**~~: Flavor CV was removed in v4 per spec section 3.1; jitter now uses GENRE via archetype swing amounts
+
+### Velocity
+- [x] **Current clamp at 0.2**: `src/Engine/VelocityCompute.cpp:136` — raising to 0.35 affects PUNCH=0 dynamics
+- [x] **Also affects BrokenEffects**: `GetVelocityWithVariation()` at `src/Engine/BrokenEffects.cpp:153` may need coordinated update
+- [x] **Hardware check before locking**: Prototype 0.30-0.32 first per 21-02 uVCA note
+
+### BUILD Modifiers
+- [x] **BuildModifiers struct location**: `src/Engine/ControlState.h:70-93` — adding fields requires migrating callers
+- [x] **Consider simpler 3-stage model**: groove → build → fill (vs 4-stage) to reduce hidden state
+- [x] **Tie to phrase length**: Phase boundaries must respect configured phrase length and reset (Task 19)
+
+### Euclidean Layer
+- [x] **Fallback, not foundation**: Use Euclidean as low-Field-X blend to preserve archetype personality
+- [x] **Support all pattern lengths**: 16/24/32/64, including two-half path for 64-step
+- [x] **Gate by genre/zone**: Start techno-only at low Field X; don't flatten IDM/Tribal character
+
+---
+
+## Cross-Task Dependencies
+
+### Task 22: Control Simplification
+| This Task Phase | Task 22 Phase | Coordination |
+|-----------------|---------------|--------------|
+| Phase C: Balance 0-150% | Phase B | **Ship together** — same line change in `HitBudget.cpp:114` |
+| Phase D: BUILD phases | Phase C (Coupling) | Complement reduced coupling modes |
+
+**Action**: Add note to `docs/tasks/active/22-control-simplification.md`:
+> Phase B coordinates with Task 21 Phase C (Balance Range Extension)
+
+### Task 23: Immediate Field Updates
+| Impact | Coordination |
+|--------|--------------|
+| Weight retuning makes Field X/Y changes more audible | Supports Task 23 goals |
+| Archetype contrast improvements benefit immediate regeneration | No blocking dependency |
+
+**Action**: Add note to `docs/tasks/active/23-immediate-field-updates.md`:
+> Benefits from Task 21 archetype weight retuning (more audible field position differences)
+
+### Task 24: Power-On Behavior
+| Impact | Coordination |
+|--------|--------------|
+| Boot defaults at Techno [1,1] Groovy = guaranteed musical | Task 21 ensures this position is groovy |
+| PUNCH=50%, BUILD=50% as defaults | Task 21 widens dynamic range at these values |
+
+**Action**: Add note to `docs/tasks/active/24-power-on-behavior.md`:
+> Boot defaults (Techno [1,1], PUNCH=50%, BUILD=50%) validated by Task 21 musicality improvements
+
+### Task 25: VOICE Redesign (Backlog)
+| Impact | Coordination |
+|--------|--------------|
+| Phase C Balance 0-150% provides 80% of VOICE benefit | Task 25 can wait for user feedback |
+
+### Task 08: Bulletproof Clock (Backlog)
+| Impact | Coordination |
+|--------|--------------|
+| Swing timing changes must not violate clock edge timing | Add regression test for external clock + swing |
 
 ---
 
@@ -39,312 +101,274 @@ This document consolidates ideation (21-02) and critical feedback (21-03) into a
 
 ---
 
-## Phase A: Archetype Weight Retuning (HIGH PRIORITY)
+## Phase A: Archetype Weight Retuning
 
 ### Problem
-Current weight tables cluster around 0.5-0.7, creating similar patterns across archetypes. User feedback: "not feeling like I'm getting very musical beats, nor am I getting much variety."
+Current weight tables cluster around 0.5-0.7, creating similar patterns across archetypes.
 
-### Analysis of Current Weights
+### Subtasks
 
-From `src/Engine/ArchetypeData.h`, examining techno::kGroovy_Anchor:
+| ID | Task | File:Line | Status |
+|----|------|-----------|--------|
+| A0 | Add hit histogram test to benchmark current selection stats | `tests/test_generation.cpp` (new section) | ☐ |
+| A1 | Tune Techno Minimal weights (4/4 with blend gradients) | `src/Engine/ArchetypeData.h:77-84` | ☐ |
+| A2 | Tune Techno Groovy weights (viable ghost layers 0.50-0.60) | `src/Engine/ArchetypeData.h:190-196` | ☐ |
+| A3 | Tune Techno Chaos weights (more zeros, 0.5-0.9 range) | `src/Engine/ArchetypeData.h:302-308` | ☐ |
+| A4 | Tune Techno shimmer tables for complementary patterns | `src/Engine/ArchetypeData.h:86-92, 198-204, 310-316` | ☐ |
+| A5 | Apply consistent changes to Tribal genre bank | `src/Engine/ArchetypeData.h:380-633` | ☐ |
+| A6 | Apply consistent changes to IDM genre bank | `src/Engine/ArchetypeData.h:689-942` | ☐ |
+| A7 | Run hit histogram test, compare before/after | `tests/test_generation.cpp` | ☐ |
+
+### Feedback Integration
+
+- [x] **Avoid pure 0/1 tables for Minimal**: Use gradients (0/0.25/0.6/0.95) so `PatternField.cpp:251` softmax blends remain meaningful
+  - **Implementation**: Minimal weights use 0.0/0.2/0.95/1.0 gradient instead of pure 0/1
+- [x] **Instrument selection stats**: Hit histograms per archetype/zone to prove variety gains
+  - **Implementation**: Add `TEST_CASE("hit histogram by archetype")` in test_generation.cpp
+- [x] **Cover all genres**: Updates across Techno/Tribal/IDM banks
+  - **Implementation**: Subtasks A5, A6 cover all three banks
+- [x] **Guard rails don't supply fundamentals**: Weights must produce valid patterns without rail intervention for IDM flexibility
+  - **Implementation**: Ensure non-zero weights at positions 0, 8, 16, 24 for all archetypes except Chaos
+
+### Weight Changes: Techno Minimal [0,0]
+
 ```cpp
-// Current: weights 0.4-1.0, many similar values
-1.0f, 0.0f, 0.0f, 0.45f, 0.85f, 0.0f, 0.0f, 0.4f,
-0.9f, 0.0f, 0.0f, 0.45f, 0.85f, 0.0f, 0.0f, 0.4f, ...
-```
-
-**Issues**:
-1. Downbeats (0, 8, 16, 24) at 0.85-1.0 — too similar, no dynamics
-2. Ghost positions (3, 7, 11...) at 0.4-0.45 — too weak to ever win selection
-3. Minimal archetype nearly identical to Steady (both 4-on-floor)
-
-### Solution: Wider Dynamic Range + Archetype Contrast
-
-**Design philosophy per archetype position**:
-
-| Position | Anchor Character | Weight Strategy |
-|----------|------------------|-----------------|
-| [0,0] Minimal | Pure 4/4, skeleton | Binary (1.0 or 0.0), no ghosts |
-| [1,0] Steady | Backbeat focus | Strong 0.9-1.0, weak 0.15-0.25 ghosts |
-| [2,0] Displaced | Skipped beats | Missing beat 3, emphasis on "&" |
-| [0,1] Driving | Relentless 8ths | All 8ths at 0.6-0.8, uniform |
-| [1,1] Groovy | Swing pocket | Swung "a" subdivisions at 0.5-0.6 |
-| [2,1] Broken | Missing downbeats | Beat 1 at 0.7, beat 2 displaced |
-| [0,2] Busy | Dense 16ths | Full 16ths with accent pattern |
-| [1,2] Poly | 3-over-4 feel | Dotted 8th spacing |
-| [2,2] Chaos | Irregular clusters | Variable 0.4-0.8, no structure |
-
-### Code Changes: `src/Engine/ArchetypeData.h`
-
-**Techno Minimal [0,0] — Make truly minimal**:
-```cpp
-// BEFORE (current):
+// BEFORE (src/Engine/ArchetypeData.h:77-84):
 constexpr float kMinimal_Anchor[32] = {
     1.0f, 0.0f, 0.0f, 0.0f,  0.9f, 0.0f, 0.0f, 0.0f,
     0.95f,0.0f, 0.0f, 0.0f,  0.9f, 0.0f, 0.0f, 0.0f, ...
 };
 
-// AFTER (wider contrast, pure 4/4):
+// AFTER (preserves blend gradients):
 constexpr float kMinimal_Anchor[32] = {
-    1.0f, 0.0f, 0.0f, 0.0f,  1.0f, 0.0f, 0.0f, 0.0f,  // Beats 1, 2
-    1.0f, 0.0f, 0.0f, 0.0f,  1.0f, 0.0f, 0.0f, 0.0f,  // Beats 3, 4
-    1.0f, 0.0f, 0.0f, 0.0f,  1.0f, 0.0f, 0.0f, 0.0f,  // Bar 2
-    1.0f, 0.0f, 0.0f, 0.0f,  1.0f, 0.0f, 0.0f, 0.0f
+    1.0f, 0.0f, 0.0f, 0.0f,  0.95f, 0.0f, 0.0f, 0.0f,  // Beats 1, 2
+    0.95f,0.0f, 0.0f, 0.0f,  0.90f, 0.0f, 0.0f, 0.0f,  // Beats 3, 4
+    1.0f, 0.0f, 0.0f, 0.0f,  0.95f, 0.0f, 0.0f, 0.0f,  // Bar 2
+    0.95f,0.0f, 0.0f, 0.0f,  0.90f, 0.0f, 0.0f, 0.0f
 };
-// Pure binary weights = guaranteed 4-on-floor
+// Gradients 0.90-1.0 preserve softmax blending while ensuring 4-on-floor
 ```
 
-**Techno Groovy [1,1] — Add actual groove with ghost layers**:
+### Weight Changes: Techno Groovy [1,1]
+
 ```cpp
-// BEFORE:
+// BEFORE (src/Engine/ArchetypeData.h:190-196):
 constexpr float kGroovy_Anchor[32] = {
     1.0f, 0.0f, 0.0f, 0.45f, 0.85f, 0.0f, 0.0f, 0.4f, ...
 };
 
-// AFTER (stronger accents, viable ghosts):
+// AFTER (viable ghosts at 0.50-0.60):
 constexpr float kGroovy_Anchor[32] = {
     1.0f, 0.0f, 0.0f, 0.55f,  0.95f, 0.0f, 0.0f, 0.50f,  // Beat 1 strong, "a" ghost
-    0.95f,0.0f, 0.0f, 0.55f,  0.90f, 0.0f, 0.0f, 0.50f,  // Beat 2-3
+    0.95f,0.0f, 0.0f, 0.55f,  0.90f, 0.0f, 0.0f, 0.50f,  // Beats 2-3
     1.0f, 0.0f, 0.0f, 0.55f,  0.95f, 0.0f, 0.0f, 0.50f,  // Bar 2
     0.95f,0.0f, 0.0f, 0.60f,  0.90f, 0.0f, 0.0f, 0.55f   // End pickup
 };
-// Ghost weights 0.50-0.60 = actually win selection sometimes
+// Ghost weights 0.50-0.60 can win Gumbel selection
 ```
-
-**Techno Chaos [2,2] — Maximum irregularity**:
-```cpp
-// BEFORE (still too structured):
-constexpr float kChaos_Anchor[32] = {
-    1.0f, 0.45f,0.0f, 0.6f,  0.0f, 0.55f,0.0f, 0.5f, ...
-};
-
-// AFTER (more zeros, less predictable):
-constexpr float kChaos_Anchor[32] = {
-    0.9f, 0.6f, 0.0f, 0.0f,  0.0f, 0.7f, 0.0f, 0.5f,   // Cluster then gap
-    0.0f, 0.0f, 0.6f, 0.0f,  0.7f, 0.0f, 0.55f, 0.0f,  // Fragmented
-    0.85f,0.0f, 0.0f, 0.6f,  0.0f, 0.0f, 0.65f, 0.0f,  // Shifted
-    0.0f, 0.55f,0.0f, 0.0f,  0.6f, 0.0f, 0.0f, 0.7f    // End cluster
-};
-// More zeros, weight variation 0.5-0.9 range
-```
-
-### Shimmer Weight Adjustments
-
-**Key insight**: Shimmer weights should complement, not duplicate anchor.
-
-```cpp
-// Groovy shimmer: stronger backbeat, ghost anticipations
-constexpr float kGroovy_Shimmer[32] = {
-    0.0f, 0.0f, 0.0f, 0.45f,  0.0f, 0.0f, 0.0f, 0.50f,  // Anticipations
-    1.0f, 0.0f, 0.0f, 0.0f,   0.0f, 0.0f, 0.0f, 0.0f,   // Strong backbeat
-    0.0f, 0.0f, 0.0f, 0.45f,  0.0f, 0.0f, 0.0f, 0.50f,
-    1.0f, 0.0f, 0.0f, 0.0f,   0.0f, 0.0f, 0.0f, 0.0f    // Bar 2 backbeat
-};
-```
-
-#### Review adjustments
-- Avoid pure 0/1 tables for Minimal; keep small gradients (e.g., 0/0.25/0.6/0.95) so `PatternField` softmax blends remain meaningful and Field X/Y morphing works at intermediate positions.
-- Instrument selection stats before and after retunes (hit histograms per archetype/zone) to prove variety gains; include shimmer/aux, not just anchor.
-- Ensure retunes cover all genres, not just Techno; `ArchetypeData.h` holds multiple banks, so updates need to stay consistent across offsets.
-- Guard rails already enforce downbeat/max-gap; confirm new weights do not rely on rails to supply fundamentals (to keep genre character intact when rails are relaxed for IDM).
-
-### Testing Strategy
-
-1. Generate 100 patterns at each archetype position
-2. Measure weight distribution of selected hits
-3. Verify distinct character at [0,0], [1,1], [2,2] positions
-4. Hardware test: sweep Field X/Y, verify audible differences
 
 ---
 
-## Phase B: Velocity Contrast Widening (LOW RISK)
+## Phase B: Velocity Contrast Widening
 
 ### Problem
-User feedback: velocity variation feels subtle. Ghost notes at 50-70% don't contrast enough with accents at 85-100%.
+Ghost notes at 50-70% don't contrast enough with accents at 85-100%.
 
-### Current Implementation (`src/Engine/VelocityCompute.cpp:26-45`)
+### Subtasks
+
+| ID | Task | File:Line | Status |
+|----|------|-----------|--------|
+| B1 | Widen `velocityFloor` range (65% → 30%) | `src/Engine/VelocityCompute.cpp:30` | ☐ |
+| B2 | Widen `accentBoost` range (+15% → +45%) | `src/Engine/VelocityCompute.cpp:31` | ☐ |
+| B3 | Reduce `velocityVariation` range (±3% → ±15%) | `src/Engine/VelocityCompute.cpp:32` | ☐ |
+| B4 | Hardware test: prototype minimum floor at 0.30 | Hardware validation | ☐ |
+| B5 | Raise minimum clamp to 0.30 (or 0.32 per hw test) | `src/Engine/VelocityCompute.cpp:136` | ☐ |
+| B6 | Update `tests/test_timing.cpp` expectations | `tests/test_timing.cpp` | ☐ |
+
+### Feedback Integration
+
+- [x] **Clamp affects both locations**: `ComputeVelocity()` at line 136 and coordinate with `GetVelocityWithVariation()`
+  - **Implementation**: Check if BrokenEffects has separate clamp; if so, update both
+- [x] **Hardware check first**: Prototype 0.30-0.32 before locking 0.35
+  - **Implementation**: Subtask B4 gates B5
+- ~~**Conditional floor during fills**~~: Rejected — adds complexity; simpler to have consistent floor
+  - **Rationale**: Single floor value easier to reason about; fills get velocity boost, not floor change
+
+### Code Changes
 
 ```cpp
+// src/Engine/VelocityCompute.cpp:25-33
 void ComputePunch(float punch, PunchParams& params)
 {
-    params.accentProbability = 0.15f + punch * 0.35f;  // 15% to 50%
-    params.velocityFloor = 0.70f - punch * 0.40f;      // 70% down to 30%
-    params.accentBoost = 0.10f + punch * 0.25f;        // +10% to +35%
-    params.velocityVariation = 0.05f + punch * 0.15f;  // ±5% to ±20%
+    punch = Clamp(punch, 0.0f, 1.0f);
+
+    // UPDATED ranges:
+    params.accentProbability = 0.20f + punch * 0.30f;  // 20% to 50% (was 15%-50%)
+    params.velocityFloor = 0.65f - punch * 0.35f;      // 65% to 30% (was 70%-30%)
+    params.accentBoost = 0.15f + punch * 0.30f;        // +15% to +45% (was +10%-35%)
+    params.velocityVariation = 0.03f + punch * 0.12f;  // ±3% to ±15% (was ±5%-20%)
 }
+
+// src/Engine/VelocityCompute.cpp:136
+return Clamp(velocity, 0.30f, 1.0f);  // was 0.2f
 ```
-
-### Analysis
-- At PUNCH=50%: floor=50%, accent=32.5% boost → range 50-82%
-- Insufficient contrast for audible ghost/accent difference
-
-### Solution: Widen ranges, lower floor, higher accent
-
-```cpp
-// AFTER: Wider dynamics
-void ComputePunch(float punch, PunchParams& params)
-{
-    params.accentProbability = 0.20f + punch * 0.30f;  // 20% to 50%
-    params.velocityFloor = 0.65f - punch * 0.35f;      // 65% down to 30%
-    params.accentBoost = 0.15f + punch * 0.30f;        // +15% to +45%
-    params.velocityVariation = 0.03f + punch * 0.12f;  // ±3% to ±15%
-}
-```
-
-**Result at PUNCH=50%**:
-- Floor: 47.5% (was 50%)
-- Accent boost: +30% (was +22.5%)
-- Range: 47.5% - 92.5% (wider contrast)
-
-### Minimum Velocity Floor
-
-Per feedback: "velocity floors at 25-30% may be below VCA noise floor."
-
-```cpp
-// ComputeVelocity line 136:
-// BEFORE:
-return Clamp(velocity, 0.2f, 1.0f);
-
-// AFTER: Higher minimum for audibility
-return Clamp(velocity, 0.35f, 1.0f);
-```
-
-#### Review adjustments
-- Clamp 0.35f affects both `ComputeVelocity()` and `BrokenEffects::GetVelocityWithVariation()`; raising it will require updating `tests/test_timing.cpp` expectations and may flatten PUNCH=0 dynamics (effective floors near 0.7).
-- Hardware note from 21-02: uVCA response suggests ~30% is usually audible—prototype 0.30–0.32 first and capture scope/ear checks before locking 0.35.
-- Consider making the higher floor conditional (e.g., only during fill zones) to preserve low-PUNCH flatness while lifting ghosts when fills occur.
 
 ---
 
-## Phase C: Hit Budget Expansion (MEDIUM RISK)
+## Phase C: Hit Budget Expansion
 
 ### Problem
-User feedback: "K2 (BUILD) effect hard to notice" — density increase is too subtle.
+BUILD density increase too subtle; balance range too narrow.
 
-### Current Implementation (`src/Engine/HitBudget.cpp:34-99`)
+### Subtasks
 
-```cpp
-// ComputeAnchorBudget zone budgets:
-MINIMAL: min=1, typical=patternLength/16  // 2 hits for 32 steps
-GROOVE:  min=2, typical=patternLength/8   // 4 hits for 32 steps
-BUILD:   min=3, typical=patternLength/6   // 5 hits for 32 steps
-PEAK:    min=4, typical=patternLength/4   // 8 hits for 32 steps
-```
+| ID | Task | File:Line | Status |
+|----|------|-----------|--------|
+| C1 | Profile current hit counts across ENERGY zones (16/24/32/64 steps) | `tests/test_generation.cpp` (new section) | ☐ |
+| C2 | Raise `maxHits` from `/4` to `/3` | `src/Engine/HitBudget.cpp:41` | ☐ |
+| C3 | Raise `ComputeBarBudget()` clamp from `/2` to `*2/3` | `src/Engine/HitBudget.cpp:191` | ☐ |
+| C4 | Increase zone minimums (GROOVE=3, BUILD=4, PEAK=6) | `src/Engine/HitBudget.cpp:48-66` | ☐ |
+| C5 | Change shimmerRatio to `balance * 1.5f` (0-150%) | `src/Engine/HitBudget.cpp:114` | ☐ |
+| C6 | Add zone-aware shimmer cap (GROOVE ≤1.0, PEAK ≤1.5) | `src/Engine/HitBudget.cpp:114-120` | ☐ |
+| C7 | Add regression tests for 16/24/32/64 + balance extremes | `tests/test_generation.cpp` | ☐ |
 
-### Solution: Increase upper bounds, steeper zone curves
+### Feedback Integration
 
-```cpp
-// AFTER: More hits at high energy
-int ComputeAnchorBudget(float energy, EnergyZone zone, int patternLength)
-{
-    int maxHits = patternLength / 3;  // Was /4, now more headroom
+- [x] **Profile before changing**: Measure actual hit counts before modifying formulas
+  - **Implementation**: Subtask C1 creates baseline measurements
+- [x] **Raise caps too**: `/3` expansion needs cap changes to avoid clipping
+  - **Implementation**: Subtasks C2 and C3 raise both caps
+- [x] **Zone-aware shimmer ratio**: GROOVE cap near 1.0, PEAK allows >1.0
+  - **Implementation**: Subtask C6 adds conditional capping
+- [x] **Regression tests for 64-step**: Avoid reintroducing blank-second-half bug
+  - **Implementation**: Subtask C7 covers all lengths
 
-    int minHits, typicalHits;
-    switch (zone) {
-        case EnergyZone::MINIMAL:
-            minHits = 1;
-            typicalHits = std::max(2, patternLength / 16);  // Slightly higher
-            break;
-        case EnergyZone::GROOVE:
-            minHits = 3;  // Was 2
-            typicalHits = patternLength / 6;  // Was /8
-            break;
-        case EnergyZone::BUILD:
-            minHits = 4;  // Was 3
-            typicalHits = patternLength / 4;  // Was /6
-            break;
-        case EnergyZone::PEAK:
-            minHits = 6;  // Was 4
-            typicalHits = patternLength / 3;  // Was /4
-            break;
-    }
-    // ... rest unchanged
-}
-```
-
-### Balance Range Extension (Coordinated with Task 22 Phase B)
+### Code Changes
 
 ```cpp
-// HitBudget.cpp line 114:
-// BEFORE:
-float shimmerRatio = 0.3f + balance * 0.7f;  // 30% to 100%
+// src/Engine/HitBudget.cpp:41
+int maxHits = patternLength / 3;  // Was /4
 
-// AFTER: Full range 0% to 150%
+// src/Engine/HitBudget.cpp:48-66 (zone minimums)
+case EnergyZone::GROOVE:
+    minHits = 3;  // Was 2
+    typicalHits = patternLength / 6;  // Was /8
+    break;
+case EnergyZone::BUILD:
+    minHits = 4;  // Was 3
+    typicalHits = patternLength / 4;  // Was /6
+    break;
+case EnergyZone::PEAK:
+    minHits = 6;  // Was 4
+    typicalHits = patternLength / 3;  // Was /4
+    break;
+
+// src/Engine/HitBudget.cpp:114 (with zone-aware cap)
 float shimmerRatio = balance * 1.5f;  // 0% to 150%
-```
+// Zone-aware cap
+if (zone == EnergyZone::GROOVE || zone == EnergyZone::MINIMAL) {
+    shimmerRatio = std::min(shimmerRatio, 1.0f);
+}
 
-#### Review adjustments
-- `ComputeAnchorBudget()` caps at patternLength/4 and `ComputeBarBudget()` clamps to length/2; moving to /3 will often get clipped unless caps move too. Profile actual hit counts across ENERGY zones before changing formulas.
-- 64-step patterns are generated as two 32-step halves with separate seeds—budget/eligibility should be applied per half to avoid lopsided bars when increasing counts.
-- Extending shimmerRatio to 150% should likely be zone-aware (e.g., GROOVE cap near 1.0, PEAK allowed >1.0) to protect kick authority per Task 21-03.
-- Add regression tests covering 16/24/32/64 lengths and Balance extremes to avoid reintroducing the blank-second-half bug.
+// src/Engine/HitBudget.cpp:191
+int maxHits = clampedLength * 2 / 3;  // Was /2
+```
 
 ---
 
-## Phase D: BUILD Phase Enhancement (MEDIUM RISK)
+## Phase D: BUILD Phase Enhancement
 
 ### Problem
-BUILD only affects velocity slightly. User wants audible phrase-level arc.
+BUILD only affects velocity slightly; user wants audible phrase-level arc.
 
-### Current Implementation (`src/Engine/VelocityCompute.cpp:51-79`)
+### Subtasks
+
+| ID | Task | File:Line | Status |
+|----|------|-----------|--------|
+| D1 | Add `BuildPhase` enum (GROOVE/BUILD/FILL) | `src/Engine/VelocityCompute.h` (new) | ☐ |
+| D2 | Add `velocityBoost` and `forceAccents` to `BuildModifiers` | `src/Engine/ControlState.h:70-93` | ☐ |
+| D3 | Update `Init()` for new fields | `src/Engine/ControlState.h:87-93` | ☐ |
+| D4 | Implement 3-phase BUILD logic | `src/Engine/VelocityCompute.cpp:51-79` | ☐ |
+| D5 | Integrate velocityBoost into `ComputeVelocity()` | `src/Engine/VelocityCompute.cpp:103-137` | ☐ |
+| D6 | Integrate forceAccents into `ShouldAccent()` | `src/Engine/VelocityCompute.cpp:85-101` | ☐ |
+| D7 | Update all callers of BuildModifiers | Search for `BuildModifiers` usage | ☐ |
+| D8 | Add tests for phase transitions | `tests/test_timing.cpp` | ☐ |
+
+### Feedback Integration
+
+- [x] **Simpler 3-stage model**: groove → build → fill (not 4-stage)
+  - **Implementation**: Removed TENSION phase; now GROOVE (0-60%), BUILD (60-87.5%), FILL (87.5-100%)
+- [x] **Migrate callers**: BuildModifiers struct changes require updating Sequencer and tests
+  - **Implementation**: Subtask D7 covers caller migration
+- [x] **Tie to phrase length**: Phase boundaries computed from `phraseProgress`, which respects configured phrase length
+  - **Implementation**: No additional work needed; phraseProgress already normalized
+
+### New Enum and Struct Updates
 
 ```cpp
-void ComputeBuildModifiers(float build, float phraseProgress, BuildModifiers& modifiers)
+// src/Engine/VelocityCompute.h (new, after line 20)
+enum class BuildPhase {
+    GROOVE,   // 0-60%: stable
+    BUILD,    // 60-87.5%: ramping
+    FILL      // 87.5-100%: climax
+};
+
+// src/Engine/ControlState.h:70-93 (updated struct)
+struct BuildModifiers
 {
-    float rampAmount = build * phraseProgress * 0.5f;  // Up to 50% denser
-    modifiers.densityMultiplier = 1.0f + rampAmount;
-    modifiers.inFillZone = (phraseProgress > 0.875f);
-    // ...
-}
+    float densityMultiplier;
+    float fillIntensity;
+    bool inFillZone;
+    float phraseProgress;
+    // NEW FIELDS:
+    BuildPhase phase;         // Current build phase
+    float velocityBoost;      // +0.0 to +0.15 floor boost
+    bool forceAccents;        // True = all hits accented
+
+    void Init()
+    {
+        densityMultiplier = 1.0f;
+        fillIntensity     = 0.0f;
+        inFillZone        = false;
+        phraseProgress    = 0.0f;
+        phase             = BuildPhase::GROOVE;
+        velocityBoost     = 0.0f;
+        forceAccents      = false;
+    }
+};
 ```
 
-### Solution: Three-phase BUILD with density + velocity
-
-**Phase structure** (tied to phraseProgress):
-
-| Phrase % | Phase | Density Mult | Velocity Boost |
-|----------|-------|--------------|----------------|
-| 0-50% | GROOVE | 1.0× | 0% |
-| 50-75% | BUILD | 1.0 + build×0.25 | +5% floor |
-| 75-87.5% | TENSION | 1.0 + build×0.40 | +10% floor |
-| 87.5-100% | FILL | 1.0 + build×0.60 | +15% floor, all accents |
+### 3-Phase BUILD Logic
 
 ```cpp
-// NEW: Enhanced BUILD modifiers
+// src/Engine/VelocityCompute.cpp:51-79 (replacement)
 void ComputeBuildModifiers(float build, float phraseProgress, BuildModifiers& modifiers)
 {
     build = Clamp(build, 0.0f, 1.0f);
     phraseProgress = Clamp(phraseProgress, 0.0f, 1.0f);
-
     modifiers.phraseProgress = phraseProgress;
 
-    // Phase determination
-    if (phraseProgress < 0.50f) {
-        // GROOVE phase: stable, no modification
+    if (phraseProgress < 0.60f) {
+        // GROOVE phase: stable
         modifiers.phase = BuildPhase::GROOVE;
         modifiers.densityMultiplier = 1.0f;
         modifiers.velocityBoost = 0.0f;
-    }
-    else if (phraseProgress < 0.75f) {
-        // BUILD phase: start ramping
-        modifiers.phase = BuildPhase::BUILD;
-        float phaseProgress = (phraseProgress - 0.50f) / 0.25f;
-        modifiers.densityMultiplier = 1.0f + build * 0.25f * phaseProgress;
-        modifiers.velocityBoost = build * 0.05f * phaseProgress;
+        modifiers.forceAccents = false;
     }
     else if (phraseProgress < 0.875f) {
-        // TENSION phase: increasing energy
-        modifiers.phase = BuildPhase::TENSION;
-        float phaseProgress = (phraseProgress - 0.75f) / 0.125f;
-        modifiers.densityMultiplier = 1.0f + build * (0.25f + 0.15f * phaseProgress);
-        modifiers.velocityBoost = build * (0.05f + 0.05f * phaseProgress);
+        // BUILD phase: ramping density and velocity
+        modifiers.phase = BuildPhase::BUILD;
+        float phaseProgress = (phraseProgress - 0.60f) / 0.275f;  // 0-1 within phase
+        modifiers.densityMultiplier = 1.0f + build * 0.35f * phaseProgress;
+        modifiers.velocityBoost = build * 0.08f * phaseProgress;
+        modifiers.forceAccents = false;
     }
     else {
         // FILL phase: maximum energy
         modifiers.phase = BuildPhase::FILL;
-        modifiers.densityMultiplier = 1.0f + build * 0.60f;
-        modifiers.velocityBoost = build * 0.15f;
-        modifiers.forceAccents = (build > 0.5f);  // All hits accented in high BUILD
+        modifiers.densityMultiplier = 1.0f + build * 0.50f;
+        modifiers.velocityBoost = build * 0.12f;
+        modifiers.forceAccents = (build > 0.6f);
     }
 
     modifiers.inFillZone = (modifiers.phase == BuildPhase::FILL);
@@ -352,324 +376,219 @@ void ComputeBuildModifiers(float build, float phraseProgress, BuildModifiers& mo
 }
 ```
 
-### New Enum for VelocityCompute.h
-
-```cpp
-enum class BuildPhase {
-    GROOVE,   // 0-50%: stable
-    BUILD,    // 50-75%: ramping
-    TENSION,  // 75-87.5%: high energy
-    FILL      // 87.5-100%: climax
-};
-
-struct BuildModifiers {
-    BuildPhase phase;
-    float phraseProgress;
-    float densityMultiplier;
-    float velocityBoost;
-    float fillIntensity;
-    bool inFillZone;
-    bool forceAccents;
-};
-```
-
-#### Review adjustments
-- `BuildModifiers` lives in `src/Engine/ControlState.h` and is used by Sequencer/tests; adding `BuildPhase`/new fields requires migrating those call sites plus control/persistence plumbing.
-- Consider a simpler 3-stage model (groove → build → fill) to avoid hidden state the user cannot see; keep effects single-axis (density or velocity) to align with spec predictability.
-- Tie phase boundaries to configured phrase length and reset behaviour (Task 19 external clock) to keep determinism with different clock/reset scenarios.
-
 ---
 
-## Phase E: Swing Effectiveness (MEDIUM RISK)
+## Phase E: Swing Effectiveness
 
 ### Problem
-User feedback: "swing does not appear to change timings very much."
+Swing doesn't noticeably affect timing perception.
 
-### Current Implementation
-Swing is applied in BrokenEffects, but the range may be too narrow (50%-66%).
+### Subtasks
 
-### Analysis
-From spec section 7.1:
-> Swing: Config K2 (SWING) → 0-100% (straight → heavy triplet)
+| ID | Task | File:Line | Status |
+|----|------|-----------|--------|
+| E1 | Audit current swing path with logging | `src/Engine/BrokenEffects.cpp:261-280` | ☐ |
+| E2 | Change swing to multiply archetype `swingAmount` | `src/Engine/Sequencer.cpp:898-999` | ☐ |
+| E3 | Widen zone caps (0.60/0.65/0.70 vs 0.58/0.62/0.66) | `src/Engine/BrokenEffects.cpp:270-280` | ☐ |
+| E4 | Add external clock + swing regression test | `tests/test_timing.cpp` | ☐ |
 
-The timing displacement should be noticeable. Possible issues:
-1. Swing timing offset not large enough
-2. Swing only applied to certain subdivisions
-3. Swing conflicting with GENRE jitter
+### Feedback Integration
 
-### Solution: Wider swing range, clearer application
+- [x] **Start from existing pipeline**: Use `ComputeSwing()` at `BrokenEffects.cpp:261`, don't create new offset model
+  - **Implementation**: Modify existing function, don't add parallel path
+- [x] **Multiply archetype swingAmount**: Use blended archetype swing from PatternField instead of separate formula
+  - **Implementation**: `effectiveSwing = archetypeSwing * (1.0 + configSwing)` with zone capping
+- [x] **External clock regression**: Ensure triplet swing doesn't violate rising-edge timing
+  - **Implementation**: Subtask E4 adds test for Task 08 compatibility
+
+### Code Changes
 
 ```cpp
-// BrokenEffects.cpp - swing computation
-float ComputeSwingOffset(int step, float swing, float genreSwing)
+// src/Engine/BrokenEffects.cpp:261-280 (updated)
+float ComputeSwing(float configSwing, float archetypeSwing, EnergyZone zone)
 {
-    // Only swing odd 16th notes (steps 1, 3, 5, 7...)
-    if ((step & 1) == 0) return 0.0f;
+    // Config swing multiplies archetype base (0×-2× multiplier)
+    float effectiveSwing = archetypeSwing * (1.0f + configSwing);
 
-    // Combine config swing with genre base
-    // swing = 0.0: straight (50% position)
-    // swing = 1.0: heavy triplet (66% position = +33% offset)
-    float totalSwing = swing * (genreSwing + 0.5f);  // Genre amplifies
-    totalSwing = Clamp(totalSwing, 0.0f, 1.0f);
+    // Zone-aware caps (widened from 0.58/0.62/0.66)
+    float maxSwing;
+    switch (zone) {
+        case EnergyZone::MINIMAL: maxSwing = 0.60f; break;
+        case EnergyZone::GROOVE:  maxSwing = 0.65f; break;
+        case EnergyZone::BUILD:   maxSwing = 0.68f; break;
+        case EnergyZone::PEAK:    maxSwing = 0.70f; break;
+        default:                  maxSwing = 0.65f; break;
+    }
 
-    // Convert to timing offset (as fraction of step duration)
-    // 0% swing = 0 offset, 100% swing = +0.33 step offset (triplet feel)
-    float offset = totalSwing * 0.33f;
-
-    return offset;
+    return Clamp(effectiveSwing, 0.50f, maxSwing);
 }
 ```
 
-### Swing as Genre Modifier (User Answer from 21-02)
-
-Per user feedback: "SWING should act as a modifier against existing swing settings in GENRE, from 0× to 2× of GENRE swing."
-
-```cpp
-// New swing model
-float effectiveSwing = genreBaseSwing * (1.0f + configSwing);
-// At configSwing=0: 1× genre swing
-// At configSwing=1: 2× genre swing
-```
-
-#### Review adjustments
-- Current pipeline: `ComputeSwing()` in `src/Engine/BrokenEffects.cpp` already uses the SWING config knob, caps by ENERGY zone (0.58/0.62/0.66), and applies before jitter/displacement (`Sequencer.cpp`); jitter/displacement still use `flavorCV`. Start by auditing perceived swing with the existing model and, if needed, add a simple multiplier while respecting zone caps.
-- Ensure swing offsets remain before jitter/displacement to keep additivity, and add external-clock regression (Task 19) so triplet swing does not violate rising-edge timing.
-- If genre should influence swing, prefer multiplying archetype `swingAmount` (blended in `PatternField`) rather than introducing a separate offset formula.
-
 ---
 
-## Phase F: Genre-Aware Euclidean Blend (HIGH RISK, HIGH REWARD)
+## Phase F: Genre-Aware Euclidean Blend
 
 ### Problem
-Probabilistic generation can produce non-musical patterns. User wants guaranteed "safe" patterns at certain positions.
+Probabilistic generation can produce non-musical patterns at low complexity.
 
-### User Answer (from 21-02)
-> "Euclidean/probabilistic dichotomy can be different between each genre (Techno full Euclidean, Tribal middle, IDM mostly probabilistic)."
+### Subtasks
 
-### Solution: Genre-specific Euclidean blend factor
+| ID | Task | File:Line | Status |
+|----|------|-----------|--------|
+| F1 | Create `EuclideanGen.h` with `GenerateEuclidean()` | `src/Engine/EuclideanGen.h` (new) | ☐ |
+| F2 | Create `EuclideanGen.cpp` implementation | `src/Engine/EuclideanGen.cpp` (new) | ☐ |
+| F3 | Add `RotatePattern()` for seed-based rotation | `src/Engine/EuclideanGen.cpp` | ☐ |
+| F4 | Add `BlendEuclideanWithWeights()` | `src/Engine/EuclideanGen.cpp` | ☐ |
+| F5 | Add `GetGenreEuclideanRatio()` | `src/Engine/EuclideanGen.cpp` | ☐ |
+| F6 | Integrate into `GenerateBar()` for Techno only | `src/Engine/Sequencer.cpp:290-410` | ☐ |
+| F7 | Gate by ENERGY zone (only MINIMAL/GROOVE use Euclidean) | `src/Engine/Sequencer.cpp` | ☐ |
+| F8 | Support 16/24/32/64 patterns (including two-half path) | `src/Engine/Sequencer.cpp` | ☐ |
+| F9 | Add unit tests for Euclidean generation | `tests/test_generation.cpp` | ☐ |
+| F10 | Add tests for Euclidean ratio tapering with Field X | `tests/test_generation.cpp` | ☐ |
 
-**Euclidean as fallback/foundation per genre**:
+### Feedback Integration
 
-| Genre | Euclidean Weight | Probabilistic Weight |
-|-------|------------------|----------------------|
-| Techno | 70-100% | 0-30% |
-| Tribal | 40-60% | 40-60% |
-| IDM | 10-30% | 70-90% |
+- [x] **Fallback, not foundation**: Use Euclidean as low-Field-X blend, not hard override
+  - **Implementation**: Blend ratio reduces with Field X; at X>0.7, Euclidean ratio near 0
+- [x] **Start techno-only**: Gate by genre to preserve IDM/Tribal character
+  - **Implementation**: Subtask F6 only applies to Genre::TECHNO
+- [x] **Rotation deterministic**: Rotation derived from seed, not random
+  - **Implementation**: `int rotation = (seed % steps)` in `BlendEuclideanWithWeights()`
+- [x] **Support all pattern lengths**: 16/24/32 direct, 64 via two-half path
+  - **Implementation**: Subtask F8 handles all cases
 
-### Implementation Approach
+### New Files
 
-**New file**: `src/Engine/EuclideanGen.h`
-
+**`src/Engine/EuclideanGen.h`**:
 ```cpp
 #pragma once
 #include <cstdint>
+#include "DuoPulseTypes.h"
 
 namespace daisysp_idm_grids
 {
 
-// Euclidean rhythm generator
-// E(k, n) distributes k hits evenly across n steps
+/// Generate Euclidean rhythm: k hits distributed evenly across n steps
 uint32_t GenerateEuclidean(int hits, int steps);
 
-// Rotate pattern by offset steps
+/// Rotate pattern by offset steps (deterministic)
 uint32_t RotatePattern(uint32_t pattern, int offset, int steps);
 
-// Blend Euclidean foundation with probabilistic weights
-// Returns mask with guaranteed Euclidean hits + probabilistic additions
+/// Blend Euclidean foundation with probabilistic weights
+/// @param euclideanRatio 0.0 = pure probabilistic, 1.0 = pure Euclidean
 uint32_t BlendEuclideanWithWeights(
     int budget,
     int steps,
     const float* weights,
-    float euclideanRatio,  // 0.0 = pure probabilistic, 1.0 = pure Euclidean
-    uint32_t seed
-);
+    uint32_t eligibility,
+    float euclideanRatio,
+    uint32_t seed);
+
+/// Get genre-specific Euclidean blend ratio
+/// @param fieldX Syncopation axis (0-1), higher = less Euclidean
+float GetGenreEuclideanRatio(Genre genre, float fieldX, EnergyZone zone);
 
 } // namespace daisysp_idm_grids
 ```
 
-**Implementation**: `src/Engine/EuclideanGen.cpp`
-
-```cpp
-uint32_t GenerateEuclidean(int hits, int steps)
-{
-    if (hits <= 0 || steps <= 0) return 0;
-    if (hits >= steps) return (steps >= 32) ? 0xFFFFFFFF : ((1U << steps) - 1);
-
-    uint32_t pattern = 0;
-    int bucket = 0;
-
-    // Bresenham's line algorithm for even distribution
-    for (int i = 0; i < steps; ++i) {
-        bucket += hits;
-        if (bucket >= steps) {
-            bucket -= steps;
-            pattern |= (1U << i);
-        }
-    }
-
-    return pattern;
-}
-
-uint32_t BlendEuclideanWithWeights(
-    int budget, int steps, const float* weights,
-    float euclideanRatio, uint32_t seed)
-{
-    // Euclidean portion
-    int euclideanHits = static_cast<int>(budget * euclideanRatio + 0.5f);
-    uint32_t euclideanMask = GenerateEuclidean(euclideanHits, steps);
-
-    // Optional rotation based on seed
-    int rotation = (seed % steps);
-    euclideanMask = RotatePattern(euclideanMask, rotation, steps);
-
-    // Probabilistic portion fills remaining budget
-    int remainingBudget = budget - __builtin_popcount(euclideanMask);
-    if (remainingBudget <= 0) return euclideanMask;
-
-    // Use existing Gumbel Top-K for remaining hits, excluding Euclidean positions
-    uint32_t eligibility = ((1U << steps) - 1) & ~euclideanMask;
-    uint32_t additionalHits = GumbelTopK(weights, eligibility, remainingBudget, seed);
-
-    return euclideanMask | additionalHits;
-}
-```
-
-### Integration with Genre
-
-```cpp
-// PatternField.cpp or GenerationPipeline.cpp
-float GetGenreEuclideanRatio(Genre genre, float fieldX)
-{
-    // Base ratios per genre
-    float baseRatio;
-    switch (genre) {
-        case Genre::TECHNO:
-            baseRatio = 0.85f;  // Mostly Euclidean
-            break;
-        case Genre::TRIBAL:
-            baseRatio = 0.50f;  // Balanced
-            break;
-        case Genre::IDM:
-            baseRatio = 0.20f;  // Mostly probabilistic
-            break;
-        default:
-            baseRatio = 0.50f;
-    }
-
-    // Field X reduces Euclidean (more syncopation = more probabilistic)
-    return baseRatio * (1.0f - fieldX * 0.5f);
-}
-```
-
-#### Review adjustments
-- Treat Euclidean as a fallback or low-Field-X blend rather than a hard foundation; otherwise softmax blending loses archetype personality (Task 21-03 concern).
-- Support all pattern lengths (16/24/32/64) and the two-half generation path; rotation per seed must be deterministic per phraseSeed/patternSeed so "same settings + same seed" still holds.
-- Start techno-only and gate by ENERGY/zone to avoid flattening IDM/Tribal character; add tests that Euclidean ratio tapers as Field X increases.
-
 ---
 
-## Consistency with Other Tasks
+## Spec Updates
 
-### Task 22: Control Simplification
-- **Phase B (Balance Range)**: This task assumes 0-150% range ships concurrently
-- **Phase C (Coupling)**: BUILD velocity changes complement reduced coupling modes
+### Section 4.3 (PUNCH Parameter)
 
-### Task 23: Immediate Field Updates
-- Archetype weight changes make Field X/Y more impactful
-- Regeneration triggers will immediately show new archetype character
-
-### Task 24: Power-On Behavior
-- Boot defaults should land at Techno [1,1] Groovy — guaranteed musical
-- PUNCH=50%, BUILD=50% = good starting dynamics
-
-### Task 25: VOICE Redesign (Backlog)
-- Balance range extension (Phase C here) provides 80% of VOICE benefit
-- Full VOICE redesign can wait for user feedback on these changes
-
----
-
-## Spec Updates Required
-
-### Section 7.2 (Velocity Computation)
-
-**Current**:
-> - velocityFloor: Minimum velocity for non-accented hits (70% down to 30%)
-> - accentBoost: How much louder accents are (+10% to +35%)
-
-**Updated**:
-> - velocityFloor: Minimum velocity for non-accented hits (65% down to 30%)
-> - accentBoost: How much louder accents are (+15% to +45%)
-> - Minimum output velocity: 35% (for VCA audibility)
+**Add after current content**:
+> **Velocity ranges** (v4.1):
+> - velocityFloor: 65% down to 30% (widened from 70%-30%)
+> - accentBoost: +15% to +45% (widened from +10%-35%)
+> - Minimum output velocity: 30% (raised from 20% for VCA audibility)
 
 ### Section 4.4 (BUILD Parameter)
 
-**Add**:
-> BUILD operates in four phases across the phrase:
-> 1. **GROOVE (0-50%)**: Stable pattern, no modification
-> 2. **BUILD (50-75%)**: Density +0-25%, velocity +0-5%
-> 3. **TENSION (75-87.5%)**: Density +25-40%, velocity +5-10%
-> 4. **FILL (87.5-100%)**: Density +40-60%, velocity +10-15%, all accents
+**Replace current content with**:
+> BUILD controls the narrative arc of each phrase—how much tension builds toward the end.
+>
+> BUILD operates in three phases:
+> 1. **GROOVE (0-60%)**: Stable pattern, no density/velocity modification
+> 2. **BUILD (60-87.5%)**: Density +0-35%, velocity floor +0-8%
+> 3. **FILL (87.5-100%)**: Density +35-50%, velocity floor +8-12%, all hits accented (at BUILD>60%)
+>
+> Phase boundaries are computed from phrase progress, which respects configured phrase length.
 
-### Section 6 (Generation Pipeline)
+### Section 6.3 (Gumbel Top-K Selection)
 
-**Add after 6.3**:
+**Add new subsection 6.3.1**:
 > ### 6.3.1 Euclidean Foundation (Genre-Dependent)
 >
 > Before Gumbel Top-K selection, an optional Euclidean foundation guarantees even hit distribution:
-> - **Techno**: 70-100% Euclidean, ensures four-on-floor at low complexity
-> - **Tribal**: 40-60% Euclidean, balances structure with polyrhythm
-> - **IDM**: 10-30% Euclidean, allows maximum irregularity
 >
-> Field X (syncopation) reduces Euclidean ratio by up to 50%.
+> | Genre | Base Euclidean Ratio | Notes |
+> |-------|---------------------|-------|
+> | Techno | 70% at Field X=0 | Ensures four-on-floor at low complexity |
+> | Tribal | 40% at Field X=0 | Balances structure with polyrhythm |
+> | IDM | 0% (disabled) | Allows maximum irregularity |
+>
+> - Field X reduces Euclidean ratio by up to 70% (at X=1.0, ratio ≈ 0.3× base)
+> - Only active in MINIMAL and GROOVE zones
+> - Rotation derived from seed for determinism
 
 ---
 
 ## Implementation Order
 
-### Sprint 1: Low-Risk, High-Impact (Days 1-2)
-0. **A0**: Add host-side probes/tests for hit histograms, swing offsets, and velocity floors to benchmark current behaviour
-1. **A1**: Tune Techno Minimal weights (4/4 focus while preserving blend gradients)
-2. **A2**: Tune Techno Groovy weights (ghost layers)
-3. **A3**: Tune Techno Chaos weights (more zeros)
-4. **B1**: Widen velocity floor/boost ranges
-5. **B2**: Raise minimum velocity to 35% (after hardware check)
+### Sprint 1: Instrumentation + Low-Risk (Days 1-2)
 
-### Sprint 2: Medium-Risk Changes (Days 3-4)
-1. **C1**: Increase hit budget upper bounds
-2. **C2**: Balance range extension (with Task 22 B)
-3. **D1**: Implement BuildPhase enum
-4. **D2**: Three-phase BUILD density ramp
-5. **D3**: BUILD velocity boost
+| Subtask | Description | Blocking? |
+|---------|-------------|-----------|
+| A0 | Add hit histogram test | No |
+| A1-A4 | Techno weight retuning | No |
+| B1-B3 | Velocity range widening | No |
+| B4 | Hardware velocity floor test | **Yes** (gates B5) |
+
+### Sprint 2: Medium-Risk + Cross-Task (Days 3-4)
+
+| Subtask | Description | Blocking? |
+|---------|-------------|-----------|
+| B5-B6 | Apply velocity floor (after hw test) | No |
+| C1-C7 | Hit budget expansion | No |
+| D1-D8 | BUILD phase enhancement | No |
+| **Task 22 B** | Ship balance range together | **Coordinate** |
 
 ### Sprint 3: Architecture (Days 5-7)
-1. **E1**: Swing range widening
-2. **E2**: Swing as genre modifier
-3. **F1**: EuclideanGen module
-4. **F2**: Genre-aware blend integration
 
-### Hardware Validation
+| Subtask | Description | Blocking? |
+|---------|-------------|-----------|
+| A5-A7 | Tribal/IDM weight tuning + validation | No |
+| E1-E4 | Swing effectiveness | No |
+| F1-F10 | Euclidean blend (techno-only) | No |
+
+### Hardware Validation Checkpoints
+
 After each sprint:
-- [ ] Generate patterns at all 9 field positions per genre
-- [ ] Verify distinct character audibly
+- [ ] Generate patterns at all 9 field positions for Techno
+- [ ] Verify distinct character audibly at corners ([0,0], [2,2])
 - [ ] Sweep ENERGY 0-100%, verify zone transitions
 - [ ] Sweep BUILD 0-100%, verify phrase arc
-- [ ] Test swing at 0%, 50%, 100%
+- [ ] Test swing at 0%, 50%, 100% with external clock
 
 ---
 
-## Files Modified
+## Files Modified Summary
 
-| File | Changes |
-|------|---------|
-| `src/Engine/ArchetypeData.h` | Weight table retuning (~200 lines) |
-| `src/Engine/VelocityCompute.h` | Add BuildPhase enum, modify BuildModifiers |
-| `src/Engine/VelocityCompute.cpp` | Widen velocity ranges, BUILD phases |
-| `src/Engine/HitBudget.cpp` | Budget expansion, balance range |
-| `src/Engine/BrokenEffects.cpp` | Swing effectiveness |
-| `src/Engine/EuclideanGen.h` | New file |
-| `src/Engine/EuclideanGen.cpp` | New file |
-| `src/Engine/GenerationPipeline.cpp` | Euclidean integration |
-| `docs/specs/main.md` | Spec updates per above |
+| File | Phase(s) | Changes |
+|------|----------|---------|
+| `src/Engine/ArchetypeData.h` | A | Weight table retuning (~200 lines) |
+| `src/Engine/VelocityCompute.h` | D | Add BuildPhase enum |
+| `src/Engine/VelocityCompute.cpp` | B, D | Velocity ranges, BUILD phases |
+| `src/Engine/ControlState.h` | D | Extend BuildModifiers struct |
+| `src/Engine/HitBudget.cpp` | C | Budget expansion, balance range |
+| `src/Engine/BrokenEffects.cpp` | E | Swing effectiveness |
+| `src/Engine/EuclideanGen.h` | F | New file |
+| `src/Engine/EuclideanGen.cpp` | F | New file |
+| `src/Engine/Sequencer.cpp` | E, F | Swing integration, Euclidean blend |
+| `tests/test_generation.cpp` | A, C, F | Hit histograms, budget tests, Euclidean tests |
+| `tests/test_timing.cpp` | B, D, E | Velocity, BUILD, swing tests |
+| `docs/specs/main.md` | All | Spec updates per above |
 
 ---
 
@@ -677,7 +596,7 @@ After each sprint:
 
 ### Musicality
 - [ ] Techno [0,0] Minimal produces reliable 4-on-floor
-- [ ] Techno [1,1] Groovy produces head-nodding groove
+- [ ] Techno [1,1] Groovy produces head-nodding groove with ghost notes
 - [ ] Techno [2,2] Chaos produces interesting irregularity
 - [ ] Clear audible difference across all 9 field positions
 
@@ -694,6 +613,7 @@ After each sprint:
 ### Swing
 - [ ] SWING 0% = straight feel
 - [ ] SWING 100% = obvious triplet swing
+- [ ] External clock timing not violated by swing
 
 ---
 
@@ -701,42 +621,12 @@ After each sprint:
 
 | Risk | Mitigation |
 |------|------------|
-| Weight changes break existing patterns | Keep old weights as fallback, A/B test |
-| Euclidean layer fights field morphing | Tune genre ratios conservatively |
-| BUILD phases too complex | Start with 2 phases, expand if needed |
-| Velocity changes too aggressive | Test on hardware with real VCA |
+| Weight changes break existing patterns | Subtask A0 baselines before changes; A/B test |
+| Euclidean layer fights field morphing | Only active at low Field X; genre-gated |
+| BUILD phases add hidden state | Simplified to 3 phases; all derived from phraseProgress |
+| Velocity floor too high | Hardware test (B4) before locking value |
+| Cross-task coordination failure | Explicit coordination with Task 22 Phase B |
 
 ---
-
-## Appendix: Reference Patterns
-
-### Target: Techno [1,1] Groovy Anchor
-
-```
-Step:  0   1   2   3   4   5   6   7   8   9  10  11  12  13  14  15
-Hit:   K   -   -   g   K   -   -   g   K   -   -   g   K   -   -   g
-Vel:  100  -   -  60  95   -   -  55  95   -   -  60  90   -   -  55
-
-Legend: K = kick (accent), g = ghost note, - = rest
-Pattern: Four-on-floor with "a" subdivision ghosts for shuffle feel
-```
-
-### Target: Techno [1,1] Groovy Shimmer
-
-```
-Step:  0   1   2   3   4   5   6   7   8   9  10  11  12  13  14  15
-Hit:   -   -   -   a   -   -   -   a   S   -   -   -   -   -   -   a
-Vel:   -   -   -  50   -   -   -  55 100   -   -   -   -   -   -  50
-
-Legend: S = snare (accent), a = anticipation ghost, - = rest
-Pattern: Backbeat with anticipation notes creating push/pull
-```
-
----
-
-Summary of changes (review pass):
-- Added spec/code checkpoints for determinism, blending, swing pipeline, and budget clamps.
-- Injected per-phase review notes (A–F) covering blending gradients, hardware velocity checks, budget clamps, BUILD migration, swing ordering, and Euclidean gating.
-- Added instrumentation pre-step in Sprint 1 to baseline hit/swing/velocity behaviour before retunes.
 
 *End of Implementation Plan*

@@ -1,9 +1,21 @@
 # DuoPulse v4: Algorithmic Drum Sequencer Specification
 
-**Target Platform**: Daisy Patch.init() (Electro-Smith)  
-**Version**: 4.0  
-**Status**: Implementation Spec  
-**Last Updated**: 2025-12-19
+**Target Platform**: Daisy Patch.init() (Electro-Smith)
+**Version**: 4.1
+**Status**: Implementation Spec
+**Last Updated**: 2025-12-30
+
+### Pending Changes (Active Tasks)
+
+The following changes are planned in active tasks and will update this spec when shipped:
+
+| Task | Spec Section | Change |
+|------|--------------|--------|
+| **Task 22** | §4.5 K4 | Remove RESET MODE from config UI (hardcode STEP) |
+| **Task 22** | §4.5 K1 | Auto-derive PHRASE LENGTH from PATTERN LENGTH |
+| **Task 22** | §6.4 | Remove INTERLOCK coupling mode (INDEPENDENT/SHADOW only) |
+| **Task 23** | §6.1 | Add regeneration on Field X/Y knob change |
+| **Task 24** | §12 | Define boot defaults (no persistence) |
 
 ---
 
@@ -335,6 +347,11 @@ PUNCH = 100%: Maximum dynamics. Accents POP, ghosts nearly silent.
               ●  ● ●  ● (huge velocity differences)
 ```
 
+**Velocity ranges** (v4.1):
+- velocityFloor: 65% down to 30% (widened for more contrast)
+- accentBoost: +15% to +45% (increased for punch)
+- Minimum output velocity: 30% (for VCA audibility)
+
 ### 4.4 BUILD Parameter (Phrase Dynamics)
 
 BUILD controls the narrative arc of each phrase—how much tension builds toward the end:
@@ -350,6 +367,16 @@ BUILD = 100%: Dramatic arc. Big builds, intense fills, energy peaks.
               ████▲▲▲▲▲▲▲▲████ (tension → release)
 ```
 
+**BUILD operates in three phases** (v4.1):
+
+| Phrase % | Phase | Density | Velocity | Notes |
+|----------|-------|---------|----------|-------|
+| 0-60% | GROOVE | 1.0× | normal | Stable pattern |
+| 60-87.5% | BUILD | +0-35% | +0-8% floor | Ramping energy |
+| 87.5-100% | FILL | +35-50% | +8-12% floor | All accents (BUILD>60%) |
+
+Phase boundaries are computed from phrase progress, respecting configured phrase length.
+
 ### 4.5 Config Mode Controls — Domain-Based
 
 #### K1: GRID Domain (Loop Architecture)
@@ -363,7 +390,7 @@ BUILD = 100%: Dramatic arc. Big builds, intense fills, energy peaks.
 
 | Mode | Parameter | Values | Function |
 |------|-----------|--------|----------|
-| Primary | **SWING** | 0-100% | Base swing amount (combined with FLAVOR) |
+| Primary | **SWING** | 0-100% | Swing multiplier (0×-2× of GENRE base swing) |
 | Shift | **CLOCK DIV** | ÷8 / ÷4 / ÷2 / ×1 / ×2 / ×4 / ×8 | Clock division/multiplication (applies to both internal and external clock) |
 
 #### K3: OUTPUT Domain (Signal Configuration)
@@ -500,6 +527,20 @@ Standard masks for 32-step patterns define which metric positions can fire based
 
 Weighted sampling without replacement using Gumbel noise provides deterministic, seeded hit selection with spacing rules to prevent clumping.
 
+### 6.3.1 Euclidean Foundation (Genre-Dependent, v4.1)
+
+Before Gumbel Top-K selection, an optional Euclidean foundation guarantees even hit distribution:
+
+| Genre | Base Euclidean Ratio | Notes |
+|-------|---------------------|-------|
+| Techno | 70% at Field X=0 | Ensures four-on-floor at low complexity |
+| Tribal | 40% at Field X=0 | Balances structure with polyrhythm |
+| IDM | 0% (disabled) | Allows maximum irregularity |
+
+- Field X reduces Euclidean ratio by up to 70% (at X=1.0, ratio ≈ 0.3× base)
+- Only active in MINIMAL and GROOVE zones
+- Rotation derived from seed for determinism
+
 ### 6.4 Voice Relationship
 
 VOICE COUPLING config parameter controls voice interaction:
@@ -546,10 +587,11 @@ Timing is controlled by **GENRE** (Performance+Shift K2) and **SWING** (Config K
 ### 7.2 Velocity Computation (PUNCH-driven)
 
 Velocity is controlled by the PUNCH parameter:
-- **accentProbability**: How often hits are accented (15% to 50%)
-- **velocityFloor**: Minimum velocity for non-accented hits (70% down to 30%)
-- **accentBoost**: How much louder accents are (+10% to +35%)
-- **velocityVariation**: Random variation range (±5% to ±20%)
+- **accentProbability**: How often hits are accented (20% to 50%)
+- **velocityFloor**: Minimum velocity for non-accented hits (65% down to 30%)
+- **accentBoost**: How much louder accents are (+15% to +45%)
+- **velocityVariation**: Random variation range (±3% to ±15%)
+- **Minimum output**: 30% (ensures audibility through VCA)
 
 ---
 

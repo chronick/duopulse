@@ -107,3 +107,9 @@ This balances immediate feedback with rhythmic stability.
 ## Notes
 
 This change may interact with BUILD (K2) which also affects regeneration timing. Need to ensure both work together sensibly.
+
+---
+
+## Cross-Task Dependencies
+
+**Benefits from Task 21**: Task 21 (Musicality Improvements) retunes archetype weights to create more distinct character at each field position. This makes immediate field updates more impactful—users will hear clearer differences when moving Field X/Y. Consider shipping Task 21 first to maximize the perceptual benefit of this feature.
