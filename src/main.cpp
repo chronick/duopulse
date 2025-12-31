@@ -514,11 +514,7 @@ void ProcessControls()
     sequencer.SetAuxDensity(controlState.auxDensity);
     sequencer.SetVoiceCoupling(controlState.voiceCoupling);
 
-    // CV modulation inputs
-    sequencer.SetEnergyCV(cv1 - 0.5f);  // Convert to bipolar
-    sequencer.SetBuildCV(cv2 - 0.5f);
-    sequencer.SetFieldXCV(cv3 - 0.5f);
-    sequencer.SetFieldYCV(cv4 - 0.5f);
+    // CV modulation inputs (flavor only; performance CV already mixed in above)
     sequencer.SetFlavorCV(flavorCV);
 
     // Mark config dirty if any config parameter changed
