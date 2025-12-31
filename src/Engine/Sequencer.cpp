@@ -1,6 +1,7 @@
 #include "Sequencer.h"
 #include "config.h"
 #include "../System/logging.h"
+#include "EuclideanGen.h"  // For genre-aware Euclidean blending
 
 #include <algorithm>
 #include <cmath>
@@ -288,25 +289,63 @@ void Sequencer::GenerateBar()
         state_.sequencer.driftState, drift, 0, patternLength
     );
 
-    // 3. Generate anchor hits (first half)
-    uint32_t anchorMask1 = SelectHitsGumbelTopK(
-        state_.blendedArchetype.anchorWeights,
-        budget.anchorEligibility,
-        budget.anchorHits,
-        seed,
-        halfLength,
-        GetMinSpacingForZone(zone)
-    );
+    // 2.5. Compute Euclidean blend ratio (Task 21 Phase F6-F8)
+    const float fieldX = state_.controls.GetEffectiveFieldX();
+    const float euclideanRatio = GetGenreEuclideanRatio(genre, fieldX, zone);
 
-    // 4. Generate shimmer hits (first half)
-    uint32_t shimmerMask1 = SelectHitsGumbelTopK(
-        state_.blendedArchetype.shimmerWeights,
-        budget.shimmerEligibility,
-        budget.shimmerHits,
-        seed ^ 0x12345678,  // Different seed for shimmer
-        halfLength,
-        GetMinSpacingForZone(zone)
-    );
+    // 3. Generate anchor hits (first half) with optional Euclidean blend
+    uint32_t anchorMask1;
+    if (euclideanRatio > 0.01f)
+    {
+        // Use Euclidean blending (Techno/Tribal at low Field X)
+        anchorMask1 = BlendEuclideanWithWeights(
+            budget.anchorHits,
+            halfLength,
+            state_.blendedArchetype.anchorWeights,
+            budget.anchorEligibility,
+            euclideanRatio,
+            seed
+        );
+    }
+    else
+    {
+        // Pure Gumbel selection (IDM or high Field X)
+        anchorMask1 = SelectHitsGumbelTopK(
+            state_.blendedArchetype.anchorWeights,
+            budget.anchorEligibility,
+            budget.anchorHits,
+            seed,
+            halfLength,
+            GetMinSpacingForZone(zone)
+        );
+    }
+
+    // 4. Generate shimmer hits (first half) with optional Euclidean blend
+    uint32_t shimmerMask1;
+    if (euclideanRatio > 0.01f)
+    {
+        // Use Euclidean blending
+        shimmerMask1 = BlendEuclideanWithWeights(
+            budget.shimmerHits,
+            halfLength,
+            state_.blendedArchetype.shimmerWeights,
+            budget.shimmerEligibility,
+            euclideanRatio,
+            seed ^ 0x12345678  // Different seed for shimmer
+        );
+    }
+    else
+    {
+        // Pure Gumbel selection
+        shimmerMask1 = SelectHitsGumbelTopK(
+            state_.blendedArchetype.shimmerWeights,
+            budget.shimmerEligibility,
+            budget.shimmerHits,
+            seed ^ 0x12345678,  // Different seed for shimmer
+            halfLength,
+            GetMinSpacingForZone(zone)
+        );
+    }
 
     // 5. Apply voice relationship (first half)
     ApplyVoiceRelationship(anchorMask1, shimmerMask1, coupling, halfLength);
@@ -362,25 +401,53 @@ void Sequencer::GenerateBar()
             );
         }
 
-        // Generate anchor (second half)
-        anchorMask2 = SelectHitsGumbelTopK(
-            state_.blendedArchetype.anchorWeights,
-            budget2.anchorEligibility,
-            budget2.anchorHits,
-            seed2,
-            halfLength,
-            GetMinSpacingForZone(zone)
-        );
+        // Generate anchor (second half) with optional Euclidean blend
+        if (euclideanRatio > 0.01f)
+        {
+            anchorMask2 = BlendEuclideanWithWeights(
+                budget2.anchorHits,
+                halfLength,
+                state_.blendedArchetype.anchorWeights,
+                budget2.anchorEligibility,
+                euclideanRatio,
+                seed2
+            );
+        }
+        else
+        {
+            anchorMask2 = SelectHitsGumbelTopK(
+                state_.blendedArchetype.anchorWeights,
+                budget2.anchorEligibility,
+                budget2.anchorHits,
+                seed2,
+                halfLength,
+                GetMinSpacingForZone(zone)
+            );
+        }
 
-        // Generate shimmer (second half)
-        shimmerMask2 = SelectHitsGumbelTopK(
-            state_.blendedArchetype.shimmerWeights,
-            budget2.shimmerEligibility,
-            budget2.shimmerHits,
-            seed2 ^ 0x12345678,
-            halfLength,
-            GetMinSpacingForZone(zone)
-        );
+        // Generate shimmer (second half) with optional Euclidean blend
+        if (euclideanRatio > 0.01f)
+        {
+            shimmerMask2 = BlendEuclideanWithWeights(
+                budget2.shimmerHits,
+                halfLength,
+                state_.blendedArchetype.shimmerWeights,
+                budget2.shimmerEligibility,
+                euclideanRatio,
+                seed2 ^ 0x12345678
+            );
+        }
+        else
+        {
+            shimmerMask2 = SelectHitsGumbelTopK(
+                state_.blendedArchetype.shimmerWeights,
+                budget2.shimmerEligibility,
+                budget2.shimmerHits,
+                seed2 ^ 0x12345678,
+                halfLength,
+                GetMinSpacingForZone(zone)
+            );
+        }
 
         // Apply voice relationship (second half)
         ApplyVoiceRelationship(anchorMask2, shimmerMask2, coupling, halfLength);
