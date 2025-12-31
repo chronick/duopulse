@@ -141,6 +141,8 @@ float shimmerRatio = balance * 1.5f;  // 0% to 150%
 - Balance 0% should produce no shimmer triggers
 - Balance 100% should produce more shimmer than anchor
 
+**Dependency**: Task 21 Phase C (Hit Budget Expansion) ships first and implements this change along with zone-aware shimmer capping. This phase is **complete when Task 21 ships**.
+
 ---
 
 ## Phase C: Coupling Simplification

@@ -114,3 +114,9 @@ Benefits:
 ## Notes
 
 This task should be coordinated with Task 22 (Control Simplification) since the config parameters may change. Complete Task 22 first to know what config parameters exist, then define their boot defaults here.
+
+---
+
+## Cross-Task Dependencies
+
+**Validated by Task 21**: Task 21 (Musicality Improvements) ensures that the boot defaults (Techno genre at field position [1,1] Groovy, PUNCH=50%, BUILD=50%) produce reliably musical patterns. The archetype weight retuning and velocity contrast improvements mean these defaults will sound good immediately on power-on. Ship Task 21 before finalizing boot defaults.
