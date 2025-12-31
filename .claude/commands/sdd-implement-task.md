@@ -1,64 +1,93 @@
 # Command: SDD – Implement Task
 
-You are implementing exactly ONE task from a feature task file in `docs/tasks/`.
+You are implementing a complete SDD task from start to finish.
 
-Inputs (from the user):
-- Either a task id from `docs/tasks/index.md`
-- Or:
-  - feature slug (e.g. `soft-pickup`)
-  - the exact task description as it appears in `docs/tasks/<slug>.md`
+## What This Command Does
 
-Always:
-- Use `docs/tasks/index.md` if a matching row exists, to read and update metadata.
+This command delegates to the **sdd-full-task** agent to:
+1. Load the task file and understand requirements
+2. Orchestrate subtask implementation (using sdd-subtask agent)
+3. Run tests after each subtask
+4. Coordinate code reviews (using daisysp-code-reviewer)
+5. Fix any issues found
+6. Commit when complete
+7. Update task tracking files
 
-Steps:
+## Your Workflow
 
-1. **Resolve the task**
-   - If a task id is provided:
-     - Look up the row in `docs/tasks/index.md` with that id.
-     - Determine `feature`, `description`, and `file` from the row.
-   - If no id is provided:
-     - Use the given feature slug and description to:
-       - Open `docs/tasks/<slug>.md`.
-       - Confirm the checklist item exists.
-       - Optionally cross-check `docs/tasks/index.md` for a matching row (same feature + description).
-   - Restate the task in your own words.
+When the user runs this command:
 
-2. **Understand context**
-   - Read the entire feature task file.
-   - Read the relevant section in `docs/specs/main.md` for this feature.
-   - If the task is too large, propose a small sub-task breakdown and confirm which one to do.
+1. **Understand the request**
+   - User provides either:
+     - A task ID from `docs/tasks/index.md` (e.g., "Task 22")
+     - A task slug (e.g., "control-simplification")
+     - A task file path (e.g., "@docs/tasks/active/22-control-simplification.md")
 
-3. **Plan minimal changes**
-   - List the code and test files you will touch.
-   - List any doc/spec updates required.
+2. **Delegate to sdd-full-task**
+   - Use the Task tool to launch the `sdd-full-task` agent
+   - Pass the task identifier to the agent
+   - The sdd-full-task agent will:
+     - Load task context from files
+     - Delegate each subtask to sdd-subtask for implementation
+     - Run tests after each subtask
+     - Periodically invoke daisysp-code-reviewer
+     - Fix any issues found
+     - Create git commit when all subtasks complete
+     - Update `docs/tasks/<slug>.md` and `docs/tasks/index.md`
 
-4. **Implement with tests**
-   - Prefer writing or updating tests first.
-   - Then implement code to satisfy tests and the spec.
-   - Keep changes limited to what is necessary for this task.
+3. **Report results**
+   - After sdd-full-task completes, summarize:
+     - What was implemented
+     - Files changed
+     - Test results
+     - Commit hash
+     - Any follow-up items
 
-5. **Run tests (conceptually)**
-   - Show commands the user should run (e.g. `pytest`, `cargo test`, `npm test`, `make test`).
-   - Assume the user will run them.
+## Important Notes
 
-6. **Update the feature task file**
-   - In `docs/tasks/<slug>.md`, change the corresponding checklist item from `- [ ]` to `- [x]`.
-   - Optionally add a brief note under the task with important details or TODOs.
+- **Never implement code yourself** - delegate to sdd-full-task
+- sdd-full-task will not exit until the task is fully complete
+- sdd-full-task coordinates multiple sub-agents:
+  - `sdd-subtask` for code implementation
+  - `daisysp-code-reviewer` for code review
+- The full task agent enforces quality gates (tests pass, review passes, etc.)
+- If interrupted, sdd-full-task can resume from where it left off
 
-7. **Update the tasks index metadata**
-   - In `docs/tasks/index.md`:
-     - Find the row for this task (by id if given, otherwise by matching `feature` and `description`).
-     - Set `status` to `done`.
-     - Update `updated_at` to today's date in ISO format (e.g. `2025-11-27T16:30:00Z`).
-     - Do not change `created_at` or the `id`.
+## Task Input Formats
 
-8. **Suggest a commit message**
-   - Propose a short commit message that includes the feature slug and a hint about the task.
+The user can specify a task in multiple ways:
 
-Do not modify unrelated tasks or index rows. Stay within the spec and task description.
+**By ID:**
+```
+User: "Implement Task 22"
+```
 
-Usage in Cursor:
+**By slug:**
+```
+User: "Implement control-simplification"
+```
 
-Open docs/tasks/soft-pickup.md, run sdd-implement-task, select an unchecked task, and let it go.
+**By file reference:**
+```
+User: "@docs/tasks/active/22-control-simplification.md"
+```
 
+**With context:**
+```
+User: "Continue working on the control simplification task"
+```
+
+## Usage Example
+
+```
+User: "Implement Task 22"
+Assistant: [Launches sdd-full-task agent with task ID 22]
+sdd-full-task: [Reads task file, implements subtasks one by one, runs tests, reviews code]
+sdd-full-task: "Task 22 complete! 4 files changed, 12 tests passing, committed as abc123f"
+Assistant: "Task 22 (Control Simplification) is now complete:
+- 4 subtasks implemented
+- 4 files modified (ControlProcessor.cpp, ControlState.h, etc.)
+- All tests passing
+- Code review passed
+- Committed: abc123f"
+```
