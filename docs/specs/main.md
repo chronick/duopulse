@@ -1,9 +1,21 @@
 # DuoPulse v4: Algorithmic Drum Sequencer Specification
 
-**Target Platform**: Daisy Patch.init() (Electro-Smith)  
-**Version**: 4.0  
-**Status**: Implementation Spec  
-**Last Updated**: 2025-12-19
+**Target Platform**: Daisy Patch.init() (Electro-Smith)
+**Version**: 4.1
+**Status**: Implementation Spec
+**Last Updated**: 2025-12-30
+
+### Pending Changes (Active Tasks)
+
+The following changes are planned in active tasks and will update this spec when shipped:
+
+| Task | Spec Section | Change |
+|------|--------------|--------|
+| **Task 22** | §4.5 K4 | Remove RESET MODE from config UI (hardcode STEP) |
+| **Task 22** | §4.5 K1 | Auto-derive PHRASE LENGTH from PATTERN LENGTH |
+| **Task 22** | §6.4 | Remove INTERLOCK coupling mode (INDEPENDENT/SHADOW only) |
+| **Task 23** | §6.1 | Add regeneration on Field X/Y knob change |
+| **Task 24** | §12 | Define boot defaults (no persistence) |
 
 ---
 
@@ -378,7 +390,7 @@ Phase boundaries are computed from phrase progress, respecting configured phrase
 
 | Mode | Parameter | Values | Function |
 |------|-----------|--------|----------|
-| Primary | **SWING** | 0-100% | Base swing amount (combined with FLAVOR) |
+| Primary | **SWING** | 0-100% | Swing multiplier (0×-2× of GENRE base swing) |
 | Shift | **CLOCK DIV** | ÷8 / ÷4 / ÷2 / ×1 / ×2 / ×4 / ×8 | Clock division/multiplication (applies to both internal and external clock) |
 
 #### K3: OUTPUT Domain (Signal Configuration)
