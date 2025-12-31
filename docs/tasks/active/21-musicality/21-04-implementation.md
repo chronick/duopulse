@@ -14,6 +14,16 @@ This document consolidates ideation (21-02) and critical feedback (21-03) into a
 ### Core Principle
 **Fix contrast at the source**: Retune archetype weights and hit budgets before adding new modes or systems. Small, well-tested changes compound into significant musicality improvements.
 
+## Critical Review (spec + code checkpoints)
+
+- Determinism guardrail from `docs/specs/main.md` ("same settings + same seed = same output") means Euclidean blend, BUILD phases, and swing changes must stay seed-stable and avoid hidden state.
+- Field blending in `src/Engine/PatternField.cpp` uses softmax interpolation; binary 0/1 weights (e.g., Minimal all-ones) collapse gradients and make Field X/Y morphing brittle, especially across 24/32/64-step variants.
+- Hit budgets in `src/Engine/HitBudget.cpp` are capped twice (anchor max = patternLength/4; final clamp = length/2) and 64-step bars are generated as two 32-step halves (Task 21-01 fix). Any /3 expansion needs to account for these clamps and guard-rail behaviour.
+- Swing today is config-driven: `ComputeSwing()` clamps 50–66% with zone caps (0.58/0.62/0.66) and jitter/displacement still come from `flavorCV` (`Sequencer.cpp`). Proposed swing changes should start from this pipeline rather than a new offset model.
+- Velocity floor currently clamps at 0.2 in `ComputeVelocity()`; raising to 0.35 would push PUNCH=0 toward ~0.7 floors and will require `tests/test_timing.cpp` updates plus hardware audibility checks (per 21-02 note about ~30% floors).
+- BuildModifiers live in `src/Engine/ControlState.h` and are used in Sequencer/tests; introducing `BuildPhase`/new fields needs a migration plan and back-compat for existing callers.
+- Variety may be limited by weight contrast and Gumbel temperature, not just budgets—adding Euclidean or new phases without measuring selection histograms risks papering over the real issue (see Task 21-03 guidance).
+
 ---
 
 ## Priority Matrix
@@ -132,6 +142,12 @@ constexpr float kGroovy_Shimmer[32] = {
 };
 ```
 
+#### Review adjustments
+- Avoid pure 0/1 tables for Minimal; keep small gradients (e.g., 0/0.25/0.6/0.95) so `PatternField` softmax blends remain meaningful and Field X/Y morphing works at intermediate positions.
+- Instrument selection stats before and after retunes (hit histograms per archetype/zone) to prove variety gains; include shimmer/aux, not just anchor.
+- Ensure retunes cover all genres, not just Techno; `ArchetypeData.h` holds multiple banks, so updates need to stay consistent across offsets.
+- Guard rails already enforce downbeat/max-gap; confirm new weights do not rely on rails to supply fundamentals (to keep genre character intact when rails are relaxed for IDM).
+
 ### Testing Strategy
 
 1. Generate 100 patterns at each archetype position
@@ -193,6 +209,11 @@ return Clamp(velocity, 0.2f, 1.0f);
 return Clamp(velocity, 0.35f, 1.0f);
 ```
 
+#### Review adjustments
+- Clamp 0.35f affects both `ComputeVelocity()` and `BrokenEffects::GetVelocityWithVariation()`; raising it will require updating `tests/test_timing.cpp` expectations and may flatten PUNCH=0 dynamics (effective floors near 0.7).
+- Hardware note from 21-02: uVCA response suggests ~30% is usually audible—prototype 0.30–0.32 first and capture scope/ear checks before locking 0.35.
+- Consider making the higher floor conditional (e.g., only during fill zones) to preserve low-PUNCH flatness while lifting ghosts when fills occur.
+
 ---
 
 ## Phase C: Hit Budget Expansion (MEDIUM RISK)
@@ -251,6 +272,12 @@ float shimmerRatio = 0.3f + balance * 0.7f;  // 30% to 100%
 // AFTER: Full range 0% to 150%
 float shimmerRatio = balance * 1.5f;  // 0% to 150%
 ```
+
+#### Review adjustments
+- `ComputeAnchorBudget()` caps at patternLength/4 and `ComputeBarBudget()` clamps to length/2; moving to /3 will often get clipped unless caps move too. Profile actual hit counts across ENERGY zones before changing formulas.
+- 64-step patterns are generated as two 32-step halves with separate seeds—budget/eligibility should be applied per half to avoid lopsided bars when increasing counts.
+- Extending shimmerRatio to 150% should likely be zone-aware (e.g., GROOVE cap near 1.0, PEAK allowed >1.0) to protect kick authority per Task 21-03.
+- Add regression tests covering 16/24/32/64 lengths and Balance extremes to avoid reintroducing the blank-second-half bug.
 
 ---
 
@@ -346,6 +373,11 @@ struct BuildModifiers {
 };
 ```
 
+#### Review adjustments
+- `BuildModifiers` lives in `src/Engine/ControlState.h` and is used by Sequencer/tests; adding `BuildPhase`/new fields requires migrating those call sites plus control/persistence plumbing.
+- Consider a simpler 3-stage model (groove → build → fill) to avoid hidden state the user cannot see; keep effects single-axis (density or velocity) to align with spec predictability.
+- Tie phase boundaries to configured phrase length and reset behaviour (Task 19 external clock) to keep determinism with different clock/reset scenarios.
+
 ---
 
 ## Phase E: Swing Effectiveness (MEDIUM RISK)
@@ -398,6 +430,11 @@ float effectiveSwing = genreBaseSwing * (1.0f + configSwing);
 // At configSwing=0: 1× genre swing
 // At configSwing=1: 2× genre swing
 ```
+
+#### Review adjustments
+- Current pipeline: `ComputeSwing()` in `src/Engine/BrokenEffects.cpp` already uses the SWING config knob, caps by ENERGY zone (0.58/0.62/0.66), and applies before jitter/displacement (`Sequencer.cpp`); jitter/displacement still use `flavorCV`. Start by auditing perceived swing with the existing model and, if needed, add a simple multiplier while respecting zone caps.
+- Ensure swing offsets remain before jitter/displacement to keep additivity, and add external-clock regression (Task 19) so triplet swing does not violate rising-edge timing.
+- If genre should influence swing, prefer multiplying archetype `swingAmount` (blended in `PatternField`) rather than introducing a separate offset formula.
 
 ---
 
@@ -524,6 +561,11 @@ float GetGenreEuclideanRatio(Genre genre, float fieldX)
 }
 ```
 
+#### Review adjustments
+- Treat Euclidean as a fallback or low-Field-X blend rather than a hard foundation; otherwise softmax blending loses archetype personality (Task 21-03 concern).
+- Support all pattern lengths (16/24/32/64) and the two-half generation path; rotation per seed must be deterministic per phraseSeed/patternSeed so "same settings + same seed" still holds.
+- Start techno-only and gate by ENERGY/zone to avoid flattening IDM/Tribal character; add tests that Euclidean ratio tapers as Field X increases.
+
 ---
 
 ## Consistency with Other Tasks
@@ -585,11 +627,12 @@ float GetGenreEuclideanRatio(Genre genre, float fieldX)
 ## Implementation Order
 
 ### Sprint 1: Low-Risk, High-Impact (Days 1-2)
-1. **A1**: Tune Techno Minimal weights (pure 4/4)
+0. **A0**: Add host-side probes/tests for hit histograms, swing offsets, and velocity floors to benchmark current behaviour
+1. **A1**: Tune Techno Minimal weights (4/4 focus while preserving blend gradients)
 2. **A2**: Tune Techno Groovy weights (ghost layers)
 3. **A3**: Tune Techno Chaos weights (more zeros)
 4. **B1**: Widen velocity floor/boost ranges
-5. **B2**: Raise minimum velocity to 35%
+5. **B2**: Raise minimum velocity to 35% (after hardware check)
 
 ### Sprint 2: Medium-Risk Changes (Days 3-4)
 1. **C1**: Increase hit budget upper bounds
@@ -690,5 +733,10 @@ Pattern: Backbeat with anticipation notes creating push/pull
 ```
 
 ---
+
+Summary of changes (review pass):
+- Added spec/code checkpoints for determinism, blending, swing pipeline, and budget clamps.
+- Injected per-phase review notes (A–F) covering blending gradients, hardware velocity checks, budget clamps, BUILD migration, swing ordering, and Euclidean gating.
+- Added instrumentation pre-step in Sprint 1 to baseline hit/swing/velocity behaviour before retunes.
 
 *End of Implementation Plan*
