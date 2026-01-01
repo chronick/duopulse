@@ -296,6 +296,8 @@ TEST_CASE("INDEPENDENT coupling allows overlap", "[voice-relation]")
     REQUIRE(shimmer == 0x11111111);
 }
 
+// Task 22 Phase C1: INTERLOCK mode removed from UI but kept for backward compatibility
+// This test verifies the internal implementation still works
 TEST_CASE("INTERLOCK suppresses simultaneous hits", "[voice-relation]")
 {
     uint32_t anchor = 0x11111111;   // Quarter notes
@@ -358,6 +360,7 @@ TEST_CASE("ShiftMaskLeft works correctly", "[voice-relation]")
     }
 }
 
+// Task 22 Phase C1: INTERLOCK mode removed from UI but kept for backward compatibility
 TEST_CASE("Gap-fill rescues interlock gaps", "[voice-relation]")
 {
     // Create a pattern where interlock would create a big gap
@@ -661,7 +664,7 @@ TEST_CASE("Full generation flow produces valid pattern", "[integration]")
         budget = ComputeShimmerBudget(0.5f, 0.5f, EnergyZone::GROOVE, 32);
         uint32_t shimmer = SelectHitsGumbelTopK(weights, eligibility, budget, 67890, 32, 1);
 
-        // Apply voice relation
+        // Apply voice relation (Task 22 Phase C1: INTERLOCK kept for backward compat)
         ApplyVoiceRelationship(anchor, shimmer, VoiceCoupling::INTERLOCK, 32);
 
         // Apply guard rails

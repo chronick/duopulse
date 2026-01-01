@@ -176,13 +176,15 @@ inline float GetAuxDensityMultiplier(AuxDensity density)
 /**
  * Get VoiceCoupling from a 0-1 knob value
  *
+ * Task 22 Phase C1: Simplified to 2 modes (INTERLOCK removed as broken)
+ * 0-50% = INDEPENDENT, 50-100% = SHADOW
+ *
  * @param value Knob value (0.0-1.0)
- * @return VoiceCoupling enum value
+ * @return VoiceCoupling enum value (never returns INTERLOCK)
  */
 inline VoiceCoupling GetVoiceCouplingFromValue(float value)
 {
-    if (value < 0.33f) return VoiceCoupling::INDEPENDENT;
-    if (value < 0.67f) return VoiceCoupling::INTERLOCK;
+    if (value < 0.5f) return VoiceCoupling::INDEPENDENT;
     return VoiceCoupling::SHADOW;
 }
 

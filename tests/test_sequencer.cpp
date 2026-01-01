@@ -175,10 +175,10 @@ TEST_CASE("Phrase boundary detection", "[sequencer][timing]")
     Sequencer seq;
     seq.Init(48000.0f);
 
-    SECTION("Phrase boundary occurs after phrase length bars")
+    SECTION("Phrase boundary occurs after derived phrase length")
     {
         seq.SetPatternLength(16);
-        seq.SetPhraseLength(2);  // 2 bars per phrase
+        // Task 22: Phrase length auto-derived (16 steps → 8 bars = 128 total steps)
 
         // 17 ticks: process bar 0 (steps 0-15) then enter bar 1 step 0
         for (int i = 0; i < 17; ++i)
@@ -191,18 +191,21 @@ TEST_CASE("Phrase boundary detection", "[sequencer][timing]")
         REQUIRE(pos1.currentBar == 1);
         REQUIRE(pos1.stepInBar == 0);
 
-        // 15 more ticks to get to bar 1 step 15
-        for (int i = 0; i < 15; ++i)
+        // Advance to bar 7 step 15 (last step before wrap)
+        // Currently at bar 1 step 0 (step 16 in phrase)
+        // Need to get to step 127 (bar 7 step 15)
+        // That's 127 - 16 = 111 more ticks
+        for (int i = 0; i < 111; ++i)
         {
             seq.TriggerExternalClock();
             seq.ProcessAudio();
         }
 
-        // Now at bar 1 step 15 (total 32 ticks, which wraps back to bar 0)
+        // Now at bar 7 step 15 (total 128 ticks from start, at step 127)
         const auto& midPos = seq.GetPhrasePosition();
         REQUIRE(midPos.stepInBar == 15);
 
-        // One more tick to wrap phrase
+        // One more tick to wrap phrase (total 129 ticks)
         seq.TriggerExternalClock();
         seq.ProcessAudio();
 
@@ -215,28 +218,29 @@ TEST_CASE("Phrase boundary detection", "[sequencer][timing]")
     SECTION("Phrase progress is correct")
     {
         seq.SetPatternLength(16);
-        seq.SetPhraseLength(4);  // 4 bars, 64 steps total
+        // Task 22: Phrase length auto-derived (16 steps → 8 bars = 128 total steps)
 
         // At start, progress should be 0
         const auto& startPos = seq.GetPhrasePosition();
         REQUIRE(startPos.phraseProgress == Approx(0.0f).margin(0.01f));
 
-        // Advance 32 ticks (process steps 0-31, which is bars 0-1)
-        // After 32 ticks: step 31 processed, progress = 31/64 ≈ 0.484
-        for (int i = 0; i < 32; ++i)
+        // Advance 64 ticks (process steps 0-63, which is bars 0-3)
+        // After 64 ticks: step 63 processed, progress = 63/128 ≈ 0.492
+        for (int i = 0; i < 64; ++i)
         {
             seq.TriggerExternalClock();
             seq.ProcessAudio();
         }
 
         const auto& midPos = seq.GetPhrasePosition();
-        // After 32 ticks we're at step 31 of 64 (0-indexed)
-        // Progress = 31/64 ≈ 0.484
-        REQUIRE(midPos.phraseProgress == Approx(0.484f).margin(0.02f));
+        // After 64 ticks we're at step 63 of 128 (0-indexed)
+        // Progress = 63/128 ≈ 0.492
+        REQUIRE(midPos.phraseProgress == Approx(0.492f).margin(0.02f));
 
-        // Advance 28 more ticks to get to step 59 (near end of phrase)
-        // Progress = 59/64 ≈ 0.922 which is in fill zone (> 0.875)
-        for (int i = 0; i < 28; ++i)
+        // Advance 50 more ticks to get to step 113 (fill zone)
+        // Total: 64 + 50 = 114 ticks, at step 113
+        // Progress = 113/128 ≈ 0.883 > 0.875, in fill zone (phraseProgress > 0.875)
+        for (int i = 0; i < 50; ++i)
         {
             seq.TriggerExternalClock();
             seq.ProcessAudio();
@@ -272,14 +276,14 @@ TEST_CASE("Reset returns to start", "[sequencer][reset]")
         const auto& midPos = seq.GetPhrasePosition();
         REQUIRE(midPos.currentBar == 2);
 
-        // Trigger reset
+        // Trigger reset (Task 22: Reset mode hardcoded to STEP)
         seq.TriggerReset();
 
-        // Should be back at start
+        // STEP mode resets to step 0 but preserves bar position
         const auto& resetPos = seq.GetPhrasePosition();
-        REQUIRE(resetPos.stepInPhrase == 0);
-        REQUIRE(resetPos.currentBar == 0);
-        REQUIRE(resetPos.isDownbeat == true);
+        REQUIRE(resetPos.stepInPhrase == 32);  // bar 2, step 0 = step 32 in phrase
+        REQUIRE(resetPos.currentBar == 2);
+        REQUIRE(resetPos.isDownbeat == true);  // Step 0 of bar 2 is a downbeat
     }
 }
 
@@ -735,19 +739,19 @@ TEST_CASE("Sequencer handles edge cases", "[sequencer][edge-cases]")
         REQUIRE(anyHitInSecondHalf);
     }
 
-    SECTION("Single bar phrase")
+    SECTION("Phrase wraps after derived length")
     {
         seq.SetPatternLength(16);
-        seq.SetPhraseLength(1);
+        // Task 22: Phrase length auto-derived (16 steps → 8 bars = 128 total steps)
 
-        // 16 ticks process steps 0-15, 17th tick wraps back to step 0
-        for (int step = 0; step < 17; ++step)
+        // After 128 ticks (8 bars × 16 steps), should wrap to bar 0
+        for (int step = 0; step < 129; ++step)
         {
             seq.TriggerExternalClock();
             seq.ProcessAudio();
         }
 
-        // Should have looped back to step 0
+        // Should have looped back to step 0, bar 0
         const auto& pos = seq.GetPhrasePosition();
         REQUIRE(pos.currentBar == 0);
         REQUIRE(pos.stepInBar == 0);

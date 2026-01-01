@@ -58,9 +58,8 @@ void ControlProcessor::Init(const ControlState& initialState)
     configPrimaryKnobs_[2].Init(
         (static_cast<float>(initialState.auxMode) + 0.5f) / 4.0f);
 
-    // Reset mode: discrete (0-2 -> 0.17/0.5/0.83)
-    configPrimaryKnobs_[3].Init(
-        (static_cast<float>(initialState.resetMode) + 0.5f) / 3.0f);
+    // K4: FREE - Reset mode no longer exposed in UI, init to 0.0
+    configPrimaryKnobs_[3].Init(0.0f);
 
     // Initialize config shift knobs
     // Phrase length: 1/2/4/8 -> 0.125/0.375/0.625/0.875
@@ -320,27 +319,18 @@ void ControlProcessor::ProcessConfigPrimary(const RawHardwareInput& input,
         state.auxMode     = newAuxMode;
     }
 
-    // K4: RESET MODE (discrete)
-    float resetModeRaw     = configPrimaryKnobs_[3].Process(input.knobs[3]);
-    ResetMode newResetMode = GetResetModeFromValue(resetModeRaw);
-    if (newResetMode != state.resetMode)
-    {
-        parameterChanged_ = true;
-        state.resetMode   = newResetMode;
-    }
+    // K4: FREE - Reset mode hardcoded to STEP in ControlState::Init()
+    // Config K4 primary is now available for future features
+    (void)input.knobs[3];  // Mark parameter as intentionally unused
 }
 
 void ControlProcessor::ProcessConfigShift(const RawHardwareInput& input,
                                            ControlState& state)
 {
-    // Shift+K1: PHRASE LENGTH (discrete)
-    float phraseRaw = configShiftKnobs_[0].Process(input.knobs[0]);
-    int newPhraseLength = QuantizePhraseLength(phraseRaw);
-    if (newPhraseLength != state.phraseLength)
-    {
-        parameterChanged_   = true;
-        state.phraseLength = newPhraseLength;
-    }
+    // Shift+K1: FREE - Phrase length is now auto-derived from pattern length
+    // See ControlState::GetDerivedPhraseLength()
+    // Config+Shift K1 is now available for future features
+    (void)input.knobs[0];  // Mark parameter as intentionally unused
 
     // Shift+K2: CLOCK DIV (discrete)
     float clockDivRaw = configShiftKnobs_[1].Process(input.knobs[1]);

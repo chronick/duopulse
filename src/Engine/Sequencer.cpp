@@ -51,7 +51,7 @@ void Sequencer::Init(float sampleRate)
     hihatHoldSamples_ = static_cast<int>(sampleRate_ * 0.01f);
 
     // Initialize phrase position
-    phrasePos_ = CalculatePhrasePosition(0, state_.controls.phraseLength);
+    phrasePos_ = CalculatePhrasePosition(0, state_.controls.GetDerivedPhraseLength());
 
     // External clock state (exclusive mode)
     externalClockActive_ = false;
@@ -632,7 +632,7 @@ void Sequencer::AdvanceStep()
     // Advance position
     state_.sequencer.AdvanceStep(
         state_.controls.patternLength,
-        state_.controls.phraseLength
+        state_.controls.GetDerivedPhraseLength()
     );
 
     // Handle phrase boundary (update drift state)
@@ -814,9 +814,9 @@ void Sequencer::SetResetMode(float value)
 
 void Sequencer::SetPhraseLength(int bars)
 {
-    if (bars < 1) bars = 1;
-    if (bars > 8) bars = 8;
-    state_.controls.phraseLength = bars;
+    // Task 22: Phrase length is now auto-derived from pattern length
+    // This method is kept for backward compatibility but is a no-op
+    (void)bars;
 }
 
 void Sequencer::SetClockDivision(int div)
@@ -1018,7 +1018,7 @@ void Sequencer::UpdatePhrasePosition()
 {
     int step = state_.sequencer.currentStep;
     int bar = state_.sequencer.currentBar;
-    int phraseLength = state_.controls.phraseLength;
+    int phraseLength = state_.controls.GetDerivedPhraseLength();
     int patternLength = state_.controls.patternLength;
 
     int totalStepsInPhrase = patternLength * phraseLength;

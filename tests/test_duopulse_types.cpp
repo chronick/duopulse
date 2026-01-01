@@ -108,10 +108,14 @@ TEST_CASE("DuoPulseTypes helper functions", "[types]")
 
     SECTION("GetVoiceCouplingFromValue maps knob correctly")
     {
+        // Task 22 Phase C1: INTERLOCK removed, now 2 modes
+        // 0-50% = INDEPENDENT, 50-100% = SHADOW
         REQUIRE(GetVoiceCouplingFromValue(0.0f) == VoiceCoupling::INDEPENDENT);
         REQUIRE(GetVoiceCouplingFromValue(0.20f) == VoiceCoupling::INDEPENDENT);
-        REQUIRE(GetVoiceCouplingFromValue(0.40f) == VoiceCoupling::INTERLOCK);
-        REQUIRE(GetVoiceCouplingFromValue(0.60f) == VoiceCoupling::INTERLOCK);
+        REQUIRE(GetVoiceCouplingFromValue(0.40f) == VoiceCoupling::INDEPENDENT);
+        REQUIRE(GetVoiceCouplingFromValue(0.49f) == VoiceCoupling::INDEPENDENT);
+        REQUIRE(GetVoiceCouplingFromValue(0.50f) == VoiceCoupling::SHADOW);
+        REQUIRE(GetVoiceCouplingFromValue(0.60f) == VoiceCoupling::SHADOW);
         REQUIRE(GetVoiceCouplingFromValue(0.80f) == VoiceCoupling::SHADOW);
         REQUIRE(GetVoiceCouplingFromValue(1.0f) == VoiceCoupling::SHADOW);
     }
@@ -286,7 +290,7 @@ TEST_CASE("ControlState initialization", "[control]")
         REQUIRE(state.patternLength == 32);
         REQUIRE(state.phraseLength == 4);
         REQUIRE(state.auxMode == AuxMode::HAT);
-        REQUIRE(state.resetMode == ResetMode::PHRASE);
+        REQUIRE(state.resetMode == ResetMode::STEP);  // Task 22: Reset mode hardcoded to STEP
     }
 
     SECTION("GetEffective* clamps CV modulation")
