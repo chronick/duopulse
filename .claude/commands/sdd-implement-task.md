@@ -19,30 +19,54 @@ The user has requested implementation of an SDD task. The task can be specified 
 
 Implement this task **completely from start to finish**:
 
-1. **Load task context**
+1. **Setup feature branch**
+   - Read task file to get specified branch name
+   - Check if branch exists (`git branch --list`)
+   - If exists: `git checkout <branch>`
+   - If not: `git checkout -b <branch>` from current branch
+   - Verify clean working directory before starting
+
+2. **Load task context**
    - Read `docs/tasks/index.md` to locate the task
    - Read the task file from `docs/tasks/<slug>.md`
    - Read relevant spec sections from `docs/specs/main.md`
-   - Check git branch status
+   - Check which spec sections need updates (look for task mentions in "Pending Changes")
    - Identify pending vs completed subtasks
 
-2. **Implement each subtask**
+3. **Implement each subtask**
    - Delegate to `sdd-subtask` agent for code implementation
    - Run tests after each subtask (`make test`)
    - Fix any test failures
    - Run periodic code reviews (every 2-3 subtasks)
 
-3. **Final quality gates**
+4. **Final quality gates**
    - All subtasks complete
    - All tests passing
    - Code review passes (no CRITICAL/WARNING issues)
    - No new compiler warnings
 
-4. **Commit and track**
-   - Create git commit with proper message format
-   - Update task file status to complete
-   - Update `docs/tasks/index.md`
+5. **Update specification**
+   - Check `docs/specs/main.md` "Pending Changes" table for this task
+   - Update all spec sections mentioned for this task
+   - Remove task from "Pending Changes" table
+   - Add task to "Recent Changes" table with date and summary
+   - Bump spec version (e.g., 4.1 → 4.2)
+   - Update "Last Updated" date
+   - Commit spec changes separately: `docs(spec): update for Task XX`
+
+6. **Commit and track**
+   - Create git commit with proper message format for implementation
+   - Update task file status to complete, add commit hash
+   - Move task file from `active/` to `completed/`
+   - Update `docs/tasks/index.md` (status, date, path)
+   - Commit tracking updates separately: `docs(tasks): mark Task XX as complete`
    - Report completion summary
+
+7. **Merge to parent branch** (optional, only if requested by user)
+   - Identify parent branch from git history or ask user
+   - `git checkout <parent-branch>`
+   - `git merge --no-ff feature/<branch>`
+   - Push if requested
 
 ## Important
 

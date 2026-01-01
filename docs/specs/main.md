@@ -1,9 +1,9 @@
 # DuoPulse v4: Algorithmic Drum Sequencer Specification
 
 **Target Platform**: Daisy Patch.init() (Electro-Smith)
-**Version**: 4.1
+**Version**: 4.2
 **Status**: Implementation Spec
-**Last Updated**: 2025-12-30
+**Last Updated**: 2026-01-01
 
 ### Pending Changes (Active Tasks)
 
@@ -11,11 +11,14 @@ The following changes are planned in active tasks and will update this spec when
 
 | Task | Spec Section | Change |
 |------|--------------|--------|
-| **Task 22** | §4.5 K4 | Remove RESET MODE from config UI (hardcode STEP) |
-| **Task 22** | §4.5 K1 | Auto-derive PHRASE LENGTH from PATTERN LENGTH |
-| **Task 22** | §6.4 | Remove INTERLOCK coupling mode (INDEPENDENT/SHADOW only) |
 | **Task 23** | §6.1 | Add regeneration on Field X/Y knob change |
 | **Task 24** | §12 | Define boot defaults (no persistence) |
+
+### Recent Changes
+
+| Task | Date | Changes |
+|------|------|---------|
+| **Task 22** | 2026-01-01 | Simplified config mode: auto-derive phrase length, hardcode reset mode to STEP, remove INTERLOCK coupling |
 
 ---
 
@@ -384,7 +387,9 @@ Phase boundaries are computed from phrase progress, respecting configured phrase
 | Mode | Parameter | Values | Function |
 |------|-----------|--------|----------|
 | Primary | **PATTERN LENGTH** | 16 / 24 / 32 / 64 | Steps per bar |
-| Shift | **PHRASE LENGTH** | 1 / 2 / 4 / 8 | Bars per phrase |
+| Shift | ~~**PHRASE LENGTH**~~ | *(unused)* | **Auto-derived** from pattern length (16→8 bars, 24→5 bars, 32→4 bars, 64→2 bars) |
+
+**Rationale**: Phrase length is now automatically derived to maintain ~128 steps per phrase for consistent phrase arc timing. Config+Shift K1 is freed for future features.
 
 #### K2: TIMING Domain (Feel)
 
@@ -404,8 +409,10 @@ Phase boundaries are computed from phrase progress, respecting configured phrase
 
 | Mode | Parameter | Values | Function |
 |------|-----------|--------|----------|
-| Primary | **RESET MODE** | Phrase / Bar / Step | What reset input does |
-| Shift | **VOICE COUPLING** | Independent / Interlock / Shadow | Voice relationship override |
+| Primary | ~~**RESET MODE**~~ | *(unused)* | **Hardcoded to STEP** (reset always goes to step 0, preserves bar/phrase position) |
+| Shift | **VOICE COUPLING** | Independent / Shadow | Voice relationship override (0-50% = Independent, 50-100% = Shadow) |
+
+**Rationale**: Reset mode hardcoded to STEP for simplicity. INTERLOCK coupling removed due to broken 1:1 trigger behavior. Config K4 primary is freed for future features.
 
 ### 4.6 Button Behavior
 
@@ -544,9 +551,10 @@ Before Gumbel Top-K selection, an optional Euclidean foundation guarantees even 
 ### 6.4 Voice Relationship
 
 VOICE COUPLING config parameter controls voice interaction:
-- **Independent (0-33%)**: Voices fire freely, can overlap
-- **Interlock (33-67%)**: Suppress simultaneous hits, call-response feel
-- **Shadow (67-100%)**: Shimmer echoes anchor with 1-step delay
+- **Independent (0-50%)**: Voices fire freely, can overlap
+- **Shadow (50-100%)**: Shimmer echoes anchor with 1-step delay
+
+**Note**: INTERLOCK mode was removed in Task 22 due to broken 1:1 trigger behavior reported in hardware validation.
 
 ### 6.5 Soft Repair Pass
 

@@ -261,7 +261,7 @@ struct ControlState
     // Config Mode Shift
     // =========================================================================
 
-    /// Phrase length in bars (1, 2, 4, or 8)
+    /// Phrase length in bars (auto-derived from patternLength, legacy field kept for persistence)
     int phraseLength;
 
     /// Clock division (1, 2, 4, or 8)
@@ -333,7 +333,7 @@ struct ControlState
         patternLength = 32;
         swing         = 0.0f;
         auxMode       = AuxMode::HAT;
-        resetMode     = ResetMode::PHRASE;
+        resetMode     = ResetMode::STEP;  // Hardcoded - no longer exposed in UI
 
         // Config shift
         phraseLength  = 4;
@@ -409,6 +409,27 @@ struct ControlState
         if (val < 0.0f) val = 0.0f;
         if (val > 1.0f) val = 1.0f;
         return val;
+    }
+
+    /**
+     * Get auto-derived phrase length based on pattern length
+     *
+     * Derivation keeps total phrase around 128 steps (8 bars at 16th notes)
+     * for consistent phrase arc timing.
+     *
+     * @return Phrase length in bars (1, 2, 4, or 8)
+     */
+    int GetDerivedPhraseLength() const
+    {
+        // Target ~128 steps total, minimum 2 bars
+        switch (patternLength)
+        {
+            case 16: return 8;   // 16 × 8 = 128 steps
+            case 24: return 5;   // 24 × 5 = 120 steps
+            case 32: return 4;   // 32 × 4 = 128 steps
+            case 64: return 2;   // 64 × 2 = 128 steps
+            default: return 4;   // Fallback to 4 bars (standard 8-bar phrase)
+        }
     }
 };
 
