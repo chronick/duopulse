@@ -25,7 +25,6 @@ user: "Continue working on the control simplification task"
 assistant: "I'll use sdd-full-task to resume Task 22 from where it left off."
 <launches sdd-full-task agent via Task tool>
 </example>
-tools: All tools
 model: opus
 color: purple
 ---

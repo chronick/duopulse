@@ -24,7 +24,6 @@ user: "Task 22 seems too big, can we break it down further?"
 assistant: "I'll use the sdd-planner agent to analyze Task 22 and decompose it into smaller subtasks."
 <launches sdd-planner agent via Task tool>
 </example>
-tools: Glob, Grep, Read, WebFetch, TodoWrite, WebSearch
 model: opus
 color: yellow
 ---
