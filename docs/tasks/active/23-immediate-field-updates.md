@@ -77,12 +77,29 @@ This balances immediate feedback with rhythmic stability.
 
 ## Implementation Tasks
 
-- [ ] Add knob change detection for Field X/Y
-- [ ] Add regeneration trigger flag
-- [ ] Modify generation scheduling to check flag at beat boundaries
-- [ ] Add debounce/threshold to prevent noise-triggered regeneration
+### Phase A: Change Detection Infrastructure
+- [x] **Subtask A**: Add Field X/Y change tracking to Sequencer class
+  - Added `previousFieldX_` and `previousFieldY_` member variables
+  - Added `fieldChangeRegenPending_` flag
+  - Implemented `CheckFieldChange()` method with 0.1 threshold
+  - Initialized tracking in `Sequencer::Init()`
+
+### Phase B: Regeneration Scheduling
+- [x] **Subtask B**: Add beat boundary detection in `ProcessAudio()`
+  - Detect when step % 4 == 0 (beat boundaries)
+  - Check `fieldChangeRegenPending_` flag at beat boundaries
+  - Clear flag after triggering regeneration
+  - Prevents double-regeneration at bar boundaries (which are also beat boundaries)
+
+### Phase C: Main Loop Integration
+- [ ] **Subtask C**: Call `CheckFieldChange()` from main loop
+  - Call after processing knob inputs
+  - Log detected changes for debugging
+
+### Phase D: Hardware Testing
 - [ ] Test on hardware for responsive feel
 - [ ] Verify no audio glitches during regeneration
+- [ ] Verify threshold prevents noise-triggered regeneration
 
 ---
 

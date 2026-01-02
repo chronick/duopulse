@@ -787,3 +787,91 @@ TEST_CASE("Sequencer handles edge cases", "[sequencer][edge-cases]")
         }
     }
 }
+
+// =============================================================================
+// Field Change Detection Tests (Task 23)
+// =============================================================================
+
+TEST_CASE("CheckFieldChange detects significant changes", "[sequencer][field-update]")
+{
+    Sequencer seq;
+    seq.Init(48000.0f);
+
+    SECTION("Small changes do not trigger regeneration")
+    {
+        seq.SetFieldX(0.5f);
+        seq.SetFieldY(0.5f);
+
+        // Initial call to set baseline
+        seq.CheckFieldChange();
+
+        // Small change (< 10%)
+        seq.SetFieldX(0.55f);
+        REQUIRE_FALSE(seq.CheckFieldChange());
+    }
+
+    SECTION("Large changes in Field X trigger regeneration")
+    {
+        seq.SetFieldX(0.5f);
+        seq.SetFieldY(0.5f);
+
+        // Reset previous values
+        seq.CheckFieldChange();
+
+        // Large change (> 10%)
+        seq.SetFieldX(0.7f);
+        REQUIRE(seq.CheckFieldChange());
+    }
+
+    SECTION("Large changes in Field Y trigger regeneration")
+    {
+        seq.SetFieldX(0.5f);
+        seq.SetFieldY(0.5f);
+
+        // Reset previous values
+        seq.CheckFieldChange();
+
+        // Large change (> 10%)
+        seq.SetFieldY(0.2f);
+        REQUIRE(seq.CheckFieldChange());
+    }
+
+    SECTION("Threshold boundary at exactly 0.1")
+    {
+        seq.SetFieldX(0.5f);
+        seq.CheckFieldChange();
+
+        // Just under threshold - should NOT trigger
+        seq.SetFieldX(0.599f);
+        REQUIRE_FALSE(seq.CheckFieldChange());
+
+        // Reset
+        seq.SetFieldX(0.5f);
+        seq.CheckFieldChange();
+
+        // Just over threshold - should trigger
+        seq.SetFieldX(0.61f);
+        REQUIRE(seq.CheckFieldChange());
+    }
+
+    SECTION("Negative changes also trigger regeneration")
+    {
+        seq.SetFieldX(0.8f);
+        seq.SetFieldY(0.9f);
+
+        // Reset previous values
+        seq.CheckFieldChange();
+
+        // Large negative change in Field X
+        seq.SetFieldX(0.6f);
+        REQUIRE(seq.CheckFieldChange());
+
+        // Reset
+        seq.SetFieldX(0.8f);
+        seq.CheckFieldChange();
+
+        // Large negative change in Field Y
+        seq.SetFieldY(0.7f);
+        REQUIRE(seq.CheckFieldChange());
+    }
+}

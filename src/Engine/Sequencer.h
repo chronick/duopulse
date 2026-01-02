@@ -122,6 +122,17 @@ public:
      */
     void TriggerReseed();
 
+    /**
+     * Check if Field X/Y has changed significantly
+     *
+     * Compares current effective Field X/Y values (including CV modulation)
+     * with previous values. If change exceeds threshold (0.1 or 10%), sets
+     * fieldChangeRegenPending_ flag and updates previous values.
+     *
+     * @return true if regeneration should be triggered
+     */
+    bool CheckFieldChange();
+
     // =========================================================================
     // Parameter Setters (Performance Mode Primary)
     // =========================================================================
@@ -365,6 +376,11 @@ private:
     // Hold times
     int accentHoldSamples_ = 0;
     int hihatHoldSamples_ = 0;
+
+    // Field change tracking (Task 23: Immediate Field Updates)
+    float previousFieldX_ = 0.0f;
+    float previousFieldY_ = 0.0f;
+    bool fieldChangeRegenPending_ = false;
 
     // Tempo range
     static constexpr float kMinTempo = 30.0f;
