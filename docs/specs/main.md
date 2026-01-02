@@ -11,13 +11,13 @@ The following changes are planned in active tasks and will update this spec when
 
 | Task | Spec Section | Change |
 |------|--------------|--------|
-| **Task 23** | §6.1 | Add regeneration on Field X/Y knob change |
 | **Task 24** | §12 | Define boot defaults (no persistence) |
 
 ### Recent Changes
 
 | Task | Date | Changes |
 |------|------|---------|
+| **Task 23** | 2026-01-01 | Immediate field updates: Field X/Y changes trigger regeneration at beat boundaries (max 1-beat latency) |
 | **Task 22** | 2026-01-01 | Simplified config mode: auto-derive phrase length, hardcode reset mode to STEP, remove INTERLOCK coupling |
 
 ---
@@ -525,6 +525,40 @@ Each genre has its own 3×3 grid tuned to that style:
 ### 6.1 Hit Budget Calculation
 
 Hit budgets guarantee density matches intent. Budget is calculated from ENERGY + BALANCE + zone, then BUILD modifiers adjust for phrase position.
+
+### 6.1.1 Regeneration Timing and Immediate Field Updates (Task 23)
+
+Pattern regeneration occurs at specific musical boundaries to balance responsiveness with rhythmic stability:
+
+**Standard Regeneration Points**:
+- **Bar boundaries**: Always regenerate (primary regeneration point)
+- **Phrase boundaries**: Regenerate and update phrase seed
+- **Reset trigger**: Force immediate regeneration on Gate In 2
+
+**Immediate Field Updates** (since v4.2):
+
+When Field X or Y changes significantly, pattern regeneration is triggered at the next beat boundary rather than waiting for the next bar boundary. This provides immediate feedback when adjusting pattern character while maintaining musical timing.
+
+- **Threshold**: 10% change in Field X or Field Y position (0.1 on 0-1 scale)
+- **Regeneration occurs**: At next beat boundary (every 4 steps on 16th-note grid)
+- **Maximum latency**: 1 beat (4 steps) instead of 1 bar (16-64 steps)
+- **Debouncing**: Threshold prevents noise-triggered regeneration from analog knobs
+- **CV modulation**: Includes CV-modulated effective field position
+
+**Implementation Details**:
+- Field change detection runs every step in `ProcessAudio()`
+- Uses `abs(currentFieldX - previousFieldX) > 0.1` threshold
+- Sets `fieldChangeRegenPending` flag when threshold exceeded
+- Flag checked at beat boundaries (`step % 4 == 0`)
+- Prevents double-regeneration at bar boundaries (which are also beat boundaries)
+- Flag cleared after regeneration or at bar boundaries
+
+**Performance Impact**:
+- Minimal overhead: 2 float subtractions, 2 comparisons per audio callback
+- Real-time safe: No heap allocation, no blocking operations
+- Responsive: Knob adjustments audible within 1 beat maximum
+
+This feature addresses user feedback from Task 16 hardware testing, where users expected immediate pattern changes when turning Field X/Y knobs rather than waiting for phrase/bar boundaries.
 
 ### 6.2 Eligibility Mask Computation
 
