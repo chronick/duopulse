@@ -1,7 +1,7 @@
 # Task 23: Immediate Field Updates
 
 **Status**: DONE
-**Branch**: feature/duopulse-v4
+**Branch**: feature/immediate-field-updates
 **Parent Task**: Task 16 (Hardware Validation)
 **Completed**: 2026-01-01
 
