@@ -58,6 +58,11 @@ void Sequencer::Init(float sampleRate)
     externalClockTick_ = false;
     lastTapTime_ = 0;
 
+    // Field change tracking (Task 23: Immediate Field Updates)
+    previousFieldX_ = state_.controls.GetEffectiveFieldX();
+    previousFieldY_ = state_.controls.GetEffectiveFieldY();
+    fieldChangeRegenPending_ = false;
+
     // Clock division/multiplication state
     clockPulseCounter_ = 0;
     lastExternalClockTime_ = 0;
@@ -174,6 +179,22 @@ std::array<float, 2> Sequencer::ProcessAudio()
             state_.sequencer.totalSteps = 1;
         }
 
+        // Task 23: Check for Field X/Y changes on every step (sets fieldChangeRegenPending_ flag)
+        CheckFieldChange();
+
+        // A beat is every 4 steps on the 16th-note grid (4 steps = 1 beat = 1 quarter note)
+        static constexpr int kStepsPerBeat = 4;
+        const bool isBeatBoundary = (state_.sequencer.currentStep % kStepsPerBeat == 0);
+
+        // Regenerate at beat boundaries when field has changed (but not at bar boundaries to avoid double-regen)
+        if (fieldChangeRegenPending_ && isBeatBoundary && !state_.sequencer.isBarBoundary)
+        {
+            BlendArchetype();
+            GenerateBar();
+            ComputeTimingOffsets();
+            fieldChangeRegenPending_ = false;
+        }
+
         // Generate new bar if at bar boundary
         if (state_.sequencer.isBarBoundary || isFirstStep)
         {
@@ -181,6 +202,7 @@ std::array<float, 2> Sequencer::ProcessAudio()
             BlendArchetype();
             GenerateBar();
             ComputeTimingOffsets();
+            fieldChangeRegenPending_ = false;  // Also clear flag here
         }
 
         // Process the step (fire triggers)
@@ -1112,6 +1134,32 @@ int Sequencer::HoldMsToSamples(float milliseconds) const
     const float samples = (clampedMs / 1000.0f) * sampleRate_;
     int asInt = static_cast<int>(samples);
     return asInt < 1 ? 1 : asInt;
+}
+
+bool Sequencer::CheckFieldChange()
+{
+    // Get current effective Field X/Y (with CV modulation)
+    const float currentFieldX = state_.controls.GetEffectiveFieldX();
+    const float currentFieldY = state_.controls.GetEffectiveFieldY();
+
+    // Check if change exceeds threshold (10% of full range)
+    static constexpr float kFieldChangeThreshold = 0.1f;
+    const float deltaX = std::abs(currentFieldX - previousFieldX_);
+    const float deltaY = std::abs(currentFieldY - previousFieldY_);
+
+    if (deltaX > kFieldChangeThreshold || deltaY > kFieldChangeThreshold)
+    {
+        // Update previous values
+        previousFieldX_ = currentFieldX;
+        previousFieldY_ = currentFieldY;
+
+        // Set regeneration pending flag
+        fieldChangeRegenPending_ = true;
+
+        return true;
+    }
+
+    return false;
 }
 
 } // namespace daisysp_idm_grids
