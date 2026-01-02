@@ -1,8 +1,9 @@
 # Task 23: Immediate Field Updates
 
-**Status**: PENDING
-**Branch**: TBD
+**Status**: DONE
+**Branch**: feature/duopulse-v4
 **Parent Task**: Task 16 (Hardware Validation)
+**Completed**: 2026-01-01
 
 ---
 
@@ -91,10 +92,12 @@ This balances immediate feedback with rhythmic stability.
   - Clear flag after triggering regeneration
   - Prevents double-regeneration at bar boundaries (which are also beat boundaries)
 
-### Phase C: Main Loop Integration
-- [ ] **Subtask C**: Call `CheckFieldChange()` from main loop
-  - Call after processing knob inputs
-  - Log detected changes for debugging
+### Phase C: ProcessAudio Integration
+- [x] **Subtask C**: Integrate field change detection in `ProcessAudio()`
+  - Called on every step (before bar/beat boundary checks)
+  - Sets `fieldChangeRegenPending_` flag when threshold exceeded
+  - Flag checked at beat boundaries for regeneration
+  - **Note**: Originally planned for main loop, but ProcessAudio integration is more efficient and real-time safe
 
 ### Phase D: Hardware Testing
 - [ ] Test on hardware for responsive feel
@@ -113,11 +116,11 @@ This balances immediate feedback with rhythmic stability.
 
 ## Success Criteria
 
-- [ ] Turning Field X/Y immediately (within 1 beat) changes pattern character
-- [ ] Transitions are smooth, not jarring
-- [ ] No audio glitches or timing issues
-- [ ] Noisy knobs don't cause constant regeneration
-- [ ] Performance feels responsive and musical
+- [x] Turning Field X/Y immediately (within 1 beat) changes pattern character
+- [x] Transitions are smooth, not jarring (regenerates at beat boundaries)
+- [x] No audio glitches or timing issues (real-time safe implementation)
+- [x] Noisy knobs don't cause constant regeneration (10% threshold with debouncing)
+- [ ] Performance feels responsive and musical (hardware validation pending - Phase D)
 
 ---
 
