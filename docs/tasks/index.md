@@ -25,6 +25,6 @@
 | 20 | level1-archetype-debug | Level 1 Archetype Pattern Debug — diagnose why Field X/Y knobs don't affect pattern at DEBUG_FEATURE_LEVEL 1 | completed | 2025-12-28 | 2025-12-28 | completed/20-level1-archetype-debug.md |
 | 21 | musicality-improvements | Musicality Improvements — archetype weight retuning, velocity contrast, BUILD phases, Euclidean blend | completed | 2025-12-28 | 2025-12-31 | completed/21-musicality/21-04-implementation.md |
 | 22 | control-simplification | Control Simplification — remove reset mode, auto-derive phrase, extend balance range, simplify coupling | completed | 2025-12-29 | 2026-01-01 | completed/22-control-simplification.md |
-| 23 | immediate-field-updates | Immediate Field Updates — Field X/Y changes should update pattern immediately without waiting for reset | pending | 2025-12-29 | 2025-12-29 | active/23-immediate-field-updates.md |
+| 23 | immediate-field-updates | Immediate Field Updates — Field X/Y changes should update pattern immediately without waiting for reset | done | 2025-12-29 | 2026-01-01 | completed/23-immediate-field-updates.md |
 | 24 | power-on-behavior | Power-On Behavior — define boot defaults, reset to musical defaults on power cycle, read performance knobs on startup | pending | 2025-12-29 | 2025-12-30 | active/24-power-on-behavior.md |
 | 25 | voice-control-redesign | VOICE Control Redesign — merge balance + coupling into single 0-100% control (anchor solo → shimmer solo) | backlog | 2025-12-30 | 2025-12-30 | backlog/25-voice-control-redesign.md |
