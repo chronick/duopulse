@@ -1,7 +1,7 @@
 # Task 24: Power-On Behavior
 
 **Status**: PENDING
-**Branch**: TBD
+**Branch**: feature/24-power-on-behavior
 **Parent Task**: Task 16 (Hardware Validation)
 **Related**: Task 22 (Control Simplification) - coordinate boot defaults with control changes
 
@@ -71,11 +71,24 @@ Benefits:
 
 ## Implementation Tasks
 
-- [ ] Define exact boot defaults for all parameters
-- [ ] Read performance knobs on boot (no soft takeover initially)
-- [ ] Reset config to defaults on boot
+- [x] Define exact boot defaults for all parameters
+- [x] Read performance knobs on boot (no soft takeover initially)
+- [x] Reset config to defaults on boot
+  - Modified `src/main.cpp` boot sequence (lines 636-677)
+  - Removed flash loading logic
+  - Set explicit defaults for all config/shift parameters
+  - Performance primary knobs (K1-K4) left uninitialized to read from hardware
+  - Added detailed logging for boot defaults
 - [ ] Consider removing flash persistence code entirely
-- [ ] Update spec with boot behavior
+- [x] Update spec with boot behavior
+  - Updated section 12.1: Boot Behavior (fresh-start strategy)
+  - Updated section 12.2: Boot Defaults (all parameters with rationale)
+  - Updated section 12.3: Persistence Policy (nothing persists)
+  - Moved Task 24 from pending to recent changes
+- [x] Fix code review issues
+  - Updated spec §13.2: Changed "Persistence" test to "Boot Defaults" test
+  - Updated MainControlState default: swing 0.0f → 0.5f (src/main.cpp line 173)
+  - Updated ControlState::Init() default: swing 0.0f → 0.5f (ControlState.h line 334)
 - [ ] Test on hardware
 
 ---
