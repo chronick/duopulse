@@ -99,10 +99,12 @@ This balances immediate feedback with rhythmic stability.
   - Flag checked at beat boundaries for regeneration
   - **Note**: Originally planned for main loop, but ProcessAudio integration is more efficient and real-time safe
 
-### Phase D: Hardware Testing
+### Phase D: Hardware Testing (DEFERRED)
 - [ ] Test on hardware for responsive feel
 - [ ] Verify no audio glitches during regeneration
 - [ ] Verify threshold prevents noise-triggered regeneration
+
+**Note**: Hardware validation deferred for batched testing with Tasks 22, 23, and 24 together.
 
 ---
 
@@ -120,7 +122,7 @@ This balances immediate feedback with rhythmic stability.
 - [x] Transitions are smooth, not jarring (regenerates at beat boundaries)
 - [x] No audio glitches or timing issues (real-time safe implementation)
 - [x] Noisy knobs don't cause constant regeneration (10% threshold with debouncing)
-- [ ] Performance feels responsive and musical (hardware validation pending - Phase D)
+- [ ] Performance feels responsive and musical (hardware validation deferred - will test with Tasks 22, 23, 24 together)
 
 ---
 
