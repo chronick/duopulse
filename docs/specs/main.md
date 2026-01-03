@@ -11,12 +11,13 @@ The following changes are planned in active tasks and will update this spec when
 
 | Task | Spec Section | Change |
 |------|--------------|--------|
-| **Task 24** | §12 | Define boot defaults (no persistence) |
+| *(none)* | - | - |
 
 ### Recent Changes
 
 | Task | Date | Changes |
 |------|------|---------|
+| **Task 24** | 2026-01-01 | Boot behavior: All settings reset to defaults on power-on, performance knobs read from hardware, no persistence |
 | **Task 23** | 2026-01-01 | Immediate field updates: Field X/Y changes trigger regeneration at beat boundaries (max 1-beat latency) |
 | **Task 22** | 2026-01-01 | Simplified config mode: auto-derive phrase length, hardcode reset mode to STEP, remove INTERLOCK coupling |
 
@@ -713,22 +714,67 @@ Control processing reads hardware, applies CV modulation, handles mode/shift swi
 
 ## 12. Configuration & Persistence
 
-### 12.1 Auto-Save System
+### 12.1 Boot Behavior (Task 24)
 
-Config changes are automatically persisted to flash with 2-second debouncing to minimize flash wear.
+DuoPulse v4 uses a **fresh-start boot strategy**: all settings reset to musical defaults on power-on. This ensures:
+- Predictable, known-good state every boot
+- No "what state am I in?" confusion
+- Module immediately playable after power-on
+- Simpler firmware (no flash persistence)
 
-### 12.2 What Gets Saved
+**Boot Sequence**:
+1. Hardware init (DaisySP, ADC, GPIO)
+2. Set all config and shift parameters to defaults
+3. Read performance knobs (K1-K4) from hardware
+4. Initialize sequencer with current knob values
+5. Start audio callback
+6. Begin internal clock
 
-| Category | Parameters |
-|----------|------------|
-| **Config Primary** | Pattern length, swing, AUX mode, reset mode |
-| **Config Shift** | Phrase length, clock div, aux density, voice coupling |
-| **Performance Shift** | Genre |
-| **Pattern Seed** | Current pattern seed |
+### 12.2 Boot Defaults
 
-**Not Saved** (read from knobs on boot):
-- ENERGY, BUILD, FIELD X/Y (primary performance controls)
-- PUNCH, DRIFT, BALANCE (shift performance controls)
+All parameters are initialized to musical defaults on power-on:
+
+#### Config Settings (Primary)
+| Parameter | Default | Rationale |
+|-----------|---------|-----------|
+| **Pattern Length** | 32 steps | Standard techno bar length |
+| **Swing** | 50% | Neutral starting point |
+| **AUX Mode** | HAT | Most common third voice |
+| **Reset Mode** | STEP | Hardcoded (see Task 22) |
+
+#### Config Settings (Shift)
+| Parameter | Default | Rationale |
+|-----------|---------|-----------|
+| **Phrase Length** | 4 bars | Auto-derived from pattern length (see Task 22) |
+| **Clock Division** | x1 | No division/multiplication |
+| **AUX Density** | 100% (NORMAL) | Standard density |
+| **Voice Coupling** | INDEPENDENT | Voices fire freely |
+
+#### Shift Parameters
+| Parameter | Default | Rationale |
+|-----------|---------|-----------|
+| **PUNCH** | 50% | Normal velocity dynamics |
+| **GENRE** | Techno (0%) | Primary use case |
+| **DRIFT** | 0% | Locked pattern, no evolution |
+| **BALANCE** | 50% | Equal voice balance |
+
+#### Performance Primary (Read from Hardware)
+| Parameter | Source | Notes |
+|-----------|--------|-------|
+| **ENERGY** | K1 knob position | No soft takeover needed |
+| **BUILD** | K2 knob position | Immediate response |
+| **FIELD X** | K3 knob position | Reads actual hardware |
+| **FIELD Y** | K4 knob position | Direct mapping |
+
+### 12.3 Persistence Policy
+
+**Nothing persists across power cycles** (Task 24). This is intentional:
+- Ensures reproducible behavior
+- Avoids unexpected state on boot
+- Simplifies firmware (no flash wear management)
+- User can quickly return to known-good defaults by power cycling
+
+**Note**: Earlier versions included auto-save to flash, but this was removed based on hardware validation feedback (Task 16) where users preferred fresh starts over persistence.
 
 ---
 
@@ -909,7 +955,7 @@ LOGE(...) // ERROR
 | **Field Navigation** | Navigate all 9 grid positions, verify distinct character at each |
 | **Genre Switch** | Switch genres mid-phrase, verify clean transition |
 | **Clock Stability** | External clock at various tempos (60-200 BPM), verify timing accuracy |
-| **Persistence** | Save config, simulate power cycle, verify restore |
+| **Boot Defaults** | Power cycle, verify all parameters reset to documented defaults |
 
 ### 13.3 Musical Validation
 

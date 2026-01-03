@@ -170,7 +170,7 @@ struct MainControlState
 
     // === Config Mode Primary (Switch UP, no shift) ===
     float patternLengthKnob = 0.5f; // K1: Pattern length (16/24/32/64 steps)
-    float swing             = 0.0f; // K2: Base swing amount
+    float swing             = 0.5f; // K2: Base swing amount (50% neutral, see Task 24)
     float auxMode           = 0.0f; // K3: AUX output mode (HAT/FILL_GATE/PHRASE_CV/EVENT)
     float resetMode         = 0.0f; // K4: Reset behavior (PHRASE/BAR/STEP)
 
@@ -633,64 +633,44 @@ int main(void)
     constexpr float sampleRate = 32000.0f;
 
     // === Load Config from Flash ===
-    currentConfig.Init();  // Initialize with defaults
-    configLoaded = LoadConfigFromFlash(currentConfig);
+    // Task 24: Always use boot defaults, never load from flash
+    // This ensures predictable power-on behavior with musical defaults
+    LOGI("Using boot defaults (flash loading disabled)");
 
-    if(configLoaded)
-    {
-        LOGI("Config loaded from flash (CRC valid)");
-        // Unpack saved config values into control state
-        int patternLength, phraseLength, clockDivision;
-        float swing;
-        AuxMode auxMode;
-        ResetMode resetMode;
-        AuxDensity auxDensity;
-        VoiceCoupling voiceCoupling;
-        Genre genre;
-        uint32_t patternSeed;
-        
-        UnpackConfig(
-            currentConfig,
-            patternLength, swing, auxMode, resetMode,
-            phraseLength, clockDivision, auxDensity, voiceCoupling,
-            genre, patternSeed
-        );
-        
-        // Map back to knob values (for soft knob initialization)
-        // Pattern length: 16=0.125, 24=0.375, 32=0.625, 64=0.875
-        if(patternLength == 16) controlState.patternLengthKnob = 0.125f;
-        else if(patternLength == 24) controlState.patternLengthKnob = 0.375f;
-        else if(patternLength == 32) controlState.patternLengthKnob = 0.625f;
-        else controlState.patternLengthKnob = 0.875f;
-        
-        controlState.swing = swing;
-        controlState.auxMode = static_cast<float>(auxMode) / 3.0f;
-        controlState.resetMode = static_cast<float>(resetMode) / 2.0f;
-        
-        // Phrase length: 1=0.125, 2=0.375, 4=0.625, 8=0.875
-        if(phraseLength == 1) controlState.phraseLengthKnob = 0.125f;
-        else if(phraseLength == 2) controlState.phraseLengthKnob = 0.375f;
-        else if(phraseLength == 4) controlState.phraseLengthKnob = 0.625f;
-        else controlState.phraseLengthKnob = 0.875f;
-        
-        // Clock division: Map stored value to knob position (center of each range)
-        // Centered mapping: ×1 at 42-58% (knob center)
-        if(clockDivision == 8) controlState.clockDivKnob = 0.07f;        // ÷8 (0-14%)
-        else if(clockDivision == 4) controlState.clockDivKnob = 0.21f;   // ÷4 (14-28%)
-        else if(clockDivision == 2) controlState.clockDivKnob = 0.35f;   // ÷2 (28-42%)
-        else if(clockDivision == 1) controlState.clockDivKnob = 0.50f;   // ×1 (42-58%) ← CENTER
-        else if(clockDivision == -2) controlState.clockDivKnob = 0.65f;  // ×2 (58-72%)
-        else if(clockDivision == -4) controlState.clockDivKnob = 0.79f;  // ×4 (72-86%)
-        else controlState.clockDivKnob = 0.93f;                          // ×8 (86-100%)
-        
-        controlState.auxDensity = static_cast<float>(auxDensity) / 3.0f;
-        controlState.voiceCoupling = static_cast<float>(voiceCoupling) / 2.0f;
-        controlState.genre = static_cast<float>(genre) / 2.0f;
-    }
-    else
-    {
-        LOGI("No valid config in flash, using defaults");
-    }
+    // Config Primary defaults (Switch UP, no shift)
+    controlState.patternLengthKnob = 0.625f;  // 32 steps (most common)
+    controlState.swing = 0.5f;                // 50% swing (neutral)
+    controlState.auxMode = 0.0f;              // HAT mode (0/3)
+    controlState.resetMode = 1.0f;            // STEP mode (1/2) - hardcoded per Task 22
+
+    // Config Shift defaults (Switch UP + B7)
+    controlState.phraseLengthKnob = 0.625f;   // 4 bars (auto-derived, matches 32-step pattern)
+    controlState.clockDivKnob = 0.50f;        // ×1 clock division (center = normal speed)
+    controlState.auxDensity = 0.333f;         // NORMAL density (1/3)
+    controlState.voiceCoupling = 0.0f;        // INDEPENDENT coupling (0/2)
+
+    // Performance Shift defaults (Switch DOWN + B7)
+    controlState.punch = 0.5f;                // 50% punch (moderate dynamics)
+    controlState.genre = 0.0f;                // Techno genre (0/2)
+    controlState.drift = 0.0f;                // No drift (locked pattern)
+    controlState.balance = 0.5f;              // 50% balance (equal voices)
+
+    // Performance Primary (Switch DOWN, no shift)
+    // These are NOT initialized here - they will read from hardware knobs
+    // on first control processing loop, ensuring immediate response to
+    // actual knob positions:
+    //   - energy (K1)
+    //   - build (K2)
+    //   - fieldX (K3)
+    //   - fieldY (K4)
+
+    LOGI("Boot defaults: PatLen=32, Swing=50%%, AUX=HAT, Reset=STEP");
+    LOGI("Boot defaults: Phrase=4bars, ClkDiv=x1, AuxDens=NORMAL, Coupling=INDEP");
+    LOGI("Boot defaults: Punch=50%%, Genre=Techno, Drift=0%%, Balance=50%%");
+    LOGI("Performance knobs (K1-K4) will read from hardware on first update");
+
+    // Initialize currentConfig with defaults (still used by auto-save)
+    currentConfig.Init();
 
     // Initialize auto-save state
     autoSaveState.Init(sampleRate);

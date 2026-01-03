@@ -331,7 +331,7 @@ struct ControlState
 
         // Config primary
         patternLength = 32;
-        swing         = 0.0f;
+        swing         = 0.5f;  // 50% neutral (Task 24)
         auxMode       = AuxMode::HAT;
         resetMode     = ResetMode::STEP;  // Hardcoded - no longer exposed in UI
 
