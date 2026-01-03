@@ -1,7 +1,7 @@
 # Task 24: Power-On Behavior
 
 **Status**: COMPLETED
-**Branch**: feature/duopulse-v4
+**Branch**: feature/24-power-on-behavior
 **Completed**: 2026-01-01
 **Parent Task**: Task 16 (Hardware Validation)
 **Related**: Task 22 (Control Simplification) - coordinate boot defaults with control changes
