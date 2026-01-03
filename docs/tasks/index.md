@@ -28,3 +28,4 @@
 | 23 | immediate-field-updates | Immediate Field Updates — Field X/Y changes should update pattern immediately without waiting for reset | done | 2025-12-29 | 2026-01-01 | completed/23-immediate-field-updates.md |
 | 24 | power-on-behavior | Power-On Behavior — define boot defaults, reset to musical defaults on power cycle, read performance knobs on startup | completed | 2025-12-29 | 2026-01-03 | completed/24-power-on-behavior.md |
 | 25 | voice-control-redesign | VOICE Control Redesign — merge balance + coupling into single 0-100% control (anchor solo → shimmer solo) | backlog | 2025-12-30 | 2025-12-30 | backlog/25-voice-control-redesign.md |
+| 26 | fix-tasks-22-24-bugs | Fix Tasks 22-24 Implementation Bugs — phrase length auto-derivation, freed controls still in main loop, inconsistent defaults | active | 2026-01-03 | 2026-01-03 | active/26-fix-tasks-22-24-bugs.md |

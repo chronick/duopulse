@@ -278,10 +278,10 @@ TEST_CASE("ControlState initialization", "[control]")
 
     SECTION("Performance controls have sensible defaults")
     {
-        REQUIRE(state.energy == 0.5f);
+        REQUIRE(state.energy == 0.6f);
         REQUIRE(state.build == 0.0f);
-        REQUIRE(state.fieldX == 0.0f);
-        REQUIRE(state.fieldY == 0.0f);
+        REQUIRE(state.fieldX == 0.5f);
+        REQUIRE(state.fieldY == 0.33f);
         REQUIRE(state.genre == Genre::TECHNO);
     }
 

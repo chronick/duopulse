@@ -66,7 +66,6 @@ AuxOutput      auxOutput;
 // Persistence
 PersistentConfig currentConfig;
 AutoSaveState    autoSaveState;
-bool             configLoaded = false;
 
 // Deferred flash save - prevents blocking in audio callback
 struct DeferredSave {
@@ -228,15 +227,6 @@ int MapToPatternLength(float value)
     return 64;
 }
 
-int MapToPhraseLength(float value)
-{
-    // 1, 2, 4, 8 bars
-    if(value < 0.25f) return 1;
-    if(value < 0.5f) return 2;
-    if(value < 0.75f) return 4;
-    return 8;
-}
-
 // MapToClockDivision moved to ControlUtils.h as MapClockDivision
 // for testability (see Modification 0.5 in task 16)
 
@@ -282,8 +272,8 @@ void AudioCallback(AudioHandle::InputBuffer  in,
                 MapToPatternLength(controlState.patternLengthKnob),
                 controlState.swing,
                 GetAuxModeFromValue(controlState.auxMode),
-                GetResetModeFromValue(controlState.resetMode),
-                MapToPhraseLength(controlState.phraseLengthKnob),
+                ResetMode::STEP,  // Task 22: hardcoded
+                4,  // Task 22: phrase auto-derived (default 4)
                 MapClockDivision(controlState.clockDivKnob),
                 GetAuxDensityFromValue(controlState.auxDensity),
                 GetVoiceCouplingFromValue(controlState.voiceCoupling),
@@ -337,13 +327,13 @@ float* GetParameterPtr(MainControlState& state, ControlMode mode, int knobIndex)
                 case 0: return &state.patternLengthKnob;
                 case 1: return &state.swing;
                 case 2: return &state.auxMode;
-                case 3: return &state.resetMode;
+                case 3: return nullptr;  // K4 freed (Task 22)
             }
             break;
         case ControlMode::ConfigShift:
             switch(knobIndex)
             {
-                case 0: return &state.phraseLengthKnob;
+                case 0: return nullptr;  // Shift K1 freed (Task 22)
                 case 1: return &state.clockDivKnob;
                 case 2: return &state.auxDensity;
                 case 3: return &state.voiceCoupling;
@@ -506,10 +496,12 @@ void ProcessControls()
     sequencer.SetPatternLength(MapToPatternLength(controlState.patternLengthKnob));
     sequencer.SetSwing(controlState.swing);
     sequencer.SetAuxMode(controlState.auxMode);
-    sequencer.SetResetMode(controlState.resetMode);
+    // Reset mode hardcoded to STEP in ControlState::Init() (Task 22)
+    // Config K4 primary is now free for future features
 
     // Config Shift
-    sequencer.SetPhraseLength(MapToPhraseLength(controlState.phraseLengthKnob));
+    // Phrase length auto-derived from pattern length (Task 22)
+    // Config+Shift K1 is now free for future features
     sequencer.SetClockDivision(MapClockDivision(controlState.clockDivKnob));
     sequencer.SetAuxDensity(controlState.auxDensity);
     sequencer.SetVoiceCoupling(controlState.voiceCoupling);
