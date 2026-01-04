@@ -3,20 +3,106 @@ description: Implement an SDD task from start to finish - delegates to code-writ
 agent: sdd-manager
 ---
 
-# Implement Task: $ARGUMENTS
+# Implement Task(s): $ARGUMENTS
 
-You are in **IMPLEMENTATION MODE**. Your mission is to complete this task fully, with verified code changes, passing tests, and proper commits.
+You are in **IMPLEMENTATION MODE**. Your mission is to complete the requested task(s) fully, with verified code changes, passing tests, and proper commits.
 
 ## Task Reference
 
 $ARGUMENTS
 
 This can be:
-- Task ID: "22" or "Task 22" (preferred - all tasks are numbered)
+- Single task: "22" or "Task 22" (preferred - all tasks are numbered)
+- Multiple tasks: "27, 28, 29" or "27-29" (comma-separated or range)
 - Task slug: "22-control-simplification"
 - File path: "docs/tasks/active/22-control-simplification.md"
 
 **Note**: All tasks have numeric IDs. Use the ID for unambiguous reference.
+
+## Multi-Task Execution
+
+When multiple tasks are requested, use parallel execution with dependency awareness:
+
+### 1. Parse Task List
+
+```bash
+# Find all requested task files
+for id in 27 28 29; do
+  find docs/tasks -name "*${id}*" -type f
+done
+
+# Extract dependencies from each
+grep -l "depends_on:" docs/tasks/active/*.md | xargs grep "depends_on:"
+```
+
+### 2. Build Dependency Graph
+
+For each task, check its `depends_on:` field in the YAML frontmatter:
+- Tasks with NO dependencies → can run immediately in parallel
+- Tasks WITH dependencies → must wait for those tasks to complete first
+
+### 3. Execute in Waves
+
+**Wave 1**: Spawn `sdd-manager` subagents in PARALLEL for all tasks with no pending dependencies:
+
+```
+Use Task tool with subagent_type='sdd-manager' for EACH independent task.
+Send ALL independent task spawns in a SINGLE message to run them in parallel.
+```
+
+Example prompt for each subagent:
+```
+Implement Task <ID>
+
+Read the task file at docs/tasks/active/<id>-<slug>.md and implement it fully:
+1. Create/checkout the feature branch
+2. Implement all subtasks (delegate to code-writer)
+3. Verify with git diff after each change
+4. Run tests via validator
+5. Review via code-reviewer
+6. Commit when complete
+7. Update task status to completed
+
+Report completion with: branch name, commit hash, files changed count.
+```
+
+**Wave 2+**: After Wave 1 completes, spawn subagents for tasks whose dependencies are now satisfied. Repeat until all tasks complete.
+
+### 4. Collect Results
+
+After all subagents complete:
+```bash
+# Verify all commits landed
+git log --oneline -10
+
+# Check all task statuses
+grep -r "^status:" docs/tasks/active/ docs/tasks/completed/
+```
+
+### 5. Report Summary
+
+```
+## Multi-Task Completion Report
+
+| Task | Status | Branch | Commit | Files |
+|------|--------|--------|--------|-------|
+| 27   | ✓      | feature/x | abc123 | 5 |
+| 28   | ✓      | feature/y | def456 | 3 |
+| 29   | ✓      | feature/z | ghi789 | 7 |
+
+### Execution Order
+- Wave 1 (parallel): Tasks 27, 28
+- Wave 2 (after 27): Task 29
+
+### Next Steps
+<any follow-up recommendations>
+```
+
+---
+
+## Single-Task Implementation
+
+For a single task, proceed with the workflow below:
 
 ## Implementation Workflow
 
