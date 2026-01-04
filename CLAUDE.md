@@ -50,7 +50,40 @@ This project follows **Spec-Driven Development** (SDD). Key principles:
 - `docs/specs/main.md` - Main specification
 - `docs/tasks/index.md` - Global task tracker
 - `docs/tasks/<slug>.md` - Per-feature task files
-- `.cursor/rules/sdd-global.mdc` - SDD rules for AI agents
+
+### SDD Agent System (v2)
+
+This project uses a multi-agent architecture for SDD workflow:
+
+| Agent | Purpose | Tools |
+|-------|---------|-------|
+| `sdd-manager` | Orchestrates all SDD work (planning, implementation, verification) | Read, Grep, Glob, Bash, Task |
+| `code-writer` | Implements code changes with surgical precision | Read, Grep, Glob, Edit, Write |
+| `validator` | Runs tests and builds, reports results verbatim | Read, Bash |
+| `code-reviewer` | Reviews code for quality, safety, spec compliance | Read, Grep, Glob, Bash |
+
+**Key design principle**: Only `sdd-manager` can delegate. Workers cannot claim success without verification.
+
+#### Commands
+
+| Command | Purpose |
+|---------|---------|
+| `/sdd-feature <desc>` | Plan a new feature, create task files |
+| `/sdd-task <id or slug>` | Implement a task from start to finish |
+| `/sdd-maintain` | Audit and fix project consistency |
+| `/wrap-session` | Clean wrap-up with verification and commit |
+
+#### Skills
+
+Domain knowledge is provided via skills:
+- `sdd-workflow` - SDD methodology reference
+- `daisysp-review` - Real-time audio review criteria
+
+#### Auto-Verification Hooks
+
+The system uses hooks to automatically show verification after subagent runs:
+- After any subagent completes: `git diff --stat` and `git status`
+- On session end: current status and last commit
 
 ### Code Organization
 
