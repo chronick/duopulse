@@ -27,5 +27,14 @@
 | 22 | control-simplification | Control Simplification — remove reset mode, auto-derive phrase, extend balance range, simplify coupling | completed | 2025-12-29 | 2026-01-01 | completed/22-control-simplification.md |
 | 23 | immediate-field-updates | Immediate Field Updates — Field X/Y changes should update pattern immediately without waiting for reset | done | 2025-12-29 | 2026-01-01 | completed/23-immediate-field-updates.md |
 | 24 | power-on-behavior | Power-On Behavior — define boot defaults, reset to musical defaults on power cycle, read performance knobs on startup | completed | 2025-12-29 | 2026-01-03 | completed/24-power-on-behavior.md |
-| 25 | voice-control-redesign | VOICE Control Redesign — merge balance + coupling into single 0-100% control (anchor solo → shimmer solo) | backlog | 2025-12-30 | 2025-12-30 | backlog/25-voice-control-redesign.md |
+| 25 | voice-control-redesign | VOICE Control Redesign — superseded by V5 COMPLEMENT design (Task 30) | archived | 2025-12-30 | 2026-01-04 | archived/25-voice-control-redesign.md |
 | 26 | fix-tasks-22-24-bugs | Fix Tasks 22-24 Implementation Bugs — phrase length auto-derivation, freed controls still in main loop, inconsistent defaults | completed | 2026-01-03 | 2026-01-03 | completed/26-fix-tasks-22-24-bugs.md |
+| 27 | v5-control-renaming | V5 Control Renaming and Zero Shift Layers — rename parameters, eliminate shift layers, establish V5 vocabulary | pending | 2026-01-04 | 2026-01-04 | active/27-v5-control-renaming.md |
+| 28 | v5-shape-algorithm | V5 SHAPE Parameter: 3-Way Blending — implement 3-zone blending with crossfade transitions | pending | 2026-01-04 | 2026-01-04 | active/28-v5-shape-algorithm.md |
+| 29 | v5-axis-biasing | V5 AXIS X/Y: Bidirectional Biasing — implement bidirectional biasing with broken mode | pending | 2026-01-04 | 2026-01-04 | active/29-v5-axis-biasing.md |
+| 30 | v5-voice-complement | V5 Voice COMPLEMENT Relationship — implement gap-filling shimmer with DRIFT placement | pending | 2026-01-04 | 2026-01-04 | active/30-v5-voice-complement.md |
+| 31 | v5-hat-burst | V5 Hat Burst: Pattern-Aware Fill Triggers — implement hat burst during fills with velocity ducking | pending | 2026-01-04 | 2026-01-04 | active/31-v5-hat-burst.md |
+| 32 | v5-aux-gesture | V5 Hold+Switch Gesture for AUX Mode — implement secret gesture for HAT/FILL GATE selection | pending | 2026-01-04 | 2026-01-04 | active/32-v5-aux-gesture.md |
+| 33 | v5-boot-length | V5 Boot-Time Pattern Length Selection — add boot gesture for 16/24 step selection | pending | 2026-01-04 | 2026-01-04 | active/33-v5-boot-length.md |
+| 34 | v5-led-feedback | V5 LED Feedback System Update — implement 5-layer priority LED feedback | pending | 2026-01-04 | 2026-01-04 | active/34-v5-led-feedback.md |
+| 35 | v5-accent-velocity | V5 ACCENT Parameter: Musical Weight Velocity — replace PUNCH with position-aware dynamics | pending | 2026-01-04 | 2026-01-04 | active/35-v5-accent-velocity.md |
