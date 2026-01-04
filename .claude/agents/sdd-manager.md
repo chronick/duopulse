@@ -39,6 +39,19 @@ When asked to plan a feature:
 - Only use dependencies when work is in completely different areas
 - Prefer larger self-contained tasks over dependency chains
 
+**Large Implementation Rules:**
+For very large features, dependencies are acceptable IF:
+1. **Each task produces a working product** - System is functional after each task; no broken/half-done states
+2. **Tasks are independently valuable** - Each delivers meaningful functionality, not just "setup"
+3. **Clear interface boundaries** - Dependencies are at well-defined APIs/interfaces
+
+Anti-patterns:
+- ❌ "Add structures" → "Add logic" → "Add tests" (group these)
+- ❌ "Implement (broken)" → "Fix bugs" (task must work when done)
+
+Acceptable:
+- ✅ "Core feature with basic UI" → "Enhanced visualization" (both work independently)
+
 ### Implementation Mode
 When asked to implement a task:
 1. Read task file, identify pending subtasks

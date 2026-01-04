@@ -40,6 +40,27 @@ grep -r "relevant_term" src/ --include="*.cpp" --include="*.h" | head -20
 - **Avoid dependencies** - if work is coupled, keep it in one task
 - Tasks can be epic-sized; don't artificially split tightly-coupled work
 
+#### Large Implementation Guidance
+
+For very large features (multi-week scope), dependencies between tasks are acceptable when:
+
+1. **Each task produces a working product** - The system must be functional after each task completes. No task should leave the codebase in a broken or half-implemented state.
+
+2. **Tasks are independently valuable** - Each task delivers meaningful functionality on its own, not just "setup" for later tasks.
+
+3. **Clear boundaries exist** - The dependency is at a well-defined interface (e.g., "Task B adds UI for the API that Task A creates").
+
+**Anti-patterns to avoid:**
+- Task A: "Add data structures" → Task B: "Add logic" → Task C: "Add tests"
+  - ❌ Task A alone is useless; group into one task
+- Task A: "Implement feature (broken)" → Task B: "Fix bugs from Task A"
+  - ❌ Task A doesn't produce a working product
+
+**Acceptable dependency example:**
+- Task A: "Core pattern generation with basic UI" (fully working)
+- Task B: "Advanced pattern visualization" (depends on A, adds value)
+  - ✅ Both tasks produce working products; B enhances A
+
 ### 4. Create Task Breakdown
 
 **All tasks MUST have a numeric ID.** Find next ID:
@@ -59,6 +80,8 @@ For each task, define:
 1. Can this work be included in the blocking task instead?
 2. Can the task be restructured to avoid the dependency?
 3. Is the dependency truly unavoidable (different codebase areas)?
+4. **Does each task produce a working product?** (Required for dependencies)
+5. **Is each task independently valuable?** (Not just "setup")
 
 ### 5. Present Plan for Confirmation
 
