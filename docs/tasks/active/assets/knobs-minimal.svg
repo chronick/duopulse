@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 200">
+  <!-- Solarized Base03 background -->
+  <rect width="240" height="200" fill="#002b36" rx="8"/>
+  
+  <!-- Title -->
+  <text x="120" y="24" text-anchor="middle" fill="#cb4b16" font-family="monospace" font-size="12" font-weight="bold">Position A: Minimal</text>
+  
+  <!-- Knob K1 -->
+  <g transform="translate(45, 70)">
+    <circle cx="0" cy="0" r="28" fill="#073642" stroke="#586e75" stroke-width="2"/>
+    <circle cx="0" cy="0" r="20" fill="#0a4a5a"/>
+    <!-- Indicator pointing down-left (CCW) -->
+    <line x1="0" y1="0" x2="-10" y2="10" stroke="#586e75" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="-10" cy="10" r="3" fill="#586e75"/>
+    <text x="0" y="48" text-anchor="middle" fill="#839496" font-family="monospace" font-size="11" font-weight="bold">K1</text>
+    <text x="0" y="62" text-anchor="middle" fill="#586e75" font-family="monospace" font-size="9">ENERGY</text>
+  </g>
+  
+  <!-- Knob K2 -->
+  <g transform="translate(120, 70)">
+    <circle cx="0" cy="0" r="28" fill="#073642" stroke="#586e75" stroke-width="2"/>
+    <circle cx="0" cy="0" r="20" fill="#0a4a5a"/>
+    <line x1="0" y1="0" x2="-10" y2="10" stroke="#586e75" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="-10" cy="10" r="3" fill="#586e75"/>
+    <text x="0" y="48" text-anchor="middle" fill="#839496" font-family="monospace" font-size="11" font-weight="bold">K2</text>
+    <text x="0" y="62" text-anchor="middle" fill="#586e75" font-family="monospace" font-size="9">BUILD</text>
+  </g>
+  
+  <!-- Knob K3 - Active/highlighted -->
+  <g transform="translate(45, 145)">
+    <circle cx="0" cy="0" r="28" fill="#073642" stroke="#ff00ff" stroke-width="3"/>
+    <circle cx="0" cy="0" r="20" fill="#1a3a4a"/>
+    <!-- Indicator pointing down-left (fully CCW) - BRIGHT -->
+    <line x1="0" y1="0" x2="-10" y2="10" stroke="#ff00ff" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="-10" cy="10" r="4" fill="#ff00ff"/>
+    <text x="0" y="48" text-anchor="middle" fill="#ff00ff" font-family="monospace" font-size="11" font-weight="bold">K3</text>
+    <text x="0" y="62" text-anchor="middle" fill="#d33682" font-family="monospace" font-size="9">FIELD X</text>
+  </g>
+  
+  <!-- Knob K4 - Active/highlighted -->
+  <g transform="translate(120, 145)">
+    <circle cx="0" cy="0" r="28" fill="#073642" stroke="#ff00ff" stroke-width="3"/>
+    <circle cx="0" cy="0" r="20" fill="#1a3a4a"/>
+    <!-- Indicator pointing down-left (fully CCW) - BRIGHT -->
+    <line x1="0" y1="0" x2="-10" y2="10" stroke="#ff00ff" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="-10" cy="10" r="4" fill="#ff00ff"/>
+    <text x="0" y="48" text-anchor="middle" fill="#ff00ff" font-family="monospace" font-size="11" font-weight="bold">K4</text>
+    <text x="0" y="62" text-anchor="middle" fill="#d33682" font-family="monospace" font-size="9">FIELD Y</text>
+  </g>
+  
+  <!-- Info badge -->
+  <rect x="160" y="40" width="70" height="65" fill="#073642" rx="4" stroke="#cb4b16"/>
+  <text x="195" y="58" text-anchor="middle" fill="#cb4b16" font-family="monospace" font-size="10">Sparse</text>
+  <text x="195" y="72" text-anchor="middle" fill="#93a1a1" font-family="monospace" font-size="8">K3, K4</text>
+  <text x="195" y="84" text-anchor="middle" fill="#93a1a1" font-family="monospace" font-size="8">fully CCW</text>
+  <text x="195" y="100" text-anchor="middle" fill="#586e75" font-family="monospace" font-size="8">(7 o'clock)</text>
+</svg>

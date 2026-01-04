@@ -3,7 +3,6 @@
 #include <cstddef>
 
 #include "../src/Engine/ControlUtils.h"
-#include "../src/Engine/ChaosModulator.h"
 #include "../src/Engine/Sequencer.h"
 
 using namespace daisysp_idm_grids;
@@ -16,41 +15,13 @@ TEST_CASE("MixControl clamps combined CV + knob inputs", "[control]")
     REQUIRE(MixControl(0.1f, -0.5f) == Approx(0.0f).margin(1e-5f));
 }
 
-TEST_CASE("ChaosModulator bounds jitter and ghost notes", "[chaos]")
-{
-    ChaosModulator chaos;
-    chaos.Init(42);
+// ChaosModulator tests removed - v3 code deleted for v4 migration
 
-    SECTION("Zero chaos produces no perturbation")
-    {
-        chaos.SetAmount(0.0f);
-        auto sample = chaos.NextSample();
-        REQUIRE(sample.jitterX == Approx(0.0f));
-        REQUIRE(sample.jitterY == Approx(0.0f));
-        REQUIRE(sample.densityBias == Approx(0.0f));
-        REQUIRE_FALSE(sample.ghostTrigger);
-    }
-
-    SECTION("Full chaos stays within expected ranges")
-    {
-        chaos.SetAmount(1.0f);
-        for(int i = 0; i < 128; ++i)
-        {
-            auto sample = chaos.NextSample();
-            REQUIRE(std::abs(sample.jitterX) <= 0.2001f);
-            REQUIRE(std::abs(sample.jitterY) <= 0.2001f);
-            REQUIRE(std::abs(sample.densityBias) <= 0.3501f);
-        }
-    }
-}
-
-TEST_CASE("Sequencer produces gates and CV pulses under modulation", "[sequencer]")
+TEST_CASE("Sequencer produces gates and CV pulses", "[sequencer]")
 {
     Sequencer seq;
     seq.Init(48000.0f);
     seq.SetTempoControl(0.5f);
-    seq.SetTerrain(0.5f);      // Was SetStyle
-    seq.SetFlux(0.75f);        // Was SetLowVariation/SetHighVariation
 
     std::size_t kickSamples = 0;
     std::size_t snareSamples = 0;
@@ -83,8 +54,6 @@ TEST_CASE("Kick accents stay isolated from hi-hat CV", "[sequencer]")
     Sequencer seq;
     seq.Init(48000.0f);
     seq.SetTempoControl(0.5f);
-    seq.SetTerrain(0.5f);      // Was SetStyle
-    seq.SetFlux(0.0f);         // Was SetLowVariation/SetHighVariation
 
     seq.ForceNextStepTriggers(true, false, false, true);
 
@@ -107,4 +76,3 @@ TEST_CASE("Kick accents stay isolated from hi-hat CV", "[sequencer]")
     REQUIRE(accentTriggered);
     REQUIRE(hihatStayedLow);
 }
-

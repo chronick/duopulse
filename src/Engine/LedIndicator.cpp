@@ -6,25 +6,50 @@ namespace daisysp_idm_grids
 
 void LedIndicator::Init(float sampleRateHz)
 {
-    sampleRate_    = sampleRateHz;
-    msPerSample_   = 1000.0f / sampleRateHz;
-    timeMs_        = 0.0f;
-    triggerTimeMs_ = -1000.0f; // Start with no recent trigger
-    seed_          = 12345;
+    sampleRate_            = sampleRateHz;
+    msPerSample_           = 1000.0f / sampleRateHz;
+    timeMs_                = 0.0f;
+    anchorTriggerTimeMs_   = -1000.0f;
+    shimmerTriggerTimeMs_  = -1000.0f;
+    flashStartTimeMs_      = -1000.0f;
+    seed_                  = 12345;
 }
 
 float LedIndicator::Process(const LedState& state)
 {
     timeMs_ += msPerSample_;
     
-    // Handle anchor trigger (reset pulse timer)
+    // Handle trigger events (record timing)
     if(state.anchorTriggered)
     {
-        triggerTimeMs_ = timeMs_;
+        anchorTriggerTimeMs_ = timeMs_;
+    }
+    if(state.shimmerTriggered)
+    {
+        shimmerTriggerTimeMs_ = timeMs_;
+    }
+    
+    // Handle flash events (mode change, reset, reseed)
+    if(state.event != LedEvent::NONE)
+    {
+        flashStartTimeMs_ = timeMs_;
+    }
+    
+    // Priority 1: Flash event (mode change, reset, reseed) - 100% brightness
+    if(IsInFlashEvent())
+    {
+        return kFlashBrightness;
+    }
+    
+    // Priority 2: Live fill mode - pulsing
+    if(state.liveFillActive)
+    {
+        return ProcessFillPulse();
     }
     
     float brightness = 0.0f;
     
+    // Mode-specific processing
     switch(state.mode)
     {
         case LedMode::Interaction:
@@ -48,8 +73,36 @@ float LedIndicator::Process(const LedState& state)
     return Clamp(brightness, 0.0f, 1.0f);
 }
 
+// =============================================================================
+// Flash and Fill Pulse Processing
+// =============================================================================
+
+bool LedIndicator::IsInFlashEvent() const
+{
+    return (timeMs_ - flashStartTimeMs_) < kFlashDurationMs;
+}
+
+float LedIndicator::ProcessFlashEvent()
+{
+    return kFlashBrightness;
+}
+
+float LedIndicator::ProcessFillPulse()
+{
+    // Rapid pulsing during live fill mode
+    float phase = fmodf(timeMs_, kFillPulsePeriodMs) / kFillPulsePeriodMs;
+    // Sine wave between shimmer brightness and flash brightness
+    float sine = sinf(phase * 2.0f * 3.14159265f);
+    return kShimmerBrightness + (kFlashBrightness - kShimmerBrightness) * (0.5f + 0.5f * sine);
+}
+
+// =============================================================================
+// Mode-Specific Processing
+// =============================================================================
+
 float LedIndicator::ProcessInteraction(const LedState& state)
 {
+    // Show parameter value as brightness gradient
     return state.interactionValue;
 }
 
@@ -63,9 +116,9 @@ float LedIndicator::ProcessBreathing()
 
 float LedIndicator::ProcessPerformance(const LedState& state)
 {
-    float brightness = 0.0f;
+    float brightness = kOffBrightness;
     
-    // Phrase position modulation
+    // v3 compatibility: phrase position modulation
     if(state.isFillZone)
     {
         brightness = ProcessFillZone(state);
@@ -74,27 +127,40 @@ float LedIndicator::ProcessPerformance(const LedState& state)
     {
         brightness = ProcessBuildZone(state);
     }
-    else
+    else if(state.broken > 0.0f || state.drift > 0.0f)
     {
+        // v3 BROKEN × DRIFT behavior
         brightness = ProcessBrokenDrift(state);
     }
     
-    // Downbeat: extra bright pulse overlay
-    if(state.isDownbeat && IsInTriggerPulse(kDownbeatPulseMs))
+    // v4 trigger-based brightness (overlay on top of v3 behavior)
+    // Downbeat: extra bright pulse overlay (100%)
+    if(state.isDownbeat && IsInAnchorPulse(kDownbeatPulseMs))
     {
-        brightness = std::max(brightness, kDownbeatBrightness);
+        brightness = std::max(brightness, kFlashBrightness);
     }
-    // Normal anchor trigger pulse
-    else if(IsInTriggerPulse(kTriggerPulseMs))
+    // Anchor trigger: 80% brightness
+    else if(IsInAnchorPulse(kTriggerPulseMs))
     {
-        brightness = std::max(brightness, kNormalBrightness);
+        brightness = std::max(brightness, kAnchorBrightness);
+    }
+    // Shimmer trigger: 30% brightness
+    else if(IsInShimmerPulse(kTriggerPulseMs))
+    {
+        brightness = std::max(brightness, kShimmerBrightness);
     }
     
     return brightness;
 }
 
+// =============================================================================
+// v3 Compatibility: Phrase Zone Processing
+// =============================================================================
+
 float LedIndicator::ProcessFillZone(const LedState& state)
 {
+    (void)state;  // Unused but kept for signature consistency
+    
     // Triple pulse cycle
     float cyclePeriod = (kTriplePulseMs * 3) + (kTriplePulseGapMs * 3);
     float cyclePos = fmodf(timeMs_, cyclePeriod);
@@ -188,10 +254,23 @@ float LedIndicator::ProcessBrokenDrift(const LedState& state)
     return inPulse ? intensity : kMinBrightness;
 }
 
-bool LedIndicator::IsInTriggerPulse(float pulseDurationMs) const
+// =============================================================================
+// Trigger Pulse Detection
+// =============================================================================
+
+bool LedIndicator::IsInAnchorPulse(float pulseDurationMs) const
 {
-    return (timeMs_ - triggerTimeMs_) < pulseDurationMs;
+    return (timeMs_ - anchorTriggerTimeMs_) < pulseDurationMs;
 }
+
+bool LedIndicator::IsInShimmerPulse(float pulseDurationMs) const
+{
+    return (timeMs_ - shimmerTriggerTimeMs_) < pulseDurationMs;
+}
+
+// =============================================================================
+// Utilities
+// =============================================================================
 
 float LedIndicator::GetPseudoRandom()
 {

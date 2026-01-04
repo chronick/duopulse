@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 200">
+  <!-- Solarized Base03 background -->
+  <rect width="240" height="200" fill="#002b36" rx="8"/>
+  
+  <!-- Title -->
+  <text x="120" y="24" text-anchor="middle" fill="#93a1a1" font-family="monospace" font-size="12" font-weight="bold">Any Position OK</text>
+  
+  <!-- Knob K1 -->
+  <g transform="translate(45, 70)">
+    <circle cx="0" cy="0" r="28" fill="#073642" stroke="#586e75" stroke-width="2"/>
+    <circle cx="0" cy="0" r="20" fill="#0a4a5a"/>
+    <!-- Fluorescent indicator - pointing up-ish -->
+    <line x1="0" y1="0" x2="0" y2="-14" stroke="#00ff88" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="0" cy="-14" r="3" fill="#00ff88"/>
+    <text x="0" y="48" text-anchor="middle" fill="#839496" font-family="monospace" font-size="11" font-weight="bold">K1</text>
+    <text x="0" y="62" text-anchor="middle" fill="#586e75" font-family="monospace" font-size="9">ENERGY</text>
+  </g>
+  
+  <!-- Knob K2 -->
+  <g transform="translate(120, 70)">
+    <circle cx="0" cy="0" r="28" fill="#073642" stroke="#586e75" stroke-width="2"/>
+    <circle cx="0" cy="0" r="20" fill="#0a4a5a"/>
+    <line x1="0" y1="0" x2="10" y2="-10" stroke="#00ff88" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="10" cy="-10" r="3" fill="#00ff88"/>
+    <text x="0" y="48" text-anchor="middle" fill="#839496" font-family="monospace" font-size="11" font-weight="bold">K2</text>
+    <text x="0" y="62" text-anchor="middle" fill="#586e75" font-family="monospace" font-size="9">BUILD</text>
+  </g>
+  
+  <!-- Knob K3 -->
+  <g transform="translate(45, 145)">
+    <circle cx="0" cy="0" r="28" fill="#073642" stroke="#586e75" stroke-width="2"/>
+    <circle cx="0" cy="0" r="20" fill="#0a4a5a"/>
+    <line x1="0" y1="0" x2="-10" y2="-10" stroke="#00ff88" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="-10" cy="-10" r="3" fill="#00ff88"/>
+    <text x="0" y="48" text-anchor="middle" fill="#839496" font-family="monospace" font-size="11" font-weight="bold">K3</text>
+    <text x="0" y="62" text-anchor="middle" fill="#586e75" font-family="monospace" font-size="9">FIELD X</text>
+  </g>
+  
+  <!-- Knob K4 -->
+  <g transform="translate(120, 145)">
+    <circle cx="0" cy="0" r="28" fill="#073642" stroke="#586e75" stroke-width="2"/>
+    <circle cx="0" cy="0" r="20" fill="#0a4a5a"/>
+    <line x1="0" y1="0" x2="14" y2="0" stroke="#00ff88" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="14" cy="0" r="3" fill="#00ff88"/>
+    <text x="0" y="48" text-anchor="middle" fill="#839496" font-family="monospace" font-size="11" font-weight="bold">K4</text>
+    <text x="0" y="62" text-anchor="middle" fill="#586e75" font-family="monospace" font-size="9">FIELD Y</text>
+  </g>
+  
+  <!-- Info badge -->
+  <rect x="160" y="55" width="70" height="50" fill="#073642" rx="4" stroke="#586e75"/>
+  <text x="195" y="75" text-anchor="middle" fill="#859900" font-family="monospace" font-size="10">Level 0</text>
+  <text x="195" y="92" text-anchor="middle" fill="#93a1a1" font-family="monospace" font-size="8">Knobs are</text>
+  <text x="195" y="102" text-anchor="middle" fill="#93a1a1" font-family="monospace" font-size="8">ignored</text>
+</svg>

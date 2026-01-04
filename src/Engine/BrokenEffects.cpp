@@ -186,9 +186,10 @@ float GetVelocityWithVariation(float baseVel, float broken, uint32_t seed, int s
 
     float result = baseVel + variation;
 
-    // Clamp to valid velocity range (minimum 0.2 to ensure audibility)
-    if(result < 0.2f)
-        result = 0.2f;
+    // Clamp to valid velocity range
+    // Task 21 Phase B: minimum raised to 0.30 for VCA audibility (was 0.2)
+    if(result < 0.30f)
+        result = 0.30f;
     if(result > 1.0f)
         result = 1.0f;
 
@@ -217,6 +218,185 @@ float GetVelocityVariationRange(float broken)
         float t = (broken - 0.6f) / 0.4f;
         return 0.10f + t * 0.10f;
     }
+}
+
+// =============================================================================
+// v4 BROKEN/FLAVOR Stack: Zone-Bounded Timing Effects
+// =============================================================================
+
+// Magic numbers for v4 timing hash mixing
+constexpr uint32_t kV4JitterHashMagic  = 0x4A545434; // "JTT4"
+constexpr uint32_t kV4DisplaceHashMagic = 0x44535034; // "DSP4"
+constexpr uint32_t kV4VelChaosHashMagic = 0x56434834; // "VCH4"
+
+float GetMaxSwingForZone(EnergyZone zone)
+{
+    switch (zone)
+    {
+        case EnergyZone::MINIMAL:
+            return 0.60f;  // Tight timing (widened from 0.58)
+        case EnergyZone::GROOVE:
+            return 0.65f;  // Groovy timing (widened from 0.58)
+        case EnergyZone::BUILD:
+            return 0.68f;  // Moderate looseness (widened from 0.62)
+        case EnergyZone::PEAK:
+        default:
+            return 0.70f;  // Full triplet swing (widened from 0.66)
+    }
+}
+
+float GetMaxJitterMsForZone(EnergyZone zone)
+{
+    switch (zone)
+    {
+        case EnergyZone::MINIMAL:
+        case EnergyZone::GROOVE:
+            return 3.0f;   // Tight timing
+        case EnergyZone::BUILD:
+            return 6.0f;   // Moderate looseness
+        case EnergyZone::PEAK:
+        default:
+            return 12.0f;  // Expressive timing
+    }
+}
+
+float ComputeSwing(float configSwing, float archetypeSwing, EnergyZone zone)
+{
+    // Clamp inputs to valid ranges
+    configSwing = Clamp(configSwing, 0.0f, 1.0f);
+    archetypeSwing = Clamp(archetypeSwing, 0.0f, 1.0f);
+
+    // If archetype swing is zero/near-zero, default to 0.50 (straight)
+    if (archetypeSwing < 0.01f)
+        archetypeSwing = 0.50f;
+
+    // Config swing multiplies archetype base: 1.0× to 2.0×
+    // configSwing 0% = 1.0× archetype, 100% = 2.0× archetype
+    float effectiveSwing = archetypeSwing * (1.0f + configSwing);
+
+    // Apply zone-specific maximum caps
+    float maxSwing = GetMaxSwingForZone(zone);
+
+    return Clamp(effectiveSwing, 0.50f, maxSwing);
+}
+
+float ApplySwingToStep(int step, float swingAmount, float samplesPerStep)
+{
+    // Only offbeats (odd 16th notes) receive swing
+    if (!IsOffbeat(step))
+        return 0.0f;
+
+    // Swing amount is the ratio of 8th note duration for the offbeat
+    // 50% = straight (offbeat at exactly half), 66% = triplet feel
+    // Offset = (swingAmount - 0.5) * 2 * samplesPerStep
+    // At 50%: offset = 0
+    // At 66%: offset = 0.32 * samplesPerStep (offbeat delayed by 32%)
+    float offset = (swingAmount - 0.5f) * 2.0f * samplesPerStep;
+
+    return offset;
+}
+
+float ComputeMicrotimingOffset(float flavor,
+                               EnergyZone zone,
+                               float sampleRate,
+                               uint32_t seed,
+                               int step)
+{
+    // Clamp flavor to valid range
+    flavor = Clamp(flavor, 0.0f, 1.0f);
+
+    // Get zone-bounded max jitter
+    float maxJitterMs = GetMaxJitterMsForZone(zone);
+
+    // Scale jitter with flavor (0% flavor = no jitter)
+    float jitterMs = flavor * maxJitterMs;
+
+    // No jitter if effectively zero
+    if (jitterMs < 0.001f)
+        return 0.0f;
+
+    // Generate deterministic random offset in [-jitterMs, +jitterMs]
+    uint32_t hash = HashStep(seed ^ kV4JitterHashMagic, step);
+    float randomVal = HashToFloat(hash);  // 0.0 to 1.0
+    float jitterMsBipolar = (randomVal - 0.5f) * 2.0f * jitterMs;
+
+    // Convert milliseconds to samples
+    float jitterSamples = jitterMsBipolar * sampleRate / 1000.0f;
+
+    return jitterSamples;
+}
+
+int ComputeStepDisplacement(int step, float flavor, EnergyZone zone, uint32_t seed)
+{
+    // Clamp inputs
+    flavor = Clamp(flavor, 0.0f, 1.0f);
+
+    // Displacement only allowed in BUILD and PEAK zones
+    if (zone == EnergyZone::MINIMAL || zone == EnergyZone::GROOVE)
+        return step;
+
+    // Compute displacement chance and max shift based on zone
+    float displaceChance;
+    int maxShift;
+
+    if (zone == EnergyZone::BUILD)
+    {
+        // BUILD zone: up to 20% chance, ±1 step
+        displaceChance = flavor * 0.20f;
+        maxShift = 1;
+    }
+    else  // PEAK zone
+    {
+        // PEAK zone: up to 40% chance, ±2 steps
+        displaceChance = flavor * 0.40f;
+        maxShift = 2;
+    }
+
+    // Determine if displacement happens
+    uint32_t chanceHash = HashStep(seed ^ kV4DisplaceHashMagic, step);
+    float chanceRoll = HashToFloat(chanceHash);
+
+    if (chanceRoll >= displaceChance)
+        return step;  // No displacement
+
+    // Determine shift direction and amount
+    uint32_t shiftHash = HashStep(seed ^ kV4DisplaceHashMagic ^ 0x12345, step);
+    float shiftRoll = HashToFloat(shiftHash);
+
+    // Map [0, 1) to [-maxShift, +maxShift], excluding 0
+    int shift = static_cast<int>((shiftRoll * (2 * maxShift + 1))) - maxShift;
+
+    // Don't allow zero shift (if we're displacing, actually move)
+    if (shift == 0)
+        shift = (shiftRoll < 0.5f) ? -1 : 1;
+
+    // Wrap to valid step range
+    int newStep = (step + shift + 32) % 32;
+
+    return newStep;
+}
+
+float ComputeVelocityChaos(float baseVelocity, float flavor, uint32_t seed, int step)
+{
+    // Clamp inputs
+    flavor = Clamp(flavor, 0.0f, 1.0f);
+    baseVelocity = Clamp(baseVelocity, 0.0f, 1.0f);
+
+    // Velocity chaos: ±0% at flavor=0, ±25% at flavor=1
+    float chaosRange = flavor * 0.25f;
+
+    if (chaosRange < 0.001f)
+        return baseVelocity;
+
+    // Generate deterministic random variation
+    uint32_t hash = HashStep(seed ^ kV4VelChaosHashMagic, step);
+    float randomVal = HashToFloat(hash);  // 0.0 to 1.0
+    float variation = (randomVal - 0.5f) * 2.0f * chaosRange;
+
+    float result = baseVelocity + variation;
+
+    // Clamp to valid velocity range (minimum 0.1 to ensure audibility)
+    return Clamp(result, 0.1f, 1.0f);
 }
 
 // =============================================================================

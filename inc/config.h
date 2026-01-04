@@ -40,25 +40,16 @@
 #define FREQ_TO_RAD(freq, sr) ((freq) * 2.0f * 3.14159265359f / (sr))
 
 // =============================================================================
-// DuoPulse v3: Algorithmic Pulse Field
+// DuoPulse v4: Full Architecture Overhaul
 // =============================================================================
-// v3 is now the default implementation. v2 PatternSkeleton system has been removed.
-// The codebase uses the weighted pulse field algorithm with BROKEN/DRIFT controls.
-
-// =============================================================================
-// Debug Modes for Hardware Testing
-// =============================================================================
-// Uncomment ONE of these to enable a specific debug mode:
-
-// DEBUG_BASELINE_SIMPLE: 4-on-the-floor kick + backbeat snare
-// Perfect for verifying clock, gates, and basic timing
-// #define DEBUG_BASELINE_SIMPLE 1
-
-// DEBUG_BASELINE_LIVELY: Full-featured defaults for expressive patterns
-// Density=0.7, Broken=0.3, Drift=0.2, Tempo=120 BPM
-// #define DEBUG_BASELINE_LIVELY 1
-
-// DEBUG_FEATURE_LEVEL: Progressive feature enablement (0-5)
-// 0 = Simple clock + 4otf, 1 = Add shimmer, 2 = Add density, etc.
-// #define DEBUG_FEATURE_LEVEL 0
+// v4 is a complete rewrite. v3 flag is disabled during migration.
+// The v3 code is being removed and replaced with v4 architecture.
+//
+// v4 key changes:
+//   - 2D Pattern Field with 3×3 archetype grid per genre
+//   - Hit budget system with Gumbel Top-K sampling
+//   - ENERGY/PUNCH, BUILD/GENRE, FIELD X/DRIFT, FIELD Y/BALANCE controls
+//   - FLAVOR parameter (from Audio In R) controls BROKEN timing stack
+//
+// #define USE_PULSE_FIELD_V3 1  // DISABLED: v3 code removed for v4 migration
 

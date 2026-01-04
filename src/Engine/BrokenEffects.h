@@ -1,26 +1,34 @@
 #pragma once
 
-#include "PulseField.h"    // For Lerp, Clamp, HashStep, HashToFloat
-#include "GenreConfig.h"   // For PhrasePosition
+#include "PulseField.h"       // For Lerp, Clamp, HashStep, HashToFloat
+#include "PhrasePosition.h"   // For PhrasePosition struct
+#include "DuoPulseTypes.h"    // For EnergyZone
 
 namespace daisysp_idm_grids
 {
 
 /**
- * BROKEN Effects Stack
+ * BROKEN Effects Stack (v4)
  *
- * The BROKEN parameter doesn't just flatten weights—it also progressively
- * adds timing effects that contribute to genre character. As BROKEN increases:
+ * The FLAVOR parameter (v4) or BROKEN parameter (v3) controls timing effects
+ * that contribute to genre character. As the parameter increases:
  *
- * 1. Swing increases (Techno → Tribal → Trip-Hop → IDM)
+ * 1. Swing increases (straight → heavy triplet)
  * 2. Micro-timing jitter increases
  * 3. Step displacement becomes possible
  * 4. Velocity variation increases
  *
- * These effects combine to create a coherent transition from straight 4/4
- * to experimental IDM patterns.
+ * v4 adds energy zone bounding - timing effects are constrained based on
+ * the current energy zone to maintain musicality:
  *
- * Reference: docs/specs/double-down/simplified-algorithmic-approach.md [broken-effects]
+ * | Layer              | FLAVOR 0% | FLAVOR 100% | GROOVE Zone Limit |
+ * |--------------------|-----------|-------------|-------------------|
+ * | Swing              | 50%       | 66%         | max 58%           |
+ * | Microtiming Jitter | ±0ms      | ±12ms       | max ±3ms          |
+ * | Step Displacement  | Never     | 40% ±2      | Never             |
+ * | Velocity Chaos     | ±0%       | ±25%        | Always allowed    |
+ *
+ * Reference: docs/specs/main.md section 7 [timing-system]
  */
 
 // Magic numbers for hash mixing (to avoid correlation between effects)
@@ -34,9 +42,12 @@ constexpr uint32_t kVelocityHashMagic      = 0x56454C30; // "VEL0"
 // =============================================================================
 
 /**
- * Get the swing amount from the BROKEN parameter.
+ * Compute effective swing from config and archetype base.
  *
- * Swing is no longer a separate genre setting. It scales with BROKEN:
+ * Swing combines:
+ * 1. Archetype base swing (from blended pattern DNA)
+ * 2. Config swing multiplier (0-100% = 1.0× to 2.0× archetype base)
+ * 3. Energy zone caps (prevent excessive swing in low-energy zones)
  *
  * | BROKEN Range | Genre Feel | Swing %   | Character              |
  * |--------------|------------|-----------|------------------------|
@@ -139,6 +150,130 @@ float GetVelocityWithVariation(float baseVel, float broken, uint32_t seed, int s
  * @return Variation range (e.g., 0.05 means ±5%)
  */
 float GetVelocityVariationRange(float broken);
+
+// =============================================================================
+// v4 BROKEN/FLAVOR Stack: Zone-Bounded Timing Effects
+// =============================================================================
+
+/**
+ * Compute zone-bounded swing amount from config and archetype base.
+ *
+ * Swing combines archetype base with config multiplier:
+ * - effectiveSwing = archetypeSwing * (1.0 + configSwing)
+ * - Config swing 0% = 1.0× archetype base
+ * - Config swing 100% = 2.0× archetype base
+ *
+ * Zone caps (widened in v4.1):
+ * - MINIMAL zone: max 60% (was 58%)
+ * - GROOVE zone: max 65% (was 58%)
+ * - BUILD zone: max 68% (was 62%)
+ * - PEAK zone: max 70% (was 66%)
+ *
+ * @param configSwing SWING config parameter (0.0-1.0)
+ * @param archetypeSwing Blended archetype base swing (0.0-1.0, typically 0.50-0.60)
+ * @param zone Current energy zone
+ * @return Swing amount (0.50 = straight, 0.70 = max lazy triplet)
+ */
+float ComputeSwing(float configSwing, float archetypeSwing, EnergyZone zone);
+
+/**
+ * Apply swing offset to a step's timing.
+ *
+ * Swing affects odd-numbered 16th notes (offbeats):
+ * - Even steps (0, 2, 4...): no swing offset
+ * - Odd steps (1, 3, 5...): delayed by swing amount
+ *
+ * The offset is in samples and should be added to the trigger time.
+ *
+ * @param step Step index (0-31)
+ * @param swingAmount Swing amount from ComputeSwing() (0.50-0.66)
+ * @param samplesPerStep Number of audio samples per 16th note step
+ * @return Timing offset in samples (0 for even steps, positive for odd)
+ */
+float ApplySwingToStep(int step, float swingAmount, float samplesPerStep);
+
+/**
+ * Compute zone-bounded microtiming jitter offset.
+ *
+ * Jitter scales with FLAVOR but is bounded by energy zone:
+ * - MINIMAL/GROOVE zones: max ±3ms
+ * - BUILD zone: max ±6ms
+ * - PEAK zone: max ±12ms
+ *
+ * @param flavor FLAVOR parameter (0.0-1.0)
+ * @param zone Current energy zone
+ * @param sampleRate Audio sample rate (e.g., 48000)
+ * @param seed Seed for deterministic randomness
+ * @param step Step index for per-step variation
+ * @return Jitter offset in samples (can be positive or negative)
+ */
+float ComputeMicrotimingOffset(float flavor,
+                               EnergyZone zone,
+                               float sampleRate,
+                               uint32_t seed,
+                               int step);
+
+/**
+ * Compute zone-bounded step displacement.
+ *
+ * Displacement only occurs in BUILD/PEAK zones with high FLAVOR:
+ * - MINIMAL/GROOVE zones: no displacement (returns original step)
+ * - BUILD zone: up to 20% chance, ±1 step
+ * - PEAK zone: up to 40% chance, ±2 steps
+ *
+ * @param step Original step index (0-31)
+ * @param flavor FLAVOR parameter (0.0-1.0)
+ * @param zone Current energy zone
+ * @param seed Seed for deterministic randomness
+ * @return Displaced step index (0-31, wrapped), or original if no displacement
+ */
+int ComputeStepDisplacement(int step, float flavor, EnergyZone zone, uint32_t seed);
+
+/**
+ * Compute zone-bounded velocity chaos/variation.
+ *
+ * Velocity chaos scales with FLAVOR:
+ * - FLAVOR 0%: ±0% variation
+ * - FLAVOR 100%: ±25% variation
+ *
+ * Unlike other effects, velocity chaos is NOT zone-bounded.
+ *
+ * @param baseVelocity Base velocity (0.0-1.0)
+ * @param flavor FLAVOR parameter (0.0-1.0)
+ * @param seed Seed for deterministic randomness
+ * @param step Step index for per-step variation
+ * @return Modified velocity, clamped to [0.1, 1.0]
+ */
+float ComputeVelocityChaos(float baseVelocity, float flavor, uint32_t seed, int step);
+
+/**
+ * Check if a step is an offbeat (odd 16th note position).
+ *
+ * Used for swing application - only offbeats receive swing delay.
+ *
+ * @param step Step index (0-31)
+ * @return true if step is an offbeat (1, 3, 5, 7, ...)
+ */
+inline bool IsOffbeat(int step)
+{
+    return (step & 1) != 0;
+}
+
+/**
+ * Get the maximum swing for an energy zone.
+ *
+ * @param zone Energy zone
+ * @return Maximum swing amount (0.50-0.66)
+ */
+float GetMaxSwingForZone(EnergyZone zone);
+
+/**
+ * Get the maximum jitter in milliseconds for an energy zone.
+ *
+ * @param zone Energy zone
+ * @return Maximum jitter in milliseconds
+ */
+float GetMaxJitterMsForZone(EnergyZone zone);
 
 // =============================================================================
 // Phrase-Aware Modulation [phrase-modulation]

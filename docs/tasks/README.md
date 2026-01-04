@@ -20,6 +20,7 @@ The following directories exist for historical tasks but are not required for ne
 - `active/`: Previously used for tasks in progress
 - `backlog/`: Previously used for pending tasks
 - `completed/`: Previously used for finished tasks
+- `archived/`: Canceled, superseded, or otherwise archived tasks.
 
 New features should use the simplified workflow:
 1. Create feature task file: `docs/tasks/<slug>.md`

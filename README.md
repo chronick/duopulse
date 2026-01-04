@@ -13,86 +13,99 @@ This project provides a custom firmware implementation for the Electro-Smith Pat
 - Multiple GPIO pins for buttons, LEDs, and encoders
 - STM32H7 microcontroller with floating-point unit
 
-## DuoPulse v3: 2-Voice Percussive Sequencer
+## DuoPulse v4: 2-Voice Percussive Sequencer
 
-DuoPulse is an opinionated 2-voice percussion sequencer with a focus on electronic music from club-ready techno to experimental IDM. Version 3 introduces an **algorithmic pulse field** that replaces discrete pattern lookup with continuous variation.
+DuoPulse v4 is an opinionated 2-voice percussion sequencer designed for electronic music from club-ready techno to experimental IDM. Version 4 features a **2D pattern field** with curated archetype grids, deterministic hit budgets, and ergonomic control pairings that map directly to musical intent.
 
-### Core Concept
+### Core Design Philosophy
 
-Two simple axes control everything:
+1. **Musicality over flexibility**: Every output should be danceable/usable
+2. **Playability**: Controls map to intent (ENERGY = tension, GENRE = feel)
+3. **Deterministic variation**: Same settings + same seed = identical output
+4. **Hit budgets over coin flips**: Guarantee density matches intent
 
-| Axis | Control | Effect |
-|------|---------|--------|
-| **BROKEN** | K3 | Pattern regularity (0%=4/4 techno → 100%=IDM chaos) |
-| **DRIFT** | K4 | Pattern evolution (0%=locked → 100%=generative) |
+### Pattern Field System
 
-Genre character (swing, jitter, feel) **emerges** from the BROKEN parameter—no explicit genre selection needed.
+Navigate a **3×3 grid of archetype patterns** per genre (27 total):
+
+```
+        Y: COMPLEXITY
+            ↑
+    [0,2]   [1,2]   [2,2]
+    busy    poly    chaos
+
+    [0,1]   [1,1]   [2,1]
+    driving groovy  broken
+
+    [0,0]   [1,0]   [2,0]
+    minimal steady  displaced
+            ────────────────→
+            X: SYNCOPATION
+```
 
 ### Control Layout
 
-#### Performance Mode (Switch DOWN)
+#### Performance Mode (Switch A) — Ergonomic Pairings
 
-| Knob | Primary | +Shift |
-|------|---------|--------|
-| K1 | Anchor Density | FUSE (voice balance) |
-| K2 | Shimmer Density | LENGTH (1-16 bars) |
-| K3 | BROKEN | COUPLE (voice interlock) |
-| K4 | DRIFT | RATCHET (fill intensity) |
+| Knob | Domain | Primary (CV-able) | +Shift |
+|------|--------|-------------------|--------|
+| K1 | **Intensity** | ENERGY (hit density) | PUNCH (velocity dynamics) |
+| K2 | **Drama** | BUILD (phrase arc) | GENRE (Techno/Tribal/IDM) |
+| K3 | **Pattern** | FIELD X (syncopation) | DRIFT (evolution rate) |
+| K4 | **Texture** | FIELD Y (complexity) | BALANCE (voice ratio) |
 
-#### Config Mode (Switch UP)
+#### Config Mode (Switch B) — Settings
 
-| Knob | Primary | +Shift |
-|------|---------|--------|
-| K1 | Anchor Accent | Swing Taste |
-| K2 | Shimmer Accent | Gate Time |
-| K3 | Contour | Humanize |
-| K4 | Tempo / Clock Div* | Clock Div / Aux Mode* |
+| Knob | Domain | Primary | +Shift |
+|------|--------|---------|--------|
+| K1 | **Grid** | PATTERN LENGTH (16/24/32/64) | *(auto-derived phrase)* |
+| K2 | **Timing** | SWING (0-100%) | CLOCK DIV (÷8 to ×8) |
+| K3 | **Output** | AUX MODE (Hat/Fill/Phrase/Event) | AUX DENSITY (50-200%) |
+| K4 | **Behavior** | *(hardcoded STEP reset)* | VOICE COUPLING (Ind/Shadow) |
 
-> *K4 is context-aware: behavior changes when external clock is patched.
+### Key Features
 
-### BROKEN × DRIFT Interaction
+**ENERGY Zones**: Behavior changes based on energy level
+- 0-20% MINIMAL: Sparse skeleton, tight timing
+- 20-50% GROOVE: Stable, danceable, moderate fills
+- 50-75% BUILD: Increasing activity, phrase-end fills
+- 75-100% PEAK: Maximum activity, ratchets allowed
 
-| BROKEN | DRIFT | Result |
-|--------|-------|--------|
-| Low | Low | Solid, repeating groove (DJ tool) |
-| Low | High | Stable groove with living details |
-| High | Low | Broken but consistent each loop |
-| High | High | Maximum generative chaos (experimental) |
+**BUILD Phases**: Dynamic phrase arcs
+- 0-60% GROOVE: Stable pattern
+- 60-87.5% BUILD: Ramping density + velocity
+- 87.5-100% FILL: All accents, peak energy
 
-### RATCHET: Fill Intensity Control
+**PUNCH Dynamics**: Velocity contrast (Task 21 refinement)
+- velocityFloor: 65% → 30% (ghost notes audible)
+- accentBoost: +15% → +45% (accents pop dramatically)
 
-**RATCHET** (K4+Shift) controls fill intensity during phrase transitions. Works together with DRIFT:
+**BALANCE Range**: Voice ratio (Task 21/22 extension)
+- 0% = shimmer silent
+- 50% = shimmer 75% of anchor
+- 100% = shimmer 150% of anchor (shimmer-heavy)
 
-- **DRIFT** controls fill **probability** (when fills occur)
-- **RATCHET** controls fill **intensity** (how intense fills are)
-- At DRIFT=0, RATCHET has no effect (no fills occur)
-- At RATCHET > 50%, ratcheting (32nd note subdivisions) can occur in fill zones
+**DRIFT Seed System**: Stratified stability per step
+- Downbeats lock until DRIFT > 100%
+- Quarter notes lock until DRIFT > 70%
+- Ghost notes vary at DRIFT > 20%
 
-| RATCHET Level | Behavior |
-|---------------|----------|
-| 0% | Subtle fills — slight density boost only |
-| 25% | Moderate fills — noticeable energy increase |
-| 50% | Standard fills — clear rhythmic intensification |
-| 75% | Aggressive fills — ratcheted 16ths, strong build |
-| 100% | Maximum intensity — rapid-fire hits, peak energy |
+### CV Inputs (Modulate Performance Primary Controls)
 
-### CV Inputs (Always Performance Parameters)
+| CV | Modulates | Use Case |
+|----|-----------|----------|
+| CV 1 | ENERGY | Sidechain from kick, intensity envelope |
+| CV 2 | BUILD | LFO for automatic phrase dynamics |
+| CV 3 | FIELD X | Navigate syncopation axis |
+| CV 4 | FIELD Y | Navigate complexity axis |
 
-| CV | Modulates |
-|----|-----------|
-| CV 5 | Anchor Density |
-| CV 6 | Shimmer Density |
-| CV 7 | BROKEN |
-| CV 8 | DRIFT |
+### Power-On Behavior (Task 24)
 
-### v3 vs v2 Mode
-
-The firmware supports both v3 (Pulse Field) and v2 (Pattern Skeleton) algorithms. Toggle in `inc/config.h`:
-
-```cpp
-#define USE_PULSE_FIELD_V3 1   // v3: Algorithmic pulse field
-// #define USE_PULSE_FIELD_V3 1  // Comment out for v2: Pattern skeletons
-```
+**Fresh-start boot**: All settings reset to musical defaults
+- Performance knobs read from hardware immediately
+- Config resets: 32 steps, 50% swing, HAT mode, INDEPENDENT coupling
+- Shift resets: PUNCH=50%, GENRE=Techno, DRIFT=0%, BALANCE=50%
+- **Nothing persists** across power cycles
 
 See `docs/specs/main.md` for the complete specification.
 
@@ -482,6 +495,43 @@ Use a debugger (OpenOCD + GDB) for hardware debugging:
 ```bash
 make debug
 ```
+
+#### Runtime Logging
+
+The firmware includes a USB serial logging system for debugging without a hardware debugger.
+
+**Viewing Log Output**:
+```bash
+# macOS/Linux - using screen
+screen /dev/tty.usbmodem* 115200
+
+# Alternative - using make target (saves to /tmp)
+make listen
+
+# Exit screen: Ctrl-A then \ then y
+```
+
+**Log Levels**:
+- `TRACE`: Verbose debugging
+- `DEBUG`: Development info (mode changes, events)
+- `INFO`: Normal operation (boot, config)
+- `WARN`: Warnings
+- `ERROR`: Critical issues
+
+**Configuration**:
+
+Adjust log levels in `Makefile`:
+```makefile
+# Development: DEBUG+ logs, default INFO
+CXXFLAGS += -DLOG_COMPILETIME_LEVEL=1
+CXXFLAGS += -DLOG_DEFAULT_LEVEL=2
+
+# Release: WARN/ERROR only
+CXXFLAGS += -DLOG_COMPILETIME_LEVEL=3
+CXXFLAGS += -DLOG_DEFAULT_LEVEL=3
+```
+
+See `CLAUDE.md` for complete logging documentation.
 
 ## Support
 

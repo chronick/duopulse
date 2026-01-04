@@ -64,25 +64,41 @@ CXXFLAGS += -DHSE_VALUE=16000000
 CXXFLAGS += -DUSE_FATFS
 CXXFLAGS += -DFILEIO_ENABLE_FATFS_READER
 
+# Logging Configuration
+# LOG_COMPILETIME_LEVEL: Minimum log level to compile (0=TRACE, 1=DEBUG, 2=INFO, 3=WARN, 4=ERROR, 5=OFF)
+#   - Logs below this level are stripped at compile time (zero binary size cost)
+# LOG_DEFAULT_LEVEL: Default runtime filter level (same values as above)
+#   - Can be changed at runtime with logging::SetLevel()
+#
+# Development build (keep DEBUG+ logs, default to INFO at runtime):
+LOG_COMPILETIME_LEVEL ?= 1
+LOG_DEFAULT_LEVEL ?= 2
+CXXFLAGS += -DLOG_COMPILETIME_LEVEL=$(LOG_COMPILETIME_LEVEL)
+CXXFLAGS += -DLOG_DEFAULT_LEVEL=$(LOG_DEFAULT_LEVEL)
+#
+# Release build (only WARN/ERROR, quiet by default):
+# LOG_COMPILETIME_LEVEL=3 LOG_DEFAULT_LEVEL=3 make
+
 # Include Directories
+# Use -I for our own headers, -isystem for external libs (suppresses warnings)
 INCLUDES := -I$(INC_DIR)
-INCLUDES += -I$(DAISYSP_PATH)/Source
-INCLUDES += -I$(DAISYSP_PATH)/Source/daisysp
-INCLUDES += -I$(LIBDAISY_PATH)
-INCLUDES += -I$(LIBDAISY_PATH)/src
-INCLUDES += -I$(LIBDAISY_PATH)/src/sys
-INCLUDES += -I$(LIBDAISY_PATH)/src/usbd
-INCLUDES += -I$(LIBDAISY_PATH)/src/usbh
-INCLUDES += -I$(LIBDAISY_PATH)/Drivers/CMSIS_5/CMSIS/Core/Include
-INCLUDES += -I$(LIBDAISY_PATH)/Drivers/CMSIS-DSP/Include
-INCLUDES += -I$(LIBDAISY_PATH)/Drivers/CMSIS-Device/ST/STM32H7xx/Include
-INCLUDES += -I$(LIBDAISY_PATH)/Drivers/STM32H7xx_HAL_Driver/Inc
-INCLUDES += -I$(LIBDAISY_PATH)/Drivers/STM32H7xx_HAL_Driver/Inc/Legacy
-INCLUDES += -I$(LIBDAISY_PATH)/Middlewares/ST/STM32_USB_Device_Library/Core/Inc
-INCLUDES += -I$(LIBDAISY_PATH)/Middlewares/ST/STM32_USB_Host_Library/Core/Inc
-INCLUDES += -I$(LIBDAISY_PATH)/Middlewares/ST/STM32_USB_Host_Library/Class/MSC/Inc
-INCLUDES += -I$(LIBDAISY_PATH)/Middlewares/ST/STM32_USB_Host_Library/Class/MIDI/Inc
-INCLUDES += -I$(LIBDAISY_PATH)/Middlewares/Third_Party/FatFs/src
+INCLUDES += -isystem $(DAISYSP_PATH)/Source
+INCLUDES += -isystem $(DAISYSP_PATH)/Source/daisysp
+INCLUDES += -isystem $(LIBDAISY_PATH)
+INCLUDES += -isystem $(LIBDAISY_PATH)/src
+INCLUDES += -isystem $(LIBDAISY_PATH)/src/sys
+INCLUDES += -isystem $(LIBDAISY_PATH)/src/usbd
+INCLUDES += -isystem $(LIBDAISY_PATH)/src/usbh
+INCLUDES += -isystem $(LIBDAISY_PATH)/Drivers/CMSIS_5/CMSIS/Core/Include
+INCLUDES += -isystem $(LIBDAISY_PATH)/Drivers/CMSIS-DSP/Include
+INCLUDES += -isystem $(LIBDAISY_PATH)/Drivers/CMSIS-Device/ST/STM32H7xx/Include
+INCLUDES += -isystem $(LIBDAISY_PATH)/Drivers/STM32H7xx_HAL_Driver/Inc
+INCLUDES += -isystem $(LIBDAISY_PATH)/Drivers/STM32H7xx_HAL_Driver/Inc/Legacy
+INCLUDES += -isystem $(LIBDAISY_PATH)/Middlewares/ST/STM32_USB_Device_Library/Core/Inc
+INCLUDES += -isystem $(LIBDAISY_PATH)/Middlewares/ST/STM32_USB_Host_Library/Core/Inc
+INCLUDES += -isystem $(LIBDAISY_PATH)/Middlewares/ST/STM32_USB_Host_Library/Class/MSC/Inc
+INCLUDES += -isystem $(LIBDAISY_PATH)/Middlewares/ST/STM32_USB_Host_Library/Class/MIDI/Inc
+INCLUDES += -isystem $(LIBDAISY_PATH)/Middlewares/Third_Party/FatFs/src
 
 # Source Files
 SRCS := $(wildcard $(SRC_DIR)/*.cpp)
@@ -120,6 +136,10 @@ LDFLAGS += --specs=nano.specs --specs=nosys.specs
 # Debug Flags
 ifeq ($(DEBUG),1)
     CXXFLAGS += -DDEBUG -g3 -O0
+else ifeq ($(DEBUG_FLASH),1)
+    # Debug build optimized for flash-constrained devices
+    # Uses -Og (optimize for debugging) instead of -O0 to reduce code size
+    CXXFLAGS += -DDEBUG -g3 -Og
 else
     CXXFLAGS += -DNDEBUG
 endif
@@ -143,10 +163,18 @@ BIN := $(BUILD_DIR)/$(PROJECT_NAME).bin
 HEX := $(BUILD_DIR)/$(PROJECT_NAME).hex
 
 ###############################################################################
+# Serial Monitor Configuration
+###############################################################################
+
+BAUD ?= 115200
+PORT ?= $(shell ls -t /dev/cu.usbmodem* 2>/dev/null | head -n 1)
+LOGDIR ?= /tmp
+
+###############################################################################
 # Build Targets
 ###############################################################################
 
-.PHONY: all clean rebuild daisy-build daisy-update libdaisy-build libdaisy-update program test test-coverage help qa-simple qa-lively qa-level0 qa-level1 qa-level2 qa-level3 qa-level4 qa-level5 qa-production
+.PHONY: all clean rebuild daisy-build daisy-update libdaisy-build libdaisy-update program build-debug program-debug test test-coverage listen ports help
 
 # Default target
 all: $(ELF) $(BIN) $(HEX)
@@ -223,58 +251,40 @@ program: $(BIN)
 	@echo "Flashing firmware to Patch.Init module..."
 	@dfu-util -a 0 -s 0x08000000:leave -D $(BIN)
 
-###############################################################################
-# QA/Hardware Testing Targets
-###############################################################################
+# Build with DEBUG-level logging enabled at compile-time and runtime
+# Sets LOG_COMPILETIME_LEVEL=1 (DEBUG) and LOG_DEFAULT_LEVEL=1 (DEBUG)
+# Uses DEBUG_FLASH=1 for debug symbols with -Og optimization (fits in flash)
+build-debug:
+	@echo "Building firmware with DEBUG-level logging..."
+	@$(MAKE) clean
+	@$(MAKE) all DEBUG_FLASH=1 LOG_COMPILETIME_LEVEL=1 LOG_DEFAULT_LEVEL=1
+	@echo "Debug build complete with DEBUG-level logging enabled"
 
-# QA Mode: Simple 4-on-the-floor + backbeat (timing verification)
-qa-simple: clean
-	@echo "=== Building QA: SIMPLE (4otf + backbeat, 120 BPM) ==="
-	@$(MAKE) QA_SIMPLE=1
-	@echo "Ready to flash. Run: make program"
+# Build debug firmware and flash to device
+program-debug: build-debug
+	@echo "Flashing debug firmware to Patch.Init module..."
+	@dfu-util -a 0 -s 0x08000000:leave -D $(BIN)
 
-# QA Mode: Lively expressive defaults
-qa-lively: clean
-	@echo "=== Building QA: LIVELY (density=0.7, broken=0.3) ==="
-	@$(MAKE) QA_LIVELY=1
-	@echo "Ready to flash. Run: make program"
+# Listen to serial output from device and log to temp file
+# Uses 'cat' for logging (screen doesn't pipe to tee properly)
+listen:
+	@test -n "$(PORT)" || (echo "No /dev/cu.usbmodem* found. Is device connected?"; exit 1)
+	@mkdir -p "$(LOGDIR)"
+	@ts=$$(date +%Y%m%d_%H%M%S); \
+	  logfile="$(LOGDIR)/daisy_$$ts.log"; \
+	  echo "Listening on $(PORT) @ $(BAUD) baud"; \
+	  echo "Log file: $$logfile"; \
+	  echo ""; \
+	  echo "Press Ctrl-C to quit"; \
+	  echo ""; \
+	  trap "echo ''; echo 'Log saved to: $$logfile'" EXIT; \
+	  stty -f "$(PORT)" $(BAUD) cs8 -cstopb -parenb raw; \
+	  cat "$(PORT)" | tee -a "$$logfile"
 
-# QA Mode: Progressive feature levels
-qa-level0: clean
-	@echo "=== Building QA: LEVEL 0 (Anchor only, clock verification) ==="
-	@$(MAKE) QA_LEVEL=0
-	@echo "Ready to flash. Run: make program"
-
-qa-level1: clean
-	@echo "=== Building QA: LEVEL 1 (Both voices at max) ==="
-	@$(MAKE) QA_LEVEL=1
-	@echo "Ready to flash. Run: make program"
-
-qa-level2: clean
-	@echo "=== Building QA: LEVEL 2 (Variable density) ==="
-	@$(MAKE) QA_LEVEL=2
-	@echo "Ready to flash. Run: make program"
-
-qa-level3: clean
-	@echo "=== Building QA: LEVEL 3 (Add BROKEN/swing) ==="
-	@$(MAKE) QA_LEVEL=3
-	@echo "Ready to flash. Run: make program"
-
-qa-level4: clean
-	@echo "=== Building QA: LEVEL 4 (Add DRIFT/evolution) ==="
-	@$(MAKE) QA_LEVEL=4
-	@echo "Ready to flash. Run: make program"
-
-qa-level5: clean
-	@echo "=== Building QA: LEVEL 5 (Full features) ==="
-	@$(MAKE) QA_LEVEL=5
-	@echo "Ready to flash. Run: make program"
-
-# QA Mode: Production defaults (standard build)
-qa-production: clean
-	@echo "=== Building QA: PRODUCTION (standard defaults) ==="
-	@$(MAKE)
-	@echo "Ready to flash. Run: make program"
+# List available serial ports
+ports:
+	@echo "Available USB serial ports:"
+	@ls -1 /dev/cu.usbmodem* 2>/dev/null || echo "  (none found)"
 
 # Clean build artifacts
 clean:
@@ -292,6 +302,7 @@ rebuild: clean all
 # Host compiler for tests (not ARM)
 HOST_CXX := g++
 HOST_CXXFLAGS := -std=c++17 -Wall -Wextra -g -O0
+HOST_CXXFLAGS += -DHOST_BUILD  # Define for host-side builds
 HOST_CXXFLAGS += -I$(INC_DIR)
 HOST_CXXFLAGS += -I$(SRC_DIR)
 HOST_CXXFLAGS += -I$(DAISYSP_PATH)/Source
@@ -312,6 +323,7 @@ TEST_OBJS := $(TEST_SRCS:$(TEST_DIR)/%.cpp=$(BUILD_DIR)/test_%.o)
 
 # Project sources needed for host-side tests
 TEST_APP_SRCS := $(wildcard $(SRC_DIR)/Engine/*.cpp)
+TEST_APP_SRCS += $(SRC_DIR)/System/logging.cpp
 TEST_APP_OBJS := $(patsubst $(SRC_DIR)/%.cpp,$(BUILD_DIR)/test_app_%.o,$(TEST_APP_SRCS))
 
 # DaisySP sources needed for tests (compiled for host)
@@ -416,40 +428,43 @@ help:
 	@echo "  all              - Build firmware (default)"
 	@echo "  clean            - Remove build artifacts"
 	@echo "  rebuild          - Clean and rebuild"
-	@echo "  program          - Flash firmware to device (DFU mode)"
-	@echo "  test             - Build and run unit tests"
-	@echo ""
-	@echo "QA/Hardware Testing Targets:"
-	@echo "  qa-simple        - 4otf + backbeat, 120 BPM (timing verification)"
-	@echo "  qa-lively        - Lively defaults (density=0.7, broken=0.3)"
-	@echo "  qa-level0        - Level 0: Anchor only (clock verification)"
-	@echo "  qa-level1        - Level 1: Both voices at max density"
-	@echo "  qa-level2        - Level 2: Variable density (0.7)"
-	@echo "  qa-level3        - Level 3: Add BROKEN/swing"
-	@echo "  qa-level4        - Level 4: Add DRIFT/evolution"
-	@echo "  qa-level5        - Level 5: Full feature set"
-	@echo "  qa-production    - Standard production defaults"
-	@echo ""
-	@echo "Library Targets:"
+	@echo "  build-debug      - Build with DEBUG-level logging (DEBUG_FLASH=1, log level=DEBUG)"
 	@echo "  daisy-build      - Build DaisySP library"
 	@echo "  daisy-update     - Update DaisySP to latest version"
 	@echo "  libdaisy-build   - Build libDaisy library"
 	@echo "  libdaisy-update  - Update libDaisy to latest version"
+	@echo "  program          - Flash firmware to device (DFU mode)"
+	@echo "  program-debug    - Build debug firmware and flash to device"
+	@echo "  listen           - Monitor serial output and log to temp file"
+	@echo "  ports            - List available USB serial ports"
+	@echo "  test             - Build and run unit tests"
+	@echo "  test-coverage    - Generate test coverage report"
+	@echo "  help             - Show this help message"
 	@echo ""
 	@echo "Variables:"
-	@echo "  DEBUG=1          - Enable debug symbols and disable optimizations"
-	@echo "  QA_SIMPLE=1      - Build with simple baseline defaults"
-	@echo "  QA_LIVELY=1      - Build with lively baseline defaults"
-	@echo "  QA_LEVEL=N       - Build with feature level N (0-5)"
-	@echo "  BUILD_DIR=dir    - Set build directory (default: build)"
-	@echo "  DAISYSP_PATH=dir - Set DaisySP path (default: ./DaisySP)"
-	@echo "  GCC_PATH=dir     - Set ARM GCC toolchain path (default: use PATH)"
+	@echo "  DEBUG=1                   - Debug symbols + no optimization (-g3 -O0)"
+	@echo "  DEBUG_FLASH=1             - Debug symbols + -Og optimization (fits in flash)"
+	@echo "  LOG_COMPILETIME_LEVEL=N   - Min compile-time log level (default: 1=DEBUG)"
+	@echo "                              0=TRACE, 1=DEBUG, 2=INFO, 3=WARN, 4=ERROR, 5=OFF"
+	@echo "  LOG_DEFAULT_LEVEL=N       - Default runtime log level (default: 2=INFO)"
+	@echo "  BUILD_DIR=dir             - Set build directory (default: build)"
+	@echo "  DAISYSP_PATH=dir          - Set DaisySP path (default: ./DaisySP)"
+	@echo "  GCC_PATH=dir              - Set ARM GCC toolchain path (default: use PATH)"
+	@echo "  BAUD=rate                 - Set serial baud rate (default: 115200)"
+	@echo "  PORT=device               - Set serial port (default: auto-detect)"
+	@echo "  LOGDIR=dir                - Set log directory (default: /tmp)"
 	@echo ""
 	@echo "Examples:"
-	@echo "  make                    - Build firmware"
-	@echo "  make qa-simple && make program  - Build and flash simple test"
-	@echo "  make test               - Run unit tests"
-	@echo "  make program            - Flash firmware"
+	@echo "  make                              - Build firmware"
+	@echo "  make DEBUG=1                      - Build with debug symbols"
+	@echo "  make build-debug                  - Build with DEBUG-level logging"
+	@echo "  make program-debug                - Build debug and flash to device"
+	@echo "  make test                         - Run tests"
+	@echo "  make daisy-update                 - Update DaisySP"
+	@echo "  make program                      - Flash firmware"
+	@echo "  make listen                       - Monitor serial output (Ctrl-A \\ y to quit)"
+	@echo "  make ports                        - Check available serial ports"
+	@echo "  LOG_COMPILETIME_LEVEL=0 make     - Build with TRACE-level logging"
 
 ###############################################################################
 # Dependency Tracking

@@ -1,215 +1,390 @@
 #pragma once
 
 #include <array>
+#include <cstdint>
 
 #include "daisysp.h"
-#include "PatternSkeleton.h"
-#include "PatternData.h"
-#include "ChaosModulator.h"
-#include "GenreConfig.h"
-#include "config.h"
-#include "PulseField.h"
+#include "DuoPulseState.h"
+#include "PatternField.h"
+#include "HitBudget.h"
+#include "GumbelSampler.h"
+#include "VoiceRelation.h"
+#include "GuardRails.h"
+#include "DriftControl.h"
 #include "BrokenEffects.h"
+#include "VelocityCompute.h"
+#include "PhrasePosition.h"
+#include "config.h"
 
 namespace daisysp_idm_grids
 {
 
+/**
+ * DuoPulse v4 Core Sequencer
+ *
+ * The sequencer orchestrates the entire generation pipeline:
+ * 1. Per-bar: Generate hit patterns using archetype blending and Gumbel selection
+ * 2. Per-step: Apply timing effects and fire triggers
+ * 3. Handle clock (internal/external), reset, and phrase boundaries
+ *
+ * The sequencer uses DuoPulseState for all state management and communicates
+ * with the outside world through its public interface.
+ *
+ * Reference: docs/specs/main.md sections 11.2, 11.3
+ */
 class Sequencer
 {
 public:
     Sequencer() = default;
     ~Sequencer() = default;
 
+    /**
+     * Initialize the sequencer with a sample rate
+     *
+     * @param sampleRate Audio sample rate in Hz (typically 48000)
+     */
     void Init(float sampleRate);
 
-    // === DuoPulse v3 Parameter Setters ===
-    // All setters apply immediately (no queuing)
+    // =========================================================================
+    // Core Processing
+    // =========================================================================
 
-    // Performance Mode Primary
-    void SetAnchorDensity(float value);  // K1: Anchor hit frequency (0-1)
-    void SetShimmerDensity(float value); // K2: Shimmer hit frequency (0-1)
-    void SetBroken(float value);         // K3: Pattern regularity (0=straight, 1=IDM chaos)
-    void SetDrift(float value);          // K4: Pattern evolution (0=locked, 1=generative)
-
-    // Performance Mode Shift
-    void SetFuse(float value);           // K1+Shift: Cross-lane energy tilt (0-1, center=balanced)
-    void SetLength(int bars);            // K2+Shift: Loop length (1,2,4,8,16 bars)
-    void SetCouple(float value);         // K3+Shift: Voice interlock strength (0-1)
-    void SetRatchet(float value);        // K4+Shift: Fill intensity (0-1)
-
-    // Config Mode Primary
-    void SetAnchorAccent(float value);   // K1: Anchor accent intensity (0-1)
-    void SetShimmerAccent(float value);  // K2: Shimmer accent intensity (0-1)
-    void SetContour(float value);        // K3: CV output shape (0-1: Vel/Decay/Pitch/Random)
-    void SetTempoControl(float value);   // K4: BPM control (0-1 maps to 90-160)
-
-    // Config Mode Shift
-    void SetSwingTaste(float value);     // K1+Shift: Fine-tune swing within BROKEN's range (0-1)
-    void SetGateTime(float value);       // K2+Shift: Trigger duration (0-1 maps to 5-50ms)
-    void SetHumanize(float value);       // K3+Shift: Extra jitter on top of BROKEN's (0-1)
-    void SetClockDiv(float value);       // K4+Shift: Clock output div/mult (0-1)
-
-    // === Deprecated v2 Setters (for backward compatibility) ===
-    void SetFlux(float value);           // Deprecated: use SetBroken
-    void SetOrbit(float value);          // Deprecated: use SetCouple
-    void SetTerrain(float value);        // Deprecated: genre emerges from BROKEN
-    void SetGrid(float value);           // Deprecated: no pattern selection in v3
-
-    // System Triggers
-    void TriggerTapTempo(uint32_t nowMs);
-    void TriggerReset();
-    void TriggerExternalClock(); // Call on rising edge of external clock
-
+    /**
+     * Process one audio sample
+     *
+     * This is the main entry point called from the audio callback.
+     * It handles clock advancement, step processing, and output updates.
+     *
+     * @return Array of two floats: [anchor velocity, shimmer velocity]
+     */
     std::array<float, 2> ProcessAudio();
-    void ForceNextStepTriggers(bool kick, bool snare, bool hh, bool kickAccent = false);
+
+    /**
+     * Generate patterns for the current bar
+     *
+     * Called automatically at bar boundaries. Performs the full generation
+     * pipeline: budget computation, eligibility masks, Gumbel selection,
+     * voice relationship, and guard rails.
+     */
+    void GenerateBar();
+
+    /**
+     * Process the current step
+     *
+     * Checks hit masks, computes velocities, applies timing effects,
+     * and fires triggers.
+     */
+    void ProcessStep();
+
+    /**
+     * Advance to the next step
+     *
+     * Updates position tracking and handles bar/phrase boundaries.
+     */
+    void AdvanceStep();
+
+    // =========================================================================
+    // External Triggers
+    // =========================================================================
+
+    /**
+     * Trigger a reset based on current reset mode
+     */
+    void TriggerReset();
+
+    /**
+     * Process external clock pulse (rising edge)
+     *
+     * When called, enables exclusive external clock mode:
+     * - Internal Metro is completely disabled
+     * - Steps advance only on external clock rising edges
+     * - No timeout-based fallback
+     */
+    void TriggerExternalClock();
+
+    /**
+     * Disable external clock and restore internal Metro
+     *
+     * Called when external clock is unplugged. Immediately restores
+     * internal clock operation with no delay.
+     */
+    void DisableExternalClock();
+
+    /**
+     * Process tap tempo
+     *
+     * @param nowMs Current system time in milliseconds
+     */
+    void TriggerTapTempo(uint32_t nowMs);
+
+    /**
+     * Request pattern reseed (takes effect at phrase boundary)
+     */
+    void TriggerReseed();
+
+    /**
+     * Check if Field X/Y has changed significantly
+     *
+     * Compares current effective Field X/Y values (including CV modulation)
+     * with previous values. If change exceeds threshold (0.1 or 10%), sets
+     * fieldChangeRegenPending_ flag and updates previous values.
+     *
+     * @return true if regeneration should be triggered
+     */
+    bool CheckFieldChange();
+
+    // =========================================================================
+    // Parameter Setters (Performance Mode Primary)
+    // =========================================================================
+
+    void SetEnergy(float value);
+    void SetBuild(float value);
+    void SetFieldX(float value);
+    void SetFieldY(float value);
+
+    // =========================================================================
+    // Parameter Setters (Performance Mode Shift)
+    // =========================================================================
+
+    void SetPunch(float value);
+    void SetGenre(float value);
+    void SetDrift(float value);
+    void SetBalance(float value);
+
+    // =========================================================================
+    // Parameter Setters (Config Mode Primary)
+    // =========================================================================
+
+    void SetPatternLength(int steps);
+    void SetSwing(float value);
+    void SetAuxMode(float value);
+    void SetResetMode(float value);
+
+    // =========================================================================
+    // Parameter Setters (Config Mode Shift)
+    // =========================================================================
+
+    void SetPhraseLength(int bars);
+    void SetClockDivision(int div);
+    void SetAuxDensity(float value);
+    void SetVoiceCoupling(float value);
+
+    // =========================================================================
+    // CV Modulation Inputs
+    // =========================================================================
+
+    void SetEnergyCV(float value);
+    void SetBuildCV(float value);
+    void SetFieldXCV(float value);
+    void SetFieldYCV(float value);
+    void SetFlavorCV(float value);
+
+    // =========================================================================
+    // Legacy v3 Compatibility (forward to v4 equivalents)
+    // =========================================================================
+
+    void SetAnchorDensity(float value) { SetEnergy(value); }
+    void SetShimmerDensity(float value) { SetBalance(1.0f - value); }
+    void SetBroken(float value) { SetFlavorCV(value); }
+    void SetFuse(float value) { SetBalance(value); }
+    void SetLength(int bars) { SetPhraseLength(bars); }
+    void SetCouple(float value) { SetVoiceCoupling(value); }
+    void SetRatchet(float value) { SetBuild(value); }
+    void SetAnchorAccent(float value) { SetPunch(value); }
+    void SetShimmerAccent(float value) { (void)value; }
+    void SetContour(float value) { (void)value; }
+    void SetTempoControl(float value);
+    void SetSwingTaste(float value) { SetSwing(value); }
+    void SetGateTime(float value);
+    void SetHumanize(float value) { (void)value; }
+    void SetClockDiv(float value);
+    void SetFlux(float value) { SetFlavorCV(value); }
+    void SetOrbit(float value) { SetVoiceCoupling(value); }
+    void SetTerrain(float value) { (void)value; }
+    void SetGrid(float value) { (void)value; }
+
+    // =========================================================================
+    // State Queries
+    // =========================================================================
 
     bool IsGateHigh(int channel) const;
-    bool IsClockHigh() const { return clockTimer_ > 0; }
+    bool IsClockHigh() const;
 
-    float GetBpm() const { return currentBpm_; }
-    float GetSwingPercent() const { return currentSwing_; }
-    float GetBroken() const { return broken_; }
-    float GetDrift() const { return drift_; }
-    float GetRatchet() const { return ratchet_; }
+    /**
+     * Check if a trigger event is pending (latched, survives after pulse ends)
+     * Use this for reliable edge detection from main loop.
+     * @param channel 0=anchor, 1=shimmer
+     */
+    bool HasPendingTrigger(int channel) const;
+
+    /**
+     * Acknowledge a pending trigger event (clears the latch)
+     * Call this after detecting and logging the event.
+     * @param channel 0=anchor, 1=shimmer
+     */
+    void AcknowledgeTrigger(int channel);
+
+    float GetBpm() const { return state_.currentBpm; }
+    float GetSwingPercent() const;
+    float GetBroken() const { return state_.controls.flavorCV; }
+    float GetDrift() const { return state_.controls.drift; }
+    float GetRatchet() const { return state_.controls.build; }
+
+    int GetCurrentPatternIndex() const { return 0; }
+
     const PhrasePosition& GetPhrasePosition() const { return phrasePos_; }
-    void  SetBpm(float bpm);
-    void  SetAccentHoldMs(float milliseconds);
-    void  SetHihatHoldMs(float milliseconds);
 
-    int  GetCurrentPatternIndex() const { return currentPatternIndex_; }
+    void SetBpm(float bpm);
+    void SetAccentHoldMs(float milliseconds);
+    void SetHihatHoldMs(float milliseconds);
+
+    void ForceNextStepTriggers(bool kick, bool snare, bool hh, bool kickAccent = false);
+
+    // =========================================================================
+    // Debug Getters (safe to call from main loop)
+    // =========================================================================
+
+    /** Get current anchor mask (for debug logging, 64-bit for long patterns) */
+    uint64_t GetAnchorMask() const { return state_.sequencer.anchorMask; }
+
+    /** Get current shimmer mask (for debug logging, 64-bit for long patterns) */
+    uint64_t GetShimmerMask() const { return state_.sequencer.shimmerMask; }
+
+    /** Get current aux mask (for debug logging, 64-bit for long patterns) */
+    uint64_t GetAuxMask() const { return state_.sequencer.auxMask; }
+
+    /** Get blended archetype weight at step (for debug logging) */
+    float GetBlendedAnchorWeight(int step) const {
+        return (step >= 0 && step < 32) ? state_.blendedArchetype.anchorWeights[step] : 0.0f;
+    }
+
+    /** Get current bar number (for detecting bar boundaries in main loop) */
+    int GetCurrentBar() const { return state_.sequencer.currentBar; }
+
+    /** Get current step within bar */
+    int GetCurrentStep() const { return state_.sequencer.currentStep; }
+
+    /** Get AUX output voltage (0-5V, mode-dependent) */
+    float GetAuxVoltage() const { return state_.outputs.aux.GetVoltage(); }
+
+    /** Check if AUX trigger is high (for HAT/EVENT modes) */
+    bool IsAuxHigh() const { return state_.outputs.aux.trigger.high; }
 
 private:
-    // Tempo range per spec: 90-160 BPM
-    static constexpr float kMinTempo = 90.0f;
-    static constexpr float kMaxTempo = 160.0f;
+    // =========================================================================
+    // Internal Methods
+    // =========================================================================
 
-    // Gate time range: 5-50ms
-    static constexpr float kMinGateMs = 5.0f;
-    static constexpr float kMaxGateMs = 50.0f;
+    /**
+     * Process internal clock tick
+     *
+     * @return true if a step tick occurred
+     */
+    bool ProcessInternalClock();
 
-    float    sampleRate_ = 48000.0f;
-    float    currentBpm_ = 120.0f;
-    float    lastTempoControl_ = -1.0f;
-    uint32_t lastTapTime_ = 0;
+    /**
+     * Update phrase position tracking
+     */
+    void UpdatePhrasePosition();
 
-    int stepIndex_ = 0;
+    /**
+     * Compute blended archetype from current field position
+     */
+    void BlendArchetype();
 
-    // === DuoPulse v3 Parameters ===
-    
-    // Performance Primary
-    float anchorDensity_  = 0.5f; // K1: Hit frequency for anchor
-    float shimmerDensity_ = 0.5f; // K2: Hit frequency for shimmer
-    float broken_         = 0.0f; // K3: Pattern regularity (0=straight, 1=chaos)
-    float drift_          = 0.0f; // K4: Pattern evolution (0=locked, 1=generative)
+    /**
+     * Compute timing offsets for the current bar
+     */
+    void ComputeTimingOffsets();
 
-    // Performance Shift
-    float fuse_   = 0.5f; // K1+Shift: Cross-lane energy tilt
-    int   loopLengthBars_ = 4;    // K2+Shift: Loop length
-    float couple_ = 0.5f; // K3+Shift: Voice interlock strength
-    float ratchet_ = 0.0f; // K4+Shift: Fill intensity (0-1)
+    /**
+     * Update derived control parameters
+     */
+    void UpdateDerivedControls();
 
-    // Config Primary
-    float anchorAccent_  = 0.5f; // K1: Accent intensity for anchor
-    float shimmerAccent_ = 0.5f; // K2: Accent intensity for shimmer
-    float contour_       = 0.0f; // K3: CV output shape
-    // K4: Tempo (handled by currentBpm_)
+    /**
+     * Get timing offset for current step in samples
+     */
+    int GetStepTimingOffset() const;
 
-    // Config Shift
-    float swingTaste_ = 0.5f; // K1+Shift: Swing fine-tune
-    float gateTime_   = 0.2f; // K2+Shift: Gate duration (normalized 0-1)
-    float humanize_   = 0.0f; // K3+Shift: Micro-timing jitter
-    float clockDiv_   = 0.5f; // K4+Shift: Clock division
+    /**
+     * Check if it's time to fire trigger for a voice
+     */
+    bool ShouldFireTrigger(Voice voice) const;
 
-    // Deprecated v2 parameters (kept for compatibility, mapped to v3)
-    float flux_    = 0.0f; // Deprecated: mapped to broken_
-    float orbit_   = 0.5f; // Deprecated: mapped to couple_
-    float terrain_ = 0.0f; // Deprecated: genre from BROKEN
-    float grid_    = 0.0f; // Deprecated: no pattern selection
+    /**
+     * Convert samples to hold time
+     */
+    int HoldMsToSamples(float milliseconds) const;
 
-    // Swing state
-    float currentSwing_       = 0.5f;  // Current effective swing (0.5 = straight)
-    int   swingDelaySamples_  = 0;     // Delay to apply to off-beat steps
-    int   swingDelayCounter_  = 0;     // Countdown for delayed triggers
-    bool  pendingAnchorTrig_  = false; // Anchor trigger waiting for swing delay
-    bool  pendingShimmerTrig_ = false; // Shimmer trigger waiting for swing delay
-    float pendingAnchorVel_   = 0.0f;  // Velocity for pending anchor
-    float pendingShimmerVel_  = 0.0f;  // Velocity for pending shimmer
-    bool  pendingClockTrig_   = false; // Clock trigger waiting for swing delay
-    int   stepDurationSamples_ = 0;    // Duration of one 16th note in samples
+    // =========================================================================
+    // State
+    // =========================================================================
 
-    // Orbit/Shadow state (for Shadow mode: shimmer echoes anchor with 1-step delay)
-    bool  lastAnchorTrig_ = false;     // Whether anchor triggered on previous step
-    float lastAnchorVel_  = 0.0f;      // Velocity of previous anchor trigger
+    /// Complete DuoPulse state
+    DuoPulseState state_;
 
-    // Humanize state
-    uint32_t humanizeRngState_ = 0x12345678; // Simple RNG for humanize jitter
-
-    // Phrase position tracking
+    /// Phrase position for v3 compatibility
     PhrasePosition phrasePos_;
 
-    // Contour CV state (for decay/hold between triggers)
-    float anchorContourCV_  = 0.0f;
-    float shimmerContourCV_ = 0.0f;
+    /// Internal clock metro
+    daisysp::Metro metro_;
 
-    int gateTimers_[2] = {0, 0}; // Anchor, Shimmer
-    int gateDurationSamples_ = 0;
+    /// Sample rate
+    float sampleRate_ = 48000.0f;
+
+    /// Samples per 16th note step
+    float samplesPerStep_ = 0.0f;
+
+    /// Sample counter for step timing
+    int stepSampleCounter_ = 0;
+
+    /// Timing offset remaining for delayed trigger
+    int triggerDelayRemaining_[3] = {0, 0, 0};
+
+    /// Whether triggers are pending (delayed by swing/jitter)
+    bool triggerPending_[3] = {false, false, false};
+
+    /// Pending velocities for delayed triggers
+    float pendingVelocity_[3] = {0.0f, 0.0f, 0.0f};
+
+    /// Pending accent flags for delayed triggers
+    bool pendingAccent_[3] = {false, false, false};
+
+    // External clock state (exclusive mode - see spec section 3.4)
+    bool externalClockActive_ = false;  // true = external clock controls steps, internal Metro disabled
+    bool externalClockTick_ = false;    // true = external clock rising edge detected, consume on next ProcessAudio()
+
+    // Clock division/multiplication state
+    int clockPulseCounter_ = 0;         // Counts pulses for division (÷2, ÷4, ÷8)
+    uint32_t lastExternalClockTime_ = 0; // For measuring external clock interval (multiplication)
+    uint32_t externalClockInterval_ = 0; // Measured interval between pulses (in samples)
+    int multiplicationSubdivCounter_ = 0; // Counts subdivisions for multiplication
+
+    // Tap tempo state
+    uint32_t lastTapTime_ = 0;
+
+    // Force trigger state (for testing)
+    bool forceNextTriggers_ = false;
+    bool forcedTriggers_[3] = {false, false, false};
+    bool forcedKickAccent_ = false;
+
+    // Clock output state
     int clockTimer_ = 0;
     int clockDurationSamples_ = 0;
 
-    // Clock Division State
-    int clockDivCounter_ = 0;  // Counter for clock division
+    // Hold times
+    int accentHoldSamples_ = 0;
+    int hihatHoldSamples_ = 0;
 
-    // Ratchet State (32nd note subdivisions)
-    int   ratchetTimer_ = 0;        // Countdown to ratchet trigger
-    bool  ratchetAnchorPending_ = false;
-    bool  ratchetShimmerPending_ = false;
-    float ratchetAnchorVel_ = 0.0f;
-    float ratchetShimmerVel_ = 0.0f;
+    // Field change tracking (Task 23: Immediate Field Updates)
+    float previousFieldX_ = 0.0f;
+    float previousFieldY_ = 0.0f;
+    bool fieldChangeRegenPending_ = false;
 
-    // External Clock Logic
-    bool usingExternalClock_ = false;
-    int  externalClockTimeout_ = 0;
-    bool mustTick_ = false;
-
-    daisysp::Metro   metro_;
-    ChaosModulator   chaosLow_;
-    ChaosModulator   chaosHigh_;
-    bool             forceNextTriggers_ = false;
-    bool             forcedTriggers_[3] = {false, false, false};
-    bool             forcedKickAccent_ = false;
-    int              accentTimer_ = 0;
-    int              hihatTimer_ = 0;
-    int              accentHoldSamples_ = 0;
-    int              hihatHoldSamples_ = 0;
-    
-    // Output Levels (Velocity)
-    float            outputLevels_[2] = {0.0f, 0.0f};
-
-    // Current pattern index (0-15)
-    int  currentPatternIndex_ = 0;
-
-    void  TriggerGate(int channel);
-    void  TriggerClock();
-    void  ProcessGates();
-    void  ProcessSwingDelay();
-    void  ProcessRatchet();
-    void  UpdateSwingParameters();
-    int   HoldMsToSamples(float milliseconds) const;
-    float NextHumanizeRandom(); // Returns 0-1 for humanize jitter
-    int   GetClockDivisionFactor() const; // Returns 1, 2, 4 for division or -2, -4 for multiplication
-
-    // === DuoPulse v3: Pulse Field State ===
-    PulseFieldState pulseFieldState_;
-    
-    // PulseField-based trigger generation (v3)
-    // Uses weighted pulse field algorithm with BROKEN/DRIFT controls
-    void GetPulseFieldTriggers(int step, float anchorDens, float shimmerDens,
-                               bool& anchorTrig, bool& shimmerTrig,
-                               float& anchorVel, float& shimmerVel);
-    
-    // Apply BROKEN effects stack (swing from broken is handled separately)
-    void ApplyBrokenEffects(int& step, float& anchorVel, float& shimmerVel,
-                            bool anchorTrig, bool shimmerTrig);
+    // Tempo range
+    static constexpr float kMinTempo = 30.0f;
+    static constexpr float kMaxTempo = 300.0f;
 };
 
 } // namespace daisysp_idm_grids
