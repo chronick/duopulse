@@ -130,7 +130,7 @@ struct DuoPulseState
     {
         return sequencer.GetPhraseProgress(
             controls.patternLength,
-            controls.phraseLength
+            controls.GetDerivedPhraseLength()
         );
     }
 
@@ -150,7 +150,7 @@ struct DuoPulseState
     void AdvanceStep()
     {
         stepSampleCounter = 0;
-        sequencer.AdvanceStep(controls.patternLength, controls.phraseLength);
+        sequencer.AdvanceStep(controls.patternLength, controls.GetDerivedPhraseLength());
 
         // Update derived parameters based on new position
         controls.UpdateDerived(GetPhraseProgress());

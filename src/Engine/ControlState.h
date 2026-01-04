@@ -318,10 +318,10 @@ struct ControlState
     void Init()
     {
         // Performance primary
-        energy = 0.5f;
+        energy = 0.6f;   // Match MainControlState (Task 24)
         build  = 0.0f;
-        fieldX = 0.0f;
-        fieldY = 0.0f;
+        fieldX = 0.5f;   // Match MainControlState (Task 24)
+        fieldY = 0.33f;  // Match MainControlState (Task 24)
 
         // Performance shift
         punch   = 0.5f;

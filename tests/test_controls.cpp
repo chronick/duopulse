@@ -445,8 +445,8 @@ TEST_CASE("Control State Updates", "[ControlProcessor][Integration]")
         // energyCV should be +0.25
         REQUIRE(state.energyCV == Approx(0.25f));
 
-        // Effective energy should be 0.75
-        REQUIRE(state.GetEffectiveEnergy() == Approx(0.75f));
+        // Effective energy should be 0.85 (0.6 base + 0.25 CV)
+        REQUIRE(state.GetEffectiveEnergy() == Approx(0.85f));
     }
 
     SECTION("Effective values are clamped")
