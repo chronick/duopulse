@@ -2,8 +2,8 @@
 
 **Target Platform**: Daisy Patch.init() (Electro-Smith)
 **Version**: 4.2
-**Status**: Implementation Spec
-**Last Updated**: 2026-01-01
+**Status**: ✅ Complete (ready for hardware testing)
+**Last Updated**: 2026-01-03
 
 ### Pending Changes (Active Tasks)
 
@@ -17,9 +17,11 @@ The following changes are planned in active tasks and will update this spec when
 
 | Task | Date | Changes |
 |------|------|---------|
+| **Task 26** | 2026-01-03 | Bug fixes: phrase length auto-derivation, removed freed controls from main loop, consistent boot defaults |
 | **Task 24** | 2026-01-01 | Boot behavior: All settings reset to defaults on power-on, performance knobs read from hardware, no persistence |
 | **Task 23** | 2026-01-01 | Immediate field updates: Field X/Y changes trigger regeneration at beat boundaries (max 1-beat latency) |
 | **Task 22** | 2026-01-01 | Simplified config mode: auto-derive phrase length, hardcode reset mode to STEP, remove INTERLOCK coupling |
+| **Task 21** | 2025-12-31 | Musicality improvements: archetype weight retuning, velocity contrast widening (30-45%), Euclidean foundation, BUILD phases, balance range 0-150% |
 
 ---
 
