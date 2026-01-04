@@ -6,7 +6,7 @@ description: |
   Use after implementation for quality gates before committing.
 tools: Read, Grep, Glob, Bash
 permissionMode: default
-model: sonnet
+model: opus
 color: cyan
 ---
 

@@ -6,7 +6,7 @@ description: |
   Use for any code writing task that needs focused, reliable file modifications.
 tools: Read, Grep, Glob, Edit, Write
 permissionMode: acceptEdits
-model: sonnet
+model: opus
 color: green
 ---
 
