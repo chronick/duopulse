@@ -31,21 +31,34 @@ cat docs/tasks/index.md
 grep -r "relevant_term" src/ --include="*.cpp" --include="*.h" | head -20
 ```
 
-### 3. Analyze Scope
-- Is this one task or multiple?
-- What are the dependencies?
-- What's the risk level?
-- Estimate: How many 1-2 hour tasks?
+### 3. Analyze Scope (Parallel-First Design)
+
+**Goal**: Create self-contained tasks that can be executed in any order.
+
+- Can all related work fit in one task? (Prefer larger self-contained tasks)
+- Are there genuinely independent pieces? (Only split if truly unrelated)
+- **Avoid dependencies** - if work is coupled, keep it in one task
+- Tasks can be epic-sized; don't artificially split tightly-coupled work
 
 ### 4. Create Task Breakdown
 
+**All tasks MUST have a numeric ID.** Find next ID:
+```bash
+grep -r "^id:" docs/tasks/ | sed 's/.*id: //' | sort -n | tail -1
+```
+
 For each task, define:
+- **ID**: Next sequential number (REQUIRED)
 - **Slug**: kebab-case identifier
 - **Title**: Clear, descriptive name
-- **Subtasks**: 3-8 items, each 15-30 minutes
+- **Subtasks**: Group all related work together
 - **Acceptance Criteria**: How to verify completion
 - **Files to Modify**: Expected changes
-- **Risk**: Low/Medium/High
+
+**Dependency Check**: Before adding `depends_on`:
+1. Can this work be included in the blocking task instead?
+2. Can the task be restructured to avoid the dependency?
+3. Is the dependency truly unavoidable (different codebase areas)?
 
 ### 5. Present Plan for Confirmation
 
@@ -56,14 +69,19 @@ Before creating files, present:
 ### Analysis
 <1-2 paragraphs on what you learned>
 
-### Task Breakdown
-1. **<slug-1>** (~Xh): <description>
-   - Key files: <list>
-   - Risk: <level>
+### Task Breakdown (Parallel-Executable)
 
-2. **<slug-2>** (~Xh): <description> [depends: slug-1]
+1. **Task <ID>: <slug-1>**: <description>
    - Key files: <list>
-   - Risk: <level>
+   - Self-contained: Yes / Depends on: <only if unavoidable>
+
+2. **Task <ID+1>: <slug-2>**: <description>
+   - Key files: <list>
+   - Self-contained: Yes
+
+### Parallelization
+- Tasks can be executed in any order: [Yes/No]
+- If No, explain unavoidable dependencies
 
 ### Ready to create task files?
 ```
@@ -81,8 +99,8 @@ After confirmation:
 
 ```markdown
 ---
-id: <next-available-id>
-slug: <kebab-case-identifier>
+id: <next-sequential-number>        # REQUIRED - must be unique
+slug: <id>-<kebab-case-name>        # e.g., "27-voice-redesign"
 title: "<Descriptive Title>"
 status: pending
 created_date: <YYYY-MM-DD>
@@ -90,8 +108,8 @@ updated_date: <YYYY-MM-DD>
 branch: feature/<slug>
 spec_refs:
   - "<spec-section-reference>"
-depends_on: []              # Add task IDs if dependencies exist
-related: []                 # Add related task IDs
+# depends_on: []            # AVOID - group related work instead
+# related: []               # Optional - non-blocking references only
 ---
 
 # Task <ID>: <Title>
@@ -133,21 +151,22 @@ related: []                 # Add related task IDs
 
 | Field | Required | Description |
 |-------|----------|-------------|
-| `id` | Yes | Unique task number |
-| `slug` | Yes | kebab-case, matches filename |
-| `title` | Yes | Human-readable title |
-| `status` | Yes | pending, in-progress, blocked, completed, archived |
-| `created_date` | Yes | ISO date (YYYY-MM-DD) |
-| `updated_date` | Yes | ISO date, update on any change |
-| `branch` | Yes | Git branch name |
+| `id` | **Yes** | Unique task number (sequential) |
+| `slug` | **Yes** | `<id>-<kebab-case-name>`, matches filename |
+| `title` | **Yes** | Human-readable title |
+| `status` | **Yes** | pending, in-progress, blocked, completed, archived |
+| `created_date` | **Yes** | ISO date (YYYY-MM-DD) |
+| `updated_date` | **Yes** | ISO date, update on any change |
+| `branch` | **Yes** | Git branch name (`feature/<slug>`) |
 | `spec_refs` | No | List of spec section references |
-| `depends_on` | No | List of blocking task IDs |
-| `related` | No | List of related task IDs |
-| `parent_task` | No | Parent task ID if this is a subtask |
+| `depends_on` | **Avoid** | Only if truly unavoidable |
+| `related` | No | Non-blocking references |
 
 ## Important
 
 - Do NOT implement any code in planning mode
 - Do NOT delegate to code-writer
-- DO create complete, actionable task definitions
-- DO suggest using `/sdd-task <slug>` to begin implementation after planning
+- DO assign numeric IDs to ALL tasks
+- DO create self-contained, parallel-executable tasks
+- DO suggest using `/sdd-task <id>` to begin implementation after planning
+- AVOID creating dependency chains - group coupled work instead

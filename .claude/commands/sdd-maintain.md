@@ -27,6 +27,9 @@ find docs/tasks -name "*.md" -type f | grep -v index.md | sort
 
 echo "=== TASK INDEX ==="
 cat docs/tasks/index.md
+
+echo "=== TASK IDS ==="
+grep -r "^id:" docs/tasks/ | sort -t: -k3 -n
 ```
 
 For each task file, verify:
@@ -35,6 +38,29 @@ For each task file, verify:
 - [ ] Status in file matches status in index
 - [ ] Completed tasks are in `completed/` folder (if using that structure)
 - [ ] Active tasks have corresponding branches
+- [ ] **All tasks have numeric IDs** (no ID = CRITICAL issue)
+- [ ] IDs are unique (no duplicates)
+
+### 1b. Task Design Quality Audit
+
+```bash
+echo "=== TASKS WITH DEPENDENCIES ==="
+grep -r "depends_on:" docs/tasks/ | grep -v "depends_on: \[\]" | grep -v "# depends_on"
+
+echo "=== BLOCKED TASKS ==="
+grep -r "status: blocked" docs/tasks/
+```
+
+Check for:
+- [ ] **Minimal dependencies** - flag tasks with `depends_on` for review
+- [ ] No circular dependencies
+- [ ] Blocked tasks have clear `blocked_reason`
+- [ ] Consider: Can blocked work be merged into blocking task?
+
+**Dependency Warning Thresholds:**
+- 0 dependencies: Ideal (parallel-first design)
+- 1 dependency: Acceptable if unavoidable
+- 2+ dependencies: Flag for redesign consideration
 
 ### 2. Git State Audit
 
@@ -126,6 +152,8 @@ Check for:
 
 ## Summary
 - Tasks: <N total, X pending, Y in-progress, Z complete>
+- Task IDs: <all numbered | X missing IDs>
+- Dependencies: <none | X tasks have depends_on>
 - Git: <clean | issues found>
 - Spec: <aligned | needs update>
 - Build: <passing | failing>
@@ -199,6 +227,20 @@ git commit -m "docs: SDD maintenance - fix tracking inconsistencies
 ```
 
 ## Common Issues & Fixes
+
+### "Task missing numeric ID" (CRITICAL)
+- All tasks MUST have a numeric ID in frontmatter
+- Find next available: `grep -r "^id:" docs/tasks/ | sed 's/.*id: //' | sort -n | tail -1`
+- Add `id: <next-number>` to frontmatter
+
+### "Task has depends_on" (WARNING)
+- Review if dependency is truly unavoidable
+- Consider: Can the blocking work be included in this task?
+- If unavoidable: Document clearly, keep chain short (max 1-2 levels)
+
+### "Multiple tasks in dependency chain" (WARNING)
+- Prefer merging tightly-coupled tasks into one larger task
+- Tasks should be executable in parallel when possible
 
 ### "Task marked complete but no commits"
 - Either: Task wasn't actually implemented (revert to pending)

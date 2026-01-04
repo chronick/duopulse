@@ -22,16 +22,18 @@ Activate this skill when:
 - Never implement behavior not in the spec
 
 ### 2. Tasks Are Contracts
-- Every non-trivial change requires an indexed task
+- Every non-trivial change requires a **numbered** task
 - Tasks live in `docs/tasks/` (indexed in `index.md`)
 - Task defines scope, acceptance criteria, and completion conditions
-- Don't exceed task scope without discussion
+- All tasks MUST have a numeric ID (sequential, unique)
 
-### 3. Small Increments
-- Tasks should be 1-2 hours max
-- Subtasks should be 15-30 minutes each
-- Prefer multiple small PRs over one large PR
-- Each increment should be testable independently
+### 3. Self-Contained Tasks (Parallel-First Design)
+- **Tasks should have zero or minimal dependencies**
+- Group related work within the same task (can be epic-sized)
+- Tasks can be executed in parallel or any order
+- Dependencies (`depends_on`) are **discouraged** but allowed when unavoidable
+- Prefer larger self-contained tasks over many interdependent small ones
+- Each task should be completable without waiting on other tasks
 
 ### 4. Verify Everything
 - Trust tool output, not agent claims
@@ -43,24 +45,25 @@ Activate this skill when:
 
 ```
 PENDING → IN-PROGRESS → COMPLETE
-    ↓         ↓
-  BLOCKED   (fix blockers)
+              ↓
+           BLOCKED (rare - avoid if possible)
 ```
 
 ### Pending
 - Task defined but not started
 - No branch created yet
-- Waiting for dependencies or prioritization
+- Ready to start at any time (no dependencies blocking it)
 
 ### In-Progress
 - Feature branch created
 - Active development
 - Subtasks being completed
 
-### Blocked
-- Cannot proceed due to external dependency
-- Document blocker in task file
-- May need spec clarification or upstream changes
+### Blocked (Discouraged)
+- Cannot proceed due to **unavoidable** external dependency
+- Document blocker clearly in task file
+- Consider: Can the blocking work be included in this task instead?
+- Consider: Can the task be restructured to avoid the dependency?
 
 ### Complete
 - All subtasks checked off
@@ -96,8 +99,8 @@ All task files MUST use YAML frontmatter for metadata. This enables tooling, aut
 
 ```yaml
 ---
-id: <number>                    # Task ID (unique, sequential)
-slug: <kebab-case>              # URL/branch-friendly identifier
+id: <number>                    # Task ID (unique, sequential) - REQUIRED
+slug: <id>-<kebab-case-name>    # e.g., "27-voice-redesign" - includes ID
 title: <string>                 # Human-readable title
 status: <enum>                  # pending | in-progress | blocked | completed | archived
 created_date: <YYYY-MM-DD>      # When task was created
@@ -118,20 +121,27 @@ commits: [<hash>, ...]          # Key commit hashes
 archived_date: <YYYY-MM-DD>     # When task was archived
 superseded_by: <task-id>        # If replaced by another task
 
-# Relationships
+# Relationships (use sparingly - prefer self-contained tasks)
 parent_task: <task-id>          # Parent task if subtask
-depends_on: [<task-id>, ...]    # Blocking dependencies
-blocks: [<task-id>, ...]        # Tasks this blocks
-related: [<task-id>, ...]       # Related but not blocking
+depends_on: [<task-id>, ...]    # DISCOURAGED: Blocking dependencies
+related: [<task-id>, ...]       # Non-blocking references
 
 # Spec references
 spec_refs: [<section>, ...]     # Spec sections this implements
 
-# Blocking info
+# Blocking info (rare - avoid if possible)
 blocked_reason: <string>        # Why task is blocked
 blocked_date: <YYYY-MM-DD>      # When it became blocked
 ---
 ```
+
+### Task Numbering Rules
+
+1. **All tasks MUST have a numeric ID** - no exceptions
+2. IDs are sequential and unique across all tasks
+3. ID determines filename: `<id>-<slug>.md`
+4. Never reuse IDs from archived/completed tasks
+5. Next ID = highest existing ID + 1
 
 ### Complete Task File Template
 
@@ -193,12 +203,13 @@ spec_refs:
 
 ### Frontmatter Validation Rules
 
-1. **id** must be unique across all tasks
-2. **slug** must match filename: `<id>-<slug>.md`
+1. **id** must be unique across all tasks (REQUIRED - no exceptions)
+2. **slug** must include id and match filename: `<id>-<name>.md` (e.g., `27-voice-redesign`)
 3. **branch** must follow pattern: `feature/<slug>` or `fix/<slug>`
 4. **dates** must be ISO 8601 format (YYYY-MM-DD)
 5. **status** must be one of: `pending`, `in-progress`, `blocked`, `completed`, `archived`
 6. **commits** should include merge commit when completed
+7. **depends_on** should be empty or minimal (parallel-first design)
 
 ## Task Index Format
 
@@ -279,6 +290,9 @@ Before marking a task complete:
 - Skip tests ("I'll add them later")
 - Claim completion without verification
 - Leave tasks in-progress indefinitely
+- Create tasks without numeric IDs
+- Create chains of dependent tasks when they could be combined
+- Split tightly-coupled work into separate tasks
 
 **Do:**
 - Create a task for non-trivial changes
@@ -286,3 +300,32 @@ Before marking a task complete:
 - Test after every subtask
 - Verify with git diff / git log
 - Complete or explicitly pause tasks
+- Assign sequential numeric IDs to all tasks
+- Group related work into single self-contained tasks
+- Design tasks that can be executed in parallel
+
+## Task Design Guidelines
+
+### When to Combine Work into One Task
+
+Combine into a single task when:
+- Work touches the same files/modules
+- Changes are tightly coupled (A can't work without B)
+- Features build on each other within the same area
+- Testing requires both pieces to be present
+
+### When to Split into Separate Tasks
+
+Split into separate tasks when:
+- Work is in completely different areas of the codebase
+- Either piece can be shipped independently
+- Different expertise or focus required
+- Genuinely no coupling between the work
+
+### Handling Unavoidable Dependencies
+
+If a dependency truly cannot be avoided:
+1. Document clearly in `blocked_reason`
+2. Consider if the blocking work can be included in this task
+3. Keep the dependency chain as short as possible (max 1-2 levels)
+4. Never create circular dependencies

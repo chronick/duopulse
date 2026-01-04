@@ -12,9 +12,11 @@ You are in **IMPLEMENTATION MODE**. Your mission is to complete this task fully,
 $ARGUMENTS
 
 This can be:
-- Task ID: "Task 22"
-- Task slug: "control-simplification"  
+- Task ID: "22" or "Task 22" (preferred - all tasks are numbered)
+- Task slug: "22-control-simplification"
 - File path: "docs/tasks/active/22-control-simplification.md"
+
+**Note**: All tasks have numeric IDs. Use the ID for unambiguous reference.
 
 ## Implementation Workflow
 
