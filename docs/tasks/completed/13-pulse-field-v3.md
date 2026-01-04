@@ -1,19 +1,21 @@
 ---
-id: chronick/daisysp-idm-grids-13
-title: "DuoPulse v3: Algorithmic Pulse Field"
-status: "in_progress"
-created_date: "2025-12-16"
-last_updated: "2025-12-17T12:00:00Z"
-owner: "user/ai"
+id: 13
+slug: pulse-field-v3
+title: DuoPulse v3: Algorithmic Pulse Field
+status: completed
+created_date: 2025-12-16
+updated_date: 2025-12-17
+completed_date: 2025-12-17
+branch: feature/pulse-field-v3
 spec_refs:
-  - "pulse-field"
-  - "voice-weights"
-  - "broken-effects"
-  - "phrase-modulation"
-  - "fuse-balance"
-  - "drift-control"
-  - "couple-interlock"
-  - "led-feedback"
+  - pulse-field
+  - voice-weights
+  - broken-effects
+  - phrase-modulation
+  - fuse-balance
+  - drift-control
+  - couple-interlock
+  - led-feedback
 ---
 
 # Feature: DuoPulse v3 — Algorithmic Pulse Field [pulse-field-v3]

@@ -1,10 +1,12 @@
 ---
-id: chronick/daisysp-idm-grids-05"
-title: "Phase 4.1: Attenuation Bugfix"
-status: "completed"
-created_date: "2025-11-24"
-last_updated: "2025-11-26"
-owner: "user/ai"
+id: 5
+slug: attenuation-fix
+title: Phase 4.1: Attenuation Bugfix
+status: completed
+created_date: 2025-11-24
+updated_date: 2025-11-26
+completed_date: 2025-11-26
+branch: phase-4
 ---
 
 # Task: Phase 4.1 - Attenuation Bugfix

@@ -1,8 +1,18 @@
-# Task 16: DuoPulse v4 Hardware Validation & Debug
+---
+id: 16
+slug: v4-hardware-validation
+title: "DuoPulse v4 Hardware Validation & Debug"
+status: completed
+created_date: 2025-12-26
+updated_date: 2025-12-29
+completed_date: 2025-12-29
+branch: task/16-v4-hardware-validation
+spec_refs:
+  - "4-11 All v4 Systems"
+related: [17, 18, 19, 20]
+---
 
-**Status**: COMPLETED
-**Branch**: `task/16-v4-hardware-validation`  
-**Spec Reference**: docs/specs/main.md sections 4-11
+# Task 16: DuoPulse v4 Hardware Validation & Debug
 
 ---
 

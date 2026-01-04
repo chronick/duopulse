@@ -1,9 +1,18 @@
-# Task 25: VOICE Control Redesign
+---
+id: 25
+slug: voice-control-redesign
+title: "VOICE Control Redesign"
+status: backlog
+created_date: 2025-12-30
+updated_date: 2025-12-30
+branch: TBD
+parent_task: 22
+depends_on: [22]
+spec_refs:
+  - "6.1 Hit Budget System"
+---
 
-**Status**: BACKLOG
-**Branch**: TBD
-**Parent Task**: Task 22 (Control Simplification)
-**Depends On**: Task 22 Phase B (Balance Range Extension) should ship first
+# Task 25: VOICE Control Redesign
 
 ---
 

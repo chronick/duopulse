@@ -1,3 +1,16 @@
+---
+id: 17
+slug: runtime-logging
+title: "Runtime Logging System"
+status: completed
+created_date: 2025-12-26
+updated_date: 2025-12-26
+completed_date: 2025-12-26
+branch: task/16-v4-hardware-validation
+spec_refs:
+  - "13. Runtime Logging System"
+---
+
 # Feature: Runtime Logging System [runtime-logging]
 
 ## Context

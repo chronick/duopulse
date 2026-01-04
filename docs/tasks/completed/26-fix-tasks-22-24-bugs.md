@@ -1,11 +1,16 @@
-# Task 26: Fix Tasks 22-24 Implementation Bugs
+---
+id: 26
+slug: fix-tasks-22-24-bugs
+title: "Fix Tasks 22-24 Implementation Bugs"
+status: completed
+created_date: 2026-01-03
+updated_date: 2026-01-03
+completed_date: 2026-01-03
+branch: feature/26-fix-tasks-22-24-bugs
+depends_on: [22, 23, 24]
+---
 
-**Status**: COMPLETED
-**Branch**: feature/26-fix-tasks-22-24-bugs
-**Created**: 2026-01-03
-**Completed**: 2026-01-03
-**Parent Task**: Tasks 22, 23, 24 (Control Simplification, Immediate Field Updates, Power-On Behavior)
-**Blocking**: Hardware validation of Tasks 22-24
+# Task 26: Fix Tasks 22-24 Implementation Bugs
 
 ---
 

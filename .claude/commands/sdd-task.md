@@ -135,20 +135,37 @@ git log -1 --stat
 
 ### 8. Update Tracking
 
-Edit task file:
-- Change `**Status**: pending` → `**Status**: complete`
-- Add completion notes if relevant
+#### 8a. Update Task File Frontmatter
+
+Edit the YAML frontmatter at the top of the task file:
+
+```yaml
+---
+# Update these fields:
+status: completed                    # was: in-progress
+updated_date: <today YYYY-MM-DD>     # update to today
+completed_date: <today YYYY-MM-DD>   # add this field
+commits:                             # add commit hashes
+  - <commit-hash-1>
+  - <commit-hash-2>
+---
+```
+
+#### 8b. Update Task Index
 
 Update `docs/tasks/index.md`:
-- Set status to `complete`
-- Set completion date
+- Set status to `completed`
+- Set updated_at to today
 
-Move task file if using active/completed folders:
+#### 8c. Move Task File
+
+Move to completed folder:
 ```bash
 git mv docs/tasks/active/<file>.md docs/tasks/completed/<file>.md
 ```
 
-Commit tracking updates:
+#### 8d. Commit Tracking Updates
+
 ```bash
 git add docs/tasks/
 git commit -m "docs(tasks): mark Task <ID> complete"

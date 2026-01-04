@@ -1,10 +1,12 @@
 ---
-id: chronick/daisysp-idm-grids-06"
-title: "Phase 5: Configuration Mode"
-status: "completed"
-created_date: "2025-11-24"
-last_updated: "2025-11-26"
-owner: "user/ai"
+id: 6
+slug: config-mode
+title: Phase 5: Configuration Mode
+status: completed
+created_date: 2025-11-24
+updated_date: 2025-11-26
+completed_date: 2025-11-26
+branch: phase-5
 ---
 
 # Task: Phase 5 - Configuration Mode

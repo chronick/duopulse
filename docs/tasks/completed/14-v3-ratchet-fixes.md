@@ -1,15 +1,17 @@
 ---
-id: chronick/daisysp-idm-grids-14
-title: "v3 Fixes: RATCHET + Critical Bug Fixes + Code Quality"
-status: "completed"
-created_date: "2025-12-17"
-last_updated: "2025-12-19"
-owner: "user/ai"
+id: 14
+slug: v3-ratchet-fixes
+title: v3 Fixes: RATCHET + Critical Bug Fixes + Code Quality
+status: completed
+created_date: 2025-12-17
+updated_date: 2025-12-19
+completed_date: 2025-12-19
+branch: feature/v3-ratchet-fixes
 spec_refs:
-  - "pulse-field"
-  - "v3-critical-rules"
-  - "ratchet-control"
-  - "drift-control"
+  - pulse-field
+  - v3-critical-rules
+  - ratchet-control
+  - drift-control
 ---
 
 # Feature: v3 Ratchet & Fixes [v3-ratchet-fixes]

@@ -1,10 +1,12 @@
 ---
-id: "chronick/daisysp-idm-grids-09"
-title: "Improve Soft Takeover and Visual Feedback"
-status: "completed"
-created_date: "2025-11-26"
-last_updated: "2025-11-26"
-owner: "chronick"
+id: 9
+slug: soft-takeover-ux
+title: Improve Soft Takeover and Visual Feedback
+status: completed
+created_date: 2025-11-26
+updated_date: 2025-11-26
+completed_date: 2025-11-26
+branch: feature/soft-takeover-ux
 ---
 
 # Task: Improve Soft Takeover and Visual Feedback

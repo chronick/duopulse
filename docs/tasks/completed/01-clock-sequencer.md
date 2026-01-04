@@ -1,10 +1,12 @@
 ---
-id: chronick/daisysp-idm-grids-01"
-title: "Phase 2: The Clock & Simple Sequencer"
-status: "completed"
-created_date: "2025-11-24"
-last_updated: "2025-11-24"
-owner: "user/ai"
+id: 1
+slug: clock-sequencer
+title: Phase 2: The Clock & Simple Sequencer
+status: completed
+created_date: 2025-11-24
+updated_date: 2025-11-24
+completed_date: 2025-11-24
+branch: phase-2
 ---
 
 # Task: Phase 2 - The Clock & Simple Sequencer

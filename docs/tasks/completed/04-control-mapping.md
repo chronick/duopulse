@@ -1,10 +1,12 @@
 ---
-id: chronick/daisysp-idm-grids-04"
-title: "Phase 4: Full Control Mapping & Chaos"
-status: "completed"
-created_date: "2025-11-24"
-last_updated: "2025-11-24"
-owner: "user/ai"
+id: 4
+slug: control-mapping
+title: Phase 4: Full Control Mapping & Chaos
+status: completed
+created_date: 2025-11-24
+updated_date: 2025-11-24
+completed_date: 2025-11-24
+branch: phase-4
 ---
 
 # Task: Phase 4 - Full Control Mapping & Chaos

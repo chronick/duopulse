@@ -1,3 +1,24 @@
+---
+id: 15
+slug: duopulse-v4
+title: "DuoPulse v4 Implementation"
+status: completed
+created_date: 2025-12-19
+updated_date: 2025-12-29
+completed_date: 2025-12-29
+branch: feature/duopulse-v4
+spec_refs:
+  - "4.7 Control Layout"
+  - "5. Pattern Field System"
+  - "6. Generation Pipeline"
+  - "7. Timing System"
+  - "8. Output System"
+  - "9. LED Feedback"
+  - "10. Data Structures"
+  - "11. Core Sequencer"
+  - "12. Persistence"
+---
+
 # Feature: DuoPulse v4 Implementation [duopulse-v4]
 
 **Status: ✅ COMPLETE** — All 12 phases implemented and validated.

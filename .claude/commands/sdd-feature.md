@@ -77,25 +77,38 @@ After confirmation:
 
 ## Task File Template
 
+**IMPORTANT**: All task files MUST use YAML frontmatter for metadata.
+
 ```markdown
-# Task <ID>: <Title>
-
-**Status**: pending
-**Branch**: feature/<slug>
-**Spec Section**: <reference>
-
+---
+id: <next-available-id>
+slug: <kebab-case-identifier>
+title: "<Descriptive Title>"
+status: pending
+created_date: <YYYY-MM-DD>
+updated_date: <YYYY-MM-DD>
+branch: feature/<slug>
+spec_refs:
+  - "<spec-section-reference>"
+depends_on: []              # Add task IDs if dependencies exist
+related: []                 # Add related task IDs
 ---
 
+# Task <ID>: <Title>
+
 ## Objective
-<What this task accomplishes>
+
+<What this task accomplishes - 1-2 sentences>
 
 ## Subtasks
+
 - [ ] Subtask 1: <specific action>
 - [ ] Subtask 2: <specific action>
 - [ ] Subtask 3: <specific action>
 - [ ] All tests pass (`make test`)
 
 ## Acceptance Criteria
+
 - [ ] <Criterion 1>
 - [ ] All tests pass
 - [ ] No new compiler warnings
@@ -104,14 +117,33 @@ After confirmation:
 ## Implementation Notes
 
 ### Files to Modify
+
 - `path/to/file.cpp` - <expected changes>
 
 ### Constraints
+
 <RT audio rules, style requirements, etc.>
 
 ### Risks
+
 <What could go wrong>
 ```
+
+### Frontmatter Field Reference
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `id` | Yes | Unique task number |
+| `slug` | Yes | kebab-case, matches filename |
+| `title` | Yes | Human-readable title |
+| `status` | Yes | pending, in-progress, blocked, completed, archived |
+| `created_date` | Yes | ISO date (YYYY-MM-DD) |
+| `updated_date` | Yes | ISO date, update on any change |
+| `branch` | Yes | Git branch name |
+| `spec_refs` | No | List of spec section references |
+| `depends_on` | No | List of blocking task IDs |
+| `related` | No | List of related task IDs |
+| `parent_task` | No | Parent task ID if this is a subtask |
 
 ## Important
 

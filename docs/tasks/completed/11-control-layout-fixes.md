@@ -1,10 +1,12 @@
 ---
-id: chronick/daisysp-idm-grids-11
-title: "Control Layout Fixes & Bug Fixes"
-status: "completed"
-created_date: "2025-12-03"
-last_updated: "2025-12-16"
-owner: "user/ai"
+id: 11
+slug: control-layout-fixes
+title: Control Layout Fixes & Bug Fixes
+status: completed
+created_date: 2025-12-03
+updated_date: 2025-12-16
+completed_date: 2025-12-16
+branch: feature/control-layout-fixes
 ---
 
 # Feature: Control Layout Fixes [control-layout-fixes]

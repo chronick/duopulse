@@ -1,11 +1,13 @@
 ---
-id: chronick/daisysp-idm-grids-10
-title: "DuoPulse v2: 2-Voice Percussive Sequencer"
-status: "todo"
-created_date: "2025-12-01"
-last_updated: "2025-12-01"
-owner: "user/ai"
-supersedes: "07-opinionated-sequencer"
+id: 10
+slug: duopulse-v2
+title: DuoPulse v2: 2-Voice Percussive Sequencer
+status: completed
+created_date: 2025-12-01
+updated_date: 2025-12-01
+completed_date: 2025-12-01
+branch: feature/duopulse-v2
+supersedes: 07-opinionated-sequencer
 ---
 
 # Feature: DuoPulse v2 [duopulse-v2]

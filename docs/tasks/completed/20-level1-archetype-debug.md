@@ -1,8 +1,19 @@
-# Task 20: Level 1 Archetype Pattern Debug
+---
+id: 20
+slug: level1-archetype-debug
+title: "Level 1 Archetype Pattern Debug"
+status: completed
+created_date: 2025-12-28
+updated_date: 2025-12-28
+completed_date: 2025-12-28
+branch: task/16-v4-hardware-validation
+parent_task: 16
+spec_refs:
+  - "Test 3: Archetype Patterns"
+  - "Test 4: Hit Budget & Generation"
+---
 
-**Status**: COMPLETE ✅
-**Branch**: `task/16-v4-hardware-validation`
-**Parent Task**: Task 16 (Test 3: Archetype Patterns)
+# Task 20: Level 1 Archetype Pattern Debug
 
 ---
 

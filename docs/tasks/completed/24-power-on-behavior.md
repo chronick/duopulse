@@ -1,10 +1,20 @@
-# Task 24: Power-On Behavior
+---
+id: 24
+slug: power-on-behavior
+title: "Power-On Behavior"
+status: completed
+created_date: 2025-12-29
+updated_date: 2026-01-03
+completed_date: 2026-01-03
+branch: feature/24-power-on-behavior
+parent_task: 16
+related: [22, 23]
+spec_refs:
+  - "12. Persistence & Boot Behavior"
+  - "Test 7: Configuration Mode"
+---
 
-**Status**: COMPLETED
-**Branch**: feature/24-power-on-behavior
-**Completed**: 2026-01-01
-**Parent Task**: Task 16 (Hardware Validation)
-**Related**: Task 22 (Control Simplification) - coordinate boot defaults with control changes
+# Task 24: Power-On Behavior
 
 ---
 

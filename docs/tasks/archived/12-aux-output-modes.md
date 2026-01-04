@@ -1,13 +1,15 @@
 ---
-id: chronick/daisysp-idm-grids-12
+id: 12
+slug: aux-output-modes
 title: "Auxiliary Output Modes (CV Out 1)"
-status: "archived"
-created_date: "2025-12-16"
-last_updated: "2025-12-19"
-owner: "user/ai"
+status: archived
+created_date: 2025-12-16
+updated_date: 2025-12-19
+archived_date: 2025-12-19
+superseded_by: 15
+branch: feature/aux-output-modes
 spec_refs:
   - "aux-output-modes"
-superseded_by: "15-duopulse-v4"
 ---
 
 # Feature: Auxiliary Output Modes [aux-output-modes]

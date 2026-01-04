@@ -1,10 +1,12 @@
 ---
-id: chronick/daisysp-idm-grids-00"
-title: "Phase 1: Hardware Setup & Hello World"
-status: "completed"
-created_date: "2025-11-24"
-last_updated: "2025-11-24"
-owner: "user/ai"
+id: 0
+slug: hardware-setup
+title: Phase 1: Hardware Setup & Hello World
+status: completed
+created_date: 2025-11-24
+updated_date: 2025-11-24
+completed_date: 2025-11-24
+branch: phase-1
 ---
 
 # Task: Phase 1 - Hardware Setup & Hello World

@@ -1,11 +1,13 @@
 ---
-id: chronick/daisysp-idm-grids-08
+id: 8
+slug: bulletproof-clock
 title: "Bulletproof Clock & External Clock Behavior"
-status: "archived"
-created_date: "2025-11-25"
-last_updated: "2026-01-03"
-archived_date: "2026-01-03"
-owner: "user/ai"
+status: archived
+created_date: 2025-11-25
+updated_date: 2026-01-03
+archived_date: 2026-01-03
+superseded_by: 19
+branch: feature/bulletproof-clock
 spec_refs:
   - "external-clock-behavior"
   - "duopulse-v4"

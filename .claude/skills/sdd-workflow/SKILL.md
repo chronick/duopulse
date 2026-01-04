@@ -90,38 +90,115 @@ docs/
 
 ## Task File Format
 
+All task files MUST use YAML frontmatter for metadata. This enables tooling, automation, and consistent tracking.
+
+### Frontmatter Schema (Required Fields)
+
+```yaml
+---
+id: <number>                    # Task ID (unique, sequential)
+slug: <kebab-case>              # URL/branch-friendly identifier
+title: <string>                 # Human-readable title
+status: <enum>                  # pending | in-progress | blocked | completed | archived
+created_date: <YYYY-MM-DD>      # When task was created
+updated_date: <YYYY-MM-DD>      # Last modification date
+branch: <string>                # Git branch name (feature/<slug>)
+---
+```
+
+### Frontmatter Schema (Optional Fields)
+
+```yaml
+---
+# Completion tracking
+completed_date: <YYYY-MM-DD>    # When task was completed
+commits: [<hash>, ...]          # Key commit hashes
+
+# Archival tracking
+archived_date: <YYYY-MM-DD>     # When task was archived
+superseded_by: <task-id>        # If replaced by another task
+
+# Relationships
+parent_task: <task-id>          # Parent task if subtask
+depends_on: [<task-id>, ...]    # Blocking dependencies
+blocks: [<task-id>, ...]        # Tasks this blocks
+related: [<task-id>, ...]       # Related but not blocking
+
+# Spec references
+spec_refs: [<section>, ...]     # Spec sections this implements
+
+# Blocking info
+blocked_reason: <string>        # Why task is blocked
+blocked_date: <YYYY-MM-DD>      # When it became blocked
+---
+```
+
+### Complete Task File Template
+
 ```markdown
-# Task <ID>: <Title>
-
-**Status**: pending | in-progress | blocked | complete
-**Branch**: feature/<slug>
-**Spec Section**: <reference to main.md section>
-
+---
+id: 27
+slug: example-feature
+title: "Example Feature Implementation"
+status: pending
+created_date: 2026-01-03
+updated_date: 2026-01-03
+branch: feature/example-feature
+spec_refs:
+  - "section-3.2"
+  - "appendix-a"
 ---
 
+# Task 27: Example Feature Implementation
+
 ## Objective
+
 <1-2 sentences: what this task accomplishes>
 
 ## Subtasks
+
 - [ ] Subtask 1: <specific, testable action>
 - [ ] Subtask 2: <specific, testable action>
 - [ ] All tests pass (`make test`)
 
 ## Acceptance Criteria
+
 - [ ] <Criterion 1>
 - [ ] All tests pass
 - [ ] No new compiler warnings
 - [ ] Code review passes
 
 ## Implementation Notes
+
 <Technical guidance, constraints>
 
 ### Files to Modify
+
 - `path/to/file.cpp` - <description>
 
 ### Risks
+
 <What could go wrong>
 ```
+
+### Status Transitions & Required Fields
+
+| From | To | Required Updates |
+|------|----|------------------|
+| pending | in-progress | `updated_date`, verify `branch` |
+| in-progress | completed | `completed_date`, `commits`, move to `completed/` |
+| in-progress | blocked | `blocked_reason`, `blocked_date` |
+| blocked | in-progress | clear `blocked_*`, `updated_date` |
+| any | archived | `archived_date`, `superseded_by` (if applicable), move to `archived/` |
+
+### Frontmatter Validation Rules
+
+1. **id** must be unique across all tasks
+2. **slug** must match filename: `<id>-<slug>.md`
+3. **branch** must follow pattern: `feature/<slug>` or `fix/<slug>`
+4. **dates** must be ISO 8601 format (YYYY-MM-DD)
+5. **status** must be one of: `pending`, `in-progress`, `blocked`, `completed`, `archived`
+6. **commits** should include merge commit when completed
 
 ## Task Index Format
 

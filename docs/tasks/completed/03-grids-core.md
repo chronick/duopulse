@@ -1,10 +1,12 @@
 ---
-id: chronick/daisysp-idm-grids-03"
-title: "Phase 3: The Grids Core (Algorithm Port)"
-status: "completed"
-created_date: "2025-11-24"
-last_updated: "2025-11-24"
-owner: "user/ai"
+id: 3
+slug: grids-core
+title: Phase 3: The Grids Core (Algorithm Port)
+status: completed
+created_date: 2025-11-24
+updated_date: 2025-11-24
+completed_date: 2025-11-24
+branch: phase-3
 ---
 
 # Task: Phase 3 - The Grids Core

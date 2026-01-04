@@ -1,10 +1,12 @@
 ---
-id: chronick/daisysp-idm-grids-07
-title: "Opinionated Drum Sequencer Implementation"
-status: "QA"
-created_date: "2025-11-25"
-last_updated: "2025-11-25"
-owner: "user/ai"
+id: 7
+slug: opinionated-sequencer
+title: Opinionated Drum Sequencer Implementation
+status: completed
+created_date: 2025-11-25
+updated_date: 2025-11-25
+completed_date: 2025-11-25
+branch: feature/opinionated-sequencer
 ---
 
 # Task: Opinionated Drum Sequencer Implementation

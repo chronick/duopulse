@@ -1,8 +1,18 @@
-# Task 18: Level 0 Debug Fixes
+---
+id: 18
+slug: level0-debug-fixes
+title: "Level 0 Debug Fixes"
+status: completed
+created_date: 2025-12-26
+updated_date: 2025-12-27
+completed_date: 2025-12-27
+branch: testing/hardware-simplifications
+parent_task: 16
+spec_refs:
+  - "Test 1: Basic Clock & Triggers"
+---
 
-**Status**: ✅ COMPLETE (2025-12-27)
-**Branch**: `testing/hardware-simplifications`
-**Spec Reference**: docs/tasks/active/16-v4-hardware-validation.md (Test 1)
+# Task 18: Level 0 Debug Fixes
 
 ---
 

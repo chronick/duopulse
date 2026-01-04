@@ -1,8 +1,18 @@
-# Task 19: Exclusive External Clock Mode
+---
+id: 19
+slug: exclusive-external-clock
+title: "Exclusive External Clock Mode"
+status: completed
+created_date: 2025-12-27
+updated_date: 2025-12-27
+completed_date: 2025-12-27
+branch: task/19-exclusive-external-clock
+parent_task: 16
+spec_refs:
+  - "3.4 Clock and Reset Behavior [exclusive-external-clock]"
+---
 
-**Status**: COMPLETE
-**Branch**: `task/19-exclusive-external-clock`
-**Spec Reference**: `docs/specs/main.md` section 3.4 [exclusive-external-clock]
+# Task 19: Exclusive External Clock Mode
 
 ---
 
