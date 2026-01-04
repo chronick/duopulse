@@ -1,3 +1,8 @@
+---
+name: sdd-workflow
+description: Provides Spec-Driven Development methodology guidance. Use when planning features, implementing tasks from docs/tasks/, updating specs, managing task lifecycle, or discussing SDD workflow. Covers task numbering, file formats, quality gates, and commit standards.
+---
+
 # Spec-Driven Development (SDD) Workflow Skill
 
 ## Purpose

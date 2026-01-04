@@ -1,3 +1,9 @@
+---
+name: daisysp-review
+description: Reviews C++ code for DaisySP/STM32 real-time audio safety. Use when reviewing firmware code, checking audio callback paths, DSP processing, or validating CV/hardware interfaces. Catches heap allocations, blocking operations, and timing violations.
+allowed-tools: Read, Grep, Glob, Bash
+---
+
 # DaisySP/STM32 Code Review Skill
 
 ## Purpose
