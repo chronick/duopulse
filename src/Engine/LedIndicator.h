@@ -90,6 +90,36 @@ struct LedState
     float interactionValue = 0.0f;   ///< Value to display during interaction (0-1)
 };
 
+// =============================================================================
+// V5 LED Layer System (Task 34)
+// =============================================================================
+
+/**
+ * LED layer priority levels.
+ * Higher values = higher priority and override lower layers.
+ */
+enum class LedLayer : uint8_t
+{
+    BASE    = 0,  ///< Base brightness (e.g., breath pattern during shift-held)
+    TRIGGER = 1,  ///< Trigger-based brightness pulses
+    FILL    = 2,  ///< Fill mode strobe pattern
+    FLASH   = 3,  ///< Flash events (mode change, reset, reseed)
+    REPLACE = 4   ///< Full replacement (boot patterns, config mode)
+};
+
+/// Number of LED layers in the system
+static constexpr uint8_t kNumLedLayers = 5;
+
+/**
+ * State for a single LED layer.
+ */
+struct LedLayerState
+{
+    float    brightness{0.0f};    ///< Layer brightness (0-1)
+    uint32_t expiresAtMs{0};      ///< Time when layer expires (0 = never)
+    bool     active{false};       ///< Whether this layer is currently active
+};
+
 /**
  * LED Indicator State Machine
  * 
@@ -131,50 +161,11 @@ class LedIndicator
     /**
      * Process one sample worth of time and update LED state.
      * Call this at control rate (typically 1kHz) or audio rate.
-     *
+     * 
      * @param state Current LED state (mode, triggers, events)
      * @return Brightness value 0-1
      */
     float Process(const LedState& state);
-
-    /**
-     * HAT mode confirmation: fancy rising flash (blocking, boot only)
-     * Pattern: dim -> medium -> bright (triple rising flash)
-     *
-     * WARNING: This is a BLOCKING call. Only use during boot initialization,
-     * never in audio callback or main loop.
-     *
-     * V5 Task 33: Boot-time AUX mode selection
-     */
-    void FlashHatUnlock();
-
-    /**
-     * FILL_GATE mode confirmation: grounded fade (blocking, boot only)
-     * Pattern: bright fade to dark (single fade out)
-     *
-     * WARNING: This is a BLOCKING call. Only use during boot initialization,
-     * never in audio callback or main loop.
-     *
-     * V5 Task 33: Boot-time AUX mode selection
-     */
-    void FlashFillGateReset();
-
-    /**
-     * Set LED brightness directly (0-1 range)
-     * Used by boot flash patterns
-     */
-    void SetBrightness(float brightness)
-    {
-        currentBrightness_ = brightness;
-    }
-
-    /**
-     * Get current LED brightness (0-1 range)
-     */
-    float GetBrightness() const
-    {
-        return currentBrightness_;
-    }
 
     /**
      * Convert brightness (0-1) to voltage (0-5V)
@@ -196,7 +187,6 @@ class LedIndicator
     float sampleRate_       = 48000.0f;
     float msPerSample_      = 1000.0f / 48000.0f;
     float timeMs_           = 0.0f;
-    float currentBrightness_ = 0.0f;  ///< Current brightness for boot flash patterns
     
     // Trigger tracking
     float anchorTriggerTimeMs_  = -1000.0f;
@@ -267,6 +257,115 @@ class LedIndicator
      * Simple pseudo-random for LED variation (deterministic per seed)
      */
     float GetPseudoRandom();
+
+    // =========================================================================
+    // V5 Layer System Private Members (Task 34)
+    // =========================================================================
+    LedLayerState layers_[kNumLedLayers]; ///< Layer states (indexed by LedLayer enum)
+    float         breathPhase_{0.0f};     ///< Phase for breath animation (0-1)
+    float         strobePhase_{0.0f};     ///< Phase for fill strobe animation (0-1)
+    uint32_t      currentTimeMs_{0};      ///< Current time in milliseconds
+
+  public:
+    // =========================================================================
+    // V5 Layer System Public Methods (Task 34)
+    // =========================================================================
+
+    /**
+     * Set a layer's brightness and optional expiration time.
+     * @param layer Which layer to set
+     * @param brightness Brightness value (0-1)
+     * @param durationMs Duration in ms (0 = permanent until cleared)
+     */
+    void SetLayer(LedLayer layer, float brightness, uint32_t durationMs = 0);
+
+    /**
+     * Clear a layer (deactivate it).
+     * @param layer Which layer to clear
+     */
+    void ClearLayer(LedLayer layer);
+
+    /**
+     * Compute final brightness from all active layers.
+     * Uses highest-priority active layer.
+     * @return Combined brightness value (0-1)
+     */
+    float ComputeFinalBrightness();
+
+    /**
+     * Update the breathing animation (for shift-held mode).
+     * Call at control rate. Updates BASE layer.
+     * @param deltaMs Time since last call in milliseconds
+     */
+    void UpdateBreath(float deltaMs);
+
+    /**
+     * Update trigger decay animation.
+     * Call at control rate. Updates TRIGGER layer.
+     * @param deltaMs Time since last call in milliseconds
+     * @param decayRatePerMs Decay rate per millisecond
+     */
+    void UpdateTriggerDecay(float deltaMs, float decayRatePerMs = 0.02f);
+
+    /**
+     * Update fill mode strobe animation.
+     * Call at control rate. Updates FILL layer.
+     * @param deltaMs Time since last call in milliseconds
+     * @param periodMs Strobe period in milliseconds
+     */
+    void UpdateFillStrobe(float deltaMs, float periodMs = 100.0f);
+
+    /**
+     * Trigger a flash event (mode change, reset, reseed).
+     * Sets FLASH layer for specified duration.
+     * @param durationMs Duration of flash in milliseconds
+     */
+    void TriggerFlash(uint32_t durationMs = 100);
+
+    // =========================================================================
+    // Task 33: Boot-Time AUX Mode Flash Patterns
+    // =========================================================================
+
+    /**
+     * Set direct brightness value (for boot flash patterns).
+     * @param brightness Brightness value (0-1)
+     */
+    void SetBrightness(float brightness)
+    {
+        directBrightness_ = Clamp(brightness, 0.0f, 1.0f);
+    }
+
+    /**
+     * Get current direct brightness value.
+     * @return Current brightness (0-1)
+     */
+    float GetBrightness() const
+    {
+        return directBrightness_;
+    }
+
+    /**
+     * Flash pattern for HAT mode unlock (rising: 33% -> 66% -> 100%).
+     * Uses blocking delays on hardware, instant on host builds.
+     *
+     * IMPORTANT: Must only be called during boot initialization,
+     * before StartAudio() is invoked. Blocking delays would cause
+     * audio dropouts if called from audio callback path.
+     */
+    void FlashHatUnlock();
+
+    /**
+     * Flash pattern for FILL_GATE mode reset (fading: 100% -> 0%).
+     * Uses blocking delays on hardware, instant on host builds.
+     *
+     * IMPORTANT: Must only be called during boot initialization,
+     * before StartAudio() is invoked. Blocking delays would cause
+     * audio dropouts if called from audio callback path.
+     */
+    void FlashFillGateReset();
+
+  private:
+    float directBrightness_{0.0f};  ///< Direct brightness for boot flash patterns
 };
 
 } // namespace daisysp_idm_grids
