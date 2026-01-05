@@ -2,7 +2,7 @@
 id: 36
 slug: 36-segfault-led-broken-drift-test
 title: "BUGFIX: Segfault in test_led_indicator.cpp broken-drift tests"
-status: pending
+status: archived
 created_date: 2026-01-04
 updated_date: 2026-01-04
 branch: bugfix/36-segfault-led-test
@@ -54,3 +54,12 @@ Tests can be skipped with tag `[!mayfail]` or excluded from test run.
 ## Notes
 
 Discovered during Task 34 implementation. Does not block V5 functionality - only affects test suite.
+
+## Archive Note
+
+Archived 2026-01-04 after attempting repro:
+- `./build/test_runner "[led-feedback][broken-drift]" -a --success` passes without segfault.
+- `./build/test_runner "[led-feedback][parameter-feedback]" -a --success` passes without segfault.
+- `make test` fails on unrelated `GetMetricWeight` assertions in `tests/test_axis_biasing.cpp`, not a crash.
+
+No crash reproduced in isolation. If the segfault reappears, retry with ASAN on host tests.
