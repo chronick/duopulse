@@ -1,6 +1,10 @@
 #include "LedIndicator.h"
 #include <cmath>
 
+#ifndef HOST_BUILD
+#include "daisy.h"  // For daisy::System::Delay() in boot flash patterns
+#endif
+
 namespace daisysp_idm_grids
 {
 
@@ -416,7 +420,7 @@ void LedIndicator::UpdateFillStrobe(float deltaMs, float periodMs)
 
 void LedIndicator::TriggerFlash(uint32_t durationMs)
 {
-    SetLayer(LedLayer::FLASH, 1.0f, durationMs);
+    SetLayer(LedLayer::FLASH_EVT, 1.0f, durationMs);
 }
 
 // =============================================================================

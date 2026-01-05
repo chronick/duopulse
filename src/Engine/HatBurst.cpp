@@ -62,15 +62,18 @@ int FindNearestEmpty(int step, int fillDuration, uint32_t usedSteps)
 // Proximity Detection Implementation
 // =============================================================================
 
-bool CheckProximity(int step, int fillStart, uint32_t mainPattern, int proximityWindow)
+bool CheckProximity(int step, int fillStart, uint32_t mainPattern, int proximityWindow, int patternLength)
 {
+    // Clamp patternLength to valid range
+    patternLength = std::max(1, std::min(static_cast<int>(kMaxSteps), patternLength));
+
     // Convert fill-relative step to pattern-relative step
-    int patternStep = (fillStart + step) % kMaxSteps;
+    int patternStep = (fillStart + step) % patternLength;
 
     // Check the step itself and neighbors within window
     for (int offset = -proximityWindow; offset <= proximityWindow; ++offset)
     {
-        int checkStep = (patternStep + offset + kMaxSteps) % kMaxSteps;
+        int checkStep = (patternStep + offset + patternLength) % patternLength;
         if (mainPattern & (1U << checkStep))
             return true;
     }
@@ -124,7 +127,7 @@ int EuclideanWithJitter(int triggerIndex, int triggerCount,
 
 void GenerateHatBurst(float energy, float shape,
                       uint32_t mainPattern, int fillStart,
-                      int fillDuration, uint32_t seed,
+                      int fillDuration, int patternLength, uint32_t seed,
                       HatBurst& burst)
 {
     // Initialize burst
@@ -134,6 +137,7 @@ void GenerateHatBurst(float energy, float shape,
     energy = std::max(0.0f, std::min(1.0f, energy));
     shape = std::max(0.0f, std::min(1.0f, shape));
     fillDuration = std::max(1, std::min(32, fillDuration));
+    patternLength = std::max(1, std::min(static_cast<int>(kMaxSteps), patternLength));
 
     burst.fillStart = static_cast<uint8_t>(fillStart);
     burst.fillDuration = static_cast<uint8_t>(fillDuration);
@@ -187,7 +191,7 @@ void GenerateHatBurst(float energy, float shape,
         float velocity = baseVelocity;
 
         // Check proximity to main pattern (1 step window)
-        if (CheckProximity(finalStep, fillStart, mainPattern, 1))
+        if (CheckProximity(finalStep, fillStart, mainPattern, 1, patternLength))
         {
             velocity *= kVelocityDuckMultiplier;
         }
@@ -203,6 +207,24 @@ void GenerateHatBurst(float energy, float shape,
         burst.triggers[burst.count].step = static_cast<uint8_t>(finalStep);
         burst.triggers[burst.count].velocity = velocity;
         burst.count++;
+    }
+
+    // Guarantee minimum 2 triggers if there's room in the fill
+    if (burst.count < kMinHatBurstTriggers && fillDuration >= kMinHatBurstTriggers)
+    {
+        // Force-add triggers at evenly spaced positions not yet used
+        for (int i = 0; i < fillDuration && burst.count < kMinHatBurstTriggers; ++i)
+        {
+            int step = (i * fillDuration) / kMinHatBurstTriggers;
+            step = step % fillDuration;
+            if (!(usedSteps & (1U << step)))
+            {
+                usedSteps |= (1U << step);
+                burst.triggers[burst.count].step = static_cast<uint8_t>(step);
+                burst.triggers[burst.count].velocity = baseVelocity * 0.8f;
+                burst.count++;
+            }
+        }
     }
 }
 

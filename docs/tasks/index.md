@@ -35,6 +35,7 @@
 | 30 | v5-voice-complement | V5 Voice COMPLEMENT Relationship — implement gap-filling shimmer with DRIFT placement | completed | 2026-01-04 | 2026-01-04 | active/30-v5-voice-complement.md |
 | 31 | v5-hat-burst | V5 Hat Burst: Pattern-Aware Fill Triggers — implement hat burst during fills with velocity ducking | completed | 2026-01-04 | 2026-01-04 | active/31-v5-hat-burst.md |
 | 32 | v5-aux-gesture | V5 Hold+Switch Gesture for AUX Mode — implement secret gesture for HAT/FILL GATE selection (persistent) | completed | 2026-01-04 | 2026-01-04 | active/32-v5-aux-gesture.md |
-| 33 | v5-boot-aux-mode | ~~V5 Boot-Time Pattern Length~~ → V5 Boot-Time AUX Mode — boot Hold+Switch sets persistent AUX mode | pending | 2026-01-04 | 2026-01-04 | active/33-v5-boot-aux-mode.md |
-| 34 | v5-led-feedback | V5 LED Feedback System Update — implement 5-layer priority LED feedback | pending | 2026-01-04 | 2026-01-04 | active/34-v5-led-feedback.md |
-| 35 | v5-accent-velocity | V5 ACCENT Parameter: Musical Weight Velocity — replace PUNCH with position-aware dynamics | pending | 2026-01-04 | 2026-01-04 | active/35-v5-accent-velocity.md |
+| 33 | v5-boot-aux-mode | ~~V5 Boot-Time Pattern Length~~ → V5 Boot-Time AUX Mode — boot Hold+Switch sets persistent AUX mode | completed | 2026-01-04 | 2026-01-04 | active/33-v5-boot-aux-mode.md |
+| 34 | v5-led-feedback | V5 LED Feedback System Update — implement 5-layer priority LED feedback | completed | 2026-01-04 | 2026-01-04 | active/34-v5-led-feedback.md |
+| 35 | v5-accent-velocity | V5 ACCENT Parameter: Musical Weight Velocity — replace PUNCH with position-aware dynamics | completed | 2026-01-04 | 2026-01-04 | active/35-v5-accent-velocity.md |
+| 37 | v5-code-review-fixes | V5 Code Review Critical Fixes — buffer bounds, null checks, invariant violations from pre-merge review | pending | 2026-01-04 | 2026-01-04 | active/37-v5-code-review-fixes.md |

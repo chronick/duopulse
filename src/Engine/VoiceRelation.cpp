@@ -230,6 +230,22 @@ int PlaceEvenlySpaced(const Gap& gap, int hitIndex, int totalHits, int patternLe
 int PlaceWeightedBest(const Gap& gap, const float* shimmerWeights, int patternLength,
                       uint32_t usedMask)
 {
+    // Validate patternLength doesn't exceed array bounds
+    if (patternLength > static_cast<int>(kMaxSteps)) {
+        patternLength = static_cast<int>(kMaxSteps);
+    }
+
+    // Null check for shimmerWeights - find first available position in gap
+    if (!shimmerWeights) {
+        for (int offset = 0; offset < gap.length; ++offset) {
+            int step = (gap.start + offset) % patternLength;
+            if ((usedMask & (1U << step)) == 0) {
+                return step;
+            }
+        }
+        return gap.start;  // Fallback if all used
+    }
+
     float bestWeight = -1.0f;
     int bestPos = gap.start;
 
@@ -332,23 +348,31 @@ uint32_t ApplyComplementRelationship(uint32_t anchorMask,
         return 0;
     }
 
-    // Initialize RNG state from seed
-    uint32_t rngState = seed ^ 0xDEADBEEF;
+    // Better seed mixing to avoid correlation (was: seed ^ 0xDEADBEEF)
+    uint32_t rngState = (seed * 2654435761U) ^ (seed >> 16);
+    if (rngState == 0) rngState = 1;  // Avoid zero state
 
     // Build shimmer mask by distributing hits proportionally to gaps
     uint32_t shimmerMask = 0;
-    int hitsPlaced = 0;
+    int remainingHits = targetHits;
 
-    for (int g = 0; g < gapCount && hitsPlaced < targetHits; ++g)
+    for (int g = 0; g < gapCount && remainingHits > 0; ++g)
     {
-        // Proportional hit share for this gap (at least 1 if gap has length)
-        int gapShare = std::max(1, (gaps[g].length * targetHits) / std::max(1, totalGapLength));
+        // Proportional hit share for this gap
+        int gapShare = (gaps[g].length * remainingHits) / std::max(1, totalGapLength);
 
-        // Don't exceed remaining target
-        gapShare = std::min(gapShare, targetHits - hitsPlaced);
+        // At least 1 if there are remaining hits and gap has length
+        if (gapShare == 0 && remainingHits > 0 && gaps[g].length > 0)
+        {
+            gapShare = 1;
+        }
 
-        // Don't exceed gap length
+        // Don't exceed remaining budget or gap length
+        gapShare = std::min(gapShare, remainingHits);
         gapShare = std::min(gapShare, gaps[g].length);
+
+        // Update remaining for next iteration
+        totalGapLength -= gaps[g].length;
 
         // Place hits in this gap using strategy based on drift
         for (int j = 0; j < gapShare; ++j)
@@ -372,20 +396,20 @@ uint32_t ApplyComplementRelationship(uint32_t anchorMask,
             }
 
             shimmerMask |= (1U << position);
-            hitsPlaced++;
+            remainingHits--;
         }
     }
 
     // If we still need more hits (due to rounding), fill remaining gaps
-    for (int g = 0; g < gapCount && hitsPlaced < targetHits; ++g)
+    for (int g = 0; g < gapCount && remainingHits > 0; ++g)
     {
-        for (int offset = 0; offset < gaps[g].length && hitsPlaced < targetHits; ++offset)
+        for (int offset = 0; offset < gaps[g].length && remainingHits > 0; ++offset)
         {
             int step = (gaps[g].start + offset) % clampedLength;
             if ((shimmerMask & (1U << step)) == 0)
             {
                 shimmerMask |= (1U << step);
-                hitsPlaced++;
+                remainingHits--;
             }
         }
     }

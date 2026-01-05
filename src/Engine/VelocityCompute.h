@@ -103,7 +103,8 @@ float ComputeVelocity(const AccentParams& accentParams,
                       const ShapeModifiers& shapeMods,
                       bool isAccent,
                       uint32_t seed,
-                      int step);
+                      int step,
+                      int patternLength = 16);
 
 /**
  * Determine if a step should be accented based on accent mask and probability.
@@ -157,7 +158,8 @@ float ComputeAnchorVelocity(float accent,
                             float shape,
                             float phraseProgress,
                             int step,
-                            uint32_t seed,
+                            int patternLength = 16,
+                            uint32_t seed = 0,
                             uint32_t accentMask = 0);
 
 /**
@@ -179,7 +181,8 @@ float ComputeShimmerVelocity(float accent,
                              float shape,
                              float phraseProgress,
                              int step,
-                             uint32_t seed,
+                             int patternLength = 16,
+                             uint32_t seed = 0,
                              uint32_t accentMask = 0);
 
 // =============================================================================

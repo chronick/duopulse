@@ -100,11 +100,11 @@ struct LedState
  */
 enum class LedLayer : uint8_t
 {
-    BASE    = 0,  ///< Base brightness (e.g., breath pattern during shift-held)
-    TRIGGER = 1,  ///< Trigger-based brightness pulses
-    FILL    = 2,  ///< Fill mode strobe pattern
-    FLASH   = 3,  ///< Flash events (mode change, reset, reseed)
-    REPLACE = 4   ///< Full replacement (boot patterns, config mode)
+    BASE      = 0,  ///< Base brightness (e.g., breath pattern during shift-held)
+    TRIGGER   = 1,  ///< Trigger-based brightness pulses
+    FILL      = 2,  ///< Fill mode strobe pattern
+    FLASH_EVT = 3,  ///< Flash events (mode change, reset, reseed) - renamed to avoid STM32 FLASH macro
+    REPLACE   = 4   ///< Full replacement (boot patterns, config mode)
 };
 
 /// Number of LED layers in the system

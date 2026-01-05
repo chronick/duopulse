@@ -114,46 +114,46 @@ TEST_CASE("CheckProximity detects nearby hits", "[hatburst][proximity]")
     {
         uint32_t mainPattern = 0b00010000;  // Hit on step 4
         // Fill starts at step 0, checking step 4
-        REQUIRE(CheckProximity(4, 0, mainPattern, 1) == true);
+        REQUIRE(CheckProximity(4, 0, mainPattern, 1, 32) == true);
     }
 
     SECTION("Returns true when adjacent step has hit")
     {
         uint32_t mainPattern = 0b00010000;  // Hit on step 4
         // Fill starts at step 0, checking step 3 (adjacent to 4)
-        REQUIRE(CheckProximity(3, 0, mainPattern, 1) == true);
-        REQUIRE(CheckProximity(5, 0, mainPattern, 1) == true);
+        REQUIRE(CheckProximity(3, 0, mainPattern, 1, 32) == true);
+        REQUIRE(CheckProximity(5, 0, mainPattern, 1, 32) == true);
     }
 
     SECTION("Returns false when no nearby hit")
     {
         uint32_t mainPattern = 0b00010000;  // Hit on step 4
         // Fill starts at step 0, checking step 1 (not adjacent to 4)
-        REQUIRE(CheckProximity(1, 0, mainPattern, 1) == false);
+        REQUIRE(CheckProximity(1, 0, mainPattern, 1, 32) == false);
     }
 
     SECTION("Handles fill offset correctly")
     {
         uint32_t mainPattern = 0b00010000;  // Hit on step 4
         // Fill starts at step 2, so fill step 2 = pattern step 4
-        REQUIRE(CheckProximity(2, 2, mainPattern, 1) == true);
-        REQUIRE(CheckProximity(0, 2, mainPattern, 1) == false);
+        REQUIRE(CheckProximity(2, 2, mainPattern, 1, 32) == true);
+        REQUIRE(CheckProximity(0, 2, mainPattern, 1, 32) == false);
     }
 
     SECTION("Handles wrap-around at pattern boundary")
     {
         uint32_t mainPattern = 0b00000001;  // Hit on step 0
         // Fill starts at step 30, checking step 2 = pattern step 0
-        REQUIRE(CheckProximity(2, 30, mainPattern, 1) == true);
+        REQUIRE(CheckProximity(2, 30, mainPattern, 1, 32) == true);
     }
 
     SECTION("Respects proximity window size")
     {
         uint32_t mainPattern = 0b00010000;  // Hit on step 4
         // Window of 0 means exact match only
-        REQUIRE(CheckProximity(4, 0, mainPattern, 0) == true);
-        REQUIRE(CheckProximity(3, 0, mainPattern, 0) == false);
-        REQUIRE(CheckProximity(5, 0, mainPattern, 0) == false);
+        REQUIRE(CheckProximity(4, 0, mainPattern, 0, 32) == true);
+        REQUIRE(CheckProximity(3, 0, mainPattern, 0, 32) == false);
+        REQUIRE(CheckProximity(5, 0, mainPattern, 0, 32) == false);
     }
 }
 
@@ -227,26 +227,26 @@ TEST_CASE("GenerateHatBurst produces correct trigger counts", "[hatburst][densit
 
     SECTION("Minimum energy gives 2 triggers")
     {
-        GenerateHatBurst(0.0f, 0.5f, 0, 0, 16, 12345, burst);
+        GenerateHatBurst(0.0f, 0.5f, 0, 0, 16, 32, 12345, burst);
         REQUIRE(burst.count == 2);
     }
 
     SECTION("Maximum energy gives 12 triggers")
     {
-        GenerateHatBurst(1.0f, 0.5f, 0, 0, 16, 12345, burst);
+        GenerateHatBurst(1.0f, 0.5f, 0, 0, 16, 32, 12345, burst);
         REQUIRE(burst.count == 12);
     }
 
     SECTION("Mid energy gives proportional triggers")
     {
-        GenerateHatBurst(0.5f, 0.5f, 0, 0, 16, 12345, burst);
+        GenerateHatBurst(0.5f, 0.5f, 0, 0, 16, 32, 12345, burst);
         // 2 + floor(0.5 * 10) = 2 + 5 = 7
         REQUIRE(burst.count == 7);
     }
 
     SECTION("Trigger count limited by fill duration")
     {
-        GenerateHatBurst(1.0f, 0.5f, 0, 0, 4, 12345, burst);
+        GenerateHatBurst(1.0f, 0.5f, 0, 0, 4, 32, 12345, burst);
         // Would want 12 triggers, but only 4 steps available
         REQUIRE(burst.count == 4);
     }
@@ -255,7 +255,7 @@ TEST_CASE("GenerateHatBurst produces correct trigger counts", "[hatburst][densit
     {
         for (float energy = 0.0f; energy <= 1.0f; energy += 0.1f)
         {
-            GenerateHatBurst(energy, 0.5f, 0, 0, 16, 12345, burst);
+            GenerateHatBurst(energy, 0.5f, 0, 0, 16, 32, 12345, burst);
             REQUIRE(burst.count >= kMinHatBurstTriggers);
             REQUIRE(burst.count <= kMaxHatBurstTriggers);
         }
@@ -272,7 +272,7 @@ TEST_CASE("GenerateHatBurst timing follows SHAPE zones", "[hatburst][timing]")
 
     SECTION("Low SHAPE produces evenly spaced triggers")
     {
-        GenerateHatBurst(0.5f, 0.0f, 0, 0, 16, 12345, burst);
+        GenerateHatBurst(0.5f, 0.0f, 0, 0, 16, 32, 12345, burst);
 
         // 7 triggers in 16 steps should be roughly evenly spaced
         // Check that steps are sorted and spread out
@@ -309,7 +309,7 @@ TEST_CASE("GenerateHatBurst timing follows SHAPE zones", "[hatburst][timing]")
         int totalVariation = 0;
         for (uint32_t seed = 0; seed < 10; ++seed)
         {
-            GenerateHatBurst(0.5f, 0.9f, 0, 0, 16, seed, burst);
+            GenerateHatBurst(0.5f, 0.9f, 0, 0, 16, 32, seed, burst);
 
             // Calculate variance in step spacing
             for (int i = 1; i < burst.count; ++i)
@@ -333,7 +333,7 @@ TEST_CASE("GenerateHatBurst velocity follows energy", "[hatburst][velocity]")
 
     SECTION("Low energy produces lower velocities")
     {
-        GenerateHatBurst(0.0f, 0.5f, 0, 0, 16, 12345, burst);
+        GenerateHatBurst(0.0f, 0.5f, 0, 0, 16, 32, 12345, burst);
 
         for (int i = 0; i < burst.count; ++i)
         {
@@ -345,7 +345,7 @@ TEST_CASE("GenerateHatBurst velocity follows energy", "[hatburst][velocity]")
 
     SECTION("High energy produces higher velocities")
     {
-        GenerateHatBurst(1.0f, 0.5f, 0, 0, 16, 12345, burst);
+        GenerateHatBurst(1.0f, 0.5f, 0, 0, 16, 32, 12345, burst);
 
         // At least some triggers should have high velocity
         // (may be ducked near main pattern, but with mainPattern=0, none)
@@ -371,7 +371,7 @@ TEST_CASE("GenerateHatBurst ducks velocity near main pattern", "[hatburst][ducki
     {
         // Main pattern with hit on step 4
         uint32_t mainPattern = 0b00010000;
-        GenerateHatBurst(1.0f, 0.0f, mainPattern, 0, 16, 12345, burst);
+        GenerateHatBurst(1.0f, 0.0f, mainPattern, 0, 16, 32, 12345, burst);
 
         // Find triggers near step 4 (steps 3, 4, 5)
         for (int i = 0; i < burst.count; ++i)
@@ -389,7 +389,7 @@ TEST_CASE("GenerateHatBurst ducks velocity near main pattern", "[hatburst][ducki
     {
         // Main pattern with hit on step 0 only
         uint32_t mainPattern = 0b00000001;
-        GenerateHatBurst(1.0f, 0.0f, mainPattern, 0, 16, 12345, burst);
+        GenerateHatBurst(1.0f, 0.0f, mainPattern, 0, 16, 32, 12345, burst);
 
         // Find triggers far from step 0 (e.g., step 8)
         for (int i = 0; i < burst.count; ++i)
@@ -414,7 +414,7 @@ TEST_CASE("GenerateHatBurst avoids trigger collisions", "[hatburst][collision]")
 
     SECTION("All triggers have unique steps")
     {
-        GenerateHatBurst(1.0f, 0.5f, 0, 0, 16, 12345, burst);
+        GenerateHatBurst(1.0f, 0.5f, 0, 0, 16, 32, 12345, burst);
 
         uint32_t usedSteps = 0;
         for (int i = 0; i < burst.count; ++i)
@@ -431,7 +431,7 @@ TEST_CASE("GenerateHatBurst avoids trigger collisions", "[hatburst][collision]")
         // High shape = random distribution, more likely to collide initially
         for (uint32_t seed = 0; seed < 10; ++seed)
         {
-            GenerateHatBurst(1.0f, 1.0f, 0, 0, 16, seed, burst);
+            GenerateHatBurst(1.0f, 1.0f, 0, 0, 16, 32, seed, burst);
 
             uint32_t usedSteps = 0;
             for (int i = 0; i < burst.count; ++i)
@@ -454,9 +454,9 @@ TEST_CASE("GenerateHatBurst is deterministic", "[hatburst][determinism]")
     {
         HatBurst burst1, burst2, burst3;
 
-        GenerateHatBurst(0.7f, 0.4f, 0b11001010, 8, 8, 54321, burst1);
-        GenerateHatBurst(0.7f, 0.4f, 0b11001010, 8, 8, 54321, burst2);
-        GenerateHatBurst(0.7f, 0.4f, 0b11001010, 8, 8, 54321, burst3);
+        GenerateHatBurst(0.7f, 0.4f, 0b11001010, 8, 8, 32, 54321, burst1);
+        GenerateHatBurst(0.7f, 0.4f, 0b11001010, 8, 8, 32, 54321, burst2);
+        GenerateHatBurst(0.7f, 0.4f, 0b11001010, 8, 8, 32, 54321, burst3);
 
         REQUIRE(burst1.count == burst2.count);
         REQUIRE(burst2.count == burst3.count);
@@ -475,8 +475,8 @@ TEST_CASE("GenerateHatBurst is deterministic", "[hatburst][determinism]")
         HatBurst burst1, burst2;
 
         // Use shape > 0.7 to activate random mode where seeds have clear effect
-        GenerateHatBurst(0.7f, 0.9f, 0, 0, 16, 11111, burst1);
-        GenerateHatBurst(0.7f, 0.9f, 0, 0, 16, 99999, burst2);
+        GenerateHatBurst(0.7f, 0.9f, 0, 0, 16, 32, 11111, burst1);
+        GenerateHatBurst(0.7f, 0.9f, 0, 0, 16, 32, 99999, burst2);
 
         // At least some trigger positions should differ
         bool anyDifferent = false;
@@ -502,7 +502,7 @@ TEST_CASE("GenerateHatBurst stores fill info correctly", "[hatburst][fillinfo]")
 
     SECTION("Fill start and duration are stored")
     {
-        GenerateHatBurst(0.5f, 0.5f, 0, 24, 8, 12345, burst);
+        GenerateHatBurst(0.5f, 0.5f, 0, 24, 8, 32, 12345, burst);
 
         REQUIRE(burst.fillStart == 24);
         REQUIRE(burst.fillDuration == 8);
@@ -512,7 +512,7 @@ TEST_CASE("GenerateHatBurst stores fill info correctly", "[hatburst][fillinfo]")
     {
         for (int duration = 4; duration <= 16; duration += 4)
         {
-            GenerateHatBurst(1.0f, 0.5f, 0, 0, duration, 12345, burst);
+            GenerateHatBurst(1.0f, 0.5f, 0, 0, duration, 32, 12345, burst);
 
             for (int i = 0; i < burst.count; ++i)
             {
@@ -532,7 +532,7 @@ TEST_CASE("GenerateHatBurst handles edge cases", "[hatburst][edge]")
 
     SECTION("Handles minimum fill duration")
     {
-        GenerateHatBurst(0.5f, 0.5f, 0, 0, 1, 12345, burst);
+        GenerateHatBurst(0.5f, 0.5f, 0, 0, 1, 32, 12345, burst);
         // Only 1 step, should have 1 trigger (limited by duration)
         REQUIRE(burst.count == 1);
         REQUIRE(burst.triggers[0].step == 0);
@@ -541,7 +541,7 @@ TEST_CASE("GenerateHatBurst handles edge cases", "[hatburst][edge]")
     SECTION("Handles clamped parameters")
     {
         // Parameters outside valid range should be clamped
-        GenerateHatBurst(-0.5f, 1.5f, 0, 0, 16, 12345, burst);
+        GenerateHatBurst(-0.5f, 1.5f, 0, 0, 16, 32, 12345, burst);
         REQUIRE(burst.count >= kMinHatBurstTriggers);
         REQUIRE(burst.count <= kMaxHatBurstTriggers);
     }
@@ -550,7 +550,7 @@ TEST_CASE("GenerateHatBurst handles edge cases", "[hatburst][edge]")
     {
         // Main pattern with many hits - should still produce valid burst
         uint32_t densePattern = 0b11111111111111111111111111111111;
-        GenerateHatBurst(0.5f, 0.5f, densePattern, 0, 16, 12345, burst);
+        GenerateHatBurst(0.5f, 0.5f, densePattern, 0, 16, 32, 12345, burst);
 
         // All triggers should be ducked
         for (int i = 0; i < burst.count; ++i)

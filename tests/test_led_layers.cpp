@@ -31,7 +31,7 @@ TEST_CASE("LedLayer enum values are correct", "[LedLayers][Enum]")
     REQUIRE(static_cast<uint8_t>(LedLayer::BASE) == 0);
     REQUIRE(static_cast<uint8_t>(LedLayer::TRIGGER) == 1);
     REQUIRE(static_cast<uint8_t>(LedLayer::FILL) == 2);
-    REQUIRE(static_cast<uint8_t>(LedLayer::FLASH) == 3);
+    REQUIRE(static_cast<uint8_t>(LedLayer::FLASH_EVT) == 3);
     REQUIRE(static_cast<uint8_t>(LedLayer::REPLACE) == 4);
 }
 
@@ -116,7 +116,7 @@ TEST_CASE("Higher priority layer overrides lower", "[LedLayers][Priority]")
     led.Init(1000.0f);
 
     led.SetLayer(LedLayer::BASE, 0.2f);
-    led.SetLayer(LedLayer::FLASH, 1.0f);
+    led.SetLayer(LedLayer::FLASH_EVT, 1.0f);
 
     // FLASH (priority 3) overrides BASE (priority 0)
     REQUIRE(led.ComputeFinalBrightness() == Approx(1.0f));
@@ -130,7 +130,7 @@ TEST_CASE("REPLACE layer has highest priority", "[LedLayers][Priority]")
     led.SetLayer(LedLayer::BASE, 0.2f);
     led.SetLayer(LedLayer::TRIGGER, 0.5f);
     led.SetLayer(LedLayer::FILL, 0.7f);
-    led.SetLayer(LedLayer::FLASH, 1.0f);
+    led.SetLayer(LedLayer::FLASH_EVT, 1.0f);
     led.SetLayer(LedLayer::REPLACE, 0.1f);
 
     // REPLACE should win even with low brightness
@@ -143,8 +143,8 @@ TEST_CASE("Inactive layers are ignored in priority", "[LedLayers][Priority]")
     led.Init(1000.0f);
 
     led.SetLayer(LedLayer::BASE, 0.3f);
-    led.SetLayer(LedLayer::FLASH, 1.0f);
-    led.ClearLayer(LedLayer::FLASH);
+    led.SetLayer(LedLayer::FLASH_EVT, 1.0f);
+    led.ClearLayer(LedLayer::FLASH_EVT);
 
     // BASE should now be active since FLASH is cleared
     REQUIRE(led.ComputeFinalBrightness() == Approx(0.3f));
@@ -169,7 +169,7 @@ TEST_CASE("Layer with duration expires after time", "[LedLayers][Expiration]")
     led.Init(1000.0f);
 
     // Set FLASH layer with 100ms duration
-    led.SetLayer(LedLayer::FLASH, 1.0f, 100);
+    led.SetLayer(LedLayer::FLASH_EVT, 1.0f, 100);
 
     // Immediately should be active
     REQUIRE(led.ComputeFinalBrightness() == Approx(1.0f));
@@ -370,7 +370,7 @@ TEST_CASE("Init resets all layers", "[LedLayers][Init]")
 
     // Set some layers
     led.SetLayer(LedLayer::BASE, 0.5f);
-    led.SetLayer(LedLayer::FLASH, 1.0f);
+    led.SetLayer(LedLayer::FLASH_EVT, 1.0f);
 
     // Re-init
     led.Init(1000.0f);

@@ -144,11 +144,12 @@ float ComputeVelocity(const AccentParams& accentParams,
                       const ShapeModifiers& shapeMods,
                       bool isAccent,
                       uint32_t seed,
-                      int step)
+                      int step,
+                      int patternLength)
 {
     // V5 (Task 35): Metric weight-based velocity
-    // Get metric weight for step position (default to 16-step pattern)
-    float metricWeight = GetMetricWeight(step, 16);
+    // Get metric weight for step position
+    float metricWeight = GetMetricWeight(step, patternLength);
 
     // Map metric weight to velocity range
     float velocity = accentParams.velocityFloor +
@@ -196,15 +197,13 @@ float ComputeAnchorVelocity(float accent,
                             float shape,
                             float phraseProgress,
                             int step,
+                            int patternLength,
                             uint32_t seed,
                             uint32_t accentMask)
 {
     // V5 (Task 35): Use metric weight-based velocity
-    // Default pattern length is 16 steps
-    constexpr int kDefaultPatternLength = 16;
-
     // Get base velocity from accent and metric weight
-    float velocity = ComputeAccentVelocity(accent, step, kDefaultPatternLength, seed);
+    float velocity = ComputeAccentVelocity(accent, step, patternLength, seed);
 
     // Compute SHAPE modifiers for phrase arc
     ShapeModifiers shapeMods;
@@ -227,15 +226,13 @@ float ComputeShimmerVelocity(float accent,
                              float shape,
                              float phraseProgress,
                              int step,
+                             int patternLength,
                              uint32_t seed,
                              uint32_t accentMask)
 {
     // V5 (Task 35): Use metric weight-based velocity
-    // Default pattern length is 16 steps
-    constexpr int kDefaultPatternLength = 16;
-
     // Get base velocity from accent and metric weight
-    float velocity = ComputeAccentVelocity(accent, step, kDefaultPatternLength, seed);
+    float velocity = ComputeAccentVelocity(accent, step, patternLength, seed);
 
     // Compute SHAPE modifiers for phrase arc
     ShapeModifiers shapeMods;
