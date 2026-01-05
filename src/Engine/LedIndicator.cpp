@@ -1,6 +1,10 @@
 #include "LedIndicator.h"
 #include <cmath>
 
+#ifndef HOST_BUILD
+#include "daisy_patch_sm.h"
+#endif
+
 namespace daisysp_idm_grids
 {
 
@@ -276,6 +280,45 @@ float LedIndicator::GetPseudoRandom()
 {
     seed_ = seed_ * 1103515245 + 12345;
     return static_cast<float>((seed_ >> 16) & 0x7FFF) / 32767.0f;
+}
+
+// =============================================================================
+// Boot Flash Patterns (V5 Task 33)
+// =============================================================================
+
+void LedIndicator::FlashHatUnlock()
+{
+    // Rising triple flash: 33% -> 66% -> 100%
+    // Pattern: dim -> medium -> bright (fancy rising flash)
+    const float levels[] = {0.33f, 0.66f, 1.0f};
+    for (int i = 0; i < 3; ++i)
+    {
+        SetBrightness(levels[i]);
+#ifndef HOST_BUILD
+        daisy::System::Delay(80);
+#endif
+        SetBrightness(0.0f);
+#ifndef HOST_BUILD
+        daisy::System::Delay(80);
+#endif
+    }
+#ifndef HOST_BUILD
+    daisy::System::Delay(200);
+#endif
+}
+
+void LedIndicator::FlashFillGateReset()
+{
+    // Single fade from bright to dark (grounded fade)
+    SetBrightness(1.0f);
+#ifndef HOST_BUILD
+    for (int i = 100; i >= 0; i -= 5)
+    {
+        SetBrightness(i / 100.0f);
+        daisy::System::Delay(15);
+    }
+    daisy::System::Delay(200);
+#endif
 }
 
 } // namespace daisysp_idm_grids

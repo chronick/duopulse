@@ -32,7 +32,8 @@
 #include "daisy_patch_sm.h"
 #include "daisysp.h"
 #include "Engine/Sequencer.h"
-// #include "Engine/LedIndicator.h"  // LED system simplified
+#include "Engine/LedIndicator.h"  // V5 Task 33: Boot AUX mode flash
+#include "Engine/DuoPulseTypes.h"  // V5 Task 33: AuxMode enum
 #include "Engine/ControlUtils.h"
 #include "Engine/GateScaler.h"
 #include "Engine/SoftKnob.h"
@@ -59,9 +60,8 @@ GateScaler     shimmerGate;
 VelocityOutput velocityOutput;
 AuxOutput      auxOutput;
 
-// LED system simplified - no longer using LedIndicator or LedState
-// LedIndicator ledIndicator;
-// LedState     ledState;
+// V5 Task 33: Boot AUX mode (persistent until explicitly changed)
+AuxMode bootAuxMode = AuxMode::FILL_GATE;  // Default is FILL_GATE
 
 // Persistence
 PersistentConfig currentConfig;
@@ -229,6 +229,107 @@ int MapToPatternLength(float value)
 
 // MapToClockDivision moved to ControlUtils.h as MapClockDivision
 // for testability (see Modification 0.5 in task 16)
+
+// =============================================================================
+// V5 Task 33: Boot-Time AUX Mode Detection
+// =============================================================================
+// Same Hold+Switch gesture works at boot AND runtime.
+// AUX mode is persistent (RAM, not flash).
+// Boot detection happens BEFORE audio callback starts.
+// LED flash patterns confirm mode selection.
+
+/**
+ * Helper to write LED brightness to hardware output
+ */
+void WriteLedBrightness(DaisyPatchSM& hw, float brightness)
+{
+    float voltage = brightness * 5.0f;
+    hw.WriteCvOut(patch_sm::CV_OUT_2, voltage);
+}
+
+/**
+ * HAT mode boot flash: rising triple flash pattern
+ */
+void BootFlashHatUnlock(DaisyPatchSM& hw)
+{
+    const float levels[] = {0.33f, 0.66f, 1.0f};
+    for (int i = 0; i < 3; ++i)
+    {
+        WriteLedBrightness(hw, levels[i]);
+        System::Delay(80);
+        WriteLedBrightness(hw, 0.0f);
+        System::Delay(80);
+    }
+    System::Delay(200);
+}
+
+/**
+ * FILL_GATE mode boot flash: fade from bright to dark
+ */
+void BootFlashFillGateReset(DaisyPatchSM& hw)
+{
+    WriteLedBrightness(hw, 1.0f);
+    for (int i = 100; i >= 0; i -= 5)
+    {
+        WriteLedBrightness(hw, i / 100.0f);
+        System::Delay(15);
+    }
+    System::Delay(200);
+}
+
+/**
+ * Detect boot-time AUX mode selection gesture.
+ *
+ * @param hw Reference to hardware object (for reading inputs and LED output)
+ * @param auxMode Reference to AUX mode to update
+ *
+ * Boot Gestures:
+ * - Hold button + Switch UP: HAT mode + rising flash
+ * - Hold button + Switch DOWN: FILL_GATE mode + fade flash
+ * - Normal boot (no button): Keep previous AUX mode
+ */
+void DetectBootAuxMode(DaisyPatchSM& hw, AuxMode& auxMode)
+{
+    // Read initial button state (B7 = tap/shift button)
+    // Note: tapButton and modeSwitch must be initialized before calling this
+    tapButton.Debounce();
+    bool buttonHeld = tapButton.Pressed();
+
+    if (!buttonHeld)
+    {
+        // Normal boot - keep previous/default AUX mode
+        return;
+    }
+
+    // Button held - wait for switch to stabilize
+    System::Delay(100);
+    hw.ProcessAllControls();
+
+    // Read switch position (B8 is the toggle switch)
+    // B8 pressed = UP position = Performance mode normally
+    modeSwitch.Debounce();
+    bool switchUp = modeSwitch.Pressed();
+
+    if (switchUp)
+    {
+        auxMode = AuxMode::HAT;
+        BootFlashHatUnlock(hw);
+    }
+    else
+    {
+        auxMode = AuxMode::FILL_GATE;
+        BootFlashFillGateReset(hw);
+    }
+
+    // Wait for button release before continuing
+    tapButton.Debounce();
+    while (tapButton.Pressed())
+    {
+        System::Delay(10);
+        hw.ProcessAllControls();
+        tapButton.Debounce();
+    }
+}
 
 } // namespace
 
@@ -733,6 +834,31 @@ int main(void)
     
     // Initialize interaction state
     lastInteractionTime = 0; // Ensures we start in default mode
+
+    // ==========================================================================
+    // V5 Task 33: Boot-Time AUX Mode Detection
+    // ==========================================================================
+    // Detect Hold+Switch gesture at boot to select AUX mode.
+    // Must happen BEFORE StartAudio() to avoid blocking in audio callback.
+    DetectBootAuxMode(patch, bootAuxMode);
+
+    // Apply detected AUX mode to control state
+    // Convert AuxMode enum to knob value for compatibility with existing system
+    switch (bootAuxMode)
+    {
+        case AuxMode::HAT:
+            controlState.auxMode = 0.0f;  // HAT mode (0-25%)
+            LOGI("Boot AUX mode: HAT (detected gesture)");
+            break;
+        case AuxMode::FILL_GATE:
+        default:
+            controlState.auxMode = 0.35f;  // FILL_GATE mode (25-50%)
+            LOGI("Boot AUX mode: FILL_GATE");
+            break;
+    }
+
+    // Re-initialize soft knob for AUX mode with detected value
+    softKnobs[10].Init(controlState.auxMode);
 
     LOGI("Initialization complete, starting audio");
     patch.StartAudio(AudioCallback);

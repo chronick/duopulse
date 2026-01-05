@@ -131,11 +131,50 @@ class LedIndicator
     /**
      * Process one sample worth of time and update LED state.
      * Call this at control rate (typically 1kHz) or audio rate.
-     * 
+     *
      * @param state Current LED state (mode, triggers, events)
      * @return Brightness value 0-1
      */
     float Process(const LedState& state);
+
+    /**
+     * HAT mode confirmation: fancy rising flash (blocking, boot only)
+     * Pattern: dim -> medium -> bright (triple rising flash)
+     *
+     * WARNING: This is a BLOCKING call. Only use during boot initialization,
+     * never in audio callback or main loop.
+     *
+     * V5 Task 33: Boot-time AUX mode selection
+     */
+    void FlashHatUnlock();
+
+    /**
+     * FILL_GATE mode confirmation: grounded fade (blocking, boot only)
+     * Pattern: bright fade to dark (single fade out)
+     *
+     * WARNING: This is a BLOCKING call. Only use during boot initialization,
+     * never in audio callback or main loop.
+     *
+     * V5 Task 33: Boot-time AUX mode selection
+     */
+    void FlashFillGateReset();
+
+    /**
+     * Set LED brightness directly (0-1 range)
+     * Used by boot flash patterns
+     */
+    void SetBrightness(float brightness)
+    {
+        currentBrightness_ = brightness;
+    }
+
+    /**
+     * Get current LED brightness (0-1 range)
+     */
+    float GetBrightness() const
+    {
+        return currentBrightness_;
+    }
 
     /**
      * Convert brightness (0-1) to voltage (0-5V)
@@ -157,6 +196,7 @@ class LedIndicator
     float sampleRate_       = 48000.0f;
     float msPerSample_      = 1000.0f / 48000.0f;
     float timeMs_           = 0.0f;
+    float currentBrightness_ = 0.0f;  ///< Current brightness for boot flash patterns
     
     // Trigger tracking
     float anchorTriggerTimeMs_  = -1000.0f;

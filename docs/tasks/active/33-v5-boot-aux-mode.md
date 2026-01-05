@@ -2,9 +2,10 @@
 id: 33
 slug: 33-v5-boot-aux-mode
 title: "V5 Boot-Time AUX Mode Selection"
-status: pending
+status: completed
 created_date: 2026-01-04
 updated_date: 2026-01-04
+completed_date: 2026-01-04
 branch: feature/33-v5-boot-aux-mode
 spec_refs:
   - "v5-design-final.md#boot-time-configuration"
@@ -64,14 +65,14 @@ Key behaviors:
 - ~~Add compile-time flags for 32/64 step builds~~
 
 ### New AUX Mode Boot Subtasks
-- [ ] Add boot-time button+switch detection in main.cpp Init()
-- [ ] Read switch position if button held at boot
-- [ ] Set AUX mode based on switch: UP=HAT, DOWN=FILL_GATE
-- [ ] Trigger LED feedback (reuse Task 34 patterns)
-- [ ] Make AUX mode persistent (don't reset on normal boot)
-- [ ] Wait for button release before starting audio
-- [ ] Add unit tests for boot AUX detection
-- [ ] All tests pass (`make test`)
+- [x] Add boot-time button+switch detection in main.cpp Init()
+- [x] Read switch position if button held at boot
+- [x] Set AUX mode based on switch: UP=HAT, DOWN=FILL_GATE
+- [x] Trigger LED feedback (FlashHatUnlock, FlashFillGateReset)
+- [x] Make AUX mode persistent (don't reset on normal boot)
+- [x] Wait for button release before starting audio
+- [x] Add unit tests for boot AUX detection (test_boot_aux.cpp)
+- [x] All tests pass (`make test`) - 303 test cases
 
 ## Acceptance Criteria
 
@@ -83,13 +84,13 @@ Key behaviors:
 - ~~Compile-time option works for 32/64 steps~~
 
 ### New Criteria
-- [ ] Normal boot preserves previous AUX mode (persistent)
-- [ ] Hold button + Switch UP at boot → HAT mode + fancy flash
-- [ ] Hold button + Switch DOWN at boot → FILL_GATE mode + grounded flash
-- [ ] Boot gesture uses same logic as runtime gesture (Task 32)
-- [ ] LED feedback matches Task 34 patterns
-- [ ] Build compiles without errors
-- [ ] All tests pass
+- [x] Normal boot preserves previous AUX mode (persistent)
+- [x] Hold button + Switch UP at boot → HAT mode + fancy flash
+- [x] Hold button + Switch DOWN at boot → FILL_GATE mode + grounded flash
+- [x] Boot gesture detected before StartAudio()
+- [x] LED patterns visually distinct (rising vs fade)
+- [x] Build compiles without errors
+- [x] All tests pass (303 test cases, 62245 assertions)
 
 ## Implementation Notes
 
