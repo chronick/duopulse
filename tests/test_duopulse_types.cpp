@@ -305,7 +305,7 @@ TEST_CASE("ControlState initialization", "[control]")
     {
         REQUIRE(state.patternLength == 32);
         REQUIRE(state.phraseLength == 4);
-        REQUIRE(state.auxMode == AuxMode::HAT);
+        REQUIRE(state.auxMode == AuxMode::FILL_GATE);  // V5: FILL_GATE is boot default
         REQUIRE(state.resetMode == ResetMode::STEP);
         REQUIRE(state.clockDiv == 1);     // V5: x1 no division
         REQUIRE(state.swing == 0.50f);    // V5: 50% neutral groove

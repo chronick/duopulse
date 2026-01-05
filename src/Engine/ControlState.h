@@ -390,7 +390,7 @@ struct ControlState
 
         // Internal parameters (not exposed in V5 UI)
         patternLength = 32;
-        auxMode       = AuxMode::HAT;
+        auxMode       = AuxMode::FILL_GATE;  // V5 Task 32: Boot default is FILL_GATE
         resetMode     = ResetMode::STEP;
         phraseLength  = 4;
         clockDivision = 1;  // Legacy alias for clockDiv

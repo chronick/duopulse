@@ -66,6 +66,12 @@ struct ButtonState
     /// Counter for pending double-tap detection
     uint8_t tapCount;
 
+    /// Whether Hold+Switch AUX gesture is in progress (V5 Task 32)
+    bool auxGestureActive;
+
+    /// Whether switch was moved while button held (V5 Task 32)
+    bool switchMovedWhileHeld;
+
     /**
      * Initialize button state
      */
@@ -81,6 +87,8 @@ struct ButtonState
         tapDetected          = false;
         doubleTapDetected    = false;
         tapCount             = 0;
+        auxGestureActive     = false;
+        switchMovedWhileHeld = false;
     }
 };
 
@@ -215,12 +223,21 @@ class ControlProcessor
     /**
      * Process button gestures and update button state
      *
+     * V5 Task 32: Now accepts switch state for Hold+Switch AUX gesture detection.
+     * When button is held and switch moves, sets AUX mode instead of changing
+     * Perf/Config mode. Returns true if switch event was consumed by gesture.
+     *
      * @param pressed Current button pressed state
+     * @param switchUp Current switch position (true = UP/Perf)
+     * @param prevSwitchUp Previous switch position (for edge detection)
      * @param currentTimeMs Current time in milliseconds
      * @param anyKnobMoved Whether any knob was moved this frame
+     * @param auxMode Reference to AUX mode to update on gesture
+     * @return true if switch event was consumed by AUX gesture
      */
-    void ProcessButtonGestures(bool pressed, uint32_t currentTimeMs,
-                               bool anyKnobMoved);
+    bool ProcessButtonGestures(bool pressed, bool switchUp, bool prevSwitchUp,
+                               uint32_t currentTimeMs, bool anyKnobMoved,
+                               AuxMode& auxMode);
 
     /**
      * Check if a parameter change flash should be shown
@@ -315,6 +332,9 @@ class ControlProcessor
 
     // Previous fill gate state (for rising edge detection)
     bool prevFillGateHigh_;
+
+    // Previous switch position (for AUX gesture edge detection, V5 Task 32)
+    bool prevSwitchUp_;
 
     // Flag for parameter change flash
     bool parameterChanged_;

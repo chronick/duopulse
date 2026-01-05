@@ -14,6 +14,7 @@ static void ProcessFillInput(float rawFillCV, bool prevGateHigh,
 
 ControlProcessor::ControlProcessor()
     : prevFillGateHigh_(false),
+      prevSwitchUp_(true),  // V5 Task 32: Default to Perf mode position
       parameterChanged_(false),
       currentContext_(KnobContext::PERF_PRIMARY),
       prevContext_(KnobContext::PERF_PRIMARY)
@@ -52,6 +53,7 @@ void ControlProcessor::Init(const ControlState& initialState)
     configKnobs_[3].Init(initialState.accent);
 
     prevFillGateHigh_  = false;
+    prevSwitchUp_      = true;  // V5 Task 32: Default to Perf mode position
     parameterChanged_  = false;
     currentContext_    = KnobContext::PERF;
     prevContext_       = KnobContext::PERF;
@@ -62,10 +64,19 @@ void ControlProcessor::ProcessControls(const RawHardwareInput& input,
 {
     parameterChanged_ = false;
 
-    // Update mode state
+    // V5 Task 32: Process button gestures first, which may consume switch event
+    bool switchConsumed = ProcessButtonGestures(input.buttonPressed, input.modeSwitch,
+                                                 prevSwitchUp_, input.currentTimeMs,
+                                                 AnyKnobMoved(), state.auxMode);
+    prevSwitchUp_ = input.modeSwitch;
+
+    // Update mode state (only if switch wasn't consumed by AUX gesture)
     modeState_.prevPerformanceMode = modeState_.performanceMode;
     modeState_.prevShiftActive     = modeState_.shiftActive;
-    modeState_.performanceMode     = input.modeSwitch;
+    if (!switchConsumed)
+    {
+        modeState_.performanceMode = input.modeSwitch;
+    }
     // V5: Shift layer removed, shiftActive no longer used for context switching
     modeState_.shiftActive         = buttonState_.shiftActive;
 
@@ -113,16 +124,14 @@ void ControlProcessor::ProcessControls(const RawHardwareInput& input,
     // Update live fill mode from button state
     state.fillInput.liveFillMode = buttonState_.liveFillActive;
 
-    // Process button gestures
-    ProcessButtonGestures(input.buttonPressed, input.currentTimeMs,
-                          AnyKnobMoved());
-
     // Update derived parameters
     state.UpdateDerived(phraseProgress);
 }
 
-void ControlProcessor::ProcessButtonGestures(bool pressed, uint32_t currentTimeMs,
-                                             bool anyKnobMoved)
+bool ControlProcessor::ProcessButtonGestures(bool pressed, bool switchUp,
+                                              bool prevSwitchUp,
+                                              uint32_t currentTimeMs,
+                                              bool anyKnobMoved, AuxMode& auxMode)
 {
     // Clear single-frame flags
     buttonState_.tapDetected       = false;
@@ -130,6 +139,34 @@ void ControlProcessor::ProcessButtonGestures(bool pressed, uint32_t currentTimeM
 
     bool wasPressed = buttonState_.pressed;
     buttonState_.pressed = pressed;
+
+    // V5 Task 32: Detect switch movement while button is held (AUX gesture)
+    bool switchConsumed = false;
+    if (buttonState_.pressed && (switchUp != prevSwitchUp))
+    {
+        // Switch moved while button held - this is the AUX gesture
+        buttonState_.auxGestureActive = true;
+        buttonState_.switchMovedWhileHeld = true;
+
+        // Cancel pending operations
+        buttonState_.liveFillActive = false;
+        buttonState_.tapDetected = false;
+
+        // Set AUX mode based on switch direction
+        if (switchUp)
+        {
+            auxMode = AuxMode::HAT;
+            // TODO(Task-34): Queue HAT unlock LED flash (triple rising)
+        }
+        else
+        {
+            auxMode = AuxMode::FILL_GATE;
+            // TODO(Task-34): Queue FILL_GATE reset LED flash (single fade)
+        }
+
+        // Consume switch event - don't change perf/config mode
+        switchConsumed = true;
+    }
 
     // Track knob movement during press
     if (pressed && anyKnobMoved)
@@ -143,10 +180,12 @@ void ControlProcessor::ProcessButtonGestures(bool pressed, uint32_t currentTimeM
         buttonState_.pressTimeMs          = currentTimeMs;
         buttonState_.knobMovedDuringPress = false;
         buttonState_.liveFillActive       = false;
+        buttonState_.auxGestureActive     = false;
+        buttonState_.switchMovedWhileHeld = false;
     }
 
-    // While held: update shift and live fill state
-    if (pressed)
+    // While held: update shift and live fill state (only if not in AUX gesture)
+    if (pressed && !buttonState_.auxGestureActive)
     {
         uint32_t holdDuration = currentTimeMs - buttonState_.pressTimeMs;
 
@@ -169,27 +208,42 @@ void ControlProcessor::ProcessButtonGestures(bool pressed, uint32_t currentTimeM
         buttonState_.shiftActive     = false;
         buttonState_.liveFillActive  = false;
 
-        // Detect tap (short press)
-        if (buttonState_.pressDurationMs < kTapMaxMs)
+        // V5 Task 32: If AUX gesture was active, don't trigger fill
+        if (buttonState_.auxGestureActive)
         {
-            // Check for double-tap
-            uint32_t timeSinceLastTap =
-                currentTimeMs - buttonState_.releaseTimeMs;
-            if (buttonState_.tapCount > 0 &&
-                timeSinceLastTap < kDoubleTapWindowMs)
-            {
-                buttonState_.doubleTapDetected = true;
-                buttonState_.tapCount          = 0;
-            }
-            else
-            {
-                buttonState_.tapDetected = true;
-                buttonState_.tapCount    = 1;
-            }
+            // Reset gesture state
+            buttonState_.auxGestureActive = false;
+            buttonState_.switchMovedWhileHeld = false;
+
+            // Don't trigger fill (gesture consumed the press)
+            buttonState_.tapDetected = false;
+            buttonState_.doubleTapDetected = false;
+            buttonState_.tapCount = 0;
         }
         else
         {
-            buttonState_.tapCount = 0;
+            // Normal button release - detect tap (short press)
+            if (buttonState_.pressDurationMs < kTapMaxMs)
+            {
+                // Check for double-tap
+                uint32_t timeSinceLastTap =
+                    currentTimeMs - buttonState_.releaseTimeMs;
+                if (buttonState_.tapCount > 0 &&
+                    timeSinceLastTap < kDoubleTapWindowMs)
+                {
+                    buttonState_.doubleTapDetected = true;
+                    buttonState_.tapCount          = 0;
+                }
+                else
+                {
+                    buttonState_.tapDetected = true;
+                    buttonState_.tapCount    = 1;
+                }
+            }
+            else
+            {
+                buttonState_.tapCount = 0;
+            }
         }
     }
 
@@ -202,6 +256,8 @@ void ControlProcessor::ProcessButtonGestures(bool pressed, uint32_t currentTimeM
             buttonState_.tapCount = 0;
         }
     }
+
+    return switchConsumed;
 }
 
 // V5: Process performance mode controls (no shift layer)
