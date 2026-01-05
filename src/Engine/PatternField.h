@@ -156,4 +156,137 @@ float InterpolateStepWeight(const ArchetypeDNA* archetypes[4],
                             int stepIndex,
                             int voice);
 
+// =============================================================================
+// Shape-Based Pattern Generation (Task 28)
+// =============================================================================
+
+/**
+ * Minimum weight value to avoid completely silencing any step.
+ * This ensures even "impossible" steps have some chance of firing.
+ */
+constexpr float kMinStepWeight = 0.05f;
+
+/**
+ * Zone boundaries for SHAPE parameter (0.0-1.0 range)
+ *
+ * The SHAPE parameter maps to a 7-zone system:
+ *   Zone 1 pure:       [0.00, 0.28) - Stable humanized euclidean
+ *   Crossfade 1->2a:   [0.28, 0.32) - Blend stable to syncopation
+ *   Zone 2a:           [0.32, 0.48) - Pure syncopation (lower)
+ *   Crossfade 2a->2b:  [0.48, 0.52) - Mid syncopation transition
+ *   Zone 2b:           [0.52, 0.68) - Pure syncopation (upper)
+ *   Crossfade 2->3:    [0.68, 0.72) - Blend syncopation to wild
+ *   Zone 3 pure:       [0.72, 1.00] - Wild weighted random
+ */
+constexpr float kShapeZone1End = 0.28f;        // End of pure stable zone
+constexpr float kShapeCrossfade1End = 0.32f;   // End of stable->syncopation crossfade
+constexpr float kShapeZone2aEnd = 0.48f;       // End of lower syncopation zone
+constexpr float kShapeCrossfade2End = 0.52f;   // End of mid syncopation crossfade
+constexpr float kShapeZone2bEnd = 0.68f;       // End of upper syncopation zone
+constexpr float kShapeCrossfade3End = 0.72f;   // End of syncopation->wild crossfade
+
+/**
+ * Generate stable (euclidean-based) pattern weights
+ *
+ * Produces techno-style, four-on-floor patterns with:
+ * - High weights on downbeats (steps 0, 4, 8, 12, 16, 20, 24, 28)
+ * - Medium weights on half-beats (steps 2, 6, 10, 14, 18, 22, 26, 30)
+ * - Lower weights on 16th note positions
+ *
+ * Energy scales the overall weight envelope.
+ *
+ * @param energy ENERGY parameter value (0.0-1.0), scales weight intensity
+ * @param patternLength Number of steps in pattern (typically 16 or 32)
+ * @param outWeights Output array of per-step weights (must be patternLength size)
+ */
+void GenerateStablePattern(float energy, int patternLength, float* outWeights);
+
+/**
+ * Generate syncopation pattern weights
+ *
+ * Produces funk-style, displaced patterns with:
+ * - Suppressed downbeats (beat 1 at 50-70% of normal weight)
+ * - Boosted anticipation positions (step before downbeat)
+ * - Boosted weak offbeats
+ * - Creates tension and forward motion
+ *
+ * Seed provides deterministic variation in exact suppression/boost amounts.
+ *
+ * @param energy ENERGY parameter value (0.0-1.0), scales weight intensity
+ * @param seed Pattern seed for deterministic variation
+ * @param patternLength Number of steps in pattern
+ * @param outWeights Output array of per-step weights
+ */
+void GenerateSyncopationPattern(float energy, uint32_t seed, int patternLength, float* outWeights);
+
+/**
+ * Generate wild (chaotic) pattern weights
+ *
+ * Produces IDM-style, unpredictable patterns with:
+ * - Weighted random distribution with high variation
+ * - Seed-based deterministic chaos
+ * - Some structural hints preserved (downbeats slightly more likely)
+ *
+ * @param energy ENERGY parameter value (0.0-1.0), scales weight intensity
+ * @param seed Pattern seed for deterministic variation
+ * @param patternLength Number of steps in pattern
+ * @param outWeights Output array of per-step weights
+ */
+void GenerateWildPattern(float energy, uint32_t seed, int patternLength, float* outWeights);
+
+/**
+ * Compute shape-blended weights using 7-zone system
+ *
+ * Main entry point for SHAPE parameter processing. Blends between three
+ * character zones (stable, syncopation, wild) with smooth crossfade
+ * transitions.
+ *
+ * Zone behavior:
+ * - Zone 1 (stable): Adds humanization that decreases toward boundary
+ * - Zone 2 (syncopation): Pure displaced rhythm character
+ * - Zone 3 (wild): Adds chaos injection that increases toward 100%
+ *
+ * Crossfade zones (4% each) provide smooth transitions without sudden jumps.
+ *
+ * @param shape SHAPE parameter value (0.0-1.0)
+ * @param energy ENERGY parameter value (0.0-1.0)
+ * @param seed Pattern seed for deterministic variation
+ * @param patternLength Number of steps in pattern (1-32)
+ * @param outWeights Output array of per-step weights (must be patternLength size)
+ *
+ * Guarantees:
+ * - All output weights are in range [kMinStepWeight, 1.0]
+ * - Same inputs always produce identical outputs (deterministic)
+ * - No heap allocations (RT audio safe)
+ */
+void ComputeShapeBlendedWeights(float shape, float energy,
+                                 uint32_t seed, int patternLength,
+                                 float* outWeights);
+
+/**
+ * Linear interpolation helper for crossfade zones
+ *
+ * @param a First value
+ * @param b Second value
+ * @param t Blend factor (0.0 = a, 1.0 = b)
+ * @return Interpolated value
+ */
+inline float LerpWeight(float a, float b, float t)
+{
+    return a + (b - a) * t;
+}
+
+/**
+ * Clamp a weight to valid range [kMinStepWeight, 1.0]
+ *
+ * @param weight Raw weight value
+ * @return Clamped weight
+ */
+inline float ClampWeight(float weight)
+{
+    if (weight < kMinStepWeight) return kMinStepWeight;
+    if (weight > 1.0f) return 1.0f;
+    return weight;
+}
+
 } // namespace daisysp_idm_grids

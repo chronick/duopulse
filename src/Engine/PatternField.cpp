@@ -1,5 +1,6 @@
 #include "PatternField.h"
 #include "ArchetypeData.h"
+#include "HashUtils.h"
 #include <cmath>
 #include <algorithm>
 
@@ -320,6 +321,253 @@ const GenreField& GetGenreField(Genre genre)
 bool AreGenreFieldsInitialized()
 {
     return s_initialized;
+}
+
+// =============================================================================
+// Shape-Based Pattern Generation (Task 28)
+// =============================================================================
+
+void GenerateStablePattern(float energy, int patternLength, float* outWeights)
+{
+    // Clamp inputs
+    energy = std::max(0.0f, std::min(1.0f, energy));
+    patternLength = std::max(1, std::min(static_cast<int>(kMaxSteps), patternLength));
+
+    // Base weight scaling by energy (0.3 at energy=0, 1.0 at energy=1)
+    float baseScale = 0.3f + energy * 0.7f;
+
+    for (int step = 0; step < patternLength; ++step)
+    {
+        float weight;
+
+        // Determine weight based on metrical position (euclidean-style)
+        // Steps 0, 16 = bar downbeats (strongest)
+        // Steps 4, 8, 12, 20, 24, 28 = quarter notes
+        // Steps 2, 6, 10, 14, 18, 22, 26, 30 = 8th notes
+        // Odd steps = 16th notes (weakest)
+
+        if (step == 0 || step == 16)
+        {
+            // Bar downbeats: always strong
+            weight = 1.0f;
+        }
+        else if (step % 4 == 0)
+        {
+            // Quarter notes
+            weight = 0.85f;
+        }
+        else if (step % 2 == 0)
+        {
+            // 8th notes
+            weight = 0.5f;
+        }
+        else
+        {
+            // 16th notes (offbeats)
+            weight = 0.25f;
+        }
+
+        // Scale by energy and clamp
+        outWeights[step] = ClampWeight(weight * baseScale);
+    }
+}
+
+void GenerateSyncopationPattern(float energy, uint32_t seed, int patternLength, float* outWeights)
+{
+    // Clamp inputs
+    energy = std::max(0.0f, std::min(1.0f, energy));
+    patternLength = std::max(1, std::min(static_cast<int>(kMaxSteps), patternLength));
+
+    // Base weight scaling by energy
+    float baseScale = 0.4f + energy * 0.6f;
+
+    // Seed-based suppression factor for beat 1 (50-70% range per spec)
+    float downbeatSuppression = 0.5f + HashToFloat(seed, 0) * 0.2f;  // 0.5 to 0.7
+
+    for (int step = 0; step < patternLength; ++step)
+    {
+        float weight;
+
+        // Check if this is a downbeat (beat 1 of a bar: steps 0, 16)
+        bool isBarDownbeat = (step == 0 || step == 16);
+
+        // Check if this is an anticipation position (step before downbeat)
+        bool isAnticipation = (step == patternLength - 1) ||  // Before step 0 wrap
+                              (step == 15) ||                   // Before step 16
+                              (step == 3) || (step == 7) || (step == 11) ||  // Before quarter notes
+                              (step == 19) || (step == 23) || (step == 27);
+
+        // Check if this is a weak offbeat (upbeats, "ands")
+        bool isWeakOffbeat = (step % 2 == 1);
+
+        if (isBarDownbeat)
+        {
+            // Suppress beat 1 (P1 fix: 50-70% of normal)
+            weight = downbeatSuppression;
+        }
+        else if (isAnticipation)
+        {
+            // Boost anticipation positions
+            float boost = 0.2f + HashToFloat(seed, step + 100) * 0.15f;
+            weight = 0.7f + boost;  // 0.7-0.85 range
+        }
+        else if (isWeakOffbeat)
+        {
+            // Boost weak offbeats for funk feel
+            float boost = 0.1f + HashToFloat(seed, step + 200) * 0.2f;
+            weight = 0.5f + boost;  // 0.5-0.7 range
+        }
+        else if (step % 4 == 0)
+        {
+            // Non-bar-1 quarter notes: moderate
+            weight = 0.6f;
+        }
+        else
+        {
+            // 8th note positions: light
+            weight = 0.4f;
+        }
+
+        // Scale by energy and clamp
+        outWeights[step] = ClampWeight(weight * baseScale);
+    }
+}
+
+void GenerateWildPattern(float energy, uint32_t seed, int patternLength, float* outWeights)
+{
+    // Clamp inputs
+    energy = std::max(0.0f, std::min(1.0f, energy));
+    patternLength = std::max(1, std::min(static_cast<int>(kMaxSteps), patternLength));
+
+    // Energy affects both base level and variation range
+    float baseLevel = 0.3f + energy * 0.3f;   // 0.3-0.6 base
+    float variation = 0.3f + energy * 0.4f;   // 0.3-0.7 variation range
+
+    for (int step = 0; step < patternLength; ++step)
+    {
+        // Get deterministic random value for this step
+        float randomValue = HashToFloat(seed, step);
+
+        // Apply variation around base level
+        float weight = baseLevel + (randomValue - 0.5f) * variation * 2.0f;
+
+        // Add slight structural hint: downbeats more likely
+        if (step == 0 || step == 16)
+        {
+            weight += 0.15f;  // Small downbeat bias
+        }
+        else if (step % 4 == 0)
+        {
+            weight += 0.08f;  // Smaller quarter note bias
+        }
+
+        // Clamp to valid range
+        outWeights[step] = ClampWeight(weight);
+    }
+}
+
+void ComputeShapeBlendedWeights(float shape, float energy,
+                                 uint32_t seed, int patternLength,
+                                 float* outWeights)
+{
+    // Clamp inputs
+    shape = std::max(0.0f, std::min(1.0f, shape));
+    energy = std::max(0.0f, std::min(1.0f, energy));
+    patternLength = std::max(1, std::min(static_cast<int>(kMaxSteps), patternLength));
+
+    // Temporary buffers for pattern generators (on stack, RT-safe)
+    float stableWeights[kMaxSteps];
+    float syncopationWeights[kMaxSteps];
+    float wildWeights[kMaxSteps];
+
+    // Determine which zone we're in and compute accordingly
+    // This avoids generating all three patterns when not needed
+
+    if (shape < kShapeZone1End)
+    {
+        // Zone 1 pure: Stable with humanization
+        GenerateStablePattern(energy, patternLength, outWeights);
+
+        // Add humanization that decreases as shape approaches zone boundary
+        // humanize = 0.05 * (1 - (shape / 0.28))
+        float humanize = 0.05f * (1.0f - (shape / kShapeZone1End));
+
+        for (int step = 0; step < patternLength; ++step)
+        {
+            // Add seed-based jitter scaled by humanization factor
+            float jitter = (HashToFloat(seed, step + 300) - 0.5f) * humanize * 2.0f;
+            outWeights[step] = ClampWeight(outWeights[step] + jitter);
+        }
+    }
+    else if (shape < kShapeCrossfade1End)
+    {
+        // Crossfade Zone 1->2: Blend stable to syncopation
+        GenerateStablePattern(energy, patternLength, stableWeights);
+        GenerateSyncopationPattern(energy, seed, patternLength, syncopationWeights);
+
+        // Compute blend factor (0.0 at zone1End, 1.0 at crossfade1End)
+        float t = (shape - kShapeZone1End) / (kShapeCrossfade1End - kShapeZone1End);
+
+        for (int step = 0; step < patternLength; ++step)
+        {
+            outWeights[step] = ClampWeight(LerpWeight(stableWeights[step], syncopationWeights[step], t));
+        }
+    }
+    else if (shape < kShapeZone2aEnd)
+    {
+        // Zone 2a: Pure syncopation (lower)
+        GenerateSyncopationPattern(energy, seed, patternLength, outWeights);
+    }
+    else if (shape < kShapeCrossfade2End)
+    {
+        // Crossfade Zone 2a->2b: Mid syncopation transition
+        // This is subtle - we vary the syncopation character slightly
+        GenerateSyncopationPattern(energy, seed, patternLength, syncopationWeights);
+
+        // Use a slightly different seed variation for the "upper" syncopation
+        GenerateSyncopationPattern(energy, seed + 0x12345678, patternLength, stableWeights);
+
+        float t = (shape - kShapeZone2aEnd) / (kShapeCrossfade2End - kShapeZone2aEnd);
+
+        for (int step = 0; step < patternLength; ++step)
+        {
+            outWeights[step] = ClampWeight(LerpWeight(syncopationWeights[step], stableWeights[step], t));
+        }
+    }
+    else if (shape < kShapeZone2bEnd)
+    {
+        // Zone 2b: Pure syncopation (upper) - uses offset seed
+        GenerateSyncopationPattern(energy, seed + 0x12345678, patternLength, outWeights);
+    }
+    else if (shape < kShapeCrossfade3End)
+    {
+        // Crossfade Zone 2->3: Blend syncopation to wild
+        GenerateSyncopationPattern(energy, seed + 0x12345678, patternLength, syncopationWeights);
+        GenerateWildPattern(energy, seed, patternLength, wildWeights);
+
+        float t = (shape - kShapeZone2bEnd) / (kShapeCrossfade3End - kShapeZone2bEnd);
+
+        for (int step = 0; step < patternLength; ++step)
+        {
+            outWeights[step] = ClampWeight(LerpWeight(syncopationWeights[step], wildWeights[step], t));
+        }
+    }
+    else
+    {
+        // Zone 3 pure: Wild with chaos injection
+        GenerateWildPattern(energy, seed, patternLength, outWeights);
+
+        // Add chaos injection that increases as shape approaches 100%
+        // Chaos factor: 0 at 0.72, up to 0.15 at 1.0
+        float chaosFactor = ((shape - kShapeCrossfade3End) / (1.0f - kShapeCrossfade3End)) * 0.15f;
+
+        for (int step = 0; step < patternLength; ++step)
+        {
+            // Add seed-based chaos variation
+            float chaos = (HashToFloat(seed, step + 500) - 0.5f) * chaosFactor * 2.0f;
+            outWeights[step] = ClampWeight(outWeights[step] + chaos);
+        }
+    }
 }
 
 } // namespace daisysp_idm_grids

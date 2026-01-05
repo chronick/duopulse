@@ -2,9 +2,10 @@
 id: 28
 slug: 28-v5-shape-algorithm
 title: "V5 SHAPE Parameter: 3-Way Blending with Crossfade Zones"
-status: pending
+status: completed
 created_date: 2026-01-04
 updated_date: 2026-01-04
+completed_date: 2026-01-04
 branch: feature/28-v5-shape-algorithm
 spec_refs:
   - "v5-design-final.md#a2-shape-blending"
@@ -37,26 +38,26 @@ Key innovations:
 
 ## Subtasks
 
-- [ ] Create `GenerateStablePattern()` - Euclidean-based weights with energy scaling
-- [ ] Create `GenerateSyncopationPattern()` - Beat suppression with anticipation boost
-- [ ] Create `GenerateWildPattern()` - Weighted random with high variation
-- [ ] Implement `ComputeShapeBlendedWeights()` with 7-zone logic (3 pure + 4 crossfade)
-- [ ] Add humanization in Zone 1 (HashToFloat for per-step jitter)
-- [ ] Add chaos injection in Zone 3 (seed-based variation)
-- [ ] Update syncopation beat 1 weight to 0.50 base (P1 fix from review)
-- [ ] Wire SHAPE parameter through PatternField to generation pipeline
-- [ ] Add unit tests for zone transitions and crossfade behavior
-- [ ] All tests pass (`make test`)
+- [x] Create `GenerateStablePattern()` - Euclidean-based weights with energy scaling
+- [x] Create `GenerateSyncopationPattern()` - Beat suppression with anticipation boost
+- [x] Create `GenerateWildPattern()` - Weighted random with high variation
+- [x] Implement `ComputeShapeBlendedWeights()` with 7-zone logic (3 pure + 4 crossfade)
+- [x] Add humanization in Zone 1 (HashToFloat for per-step jitter)
+- [x] Add chaos injection in Zone 3 (seed-based variation)
+- [x] Update syncopation beat 1 weight to 0.50 base (P1 fix from review)
+- [x] Wire SHAPE parameter through PatternField to generation pipeline
+- [x] Add unit tests for zone transitions and crossfade behavior
+- [x] All tests pass (`make test`)
 
 ## Acceptance Criteria
 
-- [ ] SHAPE=0% produces stable, humanized euclidean patterns
-- [ ] SHAPE=50% produces peak syncopation with displaced downbeats
-- [ ] SHAPE=100% produces wild, chaotic patterns
-- [ ] Zone transitions are smooth (no audible discontinuity)
-- [ ] Same seed + same SHAPE = identical output (determinism)
-- [ ] Build compiles without errors
-- [ ] All tests pass
+- [x] SHAPE=0% produces stable, humanized euclidean patterns
+- [x] SHAPE=50% produces peak syncopation with displaced downbeats
+- [x] SHAPE=100% produces wild, chaotic patterns
+- [x] Zone transitions are smooth (no audible discontinuity)
+- [x] Same seed + same SHAPE = identical output (determinism)
+- [x] Build compiles without errors
+- [x] All tests pass
 
 ## Implementation Notes
 
