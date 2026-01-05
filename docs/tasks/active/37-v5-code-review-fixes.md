@@ -3,10 +3,13 @@
 ---
 id: 37
 feature: v5-code-review-fixes
-status: pending
+status: completed
 priority: critical
 created_at: 2026-01-04
 updated_at: 2026-01-04
+completed_date: 2026-01-04
+commits:
+  - 019b1fd
 ---
 
 ## User Notes
@@ -111,20 +114,20 @@ if (!shimmerWeights) return -1;  // Or appropriate error handling
 
 ## Verification
 
-- [ ] All critical issues have unit tests
-- [ ] `make test` passes (338 test cases)
-- [ ] `make` builds without warnings
-- [ ] FLASH usage stays under 100%
+- [x] All critical issues have unit tests
+- [x] `make test` passes (348 test cases, 62476 assertions)
+- [x] `make` builds without warnings
+- [x] FLASH usage stays under 100% (98.96%)
 
 ## Subtasks
 
-- [ ] Fix shimmerWeights bounds check (Issue #1)
-- [ ] Fix shimmerWeights null check (Issue #2)
-- [ ] Fix HatBurst trigger count guarantee (Issue #3)
-- [ ] Add patternLength to VelocityCompute (Issue #4)
-- [ ] Add patternLength to HatBurst proximity (Issue #5)
-- [ ] Fix RNG seed mixing (Issue #6)
-- [ ] Fix gap distribution overflow (Issue #7)
+- [x] Fix shimmerWeights bounds check (Issue #1)
+- [x] Fix shimmerWeights null check (Issue #2)
+- [x] Fix HatBurst trigger count guarantee (Issue #3)
+- [x] Add patternLength to VelocityCompute (Issue #4)
+- [x] Add patternLength to HatBurst proximity (Issue #5)
+- [x] Fix RNG seed mixing (Issue #6)
+- [x] Fix gap distribution overflow (Issue #7)
 
 ## References
 
