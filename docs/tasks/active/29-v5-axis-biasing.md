@@ -2,9 +2,10 @@
 id: 29
 slug: 29-v5-axis-biasing
 title: "V5 AXIS X/Y: Bidirectional Biasing with Broken Mode"
-status: pending
+status: completed
 created_date: 2026-01-04
 updated_date: 2026-01-04
+completed_date: 2026-01-04
 branch: feature/29-v5-axis-biasing
 spec_refs:
   - "v5-design-final.md#a3-axis-biasing"
@@ -35,25 +36,25 @@ Key innovations:
 
 ## Subtasks
 
-- [ ] Convert AXIS X from unipolar (0-1 → offbeats) to bipolar (0-1 → downbeats to offbeats)
-- [ ] Implement bidirectional X bias: suppress AND boost based on direction
-- [ ] Convert AXIS Y from unipolar to bipolar with increased ±50% range
-- [ ] Implement "broken mode" detection (SHAPE > 0.6 AND AXIS X > 0.7)
-- [ ] Add downbeat suppression in broken mode (seed-based 60% chance at brokenIntensity)
-- [ ] Document "broken mode" interaction zone in user-facing notes
-- [ ] Ensure minimum weight floor of 0.05 (no complete step elimination)
-- [ ] Add unit tests for bidirectional behavior
-- [ ] All tests pass (`make test`)
+- [x] Convert AXIS X from unipolar (0-1 → offbeats) to bipolar (0-1 → downbeats to offbeats)
+- [x] Implement bidirectional X bias: suppress AND boost based on direction
+- [x] Convert AXIS Y from unipolar to bipolar with increased ±50% range
+- [x] Implement "broken mode" detection (SHAPE > 0.6 AND AXIS X > 0.7)
+- [x] Add downbeat suppression in broken mode (seed-based 60% chance at brokenIntensity)
+- [x] Document "broken mode" interaction zone in user-facing notes
+- [x] Ensure minimum weight floor of 0.05 (no complete step elimination)
+- [x] Add unit tests for bidirectional behavior
+- [x] All tests pass (`make test`)
 
 ## Acceptance Criteria
 
-- [ ] AXIS X at 0% emphasizes downbeats, at 100% emphasizes offbeats
-- [ ] AXIS X at 50% has no bias effect (neutral)
-- [ ] AXIS Y at 0% simplifies pattern, at 100% adds complexity
-- [ ] Broken mode activates at high SHAPE + high AXIS X
-- [ ] Minimum step weight is 0.05 (never zero)
-- [ ] Build compiles without errors
-- [ ] All tests pass
+- [x] AXIS X at 0% emphasizes downbeats, at 100% emphasizes offbeats
+- [x] AXIS X at 50% has no bias effect (neutral)
+- [x] AXIS Y at 0% simplifies pattern, at 100% adds complexity
+- [x] Broken mode activates at high SHAPE + high AXIS X
+- [x] Minimum step weight is 0.05 (never zero)
+- [x] Build compiles without errors
+- [x] All tests pass
 
 ## Implementation Notes
 

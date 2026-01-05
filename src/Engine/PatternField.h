@@ -289,4 +289,71 @@ inline float ClampWeight(float weight)
     return weight;
 }
 
+// =============================================================================
+// AXIS X/Y Bidirectional Biasing (Task 29)
+// =============================================================================
+
+/**
+ * Get the metric weight for a step position
+ *
+ * Returns a value in [0.0, 1.0] indicating how metrically strong the position is:
+ * - 1.0 = bar downbeat (steps 0, 16)
+ * - 0.75 = quarter notes (steps 4, 8, 12, 20, 24, 28)
+ * - 0.5 = 8th notes
+ * - 0.25 = 16th notes (weakest)
+ *
+ * @param step Step index within pattern (0 to patternLength-1)
+ * @param patternLength Total pattern length
+ * @return Metric weight in range [0.0, 1.0]
+ */
+float GetMetricWeight(int step, int patternLength);
+
+/**
+ * Get position strength for a step (bidirectional)
+ *
+ * Converts metric weight to a bidirectional value:
+ * - -1.0 = strong downbeat
+ * - 0.0 = neutral
+ * - +1.0 = weak offbeat
+ *
+ * Formula: positionStrength = 1.0 - 2.0 * metricWeight
+ *
+ * @param step Step index within pattern
+ * @param patternLength Total pattern length
+ * @return Position strength in range [-1.0, +1.0]
+ */
+float GetPositionStrength(int step, int patternLength);
+
+/**
+ * Apply AXIS X/Y biasing to pattern weights
+ *
+ * Bidirectional AXIS X (beat position):
+ * - 0.0 = Grounded (emphasize downbeats, suppress offbeats)
+ * - 0.5 = Neutral (no bias)
+ * - 1.0 = Floating (emphasize offbeats, suppress downbeats)
+ *
+ * Bidirectional AXIS Y (intricacy):
+ * - 0.0 = Simple (suppress weak positions)
+ * - 0.5 = Neutral (no bias)
+ * - 1.0 = Complex (boost weak positions, add intricacy)
+ *
+ * "Broken Mode" emergent feature:
+ * When SHAPE > 0.6 AND AXIS X > 0.7, some downbeats are stochastically
+ * suppressed for an unstable, "broken" feel.
+ *
+ * @param baseWeights Array of weights to modify in-place (must be patternLength size)
+ * @param axisX AXIS X parameter (0.0-1.0)
+ * @param axisY AXIS Y parameter (0.0-1.0)
+ * @param shape SHAPE parameter for broken mode detection (0.0-1.0)
+ * @param seed Pattern seed for deterministic broken mode behavior
+ * @param patternLength Number of steps in pattern (1-32)
+ *
+ * Guarantees:
+ * - All output weights are clamped to [kMinStepWeight, 1.0]
+ * - Same inputs always produce identical outputs (deterministic)
+ * - No heap allocations (RT audio safe)
+ */
+void ApplyAxisBias(float* baseWeights, float axisX, float axisY,
+                   float shape, uint32_t seed, int patternLength);
+
 } // namespace daisysp_idm_grids

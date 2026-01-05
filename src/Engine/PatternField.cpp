@@ -570,4 +570,166 @@ void ComputeShapeBlendedWeights(float shape, float energy,
     }
 }
 
+// =============================================================================
+// AXIS X/Y Bidirectional Biasing (Task 29)
+// =============================================================================
+
+float GetMetricWeight(int step, int patternLength)
+{
+    // Clamp step to valid range
+    if (step < 0 || step >= patternLength)
+    {
+        step = 0;
+    }
+
+    // Metric weight based on position in rhythmic hierarchy
+    // Works for any pattern length by using relative positions
+    //
+    // For 16-step pattern:
+    //   Steps 0, 8 = downbeats (1.0)
+    //   Steps 2, 4, 6, 10, 12, 14 = stronger even positions (0.75)
+    //   Steps 1, 3, 5, 7, 9, 11, 13, 15 = 16th notes, weakest (0.25)
+    //
+    // For 32-step pattern:
+    //   Steps 0, 16 = bar downbeats (1.0)
+    //   Steps 4, 8, 12, 20, 24, 28 = quarter notes (0.75)
+    //   Steps 2, 6, 10, 14, 18, 22, 26, 30 = 8th notes (0.5)
+    //   Odd steps = 16th notes (0.25)
+
+    int halfLength = patternLength / 2;
+
+    // Main downbeats: step 0 and middle of pattern
+    if (step == 0 || step == halfLength)
+    {
+        return 1.0f;
+    }
+
+    // For patterns <= 16 steps, simplified hierarchy:
+    // Even = 0.75, Odd = 0.25
+    if (patternLength <= 16)
+    {
+        return (step % 2 == 0) ? 0.75f : 0.25f;
+    }
+
+    // For 32-step patterns, full 4-level hierarchy
+    // Quarter notes (every 4th step, excluding downbeats)
+    if (step % 4 == 0)
+    {
+        return 0.75f;
+    }
+    // 8th notes (every 2nd step, excluding quarters)
+    if (step % 2 == 0)
+    {
+        return 0.5f;
+    }
+    // 16th notes (odd positions)
+    return 0.25f;
+}
+
+float GetPositionStrength(int step, int patternLength)
+{
+    float metricWeight = GetMetricWeight(step, patternLength);
+    // Convert [0,1] metric weight to [-1,+1] position strength
+    // Strong downbeat (metric=1.0) -> position=-1.0
+    // Weak offbeat (metric=0.25) -> position=+0.5
+    return 1.0f - 2.0f * metricWeight;
+}
+
+void ApplyAxisBias(float* baseWeights, float axisX, float axisY,
+                   float shape, uint32_t seed, int patternLength)
+{
+    // Clamp inputs
+    axisX = std::max(0.0f, std::min(1.0f, axisX));
+    axisY = std::max(0.0f, std::min(1.0f, axisY));
+    shape = std::max(0.0f, std::min(1.0f, shape));
+    patternLength = std::max(1, std::min(static_cast<int>(kMaxSteps), patternLength));
+
+    // Convert unipolar (0-1) to bipolar (-1 to +1)
+    float xBias = (axisX - 0.5f) * 2.0f;  // [-1.0, +1.0]
+    float yBias = (axisY - 0.5f) * 2.0f;  // [-1.0, +1.0]
+
+    // Check for "broken mode" emergent feature
+    // Activates when SHAPE > 0.6 AND AXIS X > 0.7
+    bool brokenModeActive = (shape > 0.6f) && (axisX > 0.7f);
+    float brokenIntensity = 0.0f;
+    if (brokenModeActive)
+    {
+        // Calculate intensity: (shape - 0.6) * 2.5 * (axisX - 0.7) * 3.33
+        brokenIntensity = (shape - 0.6f) * 2.5f * (axisX - 0.7f) * 3.33f;
+        brokenIntensity = std::min(1.0f, brokenIntensity);
+    }
+
+    for (int step = 0; step < patternLength; ++step)
+    {
+        float weight = baseWeights[step];
+        float metricWeight = GetMetricWeight(step, patternLength);
+        float positionStrength = GetPositionStrength(step, patternLength);
+
+        // Apply AXIS X bias (beat position emphasis)
+        if (xBias > 0.0f)
+        {
+            // Toward offbeats (floating): suppress downbeats, boost offbeats
+            if (positionStrength < 0.0f)
+            {
+                // Strong position (downbeat): suppress by up to 45%
+                weight *= 1.0f - (0.45f * xBias * (-positionStrength));
+            }
+            else
+            {
+                // Weak position (offbeat): boost by up to 60%
+                weight *= 1.0f + (0.60f * xBias * positionStrength);
+            }
+        }
+        else if (xBias < 0.0f)
+        {
+            // Toward downbeats (grounded): boost downbeats, suppress offbeats
+            float absXBias = -xBias;
+            if (positionStrength < 0.0f)
+            {
+                // Strong position (downbeat): boost by up to 60%
+                weight *= 1.0f + (0.60f * absXBias * (-positionStrength));
+            }
+            else
+            {
+                // Weak position (offbeat): suppress by up to 45%
+                weight *= 1.0f - (0.45f * absXBias * positionStrength);
+            }
+        }
+
+        // Apply AXIS Y bias (intricacy/complexity)
+        // Uses metric weight directly (1.0 = strong, 0.25 = weak)
+        if (yBias > 0.0f)
+        {
+            // Toward complex: boost weak positions by up to 50%
+            // Weak positions have low metric weight
+            float weakness = 1.0f - metricWeight;  // 0 for strong, 0.75 for weak
+            weight *= 1.0f + (0.50f * yBias * weakness);
+        }
+        else if (yBias < 0.0f)
+        {
+            // Toward simple: suppress weak positions by up to 50%
+            float absYBias = -yBias;
+            float weakness = 1.0f - metricWeight;
+            weight *= 1.0f - (0.50f * absYBias * weakness);
+        }
+
+        // Apply "broken mode" if active
+        if (brokenModeActive && metricWeight >= 0.75f)
+        {
+            // This is a downbeat position - chance to suppress
+            // Use deterministic hash for 60% chance per step
+            float randomValue = HashToFloat(seed ^ 0xDEADBEEF, step);
+            if (randomValue < 0.6f)
+            {
+                // Suppress to 25% * brokenIntensity + original * (1 - brokenIntensity)
+                float suppressedWeight = weight * 0.25f;
+                weight = LerpWeight(weight, suppressedWeight, brokenIntensity);
+            }
+        }
+
+        // Clamp to valid range with minimum floor
+        baseWeights[step] = ClampWeight(weight);
+    }
+}
+
 } // namespace daisysp_idm_grids
