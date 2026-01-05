@@ -28,72 +28,33 @@ void ControlProcessor::Init(const ControlState& initialState)
     buttonState_.Init();
     modeState_.Init();
 
-    // Initialize performance primary knobs with current values
-    perfPrimaryKnobs_[0].Init(initialState.energy);
-    perfPrimaryKnobs_[1].Init(initialState.build);
-    perfPrimaryKnobs_[2].Init(initialState.fieldX);
-    perfPrimaryKnobs_[3].Init(initialState.fieldY);
+    // V5: Initialize performance knobs with new parameter names
+    // K1: ENERGY, K2: SHAPE, K3: AXIS X, K4: AXIS Y
+    perfKnobs_[0].Init(initialState.energy);
+    perfKnobs_[1].Init(initialState.shape);
+    perfKnobs_[2].Init(initialState.axisX);
+    perfKnobs_[3].Init(initialState.axisY);
 
-    // Initialize performance shift knobs
-    perfShiftKnobs_[0].Init(initialState.punch);
-    // Genre is discrete (0-1 mapped to enum), init to middle
-    perfShiftKnobs_[1].Init(static_cast<float>(initialState.genre) / 2.0f);
-    perfShiftKnobs_[2].Init(initialState.drift);
-    perfShiftKnobs_[3].Init(initialState.balance);
+    // V5: Initialize config knobs with new parameter assignments
+    // K1: CLOCK DIV, K2: SWING, K3: DRIFT, K4: ACCENT
+    // Clock division: map clockDiv to normalized knob value
+    float clockDivNorm = 0.625f;  // Default to x1 (center-right)
+    if (initialState.clockDiv == -4)
+        clockDivNorm = 0.125f;  // ÷4
+    else if (initialState.clockDiv == -2)
+        clockDivNorm = 0.375f;  // ÷2
+    else if (initialState.clockDiv == 4)
+        clockDivNorm = 0.875f;  // x4
+    configKnobs_[0].Init(clockDivNorm);
 
-    // Initialize config primary knobs (discrete values need special handling)
-    // Pattern length: 16/24/32/64 -> 0.125/0.375/0.625/0.875
-    float patternLengthNorm = 0.625f;  // Default to 32
-    if (initialState.patternLength == 16)
-        patternLengthNorm = 0.125f;
-    else if (initialState.patternLength == 24)
-        patternLengthNorm = 0.375f;
-    else if (initialState.patternLength == 64)
-        patternLengthNorm = 0.875f;
-    configPrimaryKnobs_[0].Init(patternLengthNorm);
-
-    configPrimaryKnobs_[1].Init(initialState.swing);
-
-    // AUX mode: discrete (0-3 -> 0.125/0.375/0.625/0.875)
-    configPrimaryKnobs_[2].Init(
-        (static_cast<float>(initialState.auxMode) + 0.5f) / 4.0f);
-
-    // K4: FREE - Reset mode no longer exposed in UI, init to 0.0
-    configPrimaryKnobs_[3].Init(0.0f);
-
-    // Initialize config shift knobs
-    // Phrase length: 1/2/4/8 -> 0.125/0.375/0.625/0.875
-    float phraseLengthNorm = 0.625f;  // Default to 4
-    if (initialState.phraseLength == 1)
-        phraseLengthNorm = 0.125f;
-    else if (initialState.phraseLength == 2)
-        phraseLengthNorm = 0.375f;
-    else if (initialState.phraseLength == 8)
-        phraseLengthNorm = 0.875f;
-    configShiftKnobs_[0].Init(phraseLengthNorm);
-
-    // Clock division: 1/2/4/8 -> same as phrase length
-    float clockDivNorm = 0.125f;  // Default to 1
-    if (initialState.clockDivision == 2)
-        clockDivNorm = 0.375f;
-    else if (initialState.clockDivision == 4)
-        clockDivNorm = 0.625f;
-    else if (initialState.clockDivision == 8)
-        clockDivNorm = 0.875f;
-    configShiftKnobs_[1].Init(clockDivNorm);
-
-    // AUX density: discrete (0-3)
-    configShiftKnobs_[2].Init(
-        (static_cast<float>(initialState.auxDensity) + 0.5f) / 4.0f);
-
-    // Voice coupling: discrete (0-2)
-    configShiftKnobs_[3].Init(
-        (static_cast<float>(initialState.voiceCoupling) + 0.5f) / 3.0f);
+    configKnobs_[1].Init(initialState.swing);
+    configKnobs_[2].Init(initialState.drift);
+    configKnobs_[3].Init(initialState.accent);
 
     prevFillGateHigh_  = false;
     parameterChanged_  = false;
-    currentContext_    = KnobContext::PERF_PRIMARY;
-    prevContext_       = KnobContext::PERF_PRIMARY;
+    currentContext_    = KnobContext::PERF;
+    prevContext_       = KnobContext::PERF;
 }
 
 void ControlProcessor::ProcessControls(const RawHardwareInput& input,
@@ -105,20 +66,12 @@ void ControlProcessor::ProcessControls(const RawHardwareInput& input,
     modeState_.prevPerformanceMode = modeState_.performanceMode;
     modeState_.prevShiftActive     = modeState_.shiftActive;
     modeState_.performanceMode     = input.modeSwitch;
+    // V5: Shift layer removed, shiftActive no longer used for context switching
     modeState_.shiftActive         = buttonState_.shiftActive;
 
-    // Determine current knob context
+    // V5: Determine current knob context (simplified - no shift layers)
     prevContext_ = currentContext_;
-    if (modeState_.performanceMode)
-    {
-        currentContext_ = modeState_.shiftActive ? KnobContext::PERF_SHIFT
-                                                 : KnobContext::PERF_PRIMARY;
-    }
-    else
-    {
-        currentContext_ = modeState_.shiftActive ? KnobContext::CONFIG_SHIFT
-                                                 : KnobContext::CONFIG_PRIMARY;
-    }
+    currentContext_ = modeState_.performanceMode ? KnobContext::PERF : KnobContext::CONFIG;
 
     // Lock knobs on context change
     if (currentContext_ != prevContext_)
@@ -126,28 +79,22 @@ void ControlProcessor::ProcessControls(const RawHardwareInput& input,
         LockAllKnobs();
     }
 
-    // Process controls based on current context
-    switch (currentContext_)
+    // V5: Process controls based on current context (simplified - 2 modes only)
+    if (currentContext_ == KnobContext::PERF)
     {
-        case KnobContext::PERF_PRIMARY:
-            ProcessPerformancePrimary(input, state);
-            break;
-        case KnobContext::PERF_SHIFT:
-            ProcessPerformanceShift(input, state);
-            break;
-        case KnobContext::CONFIG_PRIMARY:
-            ProcessConfigPrimary(input, state);
-            break;
-        case KnobContext::CONFIG_SHIFT:
-            ProcessConfigShift(input, state);
-            break;
+        ProcessPerformanceMode(input, state);
+    }
+    else
+    {
+        ProcessConfigMode(input, state);
     }
 
-    // Process CV modulation (always active for performance primary params)
+    // V5: CV modulation (always active for performance mode params)
+    // CV1-4 modulate ENERGY, SHAPE, AXIS X, AXIS Y
     state.energyCV = ProcessCVModulation(input.cvInputs[0]);
-    state.buildCV  = ProcessCVModulation(input.cvInputs[1]);
-    state.fieldXCV = ProcessCVModulation(input.cvInputs[2]);
-    state.fieldYCV = ProcessCVModulation(input.cvInputs[3]);
+    state.shapeCV  = ProcessCVModulation(input.cvInputs[1]);
+    state.axisXCV  = ProcessCVModulation(input.cvInputs[2]);
+    state.axisYCV  = ProcessCVModulation(input.cvInputs[3]);
 
     // Process flavor CV
     state.flavorCV = ProcessFlavorCV(input.flavorCV);
@@ -257,152 +204,87 @@ void ControlProcessor::ProcessButtonGestures(bool pressed, uint32_t currentTimeM
     }
 }
 
-void ControlProcessor::ProcessPerformancePrimary(const RawHardwareInput& input,
-                                                  ControlState& state)
+// V5: Process performance mode controls (no shift layer)
+// K1: ENERGY, K2: SHAPE, K3: AXIS X, K4: AXIS Y
+void ControlProcessor::ProcessPerformanceMode(const RawHardwareInput& input,
+                                               ControlState& state)
 {
     // K1: ENERGY
-    state.energy = perfPrimaryKnobs_[0].Process(input.knobs[0]);
+    state.energy = perfKnobs_[0].Process(input.knobs[0]);
 
-    // K2: BUILD
-    state.build = perfPrimaryKnobs_[1].Process(input.knobs[1]);
+    // K2: SHAPE (V5: was BUILD)
+    state.shape = perfKnobs_[1].Process(input.knobs[1]);
 
-    // K3: FIELD X
-    state.fieldX = perfPrimaryKnobs_[2].Process(input.knobs[2]);
+    // K3: AXIS X (V5: was FIELD X)
+    state.axisX = perfKnobs_[2].Process(input.knobs[2]);
 
-    // K4: FIELD Y
-    state.fieldY = perfPrimaryKnobs_[3].Process(input.knobs[3]);
+    // K4: AXIS Y (V5: was FIELD Y)
+    state.axisY = perfKnobs_[3].Process(input.knobs[3]);
 }
 
-void ControlProcessor::ProcessPerformanceShift(const RawHardwareInput& input,
-                                                ControlState& state)
+// V5: Process config mode controls (no shift layer)
+// K1: CLOCK DIV, K2: SWING, K3: DRIFT, K4: ACCENT
+void ControlProcessor::ProcessConfigMode(const RawHardwareInput& input,
+                                          ControlState& state)
 {
-    // Shift+K1: PUNCH
-    state.punch = perfShiftKnobs_[0].Process(input.knobs[0]);
+    // K1: CLOCK DIV (V5: was shift+K2)
+    // Maps: 0-25% = ÷4, 25-50% = ÷2, 50-75% = x1, 75-100% = x4
+    float clockDivRaw = configKnobs_[0].Process(input.knobs[0]);
+    int newClockDiv;
+    if (clockDivRaw < 0.25f)
+        newClockDiv = -4;  // ÷4
+    else if (clockDivRaw < 0.50f)
+        newClockDiv = -2;  // ÷2
+    else if (clockDivRaw < 0.75f)
+        newClockDiv = 1;   // x1
+    else
+        newClockDiv = 4;   // x4
 
-    // Shift+K2: GENRE (discrete)
-    float genreRaw = perfShiftKnobs_[1].Process(input.knobs[1]);
-    Genre newGenre = GetGenreFromValue(genreRaw);
-    if (newGenre != state.genre)
+    if (newClockDiv != state.clockDiv)
     {
         parameterChanged_ = true;
-        state.genre       = newGenre;
-    }
-
-    // Shift+K3: DRIFT
-    state.drift = perfShiftKnobs_[2].Process(input.knobs[2]);
-
-    // Shift+K4: BALANCE
-    state.balance = perfShiftKnobs_[3].Process(input.knobs[3]);
-}
-
-void ControlProcessor::ProcessConfigPrimary(const RawHardwareInput& input,
-                                             ControlState& state)
-{
-    // K1: PATTERN LENGTH (discrete)
-    float patternRaw = configPrimaryKnobs_[0].Process(input.knobs[0]);
-    int newPatternLength = QuantizePatternLength(patternRaw);
-    if (newPatternLength != state.patternLength)
-    {
-        parameterChanged_    = true;
-        state.patternLength = newPatternLength;
+        state.clockDiv = newClockDiv;
+        state.clockDivision = newClockDiv;  // Legacy alias
     }
 
     // K2: SWING (continuous)
-    state.swing = configPrimaryKnobs_[1].Process(input.knobs[1]);
+    state.swing = configKnobs_[1].Process(input.knobs[1]);
 
-    // K3: AUX MODE (discrete)
-    float auxModeRaw   = configPrimaryKnobs_[2].Process(input.knobs[2]);
-    AuxMode newAuxMode = GetAuxModeFromValue(auxModeRaw);
-    if (newAuxMode != state.auxMode)
-    {
-        parameterChanged_ = true;
-        state.auxMode     = newAuxMode;
-    }
+    // K3: DRIFT (V5: was perf shift+K3)
+    state.drift = configKnobs_[2].Process(input.knobs[2]);
 
-    // K4: FREE - Reset mode hardcoded to STEP in ControlState::Init()
-    // Config K4 primary is now available for future features
-    (void)input.knobs[3];  // Mark parameter as intentionally unused
-}
-
-void ControlProcessor::ProcessConfigShift(const RawHardwareInput& input,
-                                           ControlState& state)
-{
-    // Shift+K1: FREE - Phrase length is now auto-derived from pattern length
-    // See ControlState::GetDerivedPhraseLength()
-    // Config+Shift K1 is now available for future features
-    (void)input.knobs[0];  // Mark parameter as intentionally unused
-
-    // Shift+K2: CLOCK DIV (discrete)
-    float clockDivRaw = configShiftKnobs_[1].Process(input.knobs[1]);
-    int newClockDiv   = QuantizeClockDivision(clockDivRaw);
-    if (newClockDiv != state.clockDivision)
-    {
-        parameterChanged_    = true;
-        state.clockDivision = newClockDiv;
-    }
-
-    // Shift+K3: AUX DENSITY (discrete)
-    float auxDensityRaw     = configShiftKnobs_[2].Process(input.knobs[2]);
-    AuxDensity newAuxDensity = GetAuxDensityFromValue(auxDensityRaw);
-    if (newAuxDensity != state.auxDensity)
-    {
-        parameterChanged_  = true;
-        state.auxDensity  = newAuxDensity;
-    }
-
-    // Shift+K4: VOICE COUPLING (discrete)
-    float couplingRaw            = configShiftKnobs_[3].Process(input.knobs[3]);
-    VoiceCoupling newVoiceCoupling = GetVoiceCouplingFromValue(couplingRaw);
-    if (newVoiceCoupling != state.voiceCoupling)
-    {
-        parameterChanged_    = true;
-        state.voiceCoupling = newVoiceCoupling;
-    }
+    // K4: ACCENT (V5: was PUNCH in perf shift+K1)
+    state.accent = configKnobs_[3].Process(input.knobs[3]);
 }
 
 void ControlProcessor::LockAllKnobs()
 {
+    // V5: Only 2 sets of knobs (no shift layers)
     for (int i = 0; i < kNumKnobs; ++i)
     {
-        perfPrimaryKnobs_[i].Lock();
-        perfShiftKnobs_[i].Lock();
-        configPrimaryKnobs_[i].Lock();
-        configShiftKnobs_[i].Lock();
+        perfKnobs_[i].Lock();
+        configKnobs_[i].Lock();
     }
 }
 
 bool ControlProcessor::AnyKnobMoved() const
 {
-    // Check all knobs in current context
-    switch (currentContext_)
+    // V5: Check all knobs in current context (simplified - 2 contexts only)
+    if (currentContext_ == KnobContext::PERF)
     {
-        case KnobContext::PERF_PRIMARY:
-            for (int i = 0; i < kNumKnobs; ++i)
-            {
-                // Note: HasMoved() resets the flag, so we need a const version
-                // For now, we check if the knob is unlocked (indicates user
-                // engaged)
-                if (!perfPrimaryKnobs_[i].IsLocked()) return true;
-            }
-            break;
-        case KnobContext::PERF_SHIFT:
-            for (int i = 0; i < kNumKnobs; ++i)
-            {
-                if (!perfShiftKnobs_[i].IsLocked()) return true;
-            }
-            break;
-        case KnobContext::CONFIG_PRIMARY:
-            for (int i = 0; i < kNumKnobs; ++i)
-            {
-                if (!configPrimaryKnobs_[i].IsLocked()) return true;
-            }
-            break;
-        case KnobContext::CONFIG_SHIFT:
-            for (int i = 0; i < kNumKnobs; ++i)
-            {
-                if (!configShiftKnobs_[i].IsLocked()) return true;
-            }
-            break;
+        for (int i = 0; i < kNumKnobs; ++i)
+        {
+            // Note: HasMoved() resets the flag, so we need a const version
+            // For now, we check if the knob is unlocked (indicates user engaged)
+            if (!perfKnobs_[i].IsLocked()) return true;
+        }
+    }
+    else
+    {
+        for (int i = 0; i < kNumKnobs; ++i)
+        {
+            if (!configKnobs_[i].IsLocked()) return true;
+        }
     }
     return false;
 }

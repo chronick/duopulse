@@ -58,9 +58,10 @@ void Sequencer::Init(float sampleRate)
     externalClockTick_ = false;
     lastTapTime_ = 0;
 
-    // Field change tracking (Task 23: Immediate Field Updates)
-    previousFieldX_ = state_.controls.GetEffectiveFieldX();
-    previousFieldY_ = state_.controls.GetEffectiveFieldY();
+    // Axis change tracking (Task 23: Immediate Field Updates)
+    // V5: Renamed from Field to Axis (Task 27)
+    previousFieldX_ = state_.controls.GetEffectiveAxisX();
+    previousFieldY_ = state_.controls.GetEffectiveAxisY();
     fieldChangeRegenPending_ = false;
 
     // Clock division/multiplication state
@@ -292,15 +293,15 @@ void Sequencer::GenerateBar()
     BarBudget budget;
     ComputeBarBudget(
         energy, balance, zone, auxDensity, halfLength,
-        state_.controls.buildModifiers.densityMultiplier, budget
+        state_.controls.shapeModifiers.densityMultiplier, budget
     );
 
     // Apply fill boost if in fill zone
-    if (state_.controls.buildModifiers.inFillZone)
+    if (state_.controls.shapeModifiers.inFillZone)
     {
         ApplyFillBoost(
             budget,
-            state_.controls.buildModifiers.fillIntensity,
+            state_.controls.shapeModifiers.fillIntensity,
             state_.blendedArchetype.fillDensityMultiplier,
             halfLength
         );
@@ -312,7 +313,8 @@ void Sequencer::GenerateBar()
     );
 
     // 2.5. Compute Euclidean blend ratio (Task 21 Phase F6-F8)
-    const float fieldX = state_.controls.GetEffectiveFieldX();
+    // V5: Use axisX instead of fieldX (Task 27)
+    const float fieldX = state_.controls.GetEffectiveAxisX();
     const float euclideanRatio = GetGenreEuclideanRatio(genre, fieldX, zone);
 
     // 3. Generate anchor hits (first half) with optional Euclidean blend
@@ -410,14 +412,14 @@ void Sequencer::GenerateBar()
         BarBudget budget2;
         ComputeBarBudget(
             energy, balance, zone, auxDensity, halfLength,
-            state_.controls.buildModifiers.densityMultiplier, budget2
+            state_.controls.shapeModifiers.densityMultiplier, budget2
         );
 
-        if (state_.controls.buildModifiers.inFillZone)
+        if (state_.controls.shapeModifiers.inFillZone)
         {
             ApplyFillBoost(
                 budget2,
-                state_.controls.buildModifiers.fillIntensity,
+                state_.controls.shapeModifiers.fillIntensity,
                 state_.blendedArchetype.fillDensityMultiplier,
                 halfLength
             );
@@ -539,25 +541,27 @@ void Sequencer::ProcessStep()
         if (forcedTriggers_[0])
         {
             // Compute velocity with forced accent
-            PunchParams punchParams;
-            punchParams.ComputeFromPunch(state_.controls.punch);
-            BuildModifiers buildMods;
-            buildMods.ComputeFromBuild(state_.controls.build, phraseProgress);
+            // V5: Use accent/shape instead of punch/build (Task 27)
+            AccentParams accentParams;
+            accentParams.ComputeFromAccent(state_.controls.accent);
+            ShapeModifiers shapeMods;
+            shapeMods.ComputeFromShape(state_.controls.shape, phraseProgress);
 
             // For forced accent, use higher velocity (0.8 = accent floor + boost)
             float velocity = forcedKickAccent_ ? 0.85f : 0.6f;
-            velocity = ComputeVelocity(punchParams, buildMods, forcedKickAccent_, seed, step);
+            velocity = ComputeVelocity(accentParams, shapeMods, forcedKickAccent_, seed, step);
 
             state_.outputs.FireAnchor(velocity, forcedKickAccent_);
         }
         if (forcedTriggers_[1])
         {
-            PunchParams punchParams;
-            punchParams.ComputeFromPunch(state_.controls.punch);
-            BuildModifiers buildMods;
-            buildMods.ComputeFromBuild(state_.controls.build, phraseProgress);
+            // V5: Use accent/shape instead of punch/build (Task 27)
+            AccentParams accentParams;
+            accentParams.ComputeFromAccent(state_.controls.accent);
+            ShapeModifiers shapeMods;
+            shapeMods.ComputeFromShape(state_.controls.shape, phraseProgress);
 
-            float velocity = ComputeVelocity(punchParams, buildMods, false, seed, step);
+            float velocity = ComputeVelocity(accentParams, shapeMods, false, seed, step);
             state_.outputs.FireShimmer(velocity, false);
         }
         if (forcedTriggers_[2])
@@ -575,8 +579,9 @@ void Sequencer::ProcessStep()
     if (state_.sequencer.AnchorFires())
     {
         bool isAccent = state_.sequencer.AnchorAccented();
+        // V5: Use accent/shape instead of punch/build (Task 27)
         float velocity = ComputeAnchorVelocity(
-            state_.controls.punch, state_.controls.build,
+            state_.controls.accent, state_.controls.shape,
             phraseProgress, step, seed,
             state_.blendedArchetype.anchorAccentMask
         );
@@ -607,8 +612,9 @@ void Sequencer::ProcessStep()
     if (state_.sequencer.ShimmerFires())
     {
         bool isAccent = state_.sequencer.ShimmerAccented();
+        // V5: Use accent/shape instead of punch/build (Task 27)
         float velocity = ComputeShimmerVelocity(
-            state_.controls.punch, state_.controls.build,
+            state_.controls.accent, state_.controls.shape,
             phraseProgress, step, seed,
             state_.blendedArchetype.shimmerAccentMask
         );
@@ -646,7 +652,8 @@ void Sequencer::ProcessStep()
     }
 
     // Update fill zone state
-    state_.sequencer.inFillZone = state_.controls.buildModifiers.inFillZone;
+    // V5: Renamed from buildModifiers to shapeModifiers (Task 27)
+    state_.sequencer.inFillZone = state_.controls.shapeModifiers.inFillZone;
 }
 
 void Sequencer::AdvanceStep()
@@ -763,17 +770,20 @@ void Sequencer::SetEnergy(float value)
 
 void Sequencer::SetBuild(float value)
 {
-    state_.controls.build = Clamp(value, 0.0f, 1.0f);
+    // V5: Renamed to shape internally (Task 27)
+    state_.controls.shape = Clamp(value, 0.0f, 1.0f);
 }
 
 void Sequencer::SetFieldX(float value)
 {
-    state_.controls.fieldX = Clamp(value, 0.0f, 1.0f);
+    // V5: Renamed to axisX internally (Task 27)
+    state_.controls.axisX = Clamp(value, 0.0f, 1.0f);
 }
 
 void Sequencer::SetFieldY(float value)
 {
-    state_.controls.fieldY = Clamp(value, 0.0f, 1.0f);
+    // V5: Renamed to axisY internally (Task 27)
+    state_.controls.axisY = Clamp(value, 0.0f, 1.0f);
 }
 
 // =============================================================================
@@ -782,7 +792,8 @@ void Sequencer::SetFieldY(float value)
 
 void Sequencer::SetPunch(float value)
 {
-    state_.controls.punch = Clamp(value, 0.0f, 1.0f);
+    // V5: Renamed to accent internally (Task 27)
+    state_.controls.accent = Clamp(value, 0.0f, 1.0f);
 }
 
 void Sequencer::SetGenre(float value)
@@ -890,17 +901,20 @@ void Sequencer::SetEnergyCV(float value)
 
 void Sequencer::SetBuildCV(float value)
 {
-    state_.controls.buildCV = Clamp(value, -0.5f, 0.5f);
+    // V5: Renamed to shapeCV internally (Task 27)
+    state_.controls.shapeCV = Clamp(value, -0.5f, 0.5f);
 }
 
 void Sequencer::SetFieldXCV(float value)
 {
-    state_.controls.fieldXCV = Clamp(value, -0.5f, 0.5f);
+    // V5: Renamed to axisXCV internally (Task 27)
+    state_.controls.axisXCV = Clamp(value, -0.5f, 0.5f);
 }
 
 void Sequencer::SetFieldYCV(float value)
 {
-    state_.controls.fieldYCV = Clamp(value, -0.5f, 0.5f);
+    // V5: Renamed to axisYCV internally (Task 27)
+    state_.controls.axisYCV = Clamp(value, -0.5f, 0.5f);
 }
 
 void Sequencer::SetFlavorCV(float value)
@@ -1064,9 +1078,10 @@ void Sequencer::BlendArchetype()
     // Get current genre field
     const GenreField& field = GetGenreField(state_.controls.genre);
 
-    // Get effective field position with CV modulation
-    float fieldX = state_.controls.GetEffectiveFieldX();
-    float fieldY = state_.controls.GetEffectiveFieldY();
+    // Get effective axis position with CV modulation
+    // V5: Renamed from Field to Axis (Task 27)
+    float fieldX = state_.controls.GetEffectiveAxisX();
+    float fieldY = state_.controls.GetEffectiveAxisY();
 
     // Blend archetypes
     GetBlendedArchetype(
@@ -1138,9 +1153,10 @@ int Sequencer::HoldMsToSamples(float milliseconds) const
 
 bool Sequencer::CheckFieldChange()
 {
-    // Get current effective Field X/Y (with CV modulation)
-    const float currentFieldX = state_.controls.GetEffectiveFieldX();
-    const float currentFieldY = state_.controls.GetEffectiveFieldY();
+    // Get current effective Axis X/Y (with CV modulation)
+    // V5: Renamed from Field to Axis (Task 27)
+    const float currentFieldX = state_.controls.GetEffectiveAxisX();
+    const float currentFieldY = state_.controls.GetEffectiveAxisY();
 
     // Check if change exceeds threshold (10% of full range)
     static constexpr float kFieldChangeThreshold = 0.1f;

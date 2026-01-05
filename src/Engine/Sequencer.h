@@ -20,7 +20,7 @@ namespace daisysp_idm_grids
 {
 
 /**
- * DuoPulse v4 Core Sequencer
+ * DuoPulse v5 Core Sequencer
  *
  * The sequencer orchestrates the entire generation pipeline:
  * 1. Per-bar: Generate hit patterns using archetype blending and Gumbel selection
@@ -29,6 +29,13 @@ namespace daisysp_idm_grids
  *
  * The sequencer uses DuoPulseState for all state management and communicates
  * with the outside world through its public interface.
+ *
+ * V5 Changes (Task 27):
+ * - SetBuild() now sets shape internally
+ * - SetFieldX()/SetFieldY() now set axisX/axisY internally
+ * - SetPunch() now sets accent internally
+ * - CV setters renamed accordingly
+ * - Legacy methods kept for backward compatibility
  *
  * Reference: docs/specs/main.md sections 11.2, 11.3
  */

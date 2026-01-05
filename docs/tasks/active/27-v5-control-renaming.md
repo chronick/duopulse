@@ -2,10 +2,11 @@
 id: 27
 slug: 27-v5-control-renaming
 title: "V5 Control Renaming and Zero Shift Layers"
-status: pending
+status: completed
 created_date: 2026-01-04
 updated_date: 2026-01-04
-branch: feature/27-v5-control-renaming
+completed_date: 2026-01-04
+branch: feature/duopulse-v5
 spec_refs:
   - "v5-design-final.md#control-layout"
   - "v5-design-final.md#button--switch-behavior"
@@ -50,31 +51,31 @@ V5 simplifies the control interface by:
 
 ## Subtasks
 
-- [ ] Rename `fieldX`/`fieldY` to `axisX`/`axisY` in ControlState.h
-- [ ] Rename `build` to `shape` in ControlState.h
-- [ ] Rename `punch` to `accent` in ControlState.h (move from shift to config)
-- [ ] Add `clockDiv` as config K1 (already exists as shift+K2)
-- [ ] Move `drift` from perf shift to config K3
-- [ ] Remove `genre` enum and all references (hardcode to TECHNO behavior)
-- [ ] Remove `balance` parameter
-- [ ] Remove `auxDensity` enum
-- [ ] Remove `voiceCoupling` enum (replaced by COMPLEMENT in Task 30)
-- [ ] Remove shift layer processing from ControlProcessor.cpp
-- [ ] Update CV modulation to target performance params only (CV1-4 → ENERGY, SHAPE, AXIS X, AXIS Y)
-- [ ] Simplify button behavior: Tap = Fill, Hold 3s = Reseed (no shift)
-- [ ] Update boot defaults to V5 spec
-- [ ] All tests pass (`make test`)
+- [x] Rename `fieldX`/`fieldY` to `axisX`/`axisY` in ControlState.h
+- [x] Rename `build` to `shape` in ControlState.h
+- [x] Rename `punch` to `accent` in ControlState.h (move from shift to config)
+- [x] Add `clockDiv` as config K1 (already exists as shift+K2)
+- [x] Move `drift` from perf shift to config K3
+- [x] Remove `genre` enum and all references (hardcode to TECHNO behavior)
+- [x] Remove `balance` parameter
+- [x] Remove `auxDensity` enum
+- [x] Remove `voiceCoupling` enum (replaced by COMPLEMENT in Task 30)
+- [x] Remove shift layer processing from ControlProcessor.cpp
+- [x] Update CV modulation to target performance params only (CV1-4 → ENERGY, SHAPE, AXIS X, AXIS Y)
+- [x] Simplify button behavior: Tap = Fill, Hold 3s = Reseed (no shift)
+- [x] Update boot defaults to V5 spec
+- [x] All tests pass (`make test`)
 
 ## Acceptance Criteria
 
-- [ ] Zero shift layers - button hold no longer activates shift mode
-- [ ] All 8 parameters accessible directly (4 perf + 4 config)
-- [ ] CV1-4 modulate ENERGY, SHAPE, AXIS X, AXIS Y in both modes
-- [ ] Build compiles without errors
-- [ ] All existing tests pass (with parameter name updates)
-- [ ] Button tap (20-500ms) triggers fill
-- [ ] Button hold (3s) triggers reseed on release
-- [ ] No new compiler warnings
+- [x] Zero shift layers - button hold no longer activates shift mode
+- [x] All 8 parameters accessible directly (4 perf + 4 config)
+- [x] CV1-4 modulate ENERGY, SHAPE, AXIS X, AXIS Y in both modes
+- [x] Build compiles without errors
+- [x] All existing tests pass (with parameter name updates)
+- [x] Button tap (20-500ms) triggers fill
+- [x] Button hold (3s) triggers reseed on release
+- [x] No new compiler warnings
 
 ## Implementation Notes
 

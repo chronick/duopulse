@@ -108,26 +108,18 @@ TEST_CASE("DuoPulseTypes helper functions", "[types]")
 
     SECTION("GetVoiceCouplingFromValue maps knob correctly")
     {
-        // Task 22 Phase C1: INTERLOCK removed, now 2 modes
-        // 0-50% = INDEPENDENT, 50-100% = SHADOW
+        // V5: VoiceCoupling is no longer exposed in UI, always returns INDEPENDENT
         REQUIRE(GetVoiceCouplingFromValue(0.0f) == VoiceCoupling::INDEPENDENT);
-        REQUIRE(GetVoiceCouplingFromValue(0.20f) == VoiceCoupling::INDEPENDENT);
-        REQUIRE(GetVoiceCouplingFromValue(0.40f) == VoiceCoupling::INDEPENDENT);
-        REQUIRE(GetVoiceCouplingFromValue(0.49f) == VoiceCoupling::INDEPENDENT);
-        REQUIRE(GetVoiceCouplingFromValue(0.50f) == VoiceCoupling::SHADOW);
-        REQUIRE(GetVoiceCouplingFromValue(0.60f) == VoiceCoupling::SHADOW);
-        REQUIRE(GetVoiceCouplingFromValue(0.80f) == VoiceCoupling::SHADOW);
-        REQUIRE(GetVoiceCouplingFromValue(1.0f) == VoiceCoupling::SHADOW);
+        REQUIRE(GetVoiceCouplingFromValue(0.50f) == VoiceCoupling::INDEPENDENT);
+        REQUIRE(GetVoiceCouplingFromValue(1.0f) == VoiceCoupling::INDEPENDENT);
     }
 
     SECTION("GetGenreFromValue maps knob correctly")
     {
+        // V5: Genre is no longer exposed in UI, always returns TECHNO
         REQUIRE(GetGenreFromValue(0.0f) == Genre::TECHNO);
-        REQUIRE(GetGenreFromValue(0.20f) == Genre::TECHNO);
-        REQUIRE(GetGenreFromValue(0.40f) == Genre::TRIBAL);
-        REQUIRE(GetGenreFromValue(0.60f) == Genre::TRIBAL);
-        REQUIRE(GetGenreFromValue(0.80f) == Genre::IDM);
-        REQUIRE(GetGenreFromValue(1.0f) == Genre::IDM);
+        REQUIRE(GetGenreFromValue(0.50f) == Genre::TECHNO);
+        REQUIRE(GetGenreFromValue(1.0f) == Genre::TECHNO);
     }
 }
 
@@ -211,63 +203,81 @@ TEST_CASE("GenreField initialization", "[archetype]")
 // ControlState.h Tests
 // =============================================================================
 
-TEST_CASE("PunchParams computation", "[control]")
+TEST_CASE("AccentParams computation", "[control]")
 {
-    PunchParams params;
+    // V5: Renamed from PunchParams (Task 27)
+    AccentParams params;
 
-    SECTION("PUNCH=0 gives flat dynamics")
+    SECTION("ACCENT=0 gives flat dynamics")
     {
-        params.ComputeFromPunch(0.0f);
+        params.ComputeFromAccent(0.0f);
         REQUIRE(params.accentProbability == Approx(0.15f));
         REQUIRE(params.velocityFloor == Approx(0.70f));
         REQUIRE(params.accentBoost == Approx(0.10f));
         REQUIRE(params.velocityVariation == Approx(0.05f));
     }
 
-    SECTION("PUNCH=1 gives maximum dynamics")
+    SECTION("ACCENT=1 gives maximum dynamics")
     {
-        params.ComputeFromPunch(1.0f);
+        params.ComputeFromAccent(1.0f);
         REQUIRE(params.accentProbability == Approx(0.50f));
         REQUIRE(params.velocityFloor == Approx(0.30f));
         REQUIRE(params.accentBoost == Approx(0.35f));
         REQUIRE(params.velocityVariation == Approx(0.20f));
     }
 
-    SECTION("PUNCH=0.5 gives medium dynamics")
+    SECTION("ACCENT=0.5 gives medium dynamics")
     {
-        params.ComputeFromPunch(0.5f);
+        params.ComputeFromAccent(0.5f);
         REQUIRE(params.accentProbability == Approx(0.325f));
         REQUIRE(params.velocityFloor == Approx(0.50f));
     }
+
+    SECTION("Legacy PunchParams alias works")
+    {
+        // V5: PunchParams is now an alias for AccentParams
+        PunchParams legacyParams;
+        legacyParams.ComputeFromAccent(0.5f);
+        REQUIRE(legacyParams.accentProbability == Approx(0.325f));
+    }
 }
 
-TEST_CASE("BuildModifiers computation", "[control]")
+TEST_CASE("ShapeModifiers computation", "[control]")
 {
-    BuildModifiers mods;
+    // V5: Renamed from BuildModifiers (Task 27)
+    ShapeModifiers mods;
 
-    SECTION("BUILD=0 gives flat phrase")
+    SECTION("SHAPE=0 gives flat phrase")
     {
-        mods.ComputeFromBuild(0.0f, 0.5f);
+        mods.ComputeFromShape(0.0f, 0.5f);
         REQUIRE(mods.densityMultiplier == Approx(1.0f));
         REQUIRE(mods.fillIntensity == Approx(0.0f));
         REQUIRE(mods.inFillZone == false);
     }
 
-    SECTION("BUILD=1 at phrase end gives density boost")
+    SECTION("SHAPE=1 at phrase end gives density boost")
     {
-        mods.ComputeFromBuild(1.0f, 1.0f);
+        mods.ComputeFromShape(1.0f, 1.0f);
         REQUIRE(mods.densityMultiplier > 1.0f);
         REQUIRE(mods.densityMultiplier <= 1.5f);
     }
 
     SECTION("Fill zone detection works")
     {
-        mods.ComputeFromBuild(1.0f, 0.5f);
+        mods.ComputeFromShape(1.0f, 0.5f);
         REQUIRE(mods.inFillZone == false);
 
-        mods.ComputeFromBuild(1.0f, 0.9f);
+        mods.ComputeFromShape(1.0f, 0.9f);
         REQUIRE(mods.inFillZone == true);
         REQUIRE(mods.fillIntensity > 0.0f);
+    }
+
+    SECTION("Legacy BuildModifiers alias works")
+    {
+        // V5: BuildModifiers is now an alias for ShapeModifiers
+        BuildModifiers legacyMods;
+        legacyMods.ComputeFromShape(0.5f, 0.5f);
+        REQUIRE(legacyMods.densityMultiplier >= 1.0f);
     }
 }
 
@@ -276,21 +286,31 @@ TEST_CASE("ControlState initialization", "[control]")
     ControlState state;
     state.Init();
 
-    SECTION("Performance controls have sensible defaults")
+    SECTION("Performance controls have V5 boot defaults")
     {
-        REQUIRE(state.energy == 0.6f);
-        REQUIRE(state.build == 0.0f);
-        REQUIRE(state.fieldX == 0.5f);
-        REQUIRE(state.fieldY == 0.33f);
+        // V5 Boot Defaults (Task 27)
+        REQUIRE(state.energy == 0.50f);
+        REQUIRE(state.shape == 0.30f);  // V5: renamed from build
+        REQUIRE(state.axisX == 0.50f);  // V5: renamed from fieldX
+        REQUIRE(state.axisY == 0.50f);  // V5: renamed from fieldY
         REQUIRE(state.genre == Genre::TECHNO);
+
+        // Legacy aliases should also work
+        REQUIRE(state.build == state.shape);
+        REQUIRE(state.fieldX == state.axisX);
+        REQUIRE(state.fieldY == state.axisY);
     }
 
-    SECTION("Config controls have sensible defaults")
+    SECTION("Config controls have V5 boot defaults")
     {
         REQUIRE(state.patternLength == 32);
         REQUIRE(state.phraseLength == 4);
         REQUIRE(state.auxMode == AuxMode::HAT);
-        REQUIRE(state.resetMode == ResetMode::STEP);  // Task 22: Reset mode hardcoded to STEP
+        REQUIRE(state.resetMode == ResetMode::STEP);
+        REQUIRE(state.clockDiv == 1);     // V5: x1 no division
+        REQUIRE(state.swing == 0.50f);    // V5: 50% neutral groove
+        REQUIRE(state.drift == 0.0f);     // V5: 0% locked pattern
+        REQUIRE(state.accent == 0.50f);   // V5: 50% moderate dynamics
     }
 
     SECTION("GetEffective* clamps CV modulation")
@@ -302,6 +322,21 @@ TEST_CASE("ControlState initialization", "[control]")
         state.energy = 0.2f;
         state.energyCV = -0.5f;  // Would push to -0.3
         REQUIRE(state.GetEffectiveEnergy() == Approx(0.0f));
+    }
+
+    SECTION("V5 GetEffective* accessors work")
+    {
+        state.shape = 0.5f;
+        state.shapeCV = 0.2f;
+        REQUIRE(state.GetEffectiveShape() == Approx(0.7f));
+
+        state.axisX = 0.5f;
+        state.axisXCV = -0.3f;
+        REQUIRE(state.GetEffectiveAxisX() == Approx(0.2f));
+
+        state.axisY = 0.8f;
+        state.axisYCV = 0.4f;  // Would push to 1.2
+        REQUIRE(state.GetEffectiveAxisY() == Approx(1.0f));
     }
 }
 

@@ -6,10 +6,15 @@ namespace daisysp_idm_grids
 {
 
 /**
- * DuoPulse v4 Core Types and Enumerations
+ * DuoPulse v5 Core Types and Enumerations
  *
  * These types define the fundamental vocabulary of the DuoPulse sequencer.
  * All other modules reference these definitions.
+ *
+ * V5 Changes (Task 27):
+ * - Removed Genre enum (hardcoded to TECHNO behavior)
+ * - Removed AuxDensity enum (simplified to continuous parameter)
+ * - Removed VoiceCoupling enum (replaced by COMPLEMENT in Task 30)
  *
  * Reference: docs/specs/main.md
  */
@@ -27,7 +32,7 @@ constexpr int kMaxPhraseSteps = 256;
 /// Number of archetypes per genre (3x3 grid)
 constexpr int kArchetypesPerGenre = 9;
 
-/// Number of genres
+/// Number of genres (legacy, kept for archetype data compatibility)
 constexpr int kNumGenres = 3;
 
 // =============================================================================
@@ -35,16 +40,19 @@ constexpr int kNumGenres = 3;
 // =============================================================================
 
 /**
- * Genre: Style bank selection
+ * Genre: Style bank selection (V5: internal only, hardcoded to TECHNO)
  *
  * Each genre has its own 3x3 grid of archetypes tuned to that style.
+ * In V5, Genre is no longer exposed in the UI - TECHNO is the default.
+ * The enum is kept for internal archetype data compatibility.
+ *
  * Reference: docs/specs/main.md section 5.4
  */
 enum class Genre : uint8_t
 {
-    TECHNO = 0,  ///< Four-on-floor, driving, minimal-to-industrial
-    TRIBAL = 1,  ///< Syncopated, polyrhythmic, off-beat emphasis
-    IDM    = 2,  ///< Displaced, fragmented, controlled chaos
+    TECHNO = 0,  ///< Four-on-floor, driving, minimal-to-industrial (V5 default)
+    TRIBAL = 1,  ///< Syncopated, polyrhythmic, off-beat emphasis (internal only)
+    IDM    = 2,  ///< Displaced, fragmented, controlled chaos (internal only)
 
     COUNT  = 3
 };
@@ -95,9 +103,12 @@ enum class AuxMode : uint8_t
 };
 
 /**
- * AuxDensity: Hit budget multiplier for AUX voice
+ * AuxDensity: Hit budget multiplier for AUX voice (V5: internal only)
  *
- * Reference: docs/specs/main.md section 4.5 (Config K3 Shift)
+ * V5: AuxDensity is no longer exposed in UI. Default is NORMAL.
+ * The enum is kept for internal generation pipeline compatibility.
+ *
+ * Reference: docs/specs/main.md section 4.5
  */
 enum class AuxDensity : uint8_t
 {
@@ -110,13 +121,17 @@ enum class AuxDensity : uint8_t
 };
 
 /**
- * VoiceCoupling: How voices interact with each other
+ * VoiceCoupling: How voices interact with each other (V5: internal only)
+ *
+ * V5: VoiceCoupling is no longer exposed in UI. Default is INDEPENDENT.
+ * Task 30 will add COMPLEMENT mode for voice relationships.
+ * The enum is kept for internal generation pipeline compatibility.
  *
  * Reference: docs/specs/main.md section 6.4
  */
 enum class VoiceCoupling : uint8_t
 {
-    INDEPENDENT = 0,  ///< Voices fire freely, can overlap
+    INDEPENDENT = 0,  ///< Voices fire freely, can overlap (V5 default)
     INTERLOCK   = 1,  ///< Suppress simultaneous hits, call-response feel
     SHADOW      = 2,  ///< Shimmer echoes anchor with 1-step delay
 
@@ -174,45 +189,48 @@ inline float GetAuxDensityMultiplier(AuxDensity density)
 }
 
 /**
- * Get VoiceCoupling from a 0-1 knob value
+ * Get VoiceCoupling from a 0-1 knob value (V5: deprecated, always returns INDEPENDENT)
  *
- * Task 22 Phase C1: Simplified to 2 modes (INTERLOCK removed as broken)
- * 0-50% = INDEPENDENT, 50-100% = SHADOW
+ * V5: VoiceCoupling is no longer exposed in UI. This function is kept for
+ * backward compatibility but always returns INDEPENDENT.
  *
- * @param value Knob value (0.0-1.0)
- * @return VoiceCoupling enum value (never returns INTERLOCK)
+ * @param value Knob value (0.0-1.0) - ignored in V5
+ * @return VoiceCoupling::INDEPENDENT always
  */
 inline VoiceCoupling GetVoiceCouplingFromValue(float value)
 {
-    if (value < 0.5f) return VoiceCoupling::INDEPENDENT;
-    return VoiceCoupling::SHADOW;
+    (void)value;  // V5: ignore knob value
+    return VoiceCoupling::INDEPENDENT;
 }
 
 /**
- * Get Genre from a 0-1 knob value
+ * Get Genre from a 0-1 knob value (V5: deprecated, always returns TECHNO)
  *
- * @param value Knob value (0.0-1.0)
- * @return Genre enum value
+ * V5: Genre is no longer exposed in UI. This function is kept for
+ * backward compatibility but always returns TECHNO.
+ *
+ * @param value Knob value (0.0-1.0) - ignored in V5
+ * @return Genre::TECHNO always
  */
 inline Genre GetGenreFromValue(float value)
 {
-    if (value < 0.33f) return Genre::TECHNO;
-    if (value < 0.67f) return Genre::TRIBAL;
-    return Genre::IDM;
+    (void)value;  // V5: ignore knob value
+    return Genre::TECHNO;
 }
 
 /**
- * Get AuxDensity from a 0-1 knob value
+ * Get AuxDensity from a 0-1 knob value (V5: deprecated, always returns NORMAL)
  *
- * @param value Knob value (0.0-1.0)
- * @return AuxDensity enum value
+ * V5: AuxDensity is no longer exposed in UI. This function is kept for
+ * backward compatibility but always returns NORMAL.
+ *
+ * @param value Knob value (0.0-1.0) - ignored in V5
+ * @return AuxDensity::NORMAL always
  */
 inline AuxDensity GetAuxDensityFromValue(float value)
 {
-    if (value < 0.25f) return AuxDensity::SPARSE;
-    if (value < 0.50f) return AuxDensity::NORMAL;
-    if (value < 0.75f) return AuxDensity::DENSE;
-    return AuxDensity::BUSY;
+    (void)value;  // V5: ignore knob value
+    return AuxDensity::NORMAL;
 }
 
 /**

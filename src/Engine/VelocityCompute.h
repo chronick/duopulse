@@ -8,75 +8,85 @@ namespace daisysp_idm_grids
 {
 
 /**
- * VelocityCompute: Velocity computation for DuoPulse v4
+ * VelocityCompute: Velocity computation for DuoPulse v5
  *
- * Velocity is controlled by the PUNCH parameter, which sets the dynamic
- * contrast between accented and ghost hits. BUILD adds phrase-arc
- * modulation, and accent masks determine which steps get emphasized.
+ * Velocity is controlled by the ACCENT parameter (was: PUNCH), which sets
+ * the dynamic contrast between accented and ghost hits. SHAPE (was: BUILD)
+ * adds phrase-arc modulation, and accent masks determine which steps get emphasized.
+ *
+ * V5 Changes (Task 27):
+ * - PunchParams renamed to AccentParams
+ * - BuildModifiers renamed to ShapeModifiers
+ * - ComputePunch renamed to ComputeAccent
+ * - ComputeBuildModifiers renamed to ComputeShapeModifiers
  *
  * Reference: docs/specs/main.md section 7.2
  *
- * Note: BuildPhase enum is defined in ControlState.h to avoid circular dependency.
+ * Note: ShapePhase enum is defined in ControlState.h to avoid circular dependency.
  */
 
 // =============================================================================
-// PUNCH Parameter Computation
+// ACCENT Parameter Computation (V5: was PUNCH)
 // =============================================================================
 
 /**
- * Compute PunchParams from PUNCH knob value.
+ * Compute AccentParams from ACCENT knob value.
  *
- * PUNCH controls velocity dynamics:
- * - PUNCH = 0%: Flat dynamics (all hits similar velocity)
- * - PUNCH = 50%: Normal dynamics (standard accented groove)
- * - PUNCH = 100%: Maximum dynamics (huge accent contrast)
+ * ACCENT controls velocity dynamics:
+ * - ACCENT = 0%: Flat dynamics (all hits similar velocity)
+ * - ACCENT = 50%: Normal dynamics (standard accented groove)
+ * - ACCENT = 100%: Maximum dynamics (huge accent contrast)
  *
- * @param punch PUNCH parameter value (0.0-1.0)
- * @param[out] params Output PunchParams struct
+ * V5 Change: Renamed from ComputePunch to ComputeAccent (Task 27)
+ *
+ * @param accent ACCENT parameter value (0.0-1.0)
+ * @param[out] params Output AccentParams struct
  */
-void ComputePunch(float punch, PunchParams& params);
+void ComputeAccent(float accent, AccentParams& params);
 
 // =============================================================================
-// BUILD Parameter Computation
+// SHAPE Parameter Computation (V5: was BUILD)
 // =============================================================================
 
 /**
- * Compute BuildModifiers from BUILD value and phrase position.
+ * Compute ShapeModifiers from SHAPE value and phrase position.
  *
- * BUILD controls the narrative arc of each phrase:
- * - BUILD = 0%: Flat throughout (no builds, no fills)
- * - BUILD = 50%: Subtle build (slight density increase, fills at end)
- * - BUILD = 100%: Dramatic arc (big builds, intense fills)
+ * SHAPE controls the narrative arc of each phrase:
+ * - SHAPE = 0%: Flat throughout (no builds, no fills)
+ * - SHAPE = 50%: Subtle build (slight density increase, fills at end)
+ * - SHAPE = 100%: Dramatic arc (big builds, intense fills)
  *
- * @param build BUILD parameter value (0.0-1.0)
+ * V5 Change: Renamed from ComputeBuildModifiers to ComputeShapeModifiers (Task 27)
+ *
+ * @param shape SHAPE parameter value (0.0-1.0)
  * @param phraseProgress Current phrase progress (0.0-1.0)
- * @param[out] modifiers Output BuildModifiers struct
+ * @param[out] modifiers Output ShapeModifiers struct
  */
-void ComputeBuildModifiers(float build, float phraseProgress, BuildModifiers& modifiers);
+void ComputeShapeModifiers(float shape, float phraseProgress, ShapeModifiers& modifiers);
 
 // =============================================================================
 // Velocity Computation
 // =============================================================================
 
 /**
- * Compute velocity for a step based on PUNCH, BUILD, and accent status.
+ * Compute velocity for a step based on ACCENT, SHAPE, and accent status.
  *
  * The velocity computation pipeline:
  * 1. Determine base velocity from velocityFloor
  * 2. If accented, add accentBoost
- * 3. Apply BUILD modifiers (fill intensity, phrase position)
+ * 3. Apply SHAPE modifiers (fill intensity, phrase position)
  * 4. Add random variation (from velocityVariation)
  * 5. Clamp to valid range
  *
- * @param punchParams Computed PUNCH parameters
- * @param buildMods Computed BUILD modifiers
+ * @param accentParams Computed ACCENT parameters
+ * @param shapeMods Computed SHAPE modifiers
  * @param isAccent Whether this step should be accented
  * @param seed Seed for deterministic randomness
  * @param step Step index for per-step variation
  * @return Computed velocity (0.0-1.0)
  */
-float ComputeVelocity(const PunchParams& punchParams,
-                      const BuildModifiers& buildMods,
+float ComputeVelocity(const AccentParams& accentParams,
+                      const ShapeModifiers& shapeMods,
                       bool isAccent,
                       uint32_t seed,
                       int step);
@@ -86,20 +96,20 @@ float ComputeVelocity(const PunchParams& punchParams,
  *
  * Accents are controlled by:
  * 1. Accent eligibility mask (which steps CAN accent)
- * 2. Accent probability from PUNCH (how often eligible steps DO accent)
- * 3. BUILD forceAccents flag (FILL phase at high BUILD forces all accents)
+ * 2. Accent probability from ACCENT (how often eligible steps DO accent)
+ * 3. SHAPE forceAccents flag (FILL phase at high SHAPE forces all accents)
  *
  * @param step Step index (0-31)
  * @param accentMask Bitmask of accent-eligible steps
  * @param accentProbability Probability of accenting eligible steps (0.0-1.0)
- * @param buildMods BUILD modifiers (for forceAccents flag)
+ * @param shapeMods SHAPE modifiers (for forceAccents flag)
  * @param seed Seed for deterministic randomness
  * @return true if step should be accented
  */
 bool ShouldAccent(int step,
                   uint32_t accentMask,
                   float accentProbability,
-                  const BuildModifiers& buildMods,
+                  const ShapeModifiers& shapeMods,
                   uint32_t seed);
 
 /**
@@ -117,18 +127,20 @@ uint32_t GetDefaultAccentMask(Voice voice);
 /**
  * Compute velocity for anchor voice with all parameters.
  *
- * Convenience function that combines PUNCH, BUILD, and accent computation.
+ * Convenience function that combines ACCENT, SHAPE, and accent computation.
  *
- * @param punch PUNCH parameter (0.0-1.0)
- * @param build BUILD parameter (0.0-1.0)
+ * V5 Change: Parameters renamed from punch/build to accent/shape (Task 27)
+ *
+ * @param accent ACCENT parameter (0.0-1.0)
+ * @param shape SHAPE parameter (0.0-1.0)
  * @param phraseProgress Current phrase progress (0.0-1.0)
  * @param step Step index (0-31)
  * @param seed Seed for deterministic randomness
  * @param accentMask Accent eligibility mask (0 = use default)
  * @return Computed velocity (0.0-1.0)
  */
-float ComputeAnchorVelocity(float punch,
-                            float build,
+float ComputeAnchorVelocity(float accent,
+                            float shape,
                             float phraseProgress,
                             int step,
                             uint32_t seed,
@@ -137,21 +149,39 @@ float ComputeAnchorVelocity(float punch,
 /**
  * Compute velocity for shimmer voice with all parameters.
  *
- * Convenience function that combines PUNCH, BUILD, and accent computation.
+ * Convenience function that combines ACCENT, SHAPE, and accent computation.
  *
- * @param punch PUNCH parameter (0.0-1.0)
- * @param build BUILD parameter (0.0-1.0)
+ * V5 Change: Parameters renamed from punch/build to accent/shape (Task 27)
+ *
+ * @param accent ACCENT parameter (0.0-1.0)
+ * @param shape SHAPE parameter (0.0-1.0)
  * @param phraseProgress Current phrase progress (0.0-1.0)
  * @param step Step index (0-31)
  * @param seed Seed for deterministic randomness
  * @param accentMask Accent eligibility mask (0 = use default)
  * @return Computed velocity (0.0-1.0)
  */
-float ComputeShimmerVelocity(float punch,
-                             float build,
+float ComputeShimmerVelocity(float accent,
+                             float shape,
                              float phraseProgress,
                              int step,
                              uint32_t seed,
                              uint32_t accentMask = 0);
+
+// =============================================================================
+// Legacy Function Aliases (for backward compatibility)
+// =============================================================================
+
+/// Legacy alias for ComputeAccent (V5: renamed from ComputePunch)
+inline void ComputePunch(float punch, AccentParams& params)
+{
+    ComputeAccent(punch, params);
+}
+
+/// Legacy alias for ComputeShapeModifiers (V5: renamed from ComputeBuildModifiers)
+inline void ComputeBuildModifiers(float build, float phraseProgress, ShapeModifiers& modifiers)
+{
+    ComputeShapeModifiers(build, phraseProgress, modifiers);
+}
 
 } // namespace daisysp_idm_grids

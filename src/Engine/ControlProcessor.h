@@ -173,10 +173,18 @@ struct RawHardwareInput
 /**
  * ControlProcessor: Processes all control inputs into ControlState
  *
+ * V5 Changes (Task 27):
+ * - Simplified to 2 contexts only (PERF, CONFIG) - no shift layers
+ * - Button tap (20-500ms) = Fill trigger
+ * - Button hold (3s) = Reseed on release
+ * - Shift layer arrays removed
+ * - Performance mode: ENERGY, SHAPE, AXIS X, AXIS Y
+ * - Config mode: CLOCK DIV, SWING, DRIFT, ACCENT
+ *
  * Handles:
- * - Soft takeover for knobs across mode/shift changes
+ * - Soft takeover for knobs across mode changes
  * - CV modulation
- * - Button gesture detection
+ * - Button gesture detection (fill trigger, reseed)
  * - Mode switching
  * - Fill input processing
  *
@@ -243,27 +251,40 @@ class ControlProcessor
 
   private:
     /**
-     * Process performance mode primary controls (no shift)
+     * Process performance mode controls
+     * V5: ENERGY, SHAPE, AXIS X, AXIS Y (no shift layer)
      */
-    void ProcessPerformancePrimary(const RawHardwareInput& input,
-                                   ControlState& state);
+    void ProcessPerformanceMode(const RawHardwareInput& input,
+                                ControlState& state);
 
     /**
-     * Process performance mode shift controls
+     * Process config mode controls
+     * V5: CLOCK DIV, SWING, DRIFT, ACCENT (no shift layer)
      */
-    void ProcessPerformanceShift(const RawHardwareInput& input,
-                                 ControlState& state);
+    void ProcessConfigMode(const RawHardwareInput& input,
+                           ControlState& state);
 
-    /**
-     * Process config mode primary controls (no shift)
-     */
-    void ProcessConfigPrimary(const RawHardwareInput& input,
-                              ControlState& state);
-
-    /**
-     * Process config mode shift controls
-     */
-    void ProcessConfigShift(const RawHardwareInput& input, ControlState& state);
+    // Legacy methods (kept for compatibility, forward to V5 equivalents)
+    void ProcessPerformancePrimary(const RawHardwareInput& input, ControlState& state)
+    {
+        ProcessPerformanceMode(input, state);
+    }
+    void ProcessPerformanceShift(const RawHardwareInput& input, ControlState& state)
+    {
+        // V5: Shift layer removed, do nothing
+        (void)input;
+        (void)state;
+    }
+    void ProcessConfigPrimary(const RawHardwareInput& input, ControlState& state)
+    {
+        ProcessConfigMode(input, state);
+    }
+    void ProcessConfigShift(const RawHardwareInput& input, ControlState& state)
+    {
+        // V5: Shift layer removed, do nothing
+        (void)input;
+        (void)state;
+    }
 
     /**
      * Lock all knobs for a mode/shift change
@@ -275,18 +296,18 @@ class ControlProcessor
      */
     bool AnyKnobMoved() const;
 
-    // Soft knobs for each parameter context:
-    // Performance primary: ENERGY, BUILD, FIELD X, FIELD Y
-    SoftKnob perfPrimaryKnobs_[kNumKnobs];
+    // V5 Soft knobs for each parameter context (no shift layers):
+    // Performance mode: ENERGY, SHAPE, AXIS X, AXIS Y
+    SoftKnob perfKnobs_[kNumKnobs];
 
-    // Performance shift: PUNCH, GENRE, DRIFT, BALANCE
-    SoftKnob perfShiftKnobs_[kNumKnobs];
+    // Config mode: CLOCK DIV, SWING, DRIFT, ACCENT
+    SoftKnob configKnobs_[kNumKnobs];
 
-    // Config primary: PATTERN LENGTH, SWING, AUX MODE, RESET MODE
-    SoftKnob configPrimaryKnobs_[kNumKnobs];
-
-    // Config shift: PHRASE LENGTH, CLOCK DIV, AUX DENSITY, VOICE COUPLING
-    SoftKnob configShiftKnobs_[kNumKnobs];
+    // Legacy arrays (kept for compatibility, alias to new arrays)
+    SoftKnob* perfPrimaryKnobs_ = perfKnobs_;
+    SoftKnob* perfShiftKnobs_ = perfKnobs_;  // V5: no separate shift layer
+    SoftKnob* configPrimaryKnobs_ = configKnobs_;
+    SoftKnob* configShiftKnobs_ = configKnobs_;  // V5: no separate shift layer
 
     // Button and mode state
     ButtonState buttonState_;
@@ -298,13 +319,16 @@ class ControlProcessor
     // Flag for parameter change flash
     bool parameterChanged_;
 
-    // Track which knob set is currently active
+    // V5: Track which knob set is currently active (simplified - no shift)
     enum class KnobContext
     {
-        PERF_PRIMARY,
-        PERF_SHIFT,
-        CONFIG_PRIMARY,
-        CONFIG_SHIFT
+        PERF,    // V5: Performance mode (was PERF_PRIMARY/PERF_SHIFT)
+        CONFIG,  // V5: Config mode (was CONFIG_PRIMARY/CONFIG_SHIFT)
+        // Legacy aliases
+        PERF_PRIMARY = PERF,
+        PERF_SHIFT = PERF,
+        CONFIG_PRIMARY = CONFIG,
+        CONFIG_SHIFT = CONFIG
     };
     KnobContext currentContext_;
     KnobContext prevContext_;
