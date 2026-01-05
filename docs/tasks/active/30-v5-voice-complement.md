@@ -2,9 +2,10 @@
 id: 30
 slug: 30-v5-voice-complement
 title: "V5 Voice COMPLEMENT Relationship with DRIFT Variation"
-status: pending
+status: completed
 created_date: 2026-01-04
 updated_date: 2026-01-04
+completed_date: 2026-01-04
 branch: feature/30-v5-voice-complement
 spec_refs:
   - "v5-design-final.md#a4-voice-complement"
@@ -38,29 +39,29 @@ This replaces V4's INTERLOCK/SHADOW coupling modes.
 
 ## Subtasks
 
-- [ ] Implement `FindGaps()` function to detect gaps in anchor mask
-- [ ] Handle wrap-around: combine tail+head gaps if both are gaps
-- [ ] Implement proportional hit distribution (`gapShare = gap.length * targetHits / totalGapLength`)
-- [ ] Add division-by-zero guard (`Max(1, totalGapLength)`)
-- [ ] Implement DRIFT-based placement:
-  - [ ] Low DRIFT (0-30%): `EvenlySpaced(gap, j, gapShare)`
-  - [ ] Medium DRIFT (30-70%): `WeightedBest(gap, shimmerWeights)`
-  - [ ] High DRIFT (70-100%): `SeedVaried(gap, seed, j)`
-- [ ] Remove V4 INTERLOCK and SHADOW modes from VoiceRelation.cpp
-- [ ] Wire COMPLEMENT as the only voice relationship
-- [ ] Add unit tests for gap detection and placement strategies
-- [ ] All tests pass (`make test`)
+- [x] Implement `FindGaps()` function to detect gaps in anchor mask
+- [x] Handle wrap-around: combine tail+head gaps if both are gaps
+- [x] Implement proportional hit distribution (`gapShare = gap.length * targetHits / totalGapLength`)
+- [x] Add division-by-zero guard (`Max(1, totalGapLength)`)
+- [x] Implement DRIFT-based placement:
+  - [x] Low DRIFT (0-30%): `EvenlySpaced(gap, j, gapShare)`
+  - [x] Medium DRIFT (30-70%): `WeightedBest(gap, shimmerWeights)`
+  - [x] High DRIFT (70-100%): `SeedVaried(gap, seed, j)`
+- [x] Remove V4 INTERLOCK and SHADOW modes from VoiceRelation.cpp
+- [x] Wire COMPLEMENT as the only voice relationship
+- [x] Add unit tests for gap detection and placement strategies
+- [x] All tests pass (`make test`)
 
 ## Acceptance Criteria
 
-- [ ] Shimmer hits fill gaps in anchor pattern proportionally
-- [ ] Wrap-around gaps are properly combined
-- [ ] DRIFT=0% produces evenly spaced shimmer hits
-- [ ] DRIFT=50% places hits at weighted best positions
-- [ ] DRIFT=100% produces seed-varied placement
-- [ ] No division-by-zero crashes
-- [ ] Build compiles without errors
-- [ ] All tests pass
+- [x] Shimmer hits fill gaps in anchor pattern proportionally
+- [x] Wrap-around gaps are properly combined
+- [x] DRIFT=0% produces evenly spaced shimmer hits
+- [x] DRIFT=50% places hits at weighted best positions
+- [x] DRIFT=100% produces seed-varied placement
+- [x] No division-by-zero crashes
+- [x] Build compiles without errors
+- [x] All tests pass
 
 ## Implementation Notes
 

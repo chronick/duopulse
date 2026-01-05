@@ -296,44 +296,39 @@ TEST_CASE("INDEPENDENT coupling allows overlap", "[voice-relation]")
     REQUIRE(shimmer == 0x11111111);
 }
 
-// Task 22 Phase C1: INTERLOCK mode removed from UI but kept for backward compatibility
-// This test verifies the internal implementation still works
-TEST_CASE("INTERLOCK suppresses simultaneous hits", "[voice-relation]")
+// V5: INTERLOCK and SHADOW modes deprecated - all modes now act as INDEPENDENT
+// ApplyVoiceRelationship is a no-op in V5, use ApplyComplementRelationship instead
+TEST_CASE("V5 ApplyVoiceRelationship is no-op for all modes", "[voice-relation][v5]")
 {
     uint32_t anchor = 0x11111111;   // Quarter notes
-    uint32_t shimmer = 0x33333333;  // Overlaps on quarters, plus extra
+    uint32_t shimmer = 0x33333333;  // Some pattern
 
-    uint32_t originalShimmer = shimmer;
-    ApplyVoiceRelationship(anchor, shimmer, VoiceCoupling::INTERLOCK, 32);
+    SECTION("INTERLOCK mode is now no-op")
+    {
+        uint32_t originalShimmer = shimmer;
+        ApplyVoiceRelationship(anchor, shimmer, VoiceCoupling::INTERLOCK, 32);
 
-    // Shimmer should no longer overlap with anchor
-    REQUIRE((shimmer & anchor) == 0);
+        // V5: Shimmer should be unchanged (no-op)
+        REQUIRE(shimmer == originalShimmer);
+    }
 
-    // But shimmer should still have some hits
-    REQUIRE(shimmer != 0);
-    REQUIRE(shimmer != originalShimmer);
-}
+    SECTION("SHADOW mode is now no-op")
+    {
+        uint32_t originalShimmer = shimmer;
+        ApplyVoiceRelationship(anchor, shimmer, VoiceCoupling::SHADOW, 32);
 
-TEST_CASE("SHADOW creates echo pattern", "[voice-relation]")
-{
-    uint32_t anchor = 0x00000001;  // Only step 0
-    uint32_t shimmer = 0xFFFFFFFF; // Full pattern (will be replaced)
+        // V5: Shimmer should be unchanged (no-op)
+        REQUIRE(shimmer == originalShimmer);
+    }
 
-    ApplyVoiceRelationship(anchor, shimmer, VoiceCoupling::SHADOW, 32);
+    SECTION("INDEPENDENT mode unchanged")
+    {
+        uint32_t originalShimmer = shimmer;
+        ApplyVoiceRelationship(anchor, shimmer, VoiceCoupling::INDEPENDENT, 32);
 
-    // Shimmer should now be step 1 (anchor delayed by 1)
-    REQUIRE(shimmer == 0x00000002);
-}
-
-TEST_CASE("Shadow wraps around pattern", "[voice-relation]")
-{
-    uint32_t anchor = 0x80000000;  // Step 31 only
-    uint32_t shimmer = 0xFFFFFFFF;
-
-    ApplyVoiceRelationship(anchor, shimmer, VoiceCoupling::SHADOW, 32);
-
-    // Shimmer should wrap to step 0
-    REQUIRE(shimmer == 0x00000001);
+        // INDEPENDENT mode always left shimmer unchanged
+        REQUIRE(shimmer == originalShimmer);
+    }
 }
 
 TEST_CASE("ShiftMaskLeft works correctly", "[voice-relation]")
