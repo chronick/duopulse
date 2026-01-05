@@ -27,44 +27,43 @@ enum class ShapePhase
 /**
  * AccentParams: Velocity dynamics derived from ACCENT parameter
  *
- * ACCENT controls how dynamic the groove feels-the contrast between
- * loud and soft hits.
+ * V5 ACCENT (Task 35): Maps musical metric weight to velocity.
+ * - ACCENT=0%: Flat dynamics (all hits 80-88%)
+ * - ACCENT=100%: Wide dynamics (ghost notes 30%, accents 100%)
  *
- * V5 Change: Renamed from PunchParams to AccentParams (Task 27)
- * The internal algorithm remains unchanged for now (Task 35 will update it).
+ * The velocity is based on metric weight (downbeats stronger, offbeats weaker)
+ * rather than V4's random accent probability.
  *
- * Reference: docs/specs/main.md section 4.3 and 7.2
+ * Reference: docs/specs/v5-design-final.md Appendix A.7
  */
 struct AccentParams
 {
-    /// How often hits are accented (0.15-0.50)
-    float accentProbability;
-
-    /// Minimum velocity for non-accented hits (0.30-0.70)
+    /// Minimum velocity (0.80 - accent * 0.50 -> range: 0.80-0.30)
     float velocityFloor;
 
-    /// How much louder accents are (+0.10 to +0.35)
-    float accentBoost;
+    /// Maximum velocity (0.88 + accent * 0.12 -> range: 0.88-1.00)
+    float velocityCeiling;
 
-    /// Random variation range (±0.05 to ±0.20)
-    float velocityVariation;
+    /// Micro-variation for human feel (0.02 + accent * 0.05 -> range: 0.02-0.07)
+    float variation;
 
     /**
-     * Initialize with default values (moderate punch)
+     * Initialize with default values (50% accent)
      */
     void Init()
     {
-        accentProbability = 0.25f;
-        velocityFloor     = 0.55f;
-        accentBoost       = 0.20f;
-        velocityVariation = 0.10f;
+        velocityFloor   = 0.55f;   // 0.80 - 0.50 * 0.50
+        velocityCeiling = 0.94f;   // 0.88 + 0.12 * 0.50
+        variation       = 0.045f;  // 0.02 + 0.05 * 0.50
     }
 
     /**
      * Compute accent parameters from ACCENT knob value (0.0-1.0)
      *
-     * V5 Change: Renamed from ComputeFromPunch to ComputeFromAccent (Task 27)
-     * The algorithm is unchanged for now (Task 35 will update it).
+     * V5 (Task 35): Position-aware velocity based on metric weight
+     * - velocityFloor: 80% -> 30% as ACCENT increases
+     * - velocityCeiling: 88% -> 100% as ACCENT increases
+     * - variation: 2% -> 7% as ACCENT increases
      *
      * @param accent ACCENT parameter value (0.0-1.0)
      */
@@ -74,12 +73,12 @@ struct AccentParams
         if (accent < 0.0f) accent = 0.0f;
         if (accent > 1.0f) accent = 1.0f;
 
-        // ACCENT = 0%: Flat dynamics (all similar velocity)
-        // ACCENT = 100%: Maximum dynamics (huge contrasts)
-        accentProbability = 0.15f + accent * 0.35f;       // 15% to 50%
-        velocityFloor     = 0.70f - accent * 0.40f;       // 70% down to 30%
-        accentBoost       = 0.10f + accent * 0.25f;       // +10% to +35%
-        velocityVariation = 0.05f + accent * 0.15f;       // ±5% to ±20%
+        // V5 (Task 35): Metric weight-based velocity
+        // ACCENT = 0%: Flat dynamics (80-88% range)
+        // ACCENT = 100%: Wide dynamics (30-100% range)
+        velocityFloor   = 0.80f - accent * 0.50f;   // 80% -> 30%
+        velocityCeiling = 0.88f + accent * 0.12f;   // 88% -> 100%
+        variation       = 0.02f + accent * 0.05f;   // 2% -> 7%
     }
 
     /// Legacy alias for ComputeFromAccent (V5: renamed from ComputeFromPunch)

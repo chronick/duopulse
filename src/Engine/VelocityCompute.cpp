@@ -1,5 +1,6 @@
 #include "VelocityCompute.h"
-#include "PulseField.h"  // For HashStep, HashToFloat, Clamp
+#include "PulseField.h"    // For HashStep, HashToFloat, Clamp
+#include "PatternField.h"  // For GetMetricWeight
 
 namespace daisysp_idm_grids
 {
@@ -8,7 +9,7 @@ namespace daisysp_idm_grids
 constexpr uint32_t kVelAccentHashMagic    = 0x41434E54;  // "ACNT"
 constexpr uint32_t kVelVariationHashMagic = 0x56415249;  // "VARI"
 
-// Default accent masks
+// Default accent masks (kept for legacy ShouldAccent function)
 // Anchor: Emphasize downbeats and quarter notes
 constexpr uint32_t kAnchorAccentMask = 0x11111111;  // Steps 0, 4, 8, 12, 16, 20, 24, 28
 
@@ -27,22 +28,42 @@ void ComputeAccent(float accent, AccentParams& params)
     // Clamp input
     accent = Clamp(accent, 0.0f, 1.0f);
 
-    // ACCENT = 0%: Flat dynamics (all similar velocity)
-    // ACCENT = 100%: Maximum dynamics (huge contrasts)
-    // Task 21 Phase B: Widened velocity contrast ranges
+    // V5 (Task 35): Metric weight-based velocity
+    // ACCENT = 0%: Flat dynamics (80-88% range)
+    // ACCENT = 100%: Wide dynamics (30-100% range)
+    params.velocityFloor   = 0.80f - accent * 0.50f;   // 80% -> 30%
+    params.velocityCeiling = 0.88f + accent * 0.12f;   // 88% -> 100%
+    params.variation       = 0.02f + accent * 0.05f;   // 2% -> 7%
+}
 
-    // Accent probability: 20% to 50% (was 15%-50%)
-    params.accentProbability = 0.20f + accent * 0.30f;
+// =============================================================================
+// Accent Velocity Computation (V5 Task 35)
+// =============================================================================
 
-    // Velocity floor: 65% down to 30% (was 70%-30%)
-    // Low accent = high floor (flat), high accent = low floor (dynamics)
-    params.velocityFloor = 0.65f - accent * 0.35f;
+float ComputeAccentVelocity(float accent, int step, int patternLength, uint32_t seed)
+{
+    // Clamp accent
+    accent = Clamp(accent, 0.0f, 1.0f);
 
-    // Accent boost: +15% to +45% (was +10%-35%)
-    params.accentBoost = 0.15f + accent * 0.30f;
+    // Get metric weight (0.0 = weak offbeat, 1.0 = strong downbeat)
+    float metricWeight = GetMetricWeight(step, patternLength);
 
-    // Velocity variation: ±3% to ±15% (was ±5%-20%)
-    params.velocityVariation = 0.03f + accent * 0.12f;
+    // Velocity range scales with ACCENT
+    float velocityFloor   = 0.80f - accent * 0.50f;   // 80% -> 30%
+    float velocityCeiling = 0.88f + accent * 0.12f;   // 88% -> 100%
+
+    // Map metric weight to velocity
+    float velocity = velocityFloor + metricWeight * (velocityCeiling - velocityFloor);
+
+    // Micro-variation for human feel
+    // HashToFloat returns 0-1, subtracting 0.5 gives +/-0.5 range
+    // Actual variation: +/-(0.5 x variation) = +/-1% to +/-3.5%
+    float variation = 0.02f + accent * 0.05f;
+    uint32_t varHash = HashStep(seed ^ kVelVariationHashMagic, step);
+    velocity += (HashToFloat(varHash) - 0.5f) * variation;
+
+    // Clamp to valid range
+    return Clamp(velocity, 0.30f, 1.0f);
 }
 
 // =============================================================================
@@ -125,19 +146,18 @@ float ComputeVelocity(const AccentParams& accentParams,
                       uint32_t seed,
                       int step)
 {
-    // Start with velocity floor
-    float velocity = accentParams.velocityFloor;
+    // V5 (Task 35): Metric weight-based velocity
+    // Get metric weight for step position (default to 16-step pattern)
+    float metricWeight = GetMetricWeight(step, 16);
 
-    // Task 21 Phase D: Apply SHAPE velocityBoost to floor
+    // Map metric weight to velocity range
+    float velocity = accentParams.velocityFloor +
+                     metricWeight * (accentParams.velocityCeiling - accentParams.velocityFloor);
+
+    // Apply SHAPE velocityBoost
     velocity += shapeMods.velocityBoost;
 
-    // Add accent boost if accented
-    if (isAccent)
-    {
-        velocity += accentParams.accentBoost;
-    }
-
-    // Apply SHAPE modifiers (legacy fill boost, now redundant with velocityBoost)
+    // Apply SHAPE fill zone boost
     if (shapeMods.inFillZone && shapeMods.fillIntensity > 0.0f)
     {
         // In fill zone: boost velocity toward phrase end (fills get louder)
@@ -145,17 +165,15 @@ float ComputeVelocity(const AccentParams& accentParams,
         velocity += shapeMods.fillIntensity * 0.15f;
     }
 
-    // Apply random variation
-    if (accentParams.velocityVariation > 0.001f)
+    // Apply micro-variation for human feel
+    if (accentParams.variation > 0.001f)
     {
         uint32_t varHash = HashStep(seed ^ kVelVariationHashMagic, step);
         float varRoll = HashToFloat(varHash);  // 0.0 to 1.0
-        float variation = (varRoll - 0.5f) * 2.0f * accentParams.velocityVariation;
-        velocity += variation;
+        velocity += (varRoll - 0.5f) * accentParams.variation;
     }
 
     // Clamp to valid range
-    // Task 21 Phase B: min raised to 0.30 for VCA audibility (was 0.2)
     return Clamp(velocity, 0.30f, 1.0f);
 }
 
@@ -181,23 +199,28 @@ float ComputeAnchorVelocity(float accent,
                             uint32_t seed,
                             uint32_t accentMask)
 {
-    // Use default mask if none provided
-    if (accentMask == 0)
-        accentMask = GetDefaultAccentMask(Voice::ANCHOR);
+    // V5 (Task 35): Use metric weight-based velocity
+    // Default pattern length is 16 steps
+    constexpr int kDefaultPatternLength = 16;
 
-    // Compute ACCENT parameters
-    AccentParams accentParams;
-    ComputeAccent(accent, accentParams);
+    // Get base velocity from accent and metric weight
+    float velocity = ComputeAccentVelocity(accent, step, kDefaultPatternLength, seed);
 
-    // Compute SHAPE modifiers
+    // Compute SHAPE modifiers for phrase arc
     ShapeModifiers shapeMods;
     ComputeShapeModifiers(shape, phraseProgress, shapeMods);
 
-    // Determine accent status (Task 21 Phase D: pass shapeMods for forceAccents)
-    bool isAccented = ShouldAccent(step, accentMask, accentParams.accentProbability, shapeMods, seed);
+    // Apply SHAPE velocityBoost
+    velocity += shapeMods.velocityBoost;
 
-    // Compute final velocity
-    return ComputeVelocity(accentParams, shapeMods, isAccented, seed, step);
+    // Apply SHAPE fill zone boost
+    if (shapeMods.inFillZone && shapeMods.fillIntensity > 0.0f)
+    {
+        velocity += shapeMods.fillIntensity * 0.15f;
+    }
+
+    // Clamp to valid range
+    return Clamp(velocity, 0.30f, 1.0f);
 }
 
 float ComputeShimmerVelocity(float accent,
@@ -207,23 +230,28 @@ float ComputeShimmerVelocity(float accent,
                              uint32_t seed,
                              uint32_t accentMask)
 {
-    // Use default mask if none provided
-    if (accentMask == 0)
-        accentMask = GetDefaultAccentMask(Voice::SHIMMER);
+    // V5 (Task 35): Use metric weight-based velocity
+    // Default pattern length is 16 steps
+    constexpr int kDefaultPatternLength = 16;
 
-    // Compute ACCENT parameters
-    AccentParams accentParams;
-    ComputeAccent(accent, accentParams);
+    // Get base velocity from accent and metric weight
+    float velocity = ComputeAccentVelocity(accent, step, kDefaultPatternLength, seed);
 
-    // Compute SHAPE modifiers
+    // Compute SHAPE modifiers for phrase arc
     ShapeModifiers shapeMods;
     ComputeShapeModifiers(shape, phraseProgress, shapeMods);
 
-    // Determine accent status (Task 21 Phase D: pass shapeMods for forceAccents)
-    bool isAccented = ShouldAccent(step, accentMask, accentParams.accentProbability, shapeMods, seed);
+    // Apply SHAPE velocityBoost
+    velocity += shapeMods.velocityBoost;
 
-    // Compute final velocity
-    return ComputeVelocity(accentParams, shapeMods, isAccented, seed, step);
+    // Apply SHAPE fill zone boost
+    if (shapeMods.inFillZone && shapeMods.fillIntensity > 0.0f)
+    {
+        velocity += shapeMods.fillIntensity * 0.15f;
+    }
+
+    // Clamp to valid range
+    return Clamp(velocity, 0.30f, 1.0f);
 }
 
 } // namespace daisysp_idm_grids

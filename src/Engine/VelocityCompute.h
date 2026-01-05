@@ -32,17 +32,31 @@ namespace daisysp_idm_grids
 /**
  * Compute AccentParams from ACCENT knob value.
  *
- * ACCENT controls velocity dynamics:
- * - ACCENT = 0%: Flat dynamics (all hits similar velocity)
- * - ACCENT = 50%: Normal dynamics (standard accented groove)
- * - ACCENT = 100%: Maximum dynamics (huge accent contrast)
- *
- * V5 Change: Renamed from ComputePunch to ComputeAccent (Task 27)
+ * V5 (Task 35): ACCENT controls metric weight-based velocity dynamics:
+ * - ACCENT = 0%: Flat dynamics (all hits 80-88%)
+ * - ACCENT = 100%: Wide dynamics (30-100%, downbeats loud, offbeats soft)
  *
  * @param accent ACCENT parameter value (0.0-1.0)
  * @param[out] params Output AccentParams struct
  */
 void ComputeAccent(float accent, AccentParams& params);
+
+/**
+ * Compute velocity from ACCENT parameter and metric weight.
+ *
+ * V5 (Task 35): Position-aware velocity mapping:
+ * 1. Get metric weight for step position
+ * 2. Map weight to velocity range (floor to ceiling)
+ * 3. Add micro-variation for human feel
+ * 4. Clamp to valid range (0.30-1.0)
+ *
+ * @param accent ACCENT parameter (0.0-1.0)
+ * @param step Step index (0-patternLength-1)
+ * @param patternLength Pattern length (typically 16)
+ * @param seed Seed for deterministic micro-variation
+ * @return Computed velocity (0.30-1.0)
+ */
+float ComputeAccentVelocity(float accent, int step, int patternLength, uint32_t seed);
 
 // =============================================================================
 // SHAPE Parameter Computation (V5: was BUILD)

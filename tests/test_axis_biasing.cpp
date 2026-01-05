@@ -14,22 +14,63 @@ using Catch::Approx;
 
 TEST_CASE("GetMetricWeight returns correct weights for 32-step pattern", "[axis][metric]")
 {
+    // V5 Task 35: 32-step patterns are scaled from 16-step table
+    // Steps are mapped proportionally to the 16-step weights
     int patternLength = 32;
 
-    SECTION("Bar downbeats are strongest (1.0)")
+    SECTION("Bar downbeat at step 0 is strongest (1.0)")
     {
         REQUIRE(GetMetricWeight(0, patternLength) == Approx(1.0f));
-        REQUIRE(GetMetricWeight(16, patternLength) == Approx(1.0f));
     }
 
-    SECTION("Quarter notes are 0.75")
+    SECTION("Half-bar (step 16) maps to beat 3 (0.9)")
     {
-        REQUIRE(GetMetricWeight(4, patternLength) == Approx(0.75f));
-        REQUIRE(GetMetricWeight(8, patternLength) == Approx(0.75f));
-        REQUIRE(GetMetricWeight(12, patternLength) == Approx(0.75f));
-        REQUIRE(GetMetricWeight(20, patternLength) == Approx(0.75f));
-        REQUIRE(GetMetricWeight(24, patternLength) == Approx(0.75f));
-        REQUIRE(GetMetricWeight(28, patternLength) == Approx(0.75f));
+        // 32-step: step 16 maps to 16/32 * 16 = step 8 in 16-step table = 0.9
+        REQUIRE(GetMetricWeight(16, patternLength) == Approx(0.9f));
+    }
+
+    SECTION("Quarter notes map to beats 2 and 4 (0.8)")
+    {
+        // step 8 -> 8/32 * 16 = step 4 = 0.8 (beat 2)
+        REQUIRE(GetMetricWeight(8, patternLength) == Approx(0.8f));
+        // step 24 -> 24/32 * 16 = step 12 = 0.8 (beat 4)
+        REQUIRE(GetMetricWeight(24, patternLength) == Approx(0.8f));
+    }
+
+    SECTION("8th notes map to 0.5")
+    {
+        // step 4 -> 4/32 * 16 = step 2 = 0.5
+        REQUIRE(GetMetricWeight(4, patternLength) == Approx(0.5f));
+    }
+
+    SECTION("16th notes (odd positions) are 0.25")
+    {
+        // step 3 -> 3/32 * 16 = floor(1.5) = step 1 = 0.25
+        REQUIRE(GetMetricWeight(3, patternLength) == Approx(0.25f));
+        // step 7 -> 7/32 * 16 = floor(3.5) = step 3 = 0.25
+        REQUIRE(GetMetricWeight(7, patternLength) == Approx(0.25f));
+    }
+}
+
+TEST_CASE("GetMetricWeight scales correctly for 16-step pattern", "[axis][metric]")
+{
+    // V5 Task 35: Musical hierarchy with differentiated beat strengths
+    int patternLength = 16;
+
+    SECTION("Beat 1 (step 0) is strongest")
+    {
+        REQUIRE(GetMetricWeight(0, patternLength) == Approx(1.0f));
+    }
+
+    SECTION("Beat 3 (step 8) is strong but not as strong as beat 1")
+    {
+        REQUIRE(GetMetricWeight(8, patternLength) == Approx(0.9f));
+    }
+
+    SECTION("Beats 2 and 4 are 0.8")
+    {
+        REQUIRE(GetMetricWeight(4, patternLength) == Approx(0.8f));
+        REQUIRE(GetMetricWeight(12, patternLength) == Approx(0.8f));
     }
 
     SECTION("8th notes are 0.5")
@@ -38,38 +79,9 @@ TEST_CASE("GetMetricWeight returns correct weights for 32-step pattern", "[axis]
         REQUIRE(GetMetricWeight(6, patternLength) == Approx(0.5f));
         REQUIRE(GetMetricWeight(10, patternLength) == Approx(0.5f));
         REQUIRE(GetMetricWeight(14, patternLength) == Approx(0.5f));
-        REQUIRE(GetMetricWeight(18, patternLength) == Approx(0.5f));
     }
 
-    SECTION("16th notes (odd positions) are 0.25")
-    {
-        REQUIRE(GetMetricWeight(1, patternLength) == Approx(0.25f));
-        REQUIRE(GetMetricWeight(3, patternLength) == Approx(0.25f));
-        REQUIRE(GetMetricWeight(5, patternLength) == Approx(0.25f));
-        REQUIRE(GetMetricWeight(7, patternLength) == Approx(0.25f));
-        REQUIRE(GetMetricWeight(15, patternLength) == Approx(0.25f));
-        REQUIRE(GetMetricWeight(31, patternLength) == Approx(0.25f));
-    }
-}
-
-TEST_CASE("GetMetricWeight scales correctly for 16-step pattern", "[axis][metric]")
-{
-    int patternLength = 16;
-
-    SECTION("Bar downbeats at step 0 and 8")
-    {
-        REQUIRE(GetMetricWeight(0, patternLength) == Approx(1.0f));
-        REQUIRE(GetMetricWeight(8, patternLength) == Approx(1.0f));
-    }
-
-    SECTION("Quarter notes at steps 2, 4, 6, 10, 12, 14")
-    {
-        REQUIRE(GetMetricWeight(2, patternLength) == Approx(0.75f));
-        REQUIRE(GetMetricWeight(4, patternLength) == Approx(0.75f));
-        REQUIRE(GetMetricWeight(6, patternLength) == Approx(0.75f));
-    }
-
-    SECTION("Odd steps are weakest")
+    SECTION("16th notes (odd steps) are 0.25")
     {
         REQUIRE(GetMetricWeight(1, patternLength) == Approx(0.25f));
         REQUIRE(GetMetricWeight(3, patternLength) == Approx(0.25f));
@@ -83,35 +95,41 @@ TEST_CASE("GetMetricWeight scales correctly for 16-step pattern", "[axis][metric
 
 TEST_CASE("GetPositionStrength converts metric to bidirectional", "[axis][position]")
 {
+    // V5 Task 35: Updated to match new metric weight values
+    // positionStrength = 1.0 - 2.0 * metricWeight
     int patternLength = 32;
 
-    SECTION("Strong downbeats return -1.0")
+    SECTION("Bar downbeat (step 0) returns -1.0")
     {
         // metricWeight = 1.0 -> positionStrength = 1.0 - 2.0*1.0 = -1.0
         REQUIRE(GetPositionStrength(0, patternLength) == Approx(-1.0f));
-        REQUIRE(GetPositionStrength(16, patternLength) == Approx(-1.0f));
     }
 
-    SECTION("Quarter notes return -0.5")
+    SECTION("Half-bar (step 16) returns -0.8")
     {
-        // metricWeight = 0.75 -> positionStrength = 1.0 - 2.0*0.75 = -0.5
-        REQUIRE(GetPositionStrength(4, patternLength) == Approx(-0.5f));
-        REQUIRE(GetPositionStrength(8, patternLength) == Approx(-0.5f));
+        // metricWeight = 0.9 -> positionStrength = 1.0 - 2.0*0.9 = -0.8
+        REQUIRE(GetPositionStrength(16, patternLength) == Approx(-0.8f));
+    }
+
+    SECTION("Quarter notes (beat 2/4 positions) return -0.6")
+    {
+        // metricWeight = 0.8 -> positionStrength = 1.0 - 2.0*0.8 = -0.6
+        REQUIRE(GetPositionStrength(8, patternLength) == Approx(-0.6f));
+        REQUIRE(GetPositionStrength(24, patternLength) == Approx(-0.6f));
     }
 
     SECTION("8th notes return 0.0")
     {
         // metricWeight = 0.5 -> positionStrength = 1.0 - 2.0*0.5 = 0.0
-        REQUIRE(GetPositionStrength(2, patternLength) == Approx(0.0f));
-        REQUIRE(GetPositionStrength(6, patternLength) == Approx(0.0f));
+        REQUIRE(GetPositionStrength(4, patternLength) == Approx(0.0f));
     }
 
     SECTION("16th notes (weakest) return +0.5")
     {
-        // metricWeight = 0.25 -> positionStrength = 1.0 - 2.0*0.25 = +0.5
-        REQUIRE(GetPositionStrength(1, patternLength) == Approx(0.5f));
+        // step 3 -> metricWeight = 0.25 -> positionStrength = 1.0 - 2.0*0.25 = +0.5
         REQUIRE(GetPositionStrength(3, patternLength) == Approx(0.5f));
-        REQUIRE(GetPositionStrength(15, patternLength) == Approx(0.5f));
+        // step 7 -> metricWeight = 0.25 -> positionStrength = +0.5
+        REQUIRE(GetPositionStrength(7, patternLength) == Approx(0.5f));
     }
 }
 

@@ -574,56 +574,61 @@ void ComputeShapeBlendedWeights(float shape, float energy,
 // AXIS X/Y Bidirectional Biasing (Task 29)
 // =============================================================================
 
+/**
+ * Metric weight table for 16-step pattern (V5 Task 35).
+ * Based on musical importance in 4/4 time signature.
+ */
+static constexpr float kMetricWeights16[16] = {
+    1.00f,  // Step 0:  Beat 1 (strongest downbeat)
+    0.25f,  // Step 1:  16th note
+    0.50f,  // Step 2:  8th note
+    0.25f,  // Step 3:  16th note
+    0.80f,  // Step 4:  Beat 2
+    0.25f,  // Step 5:  16th note
+    0.50f,  // Step 6:  8th note
+    0.25f,  // Step 7:  16th note
+    0.90f,  // Step 8:  Beat 3 (half-bar, strong)
+    0.25f,  // Step 9:  16th note
+    0.50f,  // Step 10: 8th note
+    0.25f,  // Step 11: 16th note
+    0.80f,  // Step 12: Beat 4
+    0.25f,  // Step 13: 16th note
+    0.50f,  // Step 14: 8th note
+    0.25f,  // Step 15: 16th note
+};
+
 float GetMetricWeight(int step, int patternLength)
 {
+    // Handle edge cases
+    if (patternLength <= 0)
+    {
+        return 0.5f;  // Default neutral weight
+    }
+
     // Clamp step to valid range
-    if (step < 0 || step >= patternLength)
+    if (step < 0)
     {
         step = 0;
     }
 
-    // Metric weight based on position in rhythmic hierarchy
-    // Works for any pattern length by using relative positions
-    //
-    // For 16-step pattern:
-    //   Steps 0, 8 = downbeats (1.0)
-    //   Steps 2, 4, 6, 10, 12, 14 = stronger even positions (0.75)
-    //   Steps 1, 3, 5, 7, 9, 11, 13, 15 = 16th notes, weakest (0.25)
-    //
-    // For 32-step pattern:
-    //   Steps 0, 16 = bar downbeats (1.0)
-    //   Steps 4, 8, 12, 20, 24, 28 = quarter notes (0.75)
-    //   Steps 2, 6, 10, 14, 18, 22, 26, 30 = 8th notes (0.5)
-    //   Odd steps = 16th notes (0.25)
-
-    int halfLength = patternLength / 2;
-
-    // Main downbeats: step 0 and middle of pattern
-    if (step == 0 || step == halfLength)
+    // V5 Task 35: For 16-step pattern, use explicit musical hierarchy table
+    // This provides differentiated beat weights (beat 1 > beat 3 > beat 2/4)
+    if (patternLength == 16)
     {
-        return 1.0f;
+        return kMetricWeights16[step & 15];
     }
 
-    // For patterns <= 16 steps, simplified hierarchy:
-    // Even = 0.75, Odd = 0.25
-    if (patternLength <= 16)
+    // For other pattern lengths, scale proportionally to 16-step table
+    // This ensures consistent musical feel across pattern lengths
+    if (patternLength > 0 && patternLength != 16)
     {
-        return (step % 2 == 0) ? 0.75f : 0.25f;
+        float normalized = static_cast<float>(step % patternLength) / static_cast<float>(patternLength);
+        int mappedStep = static_cast<int>(normalized * 16.0f) & 15;
+        return kMetricWeights16[mappedStep];
     }
 
-    // For 32-step patterns, full 4-level hierarchy
-    // Quarter notes (every 4th step, excluding downbeats)
-    if (step % 4 == 0)
-    {
-        return 0.75f;
-    }
-    // 8th notes (every 2nd step, excluding quarters)
-    if (step % 2 == 0)
-    {
-        return 0.5f;
-    }
-    // 16th notes (odd positions)
-    return 0.25f;
+    // Fallback: shouldn't reach here
+    return 0.5f;
 }
 
 float GetPositionStrength(int step, int patternLength)
