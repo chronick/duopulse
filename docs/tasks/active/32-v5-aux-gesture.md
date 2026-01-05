@@ -34,9 +34,16 @@ Key behaviors:
 - Switch event is consumed (doesn't change Perf/Config mode)
 - Pending fill is cancelled
 - Button release returns to normal (no fill triggered)
-- AUX mode defaults to FILL GATE on boot (not persisted)
+- ~~AUX mode defaults to FILL GATE on boot (not persisted)~~
 
 This is the "secret mode" that makes HAT a discoverable feature.
+
+### ADDENDUM: AUX Mode Persistence (Task 33)
+
+AUX mode is now **persistent** until explicitly changed:
+- Same Hold+Switch gesture works at **boot** and **runtime**
+- Normal boot (no button held) → keeps previous AUX mode
+- See Task 33 for boot-time detection implementation
 
 ## Subtasks
 
