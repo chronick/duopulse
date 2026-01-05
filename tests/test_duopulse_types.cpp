@@ -205,32 +205,35 @@ TEST_CASE("GenreField initialization", "[archetype]")
 
 TEST_CASE("AccentParams computation", "[control]")
 {
-    // V5: Renamed from PunchParams (Task 27)
+    // V5: Renamed from PunchParams (Task 27), updated algorithm (Task 35)
     AccentParams params;
 
     SECTION("ACCENT=0 gives flat dynamics")
     {
+        // V5 Task 35: Metric weight-based velocity
+        // At ACCENT=0: velocityFloor=0.80, velocityCeiling=0.88, variation=0.02
         params.ComputeFromAccent(0.0f);
-        REQUIRE(params.accentProbability == Approx(0.15f));
-        REQUIRE(params.velocityFloor == Approx(0.70f));
-        REQUIRE(params.accentBoost == Approx(0.10f));
-        REQUIRE(params.velocityVariation == Approx(0.05f));
+        REQUIRE(params.velocityFloor == Approx(0.80f));
+        REQUIRE(params.velocityCeiling == Approx(0.88f));
+        REQUIRE(params.variation == Approx(0.02f));
     }
 
     SECTION("ACCENT=1 gives maximum dynamics")
     {
+        // V5 Task 35: At ACCENT=1: velocityFloor=0.30, velocityCeiling=1.00, variation=0.07
         params.ComputeFromAccent(1.0f);
-        REQUIRE(params.accentProbability == Approx(0.50f));
         REQUIRE(params.velocityFloor == Approx(0.30f));
-        REQUIRE(params.accentBoost == Approx(0.35f));
-        REQUIRE(params.velocityVariation == Approx(0.20f));
+        REQUIRE(params.velocityCeiling == Approx(1.00f));
+        REQUIRE(params.variation == Approx(0.07f));
     }
 
     SECTION("ACCENT=0.5 gives medium dynamics")
     {
+        // V5 Task 35: At ACCENT=0.5: velocityFloor=0.55, velocityCeiling=0.94, variation=0.045
         params.ComputeFromAccent(0.5f);
-        REQUIRE(params.accentProbability == Approx(0.325f));
-        REQUIRE(params.velocityFloor == Approx(0.50f));
+        REQUIRE(params.velocityFloor == Approx(0.55f));
+        REQUIRE(params.velocityCeiling == Approx(0.94f));
+        REQUIRE(params.variation == Approx(0.045f));
     }
 
     SECTION("Legacy PunchParams alias works")
@@ -238,7 +241,7 @@ TEST_CASE("AccentParams computation", "[control]")
         // V5: PunchParams is now an alias for AccentParams
         PunchParams legacyParams;
         legacyParams.ComputeFromAccent(0.5f);
-        REQUIRE(legacyParams.accentProbability == Approx(0.325f));
+        REQUIRE(legacyParams.velocityFloor == Approx(0.55f));
     }
 }
 
