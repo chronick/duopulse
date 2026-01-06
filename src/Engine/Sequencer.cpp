@@ -37,8 +37,7 @@ void Sequencer::Init(float sampleRate)
     state_.Init(sampleRate_);
     state_.SetBpm(120.0f);
 
-    // Initialize genre fields (load archetype data)
-    InitializeGenreFields();
+    // V5: Genre fields no longer initialized - procedural generation handles pattern character
 
     // Calculate initial samples per step
     samplesPerStep_ = (sampleRate_ * 60.0f) / (state_.currentBpm * 4.0f);
@@ -89,7 +88,7 @@ void Sequencer::Init(float sampleRate)
     forcedKickAccent_ = false;
 
     // Initial bar generation
-    BlendArchetype();
+    // V5: BlendArchetype() no longer needed - using procedural generation
     GenerateBar();
 }
 
@@ -190,7 +189,7 @@ std::array<float, 2> Sequencer::ProcessAudio()
         // Regenerate at beat boundaries when field has changed (but not at bar boundaries to avoid double-regen)
         if (fieldChangeRegenPending_ && isBeatBoundary && !state_.sequencer.isBarBoundary)
         {
-            BlendArchetype();
+            // V5: BlendArchetype() no longer needed - using procedural generation
             GenerateBar();
             ComputeTimingOffsets();
             fieldChangeRegenPending_ = false;
@@ -199,8 +198,7 @@ std::array<float, 2> Sequencer::ProcessAudio()
         // Generate new bar if at bar boundary
         if (state_.sequencer.isBarBoundary || isFirstStep)
         {
-            // Update archetype blend at bar boundaries
-            BlendArchetype();
+            // V5: BlendArchetype() no longer needed - using procedural generation
             GenerateBar();
             ComputeTimingOffsets();
             fieldChangeRegenPending_ = false;  // Also clear flag here
@@ -289,6 +287,29 @@ void Sequencer::GenerateBar()
     const bool isLongPattern = patternLength > 32;
     const int halfLength = isLongPattern ? 32 : patternLength;
 
+    // 2. Select seeds for generation (moved before budget to use for weight generation)
+    const uint32_t seed = SelectSeed(
+        state_.sequencer.driftState, drift, 0, patternLength
+    );
+
+    // V5: Generate SHAPE-based weights instead of using archetype weights (Task 40)
+    // Local weight arrays for anchor, shimmer, and aux
+    float anchorWeights[kMaxSteps];
+    float shimmerWeights[kMaxSteps];
+    float auxWeights[kMaxSteps];
+
+    // Generate V5 shape-blended weights for anchor
+    ComputeShapeBlendedWeights(state_.controls.shape, energy, seed,
+                               halfLength, anchorWeights);
+    ApplyAxisBias(anchorWeights,
+                  state_.controls.GetEffectiveAxisX(),
+                  state_.controls.GetEffectiveAxisY(),
+                  state_.controls.shape, seed, halfLength);
+
+    // Generate V5 shape-blended weights for shimmer (different seed)
+    ComputeShapeBlendedWeights(state_.controls.shape, energy, seed + 1,
+                               halfLength, shimmerWeights);
+
     // 1. Compute hit budget (uses clamped length internally)
     BarBudget budget;
     ComputeBarBudget(
@@ -303,15 +324,10 @@ void Sequencer::GenerateBar()
         ApplyFillBoost(
             budget,
             state_.controls.shapeModifiers.fillIntensity,
-            state_.blendedArchetype.fillDensityMultiplier,
+            1.5f,  // V5: Default fill density multiplier (was archetype.fillDensityMultiplier)
             halfLength
         );
     }
-
-    // 2. Select seeds for generation
-    const uint32_t seed = SelectSeed(
-        state_.sequencer.driftState, drift, 0, patternLength
-    );
 
     // 2.5. Compute Euclidean blend ratio (Task 21 Phase F6-F8)
     // V5: Use axisX instead of fieldX (Task 27)
@@ -326,7 +342,7 @@ void Sequencer::GenerateBar()
         anchorMask1 = BlendEuclideanWithWeights(
             budget.anchorHits,
             halfLength,
-            state_.blendedArchetype.anchorWeights,
+            anchorWeights,
             budget.anchorEligibility,
             euclideanRatio,
             seed
@@ -336,7 +352,7 @@ void Sequencer::GenerateBar()
     {
         // Pure Gumbel selection (IDM or high Field X)
         anchorMask1 = SelectHitsGumbelTopK(
-            state_.blendedArchetype.anchorWeights,
+            anchorWeights,
             budget.anchorEligibility,
             budget.anchorHits,
             seed,
@@ -353,7 +369,7 @@ void Sequencer::GenerateBar()
         shimmerMask1 = BlendEuclideanWithWeights(
             budget.shimmerHits,
             halfLength,
-            state_.blendedArchetype.shimmerWeights,
+            shimmerWeights,
             budget.shimmerEligibility,
             euclideanRatio,
             seed ^ 0x12345678  // Different seed for shimmer
@@ -363,7 +379,7 @@ void Sequencer::GenerateBar()
     {
         // Pure Gumbel selection
         shimmerMask1 = SelectHitsGumbelTopK(
-            state_.blendedArchetype.shimmerWeights,
+            shimmerWeights,
             budget.shimmerEligibility,
             budget.shimmerHits,
             seed ^ 0x12345678,  // Different seed for shimmer
@@ -378,17 +394,26 @@ void Sequencer::GenerateBar()
     // 6. Soft repair pass (first half)
     SoftRepairPass(
         anchorMask1, shimmerMask1,
-        state_.blendedArchetype.anchorWeights,
-        state_.blendedArchetype.shimmerWeights,
+        anchorWeights,
+        shimmerWeights,
         zone, halfLength
     );
 
     // 7. Hard guard rails (first half)
     ApplyHardGuardRails(anchorMask1, shimmerMask1, zone, genre, halfLength);
 
-    // 8. Generate aux hits (first half)
+    // 8. Generate aux hits (first half) using metric-based weights
+    // Aux avoids main voice positions and prefers weak beats
+    uint32_t combinedMask = anchorMask1 | shimmerMask1;
+    for (int i = 0; i < halfLength; ++i)
+    {
+        float metricW = GetMetricWeight(i, halfLength);
+        auxWeights[i] = 1.0f - metricW * 0.5f;
+        if ((combinedMask & (1U << i)) != 0)
+            auxWeights[i] *= 0.3f;
+    }
     uint32_t auxMask1 = SelectHitsGumbelTopK(
-        state_.blendedArchetype.auxWeights,
+        auxWeights,
         budget.auxEligibility,
         budget.auxHits,
         seed ^ 0x87654321,
@@ -409,6 +434,21 @@ void Sequencer::GenerateBar()
         // Use different seed for second half to create variation
         const uint32_t seed2 = seed ^ 0xDEADBEEF;
 
+        // V5: Regenerate SHAPE-based weights for second half with different seed
+        float anchorWeights2[kMaxSteps];
+        float shimmerWeights2[kMaxSteps];
+        float auxWeights2[kMaxSteps];
+
+        ComputeShapeBlendedWeights(state_.controls.shape, energy, seed2,
+                                   halfLength, anchorWeights2);
+        ApplyAxisBias(anchorWeights2,
+                      state_.controls.GetEffectiveAxisX(),
+                      state_.controls.GetEffectiveAxisY(),
+                      state_.controls.shape, seed2, halfLength);
+
+        ComputeShapeBlendedWeights(state_.controls.shape, energy, seed2 + 1,
+                                   halfLength, shimmerWeights2);
+
         // Recompute budget for second half (may differ slightly due to fill zones)
         BarBudget budget2;
         ComputeBarBudget(
@@ -422,7 +462,7 @@ void Sequencer::GenerateBar()
             ApplyFillBoost(
                 budget2,
                 state_.controls.shapeModifiers.fillIntensity,
-                state_.blendedArchetype.fillDensityMultiplier,
+                1.5f,  // V5: Default fill density multiplier (was archetype.fillDensityMultiplier)
                 halfLength
             );
         }
@@ -433,7 +473,7 @@ void Sequencer::GenerateBar()
             anchorMask2 = BlendEuclideanWithWeights(
                 budget2.anchorHits,
                 halfLength,
-                state_.blendedArchetype.anchorWeights,
+                anchorWeights2,
                 budget2.anchorEligibility,
                 euclideanRatio,
                 seed2
@@ -442,7 +482,7 @@ void Sequencer::GenerateBar()
         else
         {
             anchorMask2 = SelectHitsGumbelTopK(
-                state_.blendedArchetype.anchorWeights,
+                anchorWeights2,
                 budget2.anchorEligibility,
                 budget2.anchorHits,
                 seed2,
@@ -457,7 +497,7 @@ void Sequencer::GenerateBar()
             shimmerMask2 = BlendEuclideanWithWeights(
                 budget2.shimmerHits,
                 halfLength,
-                state_.blendedArchetype.shimmerWeights,
+                shimmerWeights2,
                 budget2.shimmerEligibility,
                 euclideanRatio,
                 seed2 ^ 0x12345678
@@ -466,7 +506,7 @@ void Sequencer::GenerateBar()
         else
         {
             shimmerMask2 = SelectHitsGumbelTopK(
-                state_.blendedArchetype.shimmerWeights,
+                shimmerWeights2,
                 budget2.shimmerEligibility,
                 budget2.shimmerHits,
                 seed2 ^ 0x12345678,
@@ -481,17 +521,25 @@ void Sequencer::GenerateBar()
         // Soft repair (second half)
         SoftRepairPass(
             anchorMask2, shimmerMask2,
-            state_.blendedArchetype.anchorWeights,
-            state_.blendedArchetype.shimmerWeights,
+            anchorWeights2,
+            shimmerWeights2,
             zone, halfLength
         );
 
         // Hard guard rails (second half) - ensure downbeat at step 32 (bar 3 start)
         ApplyHardGuardRails(anchorMask2, shimmerMask2, zone, genre, halfLength);
 
-        // Generate aux (second half)
+        // Generate aux (second half) using metric-based weights
+        uint32_t combinedMask2 = anchorMask2 | shimmerMask2;
+        for (int i = 0; i < halfLength; ++i)
+        {
+            float metricW = GetMetricWeight(i, halfLength);
+            auxWeights2[i] = 1.0f - metricW * 0.5f;
+            if ((combinedMask2 & (1U << i)) != 0)
+                auxWeights2[i] *= 0.3f;
+        }
         auxMask2 = SelectHitsGumbelTopK(
-            state_.blendedArchetype.auxWeights,
+            auxWeights2,
             budget2.auxEligibility,
             budget2.auxHits,
             seed2 ^ 0x87654321,
@@ -511,14 +559,17 @@ void Sequencer::GenerateBar()
     state_.sequencer.auxMask = static_cast<uint64_t>(auxMask1) |
                                 (static_cast<uint64_t>(auxMask2) << 32);
 
-    // 10. Compute accent masks from archetype (replicate for 64-bit patterns)
-    uint64_t anchorAccent = state_.blendedArchetype.anchorAccentMask;
-    uint64_t shimmerAccent = state_.blendedArchetype.shimmerAccentMask;
-    if (isLongPattern)
+    // 10. V5: Procedural accent masks (downbeats for anchor, backbeats for shimmer)
+    // Anchor accents on steps 0,8,16,24,32,40,48,56 (downbeats)
+    // Shimmer accents on steps 4,12,20,28,36,44,52,60 (backbeats)
+    uint64_t anchorAccent = 0x0101010101010101ULL;
+    uint64_t shimmerAccent = 0x1010101010101010ULL;
+    if (!isLongPattern)
     {
-        // Replicate accent pattern for second half
-        anchorAccent |= (anchorAccent << 32);
-        shimmerAccent |= (shimmerAccent << 32);
+        // Mask to pattern length for short patterns
+        uint64_t lengthMask = (1ULL << patternLength) - 1;
+        anchorAccent &= lengthMask;
+        shimmerAccent &= lengthMask;
     }
     state_.sequencer.anchorAccentMask = anchorAccent;
     state_.sequencer.shimmerAccentMask = shimmerAccent;
@@ -582,10 +633,11 @@ void Sequencer::ProcessStep()
     {
         bool isAccent = state_.sequencer.AnchorAccented();
         // V5: Use accent/shape instead of punch/build (Task 27)
+        // V5: Procedural accent mask - downbeats (steps 0,8,16,24,32,40,48,56)
         float velocity = ComputeAnchorVelocity(
             state_.controls.accent, state_.controls.shape,
             phraseProgress, step, seed,
-            state_.blendedArchetype.anchorAccentMask
+            0x0101010101010101ULL  // V5: Anchor accent on downbeats
         );
 
         if (timingOffset <= 0)
@@ -615,10 +667,11 @@ void Sequencer::ProcessStep()
     {
         bool isAccent = state_.sequencer.ShimmerAccented();
         // V5: Use accent/shape instead of punch/build (Task 27)
+        // V5: Procedural accent mask - backbeats (steps 4,12,20,28,36,44,52,60)
         float velocity = ComputeShimmerVelocity(
             state_.controls.accent, state_.controls.shape,
             phraseProgress, step, seed,
-            state_.blendedArchetype.shimmerAccentMask
+            0x1010101010101010ULL  // V5: Shimmer accent on backbeats
         );
 
         if (timingOffset <= 0)
@@ -683,7 +736,7 @@ void Sequencer::TriggerReset()
     UpdatePhrasePosition();
 
     // Regenerate bar on reset
-    BlendArchetype();
+    // V5: BlendArchetype() no longer needed - using procedural generation
     GenerateBar();
     ComputeTimingOffsets();
 }
@@ -801,9 +854,7 @@ void Sequencer::SetPunch(float value)
 void Sequencer::SetGenre(float value)
 {
     state_.controls.genre = GetGenreFromValue(Clamp(value, 0.0f, 1.0f));
-
-    // Reload genre field
-    state_.currentField = GetGenreField(state_.controls.genre);
+    // V5: Genre field no longer used - procedural generation handles pattern character
 }
 
 void Sequencer::SetDrift(float value)
@@ -1000,7 +1051,9 @@ void Sequencer::AcknowledgeTrigger(int channel)
 
 float Sequencer::GetSwingPercent() const
 {
-    float archetypeSwing = state_.blendedArchetype.swingAmount;
+    // V5: Derive swing from SHAPE parameter - more swing at mid SHAPE values
+    // Maximum swing (~0.15) at SHAPE=0.5, zero at extremes (0.0 and 1.0)
+    float archetypeSwing = state_.controls.shape * (1.0f - state_.controls.shape) * 0.6f;
     return ComputeSwing(state_.controls.swing, archetypeSwing, state_.controls.energyZone);
 }
 
@@ -1077,20 +1130,7 @@ void Sequencer::UpdatePhrasePosition()
 
 void Sequencer::BlendArchetype()
 {
-    // Get current genre field
-    const GenreField& field = GetGenreField(state_.controls.genre);
-
-    // Get effective axis position with CV modulation
-    // V5: Renamed from Field to Axis (Task 27)
-    float fieldX = state_.controls.GetEffectiveAxisX();
-    float fieldY = state_.controls.GetEffectiveAxisY();
-
-    // Blend archetypes
-    GetBlendedArchetype(
-        field, fieldX, fieldY,
-        kDefaultSoftmaxTemperature,
-        state_.blendedArchetype
-    );
+    // V5: DEPRECATED - No longer called. Procedural generation replaces archetype blending.
 }
 
 void Sequencer::ComputeTimingOffsets()
@@ -1102,8 +1142,9 @@ void Sequencer::ComputeTimingOffsets()
     const EnergyZone zone = state_.controls.energyZone;
     const uint32_t seed = state_.sequencer.driftState.phraseSeed;
 
-    // Compute swing amount from config and archetype base
-    float archetypeSwing = state_.blendedArchetype.swingAmount;
+    // V5: Derive swing from SHAPE parameter - more swing at mid SHAPE values
+    // Maximum swing (~0.15) at SHAPE=0.5, zero at extremes (0.0 and 1.0)
+    float archetypeSwing = state_.controls.shape * (1.0f - state_.controls.shape) * 0.6f;
     float swingAmount = ComputeSwing(swing, archetypeSwing, zone);
 
     for (int step = 0; step < patternLength && step < kMaxSteps; ++step)
