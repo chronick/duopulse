@@ -18,6 +18,7 @@ depends_on:
   - 35
 commits:
   - "17394c0"
+  - "9efb4a2"
 ---
 
 # Task 38: V5 C++ Pattern Visualization Test Tool
@@ -45,7 +46,7 @@ In V4, we created `scripts/pattern-viz-debug/` - a Python replica of the firmwar
 - [x] Create test cases for AXIS X/Y extremes
 - [x] Create test cases for COMPLEMENT voice relationship
 - [x] Add seed-determinism verification test
-- [ ] Add CLI-runnable pattern generator (optional: `./test_runner --viz`) - skipped (not needed)
+- [x] Add CLI-runnable pattern generator (`make pattern-viz`, `./build/pattern_viz`)
 - [x] All tests pass (`make test`)
 
 ## Acceptance Criteria
