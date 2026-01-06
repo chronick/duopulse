@@ -7,8 +7,9 @@ created_date: 2026-01-06
 updated_date: 2026-01-06
 branch: feature/40-v5-pattern-generator
 spec_refs:
-  - "v5-design-final.md"
-  - "algorithm-appendix-final.md"
+  - "docs/specs/main.md#5-shape-algorithm"
+  - "docs/specs/main.md#6-axis-biasing"
+  - "docs/design/v5-ideation/v5-design-final.md"
 depends_on:
   - 28
   - 29
@@ -86,7 +87,7 @@ struct PatternGenParams {
     float axisX;
     float axisY;
     float drift;
-    float balance;
+    float accent;       // V5: velocity range (replaces PUNCH)
     int patternLength;
     EnergyZone zone;
     uint32_t seed;
@@ -95,6 +96,7 @@ struct PatternGenParams {
     bool inFillZone;
     float fillIntensity;
 };
+// Note: BALANCE removed in V5 - SHAPE handles voice ratio via hit budget modulation
 
 struct PatternGenResult {
     uint64_t anchorMask;
@@ -139,17 +141,17 @@ From codebase grep:
 
 ## V5 Spec Reference
 
-From `v5-design-final.md` Appendix A.2:
-- Zone 1 (0-28%): Stable humanized euclidean
-- Crossfade (28-32%): Blend to syncopation
-- Zone 2a (32-48%): Stable -> syncopated interpolation
-- Crossfade (48-52%): Peak syncopation
-- Zone 2b (52-68%): Syncopated -> wild interpolation
-- Crossfade (68-72%): Blend to wild
-- Zone 3 (72-100%): Wild with chaos injection
+From `docs/specs/main.md` Section 5 (SHAPE Algorithm):
 
-From `algorithm-appendix-final.md:894`:
-> "GenreField 3x3 grid structure - replaced by SHAPE zones"
+| Zone | SHAPE Range | Character |
+|------|-------------|-----------|
+| Stable | 0-30% | Humanized euclidean, techno |
+| Syncopated | 30-70% | Funk, displaced, tension |
+| Wild | 70-100% | IDM, chaos, weighted random |
+
+Crossfade windows (4% overlap at 28-32%, 68-72%) prevent discontinuities.
+
+**Key change from V4**: GenreField 3x3 archetype grid replaced by procedural SHAPE zones.
 
 ## Risk Mitigation
 
