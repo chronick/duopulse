@@ -174,7 +174,7 @@ LOGDIR ?= /tmp
 # Build Targets
 ###############################################################################
 
-.PHONY: all clean rebuild daisy-build daisy-update libdaisy-build libdaisy-update program build-debug program-debug test test-coverage listen ports help
+.PHONY: all clean rebuild daisy-build daisy-update libdaisy-build libdaisy-update program build-debug program-debug test test-coverage listen ports help pattern-viz run-pattern-viz pattern-sweep
 
 # Default target
 all: $(ELF) $(BIN) $(HEX)
@@ -418,6 +418,36 @@ test-coverage: clean test
 	@echo "Coverage report: $(BUILD_DIR)/coverage_html/index.html"
 
 ###############################################################################
+# Pattern Visualization Tool
+###############################################################################
+
+PATTERN_VIZ := $(BUILD_DIR)/pattern_viz
+PATTERN_VIZ_SRC := tools/pattern_viz.cpp
+
+# Build pattern visualization tool
+pattern-viz: $(PATTERN_VIZ)
+	@echo "Pattern visualization tool built: $(PATTERN_VIZ)"
+
+$(PATTERN_VIZ): $(PATTERN_VIZ_SRC) $(TEST_APP_OBJS) $(TEST_DAISYSP_OBJS) | $(BUILD_DIR)
+	@echo "Building pattern visualization tool..."
+	@$(HOST_CXX) $(HOST_CXXFLAGS) $(PATTERN_VIZ_SRC) $(TEST_APP_OBJS) $(TEST_DAISYSP_OBJS) -o $@
+
+# Run pattern visualization with default parameters
+run-pattern-viz: $(PATTERN_VIZ)
+	@$(PATTERN_VIZ)
+
+# Output patterns to file with parameter sweep
+pattern-sweep: $(PATTERN_VIZ)
+	@mkdir -p $(BUILD_DIR)/patterns
+	@echo "Generating SHAPE sweep..."
+	@$(PATTERN_VIZ) --sweep=shape --output=$(BUILD_DIR)/patterns/shape_sweep.txt
+	@echo "Generating ENERGY sweep..."
+	@$(PATTERN_VIZ) --sweep=energy --output=$(BUILD_DIR)/patterns/energy_sweep.txt
+	@echo "Generating CSV data..."
+	@$(PATTERN_VIZ) --sweep=shape --format=csv --output=$(BUILD_DIR)/patterns/shape_sweep.csv
+	@echo "Patterns written to $(BUILD_DIR)/patterns/"
+
+###############################################################################
 # Help Target
 ###############################################################################
 
@@ -439,6 +469,9 @@ help:
 	@echo "  ports            - List available USB serial ports"
 	@echo "  test             - Build and run unit tests"
 	@echo "  test-coverage    - Generate test coverage report"
+	@echo "  pattern-viz      - Build pattern visualization tool"
+	@echo "  run-pattern-viz  - Run pattern viz with default params"
+	@echo "  pattern-sweep    - Generate pattern files for all param sweeps"
 	@echo "  help             - Show this help message"
 	@echo ""
 	@echo "Variables:"
