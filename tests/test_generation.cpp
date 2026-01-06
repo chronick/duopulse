@@ -87,10 +87,85 @@ TEST_CASE("Aux budget respects density setting", "[hit-budget]")
     }
 }
 
+TEST_CASE("SHAPE affects anchor budget", "[hit-budget][shape]")
+{
+    SECTION("Stable zone (low SHAPE) reduces hits")
+    {
+        int stable = ComputeAnchorBudget(0.5f, EnergyZone::GROOVE, 32, 0.15f);
+        int normal = ComputeAnchorBudget(0.5f, EnergyZone::GROOVE, 32, 0.50f);
+        REQUIRE(stable < normal);
+    }
+
+    SECTION("Wild zone (high SHAPE) increases hits")
+    {
+        int normal = ComputeAnchorBudget(0.5f, EnergyZone::GROOVE, 32, 0.50f);
+        int wild = ComputeAnchorBudget(0.5f, EnergyZone::GROOVE, 32, 0.85f);
+        REQUIRE(wild > normal);
+    }
+
+    SECTION("Shape multiplier values are correct")
+    {
+        // Stable zone: 0.75-0.85x
+        float stableMult = GetShapeBudgetMultiplier(0.0f);
+        REQUIRE(stableMult == Catch::Approx(0.75f).margin(0.01f));
+
+        // At shape=0.32 (just below boundary), we should get close to max stable value
+        stableMult = GetShapeBudgetMultiplier(0.32f);
+        REQUIRE(stableMult == Catch::Approx(0.847f).margin(0.01f));
+
+        // Syncopated zone: 1.0x
+        float syncMult = GetShapeBudgetMultiplier(0.5f);
+        REQUIRE(syncMult == Catch::Approx(1.0f).margin(0.01f));
+
+        // Wild zone: 1.15-1.25x
+        float wildMult = GetShapeBudgetMultiplier(0.66f);
+        REQUIRE(wildMult == Catch::Approx(1.15f).margin(0.01f));
+
+        wildMult = GetShapeBudgetMultiplier(1.0f);
+        REQUIRE(wildMult == Catch::Approx(1.25f).margin(0.01f));
+    }
+}
+
+TEST_CASE("SHAPE affects shimmer budget", "[hit-budget][shape]")
+{
+    SECTION("Shimmer scales with anchor")
+    {
+        int shimmerStable = ComputeShimmerBudget(0.5f, 0.5f, EnergyZone::GROOVE, 32, 0.15f);
+        int shimmerNormal = ComputeShimmerBudget(0.5f, 0.5f, EnergyZone::GROOVE, 32, 0.50f);
+        int shimmerWild = ComputeShimmerBudget(0.5f, 0.5f, EnergyZone::GROOVE, 32, 0.85f);
+
+        REQUIRE(shimmerStable < shimmerNormal);
+        REQUIRE(shimmerWild > shimmerNormal);
+    }
+}
+
+TEST_CASE("ComputeBarBudget respects SHAPE parameter", "[hit-budget][shape]")
+{
+    BarBudget budgetStable;
+    BarBudget budgetNormal;
+    BarBudget budgetWild;
+
+    ComputeBarBudget(0.5f, 0.5f, EnergyZone::GROOVE, AuxDensity::NORMAL, 32, 1.0f, 0.15f, budgetStable);
+    ComputeBarBudget(0.5f, 0.5f, EnergyZone::GROOVE, AuxDensity::NORMAL, 32, 1.0f, 0.50f, budgetNormal);
+    ComputeBarBudget(0.5f, 0.5f, EnergyZone::GROOVE, AuxDensity::NORMAL, 32, 1.0f, 0.85f, budgetWild);
+
+    SECTION("Anchor hits vary with SHAPE")
+    {
+        REQUIRE(budgetStable.anchorHits < budgetNormal.anchorHits);
+        REQUIRE(budgetWild.anchorHits > budgetNormal.anchorHits);
+    }
+
+    SECTION("Shimmer hits vary with SHAPE")
+    {
+        REQUIRE(budgetStable.shimmerHits <= budgetNormal.shimmerHits);
+        REQUIRE(budgetWild.shimmerHits >= budgetNormal.shimmerHits);
+    }
+}
+
 TEST_CASE("ComputeBarBudget fills all fields", "[hit-budget]")
 {
     BarBudget budget;
-    ComputeBarBudget(0.5f, 0.5f, EnergyZone::GROOVE, AuxDensity::NORMAL, 32, 1.0f, budget);
+    ComputeBarBudget(0.5f, 0.5f, EnergyZone::GROOVE, AuxDensity::NORMAL, 32, 1.0f, 0.5f, budget);
 
     REQUIRE(budget.anchorHits >= 1);
     REQUIRE(budget.shimmerHits >= 1);

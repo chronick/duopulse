@@ -293,7 +293,8 @@ void Sequencer::GenerateBar()
     BarBudget budget;
     ComputeBarBudget(
         energy, balance, zone, auxDensity, halfLength,
-        state_.controls.shapeModifiers.densityMultiplier, budget
+        state_.controls.shapeModifiers.densityMultiplier,
+        state_.controls.shape, budget
     );
 
     // Apply fill boost if in fill zone
@@ -412,7 +413,8 @@ void Sequencer::GenerateBar()
         BarBudget budget2;
         ComputeBarBudget(
             energy, balance, zone, auxDensity, halfLength,
-            state_.controls.shapeModifiers.densityMultiplier, budget2
+            state_.controls.shapeModifiers.densityMultiplier,
+            state_.controls.shape, budget2
         );
 
         if (state_.controls.shapeModifiers.inFillZone)

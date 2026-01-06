@@ -1,0 +1,33 @@
+{
+  "description": "Test parameters for SHAPE budget modulation (Task 39)",
+  "test_cases": [
+    {
+      "name": "stable_zone",
+      "energy": 0.5,
+      "shape": 0.15,
+      "seed": "0xDEADBEEF",
+      "expected_multiplier": 0.795
+    },
+    {
+      "name": "syncopated_zone",
+      "energy": 0.5,
+      "shape": 0.50,
+      "seed": "0xDEADBEEF",
+      "expected_multiplier": 1.0
+    },
+    {
+      "name": "wild_zone",
+      "energy": 0.5,
+      "shape": 0.85,
+      "seed": "0xDEADBEEF",
+      "expected_multiplier": 1.206
+    }
+  ],
+  "common_params": {
+    "pattern_length": 32,
+    "axis_x": 0.5,
+    "axis_y": 0.5,
+    "drift": 0.0,
+    "accent": 0.5
+  }
+}

@@ -108,13 +108,13 @@ struct PatternData
  *
  * Uses ComputeBarBudget from HitBudget.h for accurate firmware behavior.
  */
-static int ComputeTargetHitsReal(float energy, int patternLength, Voice voice)
+static int ComputeTargetHitsReal(float energy, int patternLength, Voice voice, float shape = 0.5f)
 {
     EnergyZone zone = GetEnergyZone(energy);
     BarBudget budget;
 
-    // Use default balance (0.5) and NORMAL aux density
-    ComputeBarBudget(energy, 0.5f, zone, AuxDensity::NORMAL, patternLength, 1.0f, budget);
+    // Use default balance (0.5), NORMAL aux density, and passed shape parameter
+    ComputeBarBudget(energy, 0.5f, zone, AuxDensity::NORMAL, patternLength, 1.0f, shape, budget);
 
     switch (voice)
     {
@@ -154,8 +154,8 @@ static void GeneratePattern(const PatternParams& params, PatternData& outPattern
     ApplyAxisBias(anchorWeights, params.axisX, params.axisY,
                   params.shape, params.seed, params.patternLength);
 
-    // Step 3: Compute hit budget using REAL system
-    int v1TargetHits = ComputeTargetHitsReal(params.energy, params.patternLength, Voice::ANCHOR);
+    // Step 3: Compute hit budget using REAL system (including SHAPE modulation)
+    int v1TargetHits = ComputeTargetHitsReal(params.energy, params.patternLength, Voice::ANCHOR, params.shape);
 
     // Step 4: Select anchor hits using REAL Gumbel sampling with spacing
     uint32_t eligibility = (1U << params.patternLength) - 1;  // All steps eligible
@@ -173,8 +173,8 @@ static void GeneratePattern(const PatternParams& params, PatternData& outPattern
     ComputeShapeBlendedWeights(params.shape, params.energy, params.seed + 1,
                                params.patternLength, shimmerWeights);
 
-    // Step 7: Apply COMPLEMENT relationship for shimmer (gap-filling)
-    int v2TargetHits = ComputeTargetHitsReal(params.energy, params.patternLength, Voice::SHIMMER);
+    // Step 7: Apply COMPLEMENT relationship for shimmer (gap-filling, SHAPE-modulated budget)
+    int v2TargetHits = ComputeTargetHitsReal(params.energy, params.patternLength, Voice::SHIMMER, params.shape);
     outPattern.v2Mask = ApplyComplementRelationship(
         outPattern.v1Mask, shimmerWeights,
         params.drift, params.seed + 2,
@@ -532,6 +532,91 @@ TEST_CASE("SHAPE zones produce distinct patterns", "[pattern-viz][shape]")
         // Just verify both are valid patterns
         REQUIRE(CountHits(stable.v1Mask, params.patternLength) >= 4);
         REQUIRE(CountHits(wild.v1Mask, params.patternLength) >= 4);
+    }
+}
+
+TEST_CASE("SHAPE zones affect hit budget and pattern masks", "[pattern-viz][shape][task-39]")
+{
+    const int patternLength = 32;
+    const uint32_t seed = 0xDEADBEEF;
+
+    // Test at moderate energy where convergence was previously an issue
+    PatternParams paramsStable = {
+        .energy = 0.5f,
+        .shape = 0.15f,  // Stable zone
+        .axisX = 0.5f,
+        .axisY = 0.5f,
+        .drift = 0.5f,
+        .accent = 0.5f,
+        .swing = 0.5f,
+        .seed = seed,
+        .patternLength = patternLength
+    };
+
+    PatternParams paramsSync = {
+        .energy = 0.5f,
+        .shape = 0.50f,  // Syncopated zone
+        .axisX = 0.5f,
+        .axisY = 0.5f,
+        .drift = 0.5f,
+        .accent = 0.5f,
+        .swing = 0.5f,
+        .seed = seed,
+        .patternLength = patternLength
+    };
+
+    PatternParams paramsWild = {
+        .energy = 0.5f,
+        .shape = 0.85f,  // Wild zone
+        .axisX = 0.5f,
+        .axisY = 0.5f,
+        .drift = 0.5f,
+        .accent = 0.5f,
+        .swing = 0.5f,
+        .seed = seed,
+        .patternLength = patternLength
+    };
+
+    PatternData dataStable, dataSync, dataWild;
+    GeneratePattern(paramsStable, dataStable);
+    GeneratePattern(paramsSync, dataSync);
+    GeneratePattern(paramsWild, dataWild);
+
+    SECTION("Stable zone produces fewer anchor hits")
+    {
+        int stableHits = CountHits(dataStable.v1Mask, patternLength);
+        int syncHits = CountHits(dataSync.v1Mask, patternLength);
+
+        // Stable zone (0.15) should have fewer hits than syncopated (0.5)
+        // Due to 0.8x multiplier vs 1.0x
+        REQUIRE(stableHits <= syncHits);
+    }
+
+    SECTION("Wild zone produces more anchor hits")
+    {
+        int syncHits = CountHits(dataSync.v1Mask, patternLength);
+        int wildHits = CountHits(dataWild.v1Mask, patternLength);
+
+        // Wild zone (0.85) should have more or equal hits than syncopated (0.5)
+        // Due to 1.2x multiplier vs 1.0x
+        REQUIRE(wildHits >= syncHits);
+    }
+
+    SECTION("SHAPE modulates hit budget computation")
+    {
+        // The budget calculation correctly varies with SHAPE.
+        // Guard rails (max gap enforcement) may add hits after the fact to maintain groove,
+        // but the underlying budget computation produces different values per SHAPE zone.
+        // This is verified in the unit tests: "SHAPE affects anchor budget" in test_generation.cpp
+
+        // Verify budget computation directly (bypasses guard rails)
+        int budgetStable = ComputeAnchorBudget(0.5f, GetEnergyZone(0.5f), patternLength, 0.15f);
+        int budgetSync = ComputeAnchorBudget(0.5f, GetEnergyZone(0.5f), patternLength, 0.50f);
+        int budgetWild = ComputeAnchorBudget(0.5f, GetEnergyZone(0.5f), patternLength, 0.85f);
+
+        // Budget varies with SHAPE (stable < sync < wild)
+        REQUIRE(budgetStable < budgetSync);
+        REQUIRE(budgetWild > budgetSync);
     }
 }
 

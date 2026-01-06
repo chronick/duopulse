@@ -72,11 +72,11 @@ struct PatternData
     int patternLength = 32;
 };
 
-static int ComputeTargetHits(float energy, int patternLength, Voice voice)
+static int ComputeTargetHits(float energy, int patternLength, Voice voice, float shape = 0.5f)
 {
     EnergyZone zone = GetEnergyZone(energy);
     BarBudget budget;
-    ComputeBarBudget(energy, 0.5f, zone, AuxDensity::NORMAL, patternLength, 1.0f, budget);
+    ComputeBarBudget(energy, 0.5f, zone, AuxDensity::NORMAL, patternLength, 1.0f, shape, budget);
 
     switch (voice)
     {
@@ -104,8 +104,8 @@ static void GeneratePattern(const PatternParams& params, PatternData& out)
     ApplyAxisBias(anchorWeights, params.axisX, params.axisY,
                   params.shape, params.seed, params.patternLength);
 
-    // Select anchor hits
-    int v1TargetHits = ComputeTargetHits(params.energy, params.patternLength, Voice::ANCHOR);
+    // Select anchor hits (SHAPE modulates budget - Task 39)
+    int v1TargetHits = ComputeTargetHits(params.energy, params.patternLength, Voice::ANCHOR, params.shape);
     uint32_t eligibility = (1U << params.patternLength) - 1;
     out.v1Mask = SelectHitsGumbelTopK(anchorWeights, eligibility, v1TargetHits,
                                        params.seed, params.patternLength, minSpacing);
@@ -114,11 +114,11 @@ static void GeneratePattern(const PatternParams& params, PatternData& out)
     uint32_t dummyShimmer = 0;
     ApplyHardGuardRails(out.v1Mask, dummyShimmer, zone, Genre::TECHNO, params.patternLength);
 
-    // Generate shimmer with COMPLEMENT
+    // Generate shimmer with COMPLEMENT (SHAPE modulates budget - Task 39)
     float shimmerWeights[kMaxSteps];
     ComputeShapeBlendedWeights(params.shape, params.energy, params.seed + 1,
                                params.patternLength, shimmerWeights);
-    int v2TargetHits = ComputeTargetHits(params.energy, params.patternLength, Voice::SHIMMER);
+    int v2TargetHits = ComputeTargetHits(params.energy, params.patternLength, Voice::SHIMMER, params.shape);
     out.v2Mask = ApplyComplementRelationship(out.v1Mask, shimmerWeights,
                                               params.drift, params.seed + 2,
                                               params.patternLength, v2TargetHits);

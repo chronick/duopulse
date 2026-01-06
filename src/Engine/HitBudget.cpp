@@ -27,14 +27,40 @@ int ClampPatternLength(int patternLength)
     return std::min(patternLength, 32);
 }
 
+float GetShapeBudgetMultiplier(float shape)
+{
+    // Clamp shape to valid range
+    shape = std::max(0.0f, std::min(1.0f, shape));
+
+    if (shape < 0.33f)
+    {
+        // Stable zone: sparse patterns (0.75-0.85x)
+        return 0.75f + (shape / 0.33f) * 0.10f;
+    }
+    else if (shape < 0.66f)
+    {
+        // Syncopated zone: normal density (1.0x)
+        return 1.0f;
+    }
+    else
+    {
+        // Wild zone: denser patterns (1.15-1.25x)
+        float wildProgress = (shape - 0.66f) / 0.34f;
+        return 1.15f + wildProgress * 0.10f;
+    }
+}
+
 // =============================================================================
 // Budget Computation
 // =============================================================================
 
-int ComputeAnchorBudget(float energy, EnergyZone zone, int patternLength)
+int ComputeAnchorBudget(float energy, EnergyZone zone, int patternLength, float shape)
 {
     // Clamp energy to valid range
     energy = std::max(0.0f, std::min(1.0f, energy));
+
+    // Get shape multiplier for density adjustment (Task 39)
+    float shapeMult = GetShapeBudgetMultiplier(shape);
 
     // Base hits scale with pattern length
     // For 32 steps: MINIMAL=1-2, GROOVE=3-5, BUILD=5-8, PEAK=8-12
@@ -71,6 +97,10 @@ int ComputeAnchorBudget(float energy, EnergyZone zone, int patternLength)
             break;
     }
 
+    // Apply SHAPE multiplier to base hits (Task 39)
+    typicalHits = static_cast<int>(typicalHits * shapeMult + 0.5f);
+    minHits = std::max(1, static_cast<int>(minHits * shapeMult + 0.5f));
+
     // Scale within zone range based on energy
     // Energy position within zone affects density
     float zoneProgress = 0.0f;
@@ -98,14 +128,14 @@ int ComputeAnchorBudget(float energy, EnergyZone zone, int patternLength)
     return std::max(1, std::min(hits, maxHits));
 }
 
-int ComputeShimmerBudget(float energy, float balance, EnergyZone zone, int patternLength)
+int ComputeShimmerBudget(float energy, float balance, EnergyZone zone, int patternLength, float shape)
 {
     // Clamp inputs
     energy = std::max(0.0f, std::min(1.0f, energy));
     balance = std::max(0.0f, std::min(1.0f, balance));
 
     // Base shimmer budget is typically half of anchor
-    int anchorBudget = ComputeAnchorBudget(energy, zone, patternLength);
+    int anchorBudget = ComputeAnchorBudget(energy, zone, patternLength, shape);
 
     // Balance shifts hits between voices (expanded range to 150%)
     // balance = 0.0: shimmer gets 0% of anchor
@@ -174,14 +204,15 @@ void ComputeBarBudget(float energy,
                       AuxDensity auxDensity,
                       int patternLength,
                       float buildMultiplier,
+                      float shape,
                       BarBudget& outBudget)
 {
     // Clamp pattern length for mask operations
     int clampedLength = ClampPatternLength(patternLength);
 
-    // Compute base budgets
-    outBudget.anchorHits  = ComputeAnchorBudget(energy, zone, clampedLength);
-    outBudget.shimmerHits = ComputeShimmerBudget(energy, balance, zone, clampedLength);
+    // Compute base budgets (pass shape for density modulation - Task 39)
+    outBudget.anchorHits  = ComputeAnchorBudget(energy, zone, clampedLength, shape);
+    outBudget.shimmerHits = ComputeShimmerBudget(energy, balance, zone, clampedLength, shape);
     outBudget.auxHits     = ComputeAuxBudget(energy, zone, auxDensity, clampedLength);
 
     // Apply build multiplier (phrase arc)
