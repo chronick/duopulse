@@ -39,3 +39,4 @@
 | 34 | v5-led-feedback | V5 LED Feedback System Update — implement 5-layer priority LED feedback | completed | 2026-01-04 | 2026-01-04 | active/34-v5-led-feedback.md |
 | 35 | v5-accent-velocity | V5 ACCENT Parameter: Musical Weight Velocity — replace PUNCH with position-aware dynamics | completed | 2026-01-04 | 2026-01-04 | active/35-v5-accent-velocity.md |
 | 37 | v5-code-review-fixes | V5 Code Review Critical Fixes — buffer bounds, null checks, invariant violations from pre-merge review | completed | 2026-01-04 | 2026-01-04 | active/37-v5-code-review-fixes.md |
+| 38 | v5-pattern-viz-cpp | V5 C++ Pattern Visualization Test Tool — deterministic pattern output for test validation | completed | 2026-01-06 | 2026-01-06 | active/38-v5-pattern-viz-cpp.md |
