@@ -2,7 +2,7 @@
 id: 35
 slug: 35-v5-accent-velocity
 title: "V5 ACCENT Parameter: Musical Weight to Velocity"
-status: pending
+status: completed
 created_date: 2026-01-04
 updated_date: 2026-01-04
 branch: feature/35-v5-accent-velocity

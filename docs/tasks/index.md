@@ -29,15 +29,15 @@
 | 24 | power-on-behavior | Power-On Behavior — define boot defaults, reset to musical defaults on power cycle, read performance knobs on startup | completed | 2025-12-29 | 2026-01-03 | completed/24-power-on-behavior.md |
 | 25 | voice-control-redesign | VOICE Control Redesign — superseded by V5 COMPLEMENT design (Task 30) | archived | 2025-12-30 | 2026-01-04 | archived/25-voice-control-redesign.md |
 | 26 | fix-tasks-22-24-bugs | Fix Tasks 22-24 Implementation Bugs — phrase length auto-derivation, freed controls still in main loop, inconsistent defaults | completed | 2026-01-03 | 2026-01-03 | completed/26-fix-tasks-22-24-bugs.md |
-| 27 | v5-control-renaming | V5 Control Renaming and Zero Shift Layers — rename parameters, eliminate shift layers, establish V5 vocabulary | completed | 2026-01-04 | 2026-01-04 | active/27-v5-control-renaming.md |
-| 28 | v5-shape-algorithm | V5 SHAPE Parameter: 3-Way Blending — implement 3-zone blending with crossfade transitions | completed | 2026-01-04 | 2026-01-04 | active/28-v5-shape-algorithm.md |
-| 29 | v5-axis-biasing | V5 AXIS X/Y: Bidirectional Biasing — implement bidirectional biasing with broken mode | completed | 2026-01-04 | 2026-01-04 | active/29-v5-axis-biasing.md |
-| 30 | v5-voice-complement | V5 Voice COMPLEMENT Relationship — implement gap-filling shimmer with DRIFT placement | completed | 2026-01-04 | 2026-01-04 | active/30-v5-voice-complement.md |
-| 31 | v5-hat-burst | V5 Hat Burst: Pattern-Aware Fill Triggers — implement hat burst during fills with velocity ducking | completed | 2026-01-04 | 2026-01-04 | active/31-v5-hat-burst.md |
-| 32 | v5-aux-gesture | V5 Hold+Switch Gesture for AUX Mode — implement secret gesture for HAT/FILL GATE selection (persistent) | completed | 2026-01-04 | 2026-01-04 | active/32-v5-aux-gesture.md |
-| 33 | v5-boot-aux-mode | ~~V5 Boot-Time Pattern Length~~ → V5 Boot-Time AUX Mode — boot Hold+Switch sets persistent AUX mode | completed | 2026-01-04 | 2026-01-04 | active/33-v5-boot-aux-mode.md |
-| 34 | v5-led-feedback | V5 LED Feedback System Update — implement 5-layer priority LED feedback | completed | 2026-01-04 | 2026-01-04 | active/34-v5-led-feedback.md |
-| 35 | v5-accent-velocity | V5 ACCENT Parameter: Musical Weight Velocity — replace PUNCH with position-aware dynamics | completed | 2026-01-04 | 2026-01-04 | active/35-v5-accent-velocity.md |
-| 37 | v5-code-review-fixes | V5 Code Review Critical Fixes — buffer bounds, null checks, invariant violations from pre-merge review | completed | 2026-01-04 | 2026-01-04 | active/37-v5-code-review-fixes.md |
-| 38 | v5-pattern-viz-cpp | V5 C++ Pattern Visualization Test Tool — deterministic pattern output for test validation | completed | 2026-01-06 | 2026-01-06 | active/38-v5-pattern-viz-cpp.md |
+| 27 | v5-control-renaming | V5 Control Renaming and Zero Shift Layers — rename parameters, eliminate shift layers, establish V5 vocabulary | completed | 2026-01-04 | 2026-01-04 | completed/27-v5-control-renaming.md |
+| 28 | v5-shape-algorithm | V5 SHAPE Parameter: 3-Way Blending — implement 3-zone blending with crossfade transitions | completed | 2026-01-04 | 2026-01-04 | completed/28-v5-shape-algorithm.md |
+| 29 | v5-axis-biasing | V5 AXIS X/Y: Bidirectional Biasing — implement bidirectional biasing with broken mode | completed | 2026-01-04 | 2026-01-04 | completed/29-v5-axis-biasing.md |
+| 30 | v5-voice-complement | V5 Voice COMPLEMENT Relationship — implement gap-filling shimmer with DRIFT placement | completed | 2026-01-04 | 2026-01-04 | completed/30-v5-voice-complement.md |
+| 31 | v5-hat-burst | V5 Hat Burst: Pattern-Aware Fill Triggers — implement hat burst during fills with velocity ducking | completed | 2026-01-04 | 2026-01-04 | completed/31-v5-hat-burst.md |
+| 32 | v5-aux-gesture | V5 Hold+Switch Gesture for AUX Mode — implement secret gesture for HAT/FILL GATE selection (persistent) | completed | 2026-01-04 | 2026-01-04 | completed/32-v5-aux-gesture.md |
+| 33 | v5-boot-aux-mode | ~~V5 Boot-Time Pattern Length~~ → V5 Boot-Time AUX Mode — boot Hold+Switch sets persistent AUX mode | completed | 2026-01-04 | 2026-01-04 | completed/33-v5-boot-aux-mode.md |
+| 34 | v5-led-feedback | V5 LED Feedback System Update — implement 5-layer priority LED feedback | completed | 2026-01-04 | 2026-01-04 | completed/34-v5-led-feedback.md |
+| 35 | v5-accent-velocity | V5 ACCENT Parameter: Musical Weight Velocity — replace PUNCH with position-aware dynamics | completed | 2026-01-04 | 2026-01-04 | completed/35-v5-accent-velocity.md |
+| 37 | v5-code-review-fixes | V5 Code Review Critical Fixes — buffer bounds, null checks, invariant violations from pre-merge review | completed | 2026-01-04 | 2026-01-04 | completed/37-v5-code-review-fixes.md |
+| 38 | v5-pattern-viz-cpp | V5 C++ Pattern Visualization Test Tool — deterministic pattern output for test validation | completed | 2026-01-06 | 2026-01-06 | completed/38-v5-pattern-viz-cpp.md |
 | 39 | shape-hit-budget | SHAPE-Modulated Hit Budget — vary anchor/shimmer density based on SHAPE zone for pattern variation | completed | 2026-01-06 | 2026-01-06 | completed/39-shape-hit-budget.md |
