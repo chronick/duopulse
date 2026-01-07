@@ -2,10 +2,13 @@
 id: 41
 slug: 41-v5-shape-budget-fix
 title: "V5 SHAPE Budget Fix: Zone Boundaries and Anchor/Shimmer Ratio"
-status: pending
+status: completed
 created_date: 2026-01-06
 updated_date: 2026-01-06
+completed_date: 2026-01-06
 branch: feature/41-v5-shape-budget-fix
+commits:
+  - 841fa40
 spec_refs:
   - "5.2 Three-Way Blending"
   - "5.4 SHAPE-Modulated Hit Budget"

@@ -42,5 +42,5 @@
 | 38 | v5-pattern-viz-cpp | V5 C++ Pattern Visualization Test Tool — deterministic pattern output for test validation | completed | 2026-01-06 | 2026-01-06 | completed/38-v5-pattern-viz-cpp.md |
 | 39 | shape-hit-budget | SHAPE-Modulated Hit Budget — vary anchor/shimmer density based on SHAPE zone for pattern variation | completed | 2026-01-06 | 2026-01-06 | completed/39-shape-hit-budget.md |
 | 40 | v5-pattern-generator | V5 Pattern Generator Extraction & Spec Alignment — firmware now uses V5 SHAPE-based generation, archetype system deprecated | completed | 2026-01-06 | 2026-01-06 | completed/40-v5-pattern-generator.md |
-| 41 | v5-shape-budget-fix | V5 SHAPE Budget Fix: Zone Boundaries and Anchor/Shimmer Ratio — fix 0.33/0.66→0.30/0.70, separate multipliers | pending | 2026-01-06 | 2026-01-06 | active/41-v5-shape-budget-fix.md |
+| 41 | v5-shape-budget-fix | V5 SHAPE Budget Fix: Zone Boundaries and Anchor/Shimmer Ratio — fix 0.33/0.66→0.30/0.70, separate multipliers | completed | 2026-01-06 | 2026-01-06 | completed/41-v5-shape-budget-fix.md |
 | 42 | v4-dead-code-cleanup | V4 Dead Code Cleanup: Remove Deprecated Archetype System — delete ~2,551 lines of unused code | pending | 2026-01-06 | 2026-01-06 | active/42-v4-dead-code-cleanup.md |
