@@ -2,10 +2,13 @@
 id: 42
 slug: 42-v4-dead-code-cleanup
 title: "V4 Dead Code Cleanup: Remove Deprecated Archetype System"
-status: pending
+status: completed
 created_date: 2026-01-06
-updated_date: 2026-01-06
+updated_date: 2026-01-07
+completed_date: 2026-01-07
 branch: feature/42-v4-dead-code-cleanup
+commits:
+  - d9154f8
 spec_refs:
   - "V5 specification (archetype system deprecated)"
 ---
