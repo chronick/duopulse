@@ -217,6 +217,10 @@ uint32_t buttonPressTime   = 0;     // When button was pressed (ms)
 bool     buttonWasPressed  = false; // Previous button state
 bool     shiftEngaged      = false; // True once hold threshold passed
 
+// V5 Task 32: Runtime AUX mode gesture state
+bool     prevModeSwitch    = true;  // Previous switch state (true = UP/Perf)
+bool     auxGestureActive  = false; // True while Hold+Switch gesture in progress
+
 // Helper functions for discrete parameter mapping
 int MapToPatternLength(float value)
 {
@@ -453,25 +457,76 @@ void ProcessControls()
     // Track previous mode for soft knob target loading
     ControlMode previousMode = controlState.GetCurrentMode();
 
-    // Mode Switching (config mode from switch)
-    bool newConfigMode = modeSwitch.Pressed();
-    controlState.configMode = newConfigMode;
+    // Read current switch state (true = UP = Performance mode)
+    // Note: Pressed() returns true when switch is in UP position
+    bool switchUp = modeSwitch.Pressed();
+    bool switchChanged = (switchUp != prevModeSwitch);
 
     // Shift Detection (B7 button: hold for shift layer)
     // Simplified: no tap tempo, just shift-only
     bool     buttonPressed = tapButton.Pressed();
     uint32_t now           = System::GetNow();
 
+    // =========================================================================
+    // V5 Task 32: Runtime Hold+Switch AUX Mode Gesture
+    // =========================================================================
+    // Detect switch movement while button is ALREADY held (not just pressed).
+    // This sets AUX mode without changing Performance/Config mode.
+    bool switchConsumed = false;
+
+    if(buttonPressed && buttonWasPressed && switchChanged)
+    {
+        // Button was already held AND switch just changed = AUX gesture
+        auxGestureActive = true;
+
+        // Set AUX mode based on switch direction
+        if(switchUp)
+        {
+            // Switch UP while holding = HAT mode (secret "2.5 pulse")
+            controlState.auxMode = 0.0f;  // HAT mode (0-25% range)
+            LOGI("AUX mode: HAT (Hold+Switch gesture)");
+            // TODO(Task-34): Queue HAT unlock LED flash (triple rising)
+        }
+        else
+        {
+            // Switch DOWN while holding = FILL_GATE mode (default)
+            controlState.auxMode = 0.35f;  // FILL_GATE mode (25-50% range)
+            LOGI("AUX mode: FILL_GATE (Hold+Switch gesture)");
+            // TODO(Task-34): Queue FILL_GATE reset LED flash (single fade)
+        }
+
+        // Consume switch event - don't change Performance/Config mode
+        switchConsumed = true;
+    }
+
+    // Reset AUX gesture state when button released
+    if(!buttonPressed && buttonWasPressed)
+    {
+        auxGestureActive = false;
+    }
+
+    // Update previous switch state for next frame
+    prevModeSwitch = switchUp;
+
+    // Mode Switching (only if switch wasn't consumed by AUX gesture)
+    if(!switchConsumed)
+    {
+        // switchUp=true means Performance mode, switchUp=false means Config mode
+        controlState.configMode = !switchUp;
+    }
+
     if(buttonPressed && !buttonWasPressed)
     {
-        // Button just pressed - start timing
+        // Button just pressed - start timing, reset gesture state
         buttonPressTime = now;
         shiftEngaged    = false;
+        auxGestureActive = false;
     }
     else if(buttonPressed && buttonWasPressed)
     {
         // Button held - check if we've crossed shift threshold
-        if(!shiftEngaged && (now - buttonPressTime) >= kShiftThresholdMs)
+        // (only if not in AUX gesture mode)
+        if(!auxGestureActive && !shiftEngaged && (now - buttonPressTime) >= kShiftThresholdMs)
         {
             shiftEngaged             = true;
             controlState.shiftActive = true;
