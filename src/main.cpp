@@ -1,5 +1,5 @@
 /**
- * DuoPulse v4: Archetype-Based Pulse Field Sequencer
+ * DuoPulse v5: SHAPE-Based Pulse Field Sequencer
  * 
  * Control System (4 modes × 4 knobs = 16 parameters):
  * 
@@ -399,7 +399,7 @@ void AudioCallback(AudioHandle::InputBuffer  in,
 }
 
 // Helper to get pointer to parameter by mode and knob index
-// DuoPulse v4 Control Layout:
+// DuoPulse v5 Control Layout:
 //   Performance Primary: ENERGY, BUILD, FIELD X, FIELD Y
 //   Performance Shift:   PUNCH, GENRE, DRIFT, BALANCE
 //   Config Primary:      Pattern Length, Swing, AUX Mode, Reset Mode
@@ -635,7 +635,7 @@ void ProcessControls()
     float finalFieldX = MixControl(controlState.fieldX, cv3);
     float finalFieldY = MixControl(controlState.fieldY, cv4);
 
-    // Apply all DuoPulse v4 parameters to sequencer
+    // Apply all DuoPulse v5 parameters to sequencer
     // Performance Primary (CV-modulated)
     sequencer.SetEnergy(finalEnergy);
     sequencer.SetBuild(finalBuild);
@@ -770,7 +770,7 @@ int main(void)
     // Initialize Logging
     // Don't block waiting for host - allows normal boot without serial monitor
     logging::Init(false);
-    LOGI("DuoPulse v4 boot");
+    LOGI("DuoPulse v5 boot");
     LOGI("Build: %s %s", __DATE__, __TIME__);
 
     // Initialize Audio
@@ -865,7 +865,7 @@ int main(void)
                     Switch::POLARITY_INVERTED);
 
     // Initialize all 16 Soft Knobs (4 knobs × 4 mode/shift combinations)
-    // DuoPulse v4 Control Layout
+    // DuoPulse v5 Control Layout
     // Performance Primary (indices 0-3): ENERGY, BUILD, FIELD X, FIELD Y
     softKnobs[0].Init(controlState.energy);
     softKnobs[1].Init(controlState.build);
@@ -993,13 +993,10 @@ int main(void)
         if (currentBar != lastLoggedBar)
         {
             lastLoggedBar = currentBar;
-            LOGI("PATTERN: bar=%d anc=0x%08X shm=0x%08X w0=%d w4=%d w8=%d",
+            LOGI("PATTERN: bar=%d anc=0x%08X shm=0x%08X",
                  currentBar,
                  sequencer.GetAnchorMask(),
-                 sequencer.GetShimmerMask(),
-                 static_cast<int>(sequencer.GetBlendedAnchorWeight(0) * 100),
-                 static_cast<int>(sequencer.GetBlendedAnchorWeight(4) * 100),
-                 static_cast<int>(sequencer.GetBlendedAnchorWeight(8) * 100));
+                 sequencer.GetShimmerMask());
         }
 
         System::Delay(1);

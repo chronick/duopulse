@@ -1128,11 +1128,6 @@ void Sequencer::UpdatePhrasePosition()
                               phrasePos_.phraseProgress < 0.6f);
 }
 
-void Sequencer::BlendArchetype()
-{
-    // V5: DEPRECATED - No longer called. Procedural generation replaces archetype blending.
-}
-
 void Sequencer::ComputeTimingOffsets()
 {
     // Apply swing from config and microtiming jitter from FLAVOR CV
