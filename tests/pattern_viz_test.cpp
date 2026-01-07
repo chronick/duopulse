@@ -614,9 +614,9 @@ TEST_CASE("SHAPE zones affect hit budget and pattern masks", "[pattern-viz][shap
         int budgetSync = ComputeAnchorBudget(0.5f, GetEnergyZone(0.5f), patternLength, 0.50f);
         int budgetWild = ComputeAnchorBudget(0.5f, GetEnergyZone(0.5f), patternLength, 0.85f);
 
-        // Budget varies with SHAPE (stable < sync < wild)
-        REQUIRE(budgetStable < budgetSync);
-        REQUIRE(budgetWild > budgetSync);
+        // V5 Spec 5.4: Anchor budget DECREASES with SHAPE (stable >= sync >= wild)
+        REQUIRE(budgetStable >= budgetSync);
+        REQUIRE(budgetWild <= budgetSync);
     }
 }
 

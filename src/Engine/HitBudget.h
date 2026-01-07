@@ -217,15 +217,29 @@ int CountBits(uint32_t mask);
 int ClampPatternLength(int patternLength);
 
 /**
- * Get budget multiplier based on SHAPE zone
+ * Get anchor budget multiplier based on SHAPE zone
  *
- * Stable zone (0.0-0.33): sparse patterns (0.75-0.85x)
- * Syncopated zone (0.33-0.66): normal density (1.0x)
- * Wild zone (0.66-1.0): denser patterns (1.15-1.25x)
+ * V5 Spec 5.4:
+ * - Stable (0-30%): 100% (1.0)
+ * - Syncopated (30-70%): 90-100% (lerp 1.0 -> 0.90)
+ * - Wild (70-100%): 80-90% (lerp 0.90 -> 0.80)
  *
  * @param shape SHAPE parameter (0.0-1.0)
- * @return Multiplier for hit budgets
+ * @return Multiplier for anchor hit budget (0.80-1.0)
  */
-float GetShapeBudgetMultiplier(float shape);
+float GetAnchorBudgetMultiplier(float shape);
+
+/**
+ * Get shimmer budget multiplier based on SHAPE zone
+ *
+ * V5 Spec 5.4:
+ * - Stable (0-30%): 100% (1.0)
+ * - Syncopated (30-70%): 110-130% (lerp 1.10 -> 1.30)
+ * - Wild (70-100%): 130-150% (lerp 1.30 -> 1.50)
+ *
+ * @param shape SHAPE parameter (0.0-1.0)
+ * @return Multiplier for shimmer hit budget (1.0-1.5)
+ */
+float GetShimmerBudgetMultiplier(float shape);
 
 } // namespace daisysp_idm_grids
