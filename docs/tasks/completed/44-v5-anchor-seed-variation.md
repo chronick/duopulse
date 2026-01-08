@@ -2,11 +2,14 @@
 id: 44
 slug: v5-anchor-seed-variation
 title: "V5 Anchor Seed Variation: Fix Zero Pattern Diversity"
-status: pending
+status: completed
 created_date: 2026-01-07
 updated_date: 2026-01-07
+completed_date: 2026-01-07
 branch: feature/44-v5-anchor-seed-variation
 spec_refs: ["1.1", "4.3"]
+commits:
+  - dbaa9c66d55ffa2e405c6076d3626a84935dadc0
 ---
 
 # Task 44: V5 Anchor Seed Variation
@@ -129,7 +132,7 @@ float phaseOffset = HashToFloat(seed, 500) * 0.4f; // 0-40% of spacing
 
 ### Phase 2: Weight Perturbation
 
-- [ ] **44.2** Add seed-based weight perturbation to anchor weights in `Sequencer.cpp`
+- [x] **44.2** Add seed-based weight perturbation to anchor weights in `Sequencer.cpp`
   - Apply after `ApplyAxisBias()` completes
   - Use 10-20% perturbation scaled by (1 - SHAPE) so variation decreases as SHAPE increases
   - Protect step 0 (beat 1) from perturbation at SHAPE < 0.3 (Techno range)

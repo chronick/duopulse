@@ -33,6 +33,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <cmath>
+#include <algorithm>
 
 #include "../src/Engine/DuoPulseTypes.h"
 #include "../src/Engine/PatternField.h"
@@ -87,6 +88,31 @@ static int ComputeTargetHits(float energy, int patternLength, Voice voice, float
     }
 }
 
+// V5 Task 44: Helper to rotate bitmask while preserving a specific step's state
+// Used for anchor variation without disrupting beat 1 (Techno kick stability)
+static uint32_t RotateWithPreserve(uint32_t mask, int rotation, int length, int preserveStep)
+{
+    if (rotation == 0 || length <= 1) return mask;
+
+    // Check if preserve step is set
+    bool preserveWasSet = (mask & (1U << preserveStep)) != 0;
+
+    // Clear the preserve step before rotation
+    mask &= ~(1U << preserveStep);
+
+    // Rotate the remaining bits
+    rotation = rotation % length;
+    uint32_t lengthMask = (length >= 32) ? 0xFFFFFFFF : ((1U << length) - 1);
+    mask = ((mask << rotation) | (mask >> (length - rotation))) & lengthMask;
+
+    // Restore preserve step to its original position
+    if (preserveWasSet) {
+        mask |= (1U << preserveStep);
+    }
+
+    return mask;
+}
+
 static void GeneratePattern(const PatternParams& params, PatternData& out)
 {
     out.patternLength = params.patternLength;
@@ -104,6 +130,22 @@ static void GeneratePattern(const PatternParams& params, PatternData& out)
     ApplyAxisBias(anchorWeights, params.axisX, params.axisY,
                   params.shape, params.seed, params.patternLength);
 
+    // V5 Task 44: Add seed-based weight perturbation for anchor variation
+    // Uses additive noise scaled to actually affect hit selection
+    {
+        // At low SHAPE, add more noise to break up the predictable pattern
+        // At high SHAPE, weights already vary naturally, so less noise needed
+        const float noiseScale = 0.4f * (1.0f - params.shape);
+        for (int step = 0; step < params.patternLength; ++step) {
+            // Protect beat 1 at low SHAPE (Techno kick stability)
+            if (step == 0 && params.shape < 0.3f) continue;
+
+            // Additive perturbation that can actually affect ranking
+            float noise = (HashToFloat(params.seed, step + 1000) - 0.5f) * noiseScale;
+            anchorWeights[step] = ClampWeight(anchorWeights[step] + noise);
+        }
+    }
+
     // Select anchor hits (SHAPE modulates budget - Task 39)
     int v1TargetHits = ComputeTargetHits(params.energy, params.patternLength, Voice::ANCHOR, params.shape);
     uint32_t eligibility = (1U << params.patternLength) - 1;
@@ -113,6 +155,14 @@ static void GeneratePattern(const PatternParams& params, PatternData& out)
     // Apply guard rails
     uint32_t dummyShimmer = 0;
     ApplyHardGuardRails(out.v1Mask, dummyShimmer, zone, Genre::TECHNO, params.patternLength);
+
+    // V5 Task 44: Apply seed-based rotation for anchor variation (AFTER guard rails)
+    // Rotate non-beat-1 positions while preserving step 0 for Techno kick stability
+    if (params.shape < 0.7f) {
+        int maxRotation = std::max(1, params.patternLength / 4);
+        int rotation = static_cast<int>(HashToFloat(params.seed, 2000) * maxRotation);
+        out.v1Mask = RotateWithPreserve(out.v1Mask, rotation, params.patternLength, 0);
+    }
 
     // Generate shimmer with COMPLEMENT (SHAPE modulates budget - Task 39)
     float shimmerWeights[kMaxSteps];

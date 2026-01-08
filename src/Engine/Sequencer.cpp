@@ -259,6 +259,31 @@ std::array<float, 2> Sequencer::ProcessAudio()
     };
 }
 
+// V5 Task 44: Helper to rotate bitmask while preserving a specific step's state
+// Used for anchor variation without disrupting beat 1 (Techno kick stability)
+static uint32_t RotateWithPreserve(uint32_t mask, int rotation, int length, int preserveStep)
+{
+    if (rotation == 0 || length <= 1) return mask;
+
+    // Check if preserve step is set
+    bool preserveWasSet = (mask & (1U << preserveStep)) != 0;
+
+    // Clear the preserve step before rotation
+    mask &= ~(1U << preserveStep);
+
+    // Rotate the remaining bits
+    rotation = rotation % length;
+    uint32_t lengthMask = (length >= 32) ? 0xFFFFFFFF : ((1U << length) - 1);
+    mask = ((mask << rotation) | (mask >> (length - rotation))) & lengthMask;
+
+    // Restore preserve step to its original position
+    if (preserveWasSet) {
+        mask |= (1U << preserveStep);
+    }
+
+    return mask;
+}
+
 void Sequencer::GenerateBar()
 {
     // Get effective control values (with CV modulation)
@@ -307,15 +332,18 @@ void Sequencer::GenerateBar()
                   state_.controls.shape, seed, halfLength);
 
     // V5 Task 44: Add seed-based weight perturbation for anchor variation
-    // Scaled by (1 - shape) so variation is strongest at low SHAPE
+    // Uses additive noise scaled to actually affect hit selection
     {
-        const float perturbScale = 0.2f * (1.0f - state_.controls.shape);
+        // At low SHAPE, add more noise to break up the predictable pattern
+        // At high SHAPE, weights already vary naturally, so less noise needed
+        const float noiseScale = 0.4f * (1.0f - state_.controls.shape);
         for (int step = 0; step < halfLength; ++step) {
             // Protect beat 1 at low SHAPE (Techno kick stability)
             if (step == 0 && state_.controls.shape < 0.3f) continue;
 
-            float perturb = (HashToFloat(seed, step + 1000) - 0.5f) * 2.0f * perturbScale;
-            anchorWeights[step] = ClampWeight(anchorWeights[step] * (1.0f + perturb));
+            // Additive perturbation that can actually affect ranking
+            float noise = (HashToFloat(seed, step + 1000) - 0.5f) * noiseScale;
+            anchorWeights[step] = ClampWeight(anchorWeights[step] + noise);
         }
     }
 
@@ -419,6 +447,14 @@ void Sequencer::GenerateBar()
     // 7. Hard guard rails (first half)
     ApplyHardGuardRails(anchorMask1, shimmerMask1, zone, genre, halfLength);
 
+    // V5 Task 44: Apply seed-based rotation for anchor variation (AFTER guard rails)
+    // Rotate non-beat-1 positions while preserving step 0 for Techno kick stability
+    if (state_.controls.shape < 0.7f) {
+        int maxRotation = std::max(1, halfLength / 4);
+        int rotation = static_cast<int>(HashToFloat(seed, 2000) * maxRotation);
+        anchorMask1 = RotateWithPreserve(anchorMask1, rotation, halfLength, 0);
+    }
+
     // 8. Generate aux hits (first half) using metric-based weights
     // Aux avoids main voice positions and prefers weak beats
     uint32_t combinedMask = anchorMask1 | shimmerMask1;
@@ -464,14 +500,18 @@ void Sequencer::GenerateBar()
                       state_.controls.shape, seed2, halfLength);
 
         // V5 Task 44: Add seed-based weight perturbation for anchor variation (second half)
+        // Uses additive noise scaled to actually affect hit selection
         {
-            const float perturbScale = 0.2f * (1.0f - state_.controls.shape);
+            // At low SHAPE, add more noise to break up the predictable pattern
+            // At high SHAPE, weights already vary naturally, so less noise needed
+            const float noiseScale = 0.4f * (1.0f - state_.controls.shape);
             for (int step = 0; step < halfLength; ++step) {
                 // Protect beat 1 at low SHAPE (Techno kick stability)
                 if (step == 0 && state_.controls.shape < 0.3f) continue;
 
-                float perturb = (HashToFloat(seed2, step + 1000) - 0.5f) * 2.0f * perturbScale;
-                anchorWeights2[step] = ClampWeight(anchorWeights2[step] * (1.0f + perturb));
+                // Additive perturbation that can actually affect ranking
+                float noise = (HashToFloat(seed2, step + 1000) - 0.5f) * noiseScale;
+                anchorWeights2[step] = ClampWeight(anchorWeights2[step] + noise);
             }
         }
 
@@ -561,6 +601,14 @@ void Sequencer::GenerateBar()
 
         // Hard guard rails (second half) - ensure downbeat at step 32 (bar 3 start)
         ApplyHardGuardRails(anchorMask2, shimmerMask2, zone, genre, halfLength);
+
+        // V5 Task 44: Apply seed-based rotation for anchor variation (AFTER guard rails)
+        // Rotate non-beat-1 positions while preserving step 0 for Techno kick stability
+        if (state_.controls.shape < 0.7f) {
+            int maxRotation = std::max(1, halfLength / 4);
+            int rotation = static_cast<int>(HashToFloat(seed2, 2000) * maxRotation);
+            anchorMask2 = RotateWithPreserve(anchorMask2, rotation, halfLength, 0);
+        }
 
         // Generate aux (second half) using metric-based weights
         uint32_t combinedMask2 = anchorMask2 | shimmerMask2;
