@@ -370,7 +370,7 @@ struct ControlState
      * - axisY = 0.50f (50% moderate intricacy)
      * - clockDiv = 1 (x1 no division)
      * - swing = 0.50f (50% neutral groove)
-     * - drift = 0.0f (0% locked pattern)
+     * - drift = 0.25f (25% enables weighted placement for seed variation)
      * - accent = 0.50f (50% moderate dynamics)
      */
     void Init()
@@ -384,7 +384,7 @@ struct ControlState
         // V5 Config Mode (4 direct knobs)
         clockDiv = 1;     // V5: x1 no division
         swing    = 0.50f; // V5: 50% neutral groove
-        drift    = 0.0f;  // V5: 0% locked pattern
+        drift    = 0.25f; // V5: 25% enables weighted placement for seed variation
         accent   = 0.50f; // V5: 50% moderate dynamics
 
         // Internal parameters (not exposed in V5 UI)

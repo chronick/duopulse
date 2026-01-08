@@ -41,3 +41,9 @@
 | 37 | v5-code-review-fixes | V5 Code Review Critical Fixes — buffer bounds, null checks, invariant violations from pre-merge review | completed | 2026-01-04 | 2026-01-04 | completed/37-v5-code-review-fixes.md |
 | 38 | v5-pattern-viz-cpp | V5 C++ Pattern Visualization Test Tool — deterministic pattern output for test validation | completed | 2026-01-06 | 2026-01-06 | completed/38-v5-pattern-viz-cpp.md |
 | 39 | shape-hit-budget | SHAPE-Modulated Hit Budget — vary anchor/shimmer density based on SHAPE zone for pattern variation | completed | 2026-01-06 | 2026-01-06 | completed/39-shape-hit-budget.md |
+| 40 | v5-pattern-generator | V5 Pattern Generator Extraction & Spec Alignment — firmware now uses V5 SHAPE-based generation, archetype system deprecated | completed | 2026-01-06 | 2026-01-06 | completed/40-v5-pattern-generator.md |
+| 41 | v5-shape-budget-fix | V5 SHAPE Budget Fix: Zone Boundaries and Anchor/Shimmer Ratio — fix 0.33/0.66→0.30/0.70, separate multipliers | completed | 2026-01-06 | 2026-01-06 | completed/41-v5-shape-budget-fix.md |
+| 42 | v4-dead-code-cleanup | V4 Dead Code Cleanup: Remove Deprecated Archetype System — delete ~2,630 lines of unused code | completed | 2026-01-06 | 2026-01-07 | completed/42-v4-dead-code-cleanup.md |
+| 43 | v5-shimmer-seed-variation | V5 Shimmer Seed Variation: Fix pattern convergence bug | completed | 2026-01-07 | 2026-01-07 | completed/43-v5-shimmer-seed-variation.md |
+| 44 | v5-anchor-seed-variation | V5 Anchor Seed Variation: Fix zero pattern diversity across seeds | completed | 2026-01-07 | 2026-01-07 | completed/44-v5-anchor-seed-variation.md |
+| 45 | pattern-generator-extraction | Pattern Generator Extraction: Shared module for firmware & viz tool | completed | 2026-01-08 | 2026-01-08 | completed/45-pattern-generator-extraction.md |

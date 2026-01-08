@@ -27,26 +27,53 @@ int ClampPatternLength(int patternLength)
     return std::min(patternLength, 32);
 }
 
-float GetShapeBudgetMultiplier(float shape)
+float GetAnchorBudgetMultiplier(float shape)
 {
     // Clamp shape to valid range
     shape = std::max(0.0f, std::min(1.0f, shape));
 
-    if (shape < 0.33f)
+    // V5 Spec 5.4 zone boundaries: 0.30 and 0.70
+    if (shape < 0.30f)
     {
-        // Stable zone: sparse patterns (0.75-0.85x)
-        return 0.75f + (shape / 0.33f) * 0.10f;
-    }
-    else if (shape < 0.66f)
-    {
-        // Syncopated zone: normal density (1.0x)
+        // Stable zone: 100% of base
         return 1.0f;
+    }
+    else if (shape < 0.70f)
+    {
+        // Syncopated zone: 100% -> 90% (lerp over 0.30-0.70)
+        float progress = (shape - 0.30f) / 0.40f;
+        return 1.0f - progress * 0.10f;
     }
     else
     {
-        // Wild zone: denser patterns (1.15-1.25x)
-        float wildProgress = (shape - 0.66f) / 0.34f;
-        return 1.15f + wildProgress * 0.10f;
+        // Wild zone: 90% -> 80% (lerp over 0.70-1.0)
+        float progress = (shape - 0.70f) / 0.30f;
+        return 0.90f - progress * 0.10f;
+    }
+}
+
+float GetShimmerBudgetMultiplier(float shape)
+{
+    // Clamp shape to valid range
+    shape = std::max(0.0f, std::min(1.0f, shape));
+
+    // V5 Spec 5.4 zone boundaries: 0.30 and 0.70
+    if (shape < 0.30f)
+    {
+        // Stable zone: 100% of base
+        return 1.0f;
+    }
+    else if (shape < 0.70f)
+    {
+        // Syncopated zone: 110% -> 130% (lerp over 0.30-0.70)
+        float progress = (shape - 0.30f) / 0.40f;
+        return 1.10f + progress * 0.20f;
+    }
+    else
+    {
+        // Wild zone: 130% -> 150% (lerp over 0.70-1.0)
+        float progress = (shape - 0.70f) / 0.30f;
+        return 1.30f + progress * 0.20f;
     }
 }
 
@@ -59,8 +86,8 @@ int ComputeAnchorBudget(float energy, EnergyZone zone, int patternLength, float 
     // Clamp energy to valid range
     energy = std::max(0.0f, std::min(1.0f, energy));
 
-    // Get shape multiplier for density adjustment (Task 39)
-    float shapeMult = GetShapeBudgetMultiplier(shape);
+    // Get shape multiplier for density adjustment (V5 Spec 5.4)
+    float shapeMult = GetAnchorBudgetMultiplier(shape);
 
     // Base hits scale with pattern length
     // For 32 steps: MINIMAL=1-2, GROOVE=3-5, BUILD=5-8, PEAK=8-12
@@ -149,7 +176,14 @@ int ComputeShimmerBudget(float energy, float balance, EnergyZone zone, int patte
         shimmerRatio = std::min(shimmerRatio, 1.0f);
     }
 
-    int hits = static_cast<int>(anchorBudget * shimmerRatio + 0.5f);
+    // V5 Spec 5.4: Apply shape-based divergence correction
+    // anchorBudget already has anchor multiplier baked in, so we swap it for shimmer's
+    float anchorMult = GetAnchorBudgetMultiplier(shape);
+    float shimmerMult = GetShimmerBudgetMultiplier(shape);
+    float shapeCorrection = (anchorMult > 0.0f) ? (shimmerMult / anchorMult) : 1.0f;
+    float adjustedShimmerRatio = shimmerRatio * shapeCorrection;
+
+    int hits = static_cast<int>(anchorBudget * adjustedShimmerRatio + 0.5f);
 
     // Minimum of 1 hit except in MINIMAL zone
     if (zone == EnergyZone::MINIMAL)

@@ -254,6 +254,21 @@ SHAPE Knob (K2) Position
 - [ ] 68-72% crossfade: Syncopated → Wild (smooth)
 - [ ] Sweep K2 slowly: no discontinuities
 
+### 3.5 SHAPE Hit Budget Variation
+
+SHAPE modulates the anchor/shimmer hit ratio:
+
+| Zone | Anchor Budget | Shimmer Budget |
+|------|---------------|----------------|
+| Stable (0-30%) | 100% | 100% |
+| Syncopated (30-70%) | 90-100% | 110-130% |
+| Wild (70-100%) | 80-90% | 130-150% |
+
+- [ ] SHAPE=10%: Both voices have similar hit counts
+- [ ] SHAPE=50%: Shimmer slightly denser than anchor
+- [ ] SHAPE=90%: Shimmer noticeably denser than anchor
+- [ ] Transition is gradual (no sudden density jumps)
+
 ### Test 3 Notes:
 ```
 _________________________________________________________________
@@ -521,11 +536,15 @@ Activate via: Hold button + Switch UP
 - [ ] Hat triggers away from main hits: 65-100% velocity
 - [ ] Ducking is audible (if using VCA)
 
-### 8.3 Mode Persistence
+### 8.3 Boot-Time AUX Mode Selection
 
-- [ ] AUX mode survives power cycle (boot gesture)
-- [ ] Boot with Hold + Switch UP → HAT mode persists
-- [ ] Boot with Hold + Switch DOWN → FILL GATE persists
+AUX mode is **volatile** (not persisted across power cycles). Default is FILL GATE.
+Optional boot gesture allows setting AUX mode at power-on.
+
+- [ ] Default boot (no gesture) → FILL GATE mode
+- [ ] Boot with Hold + Switch UP → HAT mode selected
+- [ ] Boot with Hold + Switch DOWN → FILL GATE mode confirmed
+- [ ] Power cycle without gesture → Returns to FILL GATE (volatile)
 
 ### Test 8 Notes:
 ```
@@ -641,7 +660,7 @@ CLOCK: varies  SWING: varies DRIFT: 80%     ACCENT: 85%
 - [ ] CV1 modulates ENERGY in Performance mode
 - [ ] CV1 modulates ENERGY even in Config mode (background)
 - [ ] All 4 CVs respond to modulation
-- [ ] CV modulation is bipolar (0V = no mod)
+- [ ] CV modulation is bipolar (0V = no mod, ±5V = ±50%)
 
 ### 10.3 Extended Playability
 
@@ -668,6 +687,41 @@ Run module for 30+ minutes:
 ### Test 10 Notes:
 ```
 _________________________________________________________________
+_________________________________________________________________
+_________________________________________________________________
+```
+
+---
+
+## Optional Test: Boot-Time Pattern Length
+
+**Goal**: Verify boot-time pattern length selection (if enabled in build).
+
+This feature is **optional** and may not be present in all builds.
+Default is 16 steps (compile-time). Boot gesture allows 24-step selection.
+
+### Boot Gesture
+
+1. Power off module
+2. Hold button
+3. Power on while holding button
+4. Move switch to select length
+5. Release button
+
+| Switch Position | Length | LED Feedback |
+|-----------------|--------|--------------|
+| UP | 16 steps | Single flash |
+| DOWN | 24 steps | Double flash |
+
+### Tests
+
+- [ ] Boot with Hold + Switch UP → 16 steps, single LED flash
+- [ ] Boot with Hold + Switch DOWN → 24 steps, double LED flash
+- [ ] 24-step pattern audibly different (6/8 triplet feel)
+- [ ] Normal boot (no gesture) → default length (16)
+
+### Notes:
+```
 _________________________________________________________________
 _________________________________________________________________
 ```
@@ -714,7 +768,7 @@ make test
 
 - [ ] Test 1: Basic Boot & Clock
 - [ ] Test 2: Performance Mode Basics
-- [ ] Test 3: SHAPE 3-Zone Blending
+- [ ] Test 3: SHAPE 3-Zone Blending (includes 3.5 Hit Budget)
 - [ ] Test 4: AXIS Bidirectional Biasing
 - [ ] Test 5: Voice COMPLEMENT Relationship
 - [ ] Test 6: Config Mode
@@ -722,6 +776,7 @@ make test
 - [ ] Test 8: AUX Output Modes (Hat Burst)
 - [ ] Test 9: LED Feedback System
 - [ ] Test 10: Integration Tests
+- [ ] Optional: Boot-Time Pattern Length (if enabled)
 
 **Sign-off**:
 - Tester: _______________

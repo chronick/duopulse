@@ -1,7 +1,6 @@
 #pragma once
 
 #include "DuoPulseTypes.h"
-#include "ArchetypeDNA.h"
 #include "ControlState.h"
 #include "SequencerState.h"
 #include "OutputState.h"
@@ -10,7 +9,7 @@ namespace daisysp_idm_grids
 {
 
 /**
- * DuoPulseState: Complete firmware state for DuoPulse v4
+ * DuoPulseState: Complete firmware state for DuoPulse v5
  *
  * This struct combines all state required for the sequencer to operate.
  * It serves as the central data structure passed between processing stages.
@@ -31,16 +30,6 @@ struct DuoPulseState
 
     /// All output states (triggers, velocity, LED, AUX)
     OutputState outputs;
-
-    // =========================================================================
-    // Pattern Data (loaded per genre)
-    // =========================================================================
-
-    /// Current genre's 3x3 archetype field
-    GenreField currentField;
-
-    /// Currently blended archetype (result of FIELD X/Y morphing)
-    ArchetypeDNA blendedArchetype;
 
     // =========================================================================
     // System State
@@ -83,9 +72,6 @@ struct DuoPulseState
         controls.Init();
         sequencer.Init();
         outputs.Init(sampleRate);
-
-        currentField.Init();
-        blendedArchetype.Init();
 
         // Default tempo: 120 BPM
         currentBpm = 120.0f;

@@ -337,11 +337,10 @@ TEST_CASE("ApplyComplementRelationship mid drift - weighted placement", "[voice-
         REQUIRE(CountHits(result) == 2);
         REQUIRE(NoOverlap(anchor, result));
 
-        // With ascending weights, higher steps in gap should be preferred
-        // Step 6 has highest weight in gap, step 5 second highest
-        bool hasStep6 = (result & (1U << 6)) != 0;
-        bool hasStep5 = (result & (1U << 5)) != 0;
-        REQUIRE((hasStep6 || hasStep5));  // At least one high-weight step
+        // Note: After Task 43, seed-based rotation may move hits to different positions.
+        // The weighted placement algorithm still prefers high-weight positions initially,
+        // but the final output is rotated for seed variation.
+        // We verify correctness via hit count and no-overlap checks.
     }
 }
 
@@ -421,43 +420,8 @@ TEST_CASE("ApplyComplementRelationship proportional gap distribution", "[voice-c
 // Legacy Function Tests
 // =============================================================================
 
-TEST_CASE("Legacy ApplyVoiceRelationship is now no-op", "[voice-complement]")
-{
-    SECTION("INDEPENDENT mode leaves shimmer unchanged")
-    {
-        uint32_t anchor = 0b1111;
-        uint32_t shimmer = 0b0101;
-        uint32_t original = shimmer;
-
-        ApplyVoiceRelationship(anchor, shimmer, VoiceCoupling::INDEPENDENT, 16);
-
-        REQUIRE(shimmer == original);
-    }
-
-    SECTION("INTERLOCK mode no longer modifies shimmer (V5 deprecation)")
-    {
-        uint32_t anchor = 0b1111;
-        uint32_t shimmer = 0b1010;
-        uint32_t original = shimmer;
-
-        ApplyVoiceRelationship(anchor, shimmer, VoiceCoupling::INTERLOCK, 16);
-
-        // V5: INTERLOCK is deprecated, function is no-op
-        REQUIRE(shimmer == original);
-    }
-
-    SECTION("SHADOW mode no longer modifies shimmer (V5 deprecation)")
-    {
-        uint32_t anchor = 0b1111;
-        uint32_t shimmer = 0b1010;
-        uint32_t original = shimmer;
-
-        ApplyVoiceRelationship(anchor, shimmer, VoiceCoupling::SHADOW, 16);
-
-        // V5: SHADOW is deprecated, function is no-op
-        REQUIRE(shimmer == original);
-    }
-}
+// V5: ApplyVoiceRelationship removed (Task 43)
+// Use ApplyComplementRelationship instead for shimmer placement
 
 TEST_CASE("Legacy ApplyAuxRelationship is now no-op", "[voice-complement]")
 {

@@ -29,12 +29,6 @@ constexpr int kMaxSteps = 32;
 /// Maximum steps in a phrase (8 bars × 32 steps)
 constexpr int kMaxPhraseSteps = 256;
 
-/// Number of archetypes per genre (3x3 grid)
-constexpr int kArchetypesPerGenre = 9;
-
-/// Number of genres (legacy, kept for archetype data compatibility)
-constexpr int kNumGenres = 3;
-
 // =============================================================================
 // Core Enumerations
 // =============================================================================
@@ -42,11 +36,10 @@ constexpr int kNumGenres = 3;
 /**
  * Genre: Style bank selection (V5: internal only, hardcoded to TECHNO)
  *
- * Each genre has its own 3x3 grid of archetypes tuned to that style.
- * In V5, Genre is no longer exposed in the UI - TECHNO is the default.
- * The enum is kept for internal archetype data compatibility.
+ * In V5, Genre is no longer exposed in the UI - TECHNO behavior is the default.
+ * The enum is kept for backward compatibility with helper functions.
  *
- * Reference: docs/specs/main.md section 5.4
+ * Reference: docs/specs/main.md section 5
  */
 enum class Genre : uint8_t
 {

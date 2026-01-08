@@ -71,23 +71,6 @@ uint32_t ApplyComplementRelationship(uint32_t anchorMask,
                                      float drift, uint32_t seed,
                                      int patternLength, int targetHits);
 
-// =============================================================================
-// Legacy V4 Functions (deprecated, kept for compatibility)
-// =============================================================================
-
-/**
- * Apply voice relationship to shimmer mask based on anchor mask
- *
- * V5: This function now only supports INDEPENDENT mode.
- * Use ApplyComplementRelationship() for V5 COMPLEMENT behavior.
- *
- * @deprecated Use ApplyComplementRelationship() for V5
- */
-void ApplyVoiceRelationship(uint32_t anchorMask,
-                            uint32_t& shimmerMask,
-                            VoiceCoupling coupling,
-                            int patternLength);
-
 /**
  * Apply voice relationship to aux mask
  *

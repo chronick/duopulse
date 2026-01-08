@@ -2,7 +2,6 @@
 #include <catch2/catch_approx.hpp>
 
 #include "../src/Engine/DuoPulseTypes.h"
-#include "../src/Engine/ArchetypeDNA.h"
 #include "../src/Engine/ControlState.h"
 #include "../src/Engine/SequencerState.h"
 #include "../src/Engine/OutputState.h"
@@ -127,76 +126,7 @@ TEST_CASE("Constants are defined correctly", "[types]")
 {
     REQUIRE(kMaxSteps == 32);
     REQUIRE(kMaxPhraseSteps == 256);
-    REQUIRE(kArchetypesPerGenre == 9);
-    REQUIRE(kNumGenres == 3);
-}
-
-// =============================================================================
-// ArchetypeDNA.h Tests
-// =============================================================================
-
-TEST_CASE("ArchetypeDNA initialization", "[archetype]")
-{
-    ArchetypeDNA archetype;
-    archetype.Init();
-
-    SECTION("Weights are initialized")
-    {
-        // Downbeats should be strongest
-        REQUIRE(archetype.anchorWeights[0] == Approx(1.0f));
-        REQUIRE(archetype.anchorWeights[8] == Approx(0.85f));  // Half note
-        REQUIRE(archetype.anchorWeights[16] == Approx(1.0f)); // Bar 2 downbeat
-
-        // Backbeats should be strongest for shimmer
-        REQUIRE(archetype.shimmerWeights[8] == Approx(1.0f));
-        REQUIRE(archetype.shimmerWeights[24] == Approx(1.0f));
-    }
-
-    SECTION("Default values are reasonable")
-    {
-        REQUIRE(archetype.swingAmount >= 0.0f);
-        REQUIRE(archetype.swingAmount <= 1.0f);
-        REQUIRE(archetype.defaultCouple >= 0.0f);
-        REQUIRE(archetype.defaultCouple <= 1.0f);
-        REQUIRE(archetype.fillDensityMultiplier >= 1.0f);
-    }
-
-    SECTION("Grid position defaults to origin")
-    {
-        REQUIRE(archetype.gridX == 0);
-        REQUIRE(archetype.gridY == 0);
-    }
-}
-
-TEST_CASE("GenreField initialization", "[archetype]")
-{
-    GenreField field;
-    field.Init();
-
-    SECTION("All 9 archetypes are initialized")
-    {
-        for (int y = 0; y < 3; ++y)
-        {
-            for (int x = 0; x < 3; ++x)
-            {
-                const auto& arch = field.GetArchetype(x, y);
-                REQUIRE(arch.gridX == x);
-                REQUIRE(arch.gridY == y);
-            }
-        }
-    }
-
-    SECTION("GetArchetype clamps out-of-range indices")
-    {
-        // Should not crash, should return corner archetypes
-        const auto& corner00 = field.GetArchetype(-1, -1);
-        REQUIRE(corner00.gridX == 0);
-        REQUIRE(corner00.gridY == 0);
-
-        const auto& corner22 = field.GetArchetype(5, 5);
-        REQUIRE(corner22.gridX == 2);
-        REQUIRE(corner22.gridY == 2);
-    }
+    // V5: Archetype constants removed (kArchetypesPerGenre, kNumGenres)
 }
 
 // =============================================================================
@@ -312,7 +242,7 @@ TEST_CASE("ControlState initialization", "[control]")
         REQUIRE(state.resetMode == ResetMode::STEP);
         REQUIRE(state.clockDiv == 1);     // V5: x1 no division
         REQUIRE(state.swing == 0.50f);    // V5: 50% neutral groove
-        REQUIRE(state.drift == 0.0f);     // V5: 0% locked pattern
+        REQUIRE(state.drift == 0.25f);    // V5: 25% enables seed variation
         REQUIRE(state.accent == 0.50f);   // V5: 50% moderate dynamics
     }
 
@@ -720,14 +650,6 @@ TEST_CASE("Struct sizes are reasonable", "[sizes]")
     // These tests ensure structs don't accidentally grow too large
     // (which could indicate memory issues or padding problems)
 
-    SECTION("ArchetypeDNA is reasonable size")
-    {
-        // 3 arrays of 32 floats (3 * 32 * 4 = 384 bytes)
-        // Plus masks, timing, metadata (~40 bytes)
-        // Should be under 512 bytes
-        REQUIRE(sizeof(ArchetypeDNA) < 512);
-    }
-
     SECTION("ControlState is reasonable size")
     {
         // Should be under 512 bytes
@@ -752,7 +674,7 @@ TEST_CASE("Struct sizes are reasonable", "[sizes]")
 
     SECTION("DuoPulseState is reasonable size")
     {
-        // Complete state including GenreField (9 archetypes)
+        // Complete state for sequencer
         // Could be a few KB, but should be under 8KB
         REQUIRE(sizeof(DuoPulseState) < 8192);
     }

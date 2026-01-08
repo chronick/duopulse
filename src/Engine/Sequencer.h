@@ -260,11 +260,6 @@ public:
     /** Get current aux mask (for debug logging, 64-bit for long patterns) */
     uint64_t GetAuxMask() const { return state_.sequencer.auxMask; }
 
-    /** Get blended archetype weight at step (for debug logging) */
-    float GetBlendedAnchorWeight(int step) const {
-        return (step >= 0 && step < 32) ? state_.blendedArchetype.anchorWeights[step] : 0.0f;
-    }
-
     /** Get current bar number (for detecting bar boundaries in main loop) */
     int GetCurrentBar() const { return state_.sequencer.currentBar; }
 
@@ -293,11 +288,6 @@ private:
      * Update phrase position tracking
      */
     void UpdatePhrasePosition();
-
-    /**
-     * Compute blended archetype from current field position
-     */
-    void BlendArchetype();
 
     /**
      * Compute timing offsets for the current bar
