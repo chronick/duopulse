@@ -236,12 +236,72 @@ These specific patterns are produced by multiple seeds:
 | 0.80 | 8 | 6 | 0x44444405 | 0x81011110 |
 | 1.00 | 8 | 8 | 0x44444405 | 0x88888890 |
 
+## Future Work: Improving V1 Variation to 50%+
+
+Current V1 (Anchor) variation is **33%**, meeting the 25% minimum target but below the ideal 50% threshold. Here are approaches to consider for future improvement:
+
+### High-Impact Approaches
+
+1. **Increase Rotation Range**
+   - Current: `maxRotation = halfLength / 4` (8 positions for 32-step)
+   - Proposed: `maxRotation = halfLength / 2` (16 positions)
+   - Risk: May feel less stable at very low SHAPE; consider SHAPE-scaled range
+
+2. **Seed-Based Hit Budget Variation**
+   - Add ±1 to anchor hit count based on seed
+   - More hits = more possible arrangements
+   - Example: `anchorHits += (HashToInt(seed, 3000) % 3) - 1`
+
+3. **Micro-Displacement**
+   - Probabilistically shift individual hits by ±1 step
+   - Preserve step 0, only displace others
+   - Would create subtle timing variations within the same "feel"
+
+### Medium-Impact Approaches
+
+4. **Zone-Specific Strategies**
+   - SHAPE 0.0-0.3: Increase rotation range (stable patterns need more help)
+   - SHAPE 0.3-0.7: Use current approach (natural syncopation)
+   - SHAPE 0.7+: Rely on weight randomness (wild patterns)
+
+5. **Metrically-Aware Swapping**
+   - Swap hits between metrically equivalent positions
+   - Example: Swap step 4 ↔ step 12 (both quarter notes)
+   - Preserves musical hierarchy while adding variation
+
+6. **Weight Injection Points**
+   - Add high-weight "spice" at random seed-based positions
+   - Occasionally pulls a hit to an unexpected place
+   - More aggressive than current additive noise
+
+### Low-Risk Improvements
+
+7. **Per-Half Different Rotation**
+   - Currently both halves of 64-step pattern use same rotation
+   - Use independent rotation for second half
+   - Doubles effective variation for long patterns
+
+8. **DRIFT-Influenced Anchor Variation**
+   - Currently DRIFT only affects shimmer placement
+   - Could add DRIFT-scaled anchor variation
+   - Gives performer control over expressiveness
+
+### Analysis Notes
+
+Looking at the test data:
+- V1 achieves 5/8 unique patterns at low SHAPE (good!)
+- V1 drops to 1/8 unique at high SHAPE (>0.7)
+- High SHAPE disables rotation (`shape < 0.7f` guard)
+
+**Quick Win**: Remove or raise the SHAPE threshold for rotation. High SHAPE patterns are already chaotic, so rotation would add minimal musical value but would increase the metric.
+
 ## Recommendations
 
 No critical issues found. Pattern expressiveness is adequate.
 
 Consider monitoring these metrics after future changes:
 - V2 variation score should stay above 50%
+- V1 variation score target: 50% (currently 33%)
 - Syncopation should increase with SHAPE
 - Hit counts should scale with ENERGY
 
