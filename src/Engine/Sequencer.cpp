@@ -306,6 +306,19 @@ void Sequencer::GenerateBar()
                   state_.controls.GetEffectiveAxisY(),
                   state_.controls.shape, seed, halfLength);
 
+    // V5 Task 44: Add seed-based weight perturbation for anchor variation
+    // Scaled by (1 - shape) so variation is strongest at low SHAPE
+    {
+        const float perturbScale = 0.2f * (1.0f - state_.controls.shape);
+        for (int step = 0; step < halfLength; ++step) {
+            // Protect beat 1 at low SHAPE (Techno kick stability)
+            if (step == 0 && state_.controls.shape < 0.3f) continue;
+
+            float perturb = (HashToFloat(seed, step + 1000) - 0.5f) * 2.0f * perturbScale;
+            anchorWeights[step] = ClampWeight(anchorWeights[step] * (1.0f + perturb));
+        }
+    }
+
     // Generate V5 shape-blended weights for shimmer (different seed)
     ComputeShapeBlendedWeights(state_.controls.shape, energy, seed + 1,
                                halfLength, shimmerWeights);
@@ -449,6 +462,18 @@ void Sequencer::GenerateBar()
                       state_.controls.GetEffectiveAxisX(),
                       state_.controls.GetEffectiveAxisY(),
                       state_.controls.shape, seed2, halfLength);
+
+        // V5 Task 44: Add seed-based weight perturbation for anchor variation (second half)
+        {
+            const float perturbScale = 0.2f * (1.0f - state_.controls.shape);
+            for (int step = 0; step < halfLength; ++step) {
+                // Protect beat 1 at low SHAPE (Techno kick stability)
+                if (step == 0 && state_.controls.shape < 0.3f) continue;
+
+                float perturb = (HashToFloat(seed2, step + 1000) - 0.5f) * 2.0f * perturbScale;
+                anchorWeights2[step] = ClampWeight(anchorWeights2[step] * (1.0f + perturb));
+            }
+        }
 
         ComputeShapeBlendedWeights(state_.controls.shape, energy, seed2 + 1,
                                    halfLength, shimmerWeights2);
