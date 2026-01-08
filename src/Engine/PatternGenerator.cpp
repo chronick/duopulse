@@ -5,7 +5,8 @@
 #include "HashUtils.h"         // HashToFloat
 #include "HitBudget.h"         // ComputeBarBudget, GetEnergyZone, GetMinSpacingForZone
 #include "GumbelSampler.h"     // SelectHitsGumbelTopK
-#include "GuardRails.h"        // ApplyHardGuardRails
+#include "GuardRails.h"        // ApplyHardGuardRails, SoftRepairPass
+#include "EuclideanGen.h"      // BlendEuclideanWithWeights
 
 #include <algorithm>  // for std::max, std::min
 
@@ -80,50 +81,89 @@ void GeneratePattern(const PatternParams& params, PatternResult& result)
                   params.shape, params.seed, params.patternLength);
 
     // V5 Task 44: Add seed-based weight perturbation for anchor variation
-    // Uses additive noise scaled to actually affect hit selection
     {
-        // At low SHAPE, add more noise to break up the predictable pattern
-        // At high SHAPE, weights already vary naturally, so less noise needed
         const float noiseScale = 0.4f * (1.0f - params.shape);
         for (int step = 0; step < params.patternLength; ++step) {
-            // Protect beat 1 at low SHAPE (Techno kick stability)
             if (step == 0 && params.shape < 0.3f) continue;
-
-            // Additive perturbation that can actually affect ranking
             float noise = (HashToFloat(params.seed, step + 1000) - 0.5f) * noiseScale;
             anchorWeights[step] = ClampWeight(anchorWeights[step] + noise);
         }
     }
 
-    // Select anchor hits (SHAPE modulates budget - Task 39)
-    int v1TargetHits = ComputeTargetHits(params.energy, params.patternLength, Voice::ANCHOR, params.shape);
-    uint32_t eligibility = (1U << params.patternLength) - 1;
-    result.anchorMask = SelectHitsGumbelTopK(anchorWeights, eligibility, v1TargetHits,
-                                              params.seed, params.patternLength, minSpacing);
-
-    // Apply guard rails
-    uint32_t dummyShimmer = 0;
-    ApplyHardGuardRails(result.anchorMask, dummyShimmer, zone, Genre::TECHNO, params.patternLength);
-
-    // V5 Task 44: Apply seed-based rotation for anchor variation (AFTER guard rails)
-    // Rotate non-beat-1 positions while preserving step 0 for Techno kick stability
-    if (params.shape < 0.7f) {
-        int maxRotation = std::max(1, params.patternLength / 4);
-        int rotation = static_cast<int>(HashToFloat(params.seed, 2000) * maxRotation);
-        result.anchorMask = RotateWithPreserve(result.anchorMask, rotation, params.patternLength, 0);
-    }
-
-    // Generate shimmer with COMPLEMENT (SHAPE modulates budget - Task 39)
+    // Generate shimmer weights (different seed)
     float shimmerWeights[kMaxSteps];
     ComputeShapeBlendedWeights(params.shape, params.energy, params.seed + 1,
                                params.patternLength, shimmerWeights);
-    int v2TargetHits = ComputeTargetHits(params.energy, params.patternLength, Voice::SHIMMER, params.shape);
-    result.shimmerMask = ApplyComplementRelationship(result.anchorMask, shimmerWeights,
-                                                      params.drift, params.seed + 2,
-                                                      params.patternLength, v2TargetHits);
 
-    // Generate aux
-    int auxTargetHits = ComputeTargetHits(params.energy, params.patternLength, Voice::AUX);
+    // Compute hit budget using all parameters
+    BarBudget budget;
+    ComputeBarBudget(
+        params.energy, params.balance, zone, params.auxDensity,
+        params.patternLength, params.densityMultiplier, params.shape, budget
+    );
+
+    // Apply fill boost if in fill zone
+    if (params.inFillZone)
+    {
+        ApplyFillBoost(budget, params.fillIntensity,
+                       params.fillDensityMultiplier, params.patternLength);
+    }
+
+    // Generate anchor hits with optional Euclidean blend
+    if (params.euclideanRatio > 0.01f)
+    {
+        result.anchorMask = BlendEuclideanWithWeights(
+            budget.anchorHits,
+            params.patternLength,
+            anchorWeights,
+            budget.anchorEligibility,
+            params.euclideanRatio,
+            params.seed
+        );
+    }
+    else
+    {
+        result.anchorMask = SelectHitsGumbelTopK(
+            anchorWeights,
+            budget.anchorEligibility,
+            budget.anchorHits,
+            params.seed,
+            params.patternLength,
+            minSpacing
+        );
+    }
+
+    // Apply COMPLEMENT relationship for shimmer
+    // Note: Shimmer uses COMPLEMENT (gap-filling) rather than independent Euclidean/Gumbel
+    // This is the V5 design - shimmer fills gaps in anchor pattern
+    result.shimmerMask = ApplyComplementRelationship(
+        result.anchorMask, shimmerWeights, params.drift, params.seed ^ 0x12345678,
+        params.patternLength, budget.shimmerHits
+    );
+
+    // Apply soft repair pass if enabled
+    if (params.applySoftRepair)
+    {
+        SoftRepairPass(
+            result.anchorMask, result.shimmerMask,
+            anchorWeights, shimmerWeights,
+            zone, params.patternLength
+        );
+    }
+
+    // Apply guard rails
+    ApplyHardGuardRails(result.anchorMask, result.shimmerMask, zone,
+                        params.genre, params.patternLength);
+
+    // V5 Task 44: Apply seed-based rotation for anchor variation (AFTER guard rails)
+    if (params.shape < 0.7f) {
+        int maxRotation = std::max(1, params.patternLength / 4);
+        int rotation = static_cast<int>(HashToFloat(params.seed, 2000) * maxRotation);
+        result.anchorMask = RotateWithPreserve(result.anchorMask, rotation,
+                                                params.patternLength, 0);
+    }
+
+    // Generate aux hits
     float auxWeights[kMaxSteps];
     uint32_t combinedMask = result.anchorMask | result.shimmerMask;
     for (int i = 0; i < params.patternLength; ++i)
@@ -133,16 +173,28 @@ void GeneratePattern(const PatternParams& params, PatternResult& result)
         if ((combinedMask & (1U << i)) != 0)
             auxWeights[i] *= 0.3f;
     }
-    result.auxMask = SelectHitsGumbelTopK(auxWeights, eligibility, auxTargetHits,
-                                           params.seed + 3, params.patternLength, 0);
+    result.auxMask = SelectHitsGumbelTopK(
+        auxWeights,
+        budget.auxEligibility,
+        budget.auxHits,
+        params.seed ^ 0x87654321,
+        params.patternLength,
+        0
+    );
+
+    // Apply aux voice relationship
+    ApplyAuxRelationship(result.anchorMask, result.shimmerMask, result.auxMask,
+                         params.voiceCoupling, params.patternLength);
 
     // Compute velocities
     for (int step = 0; step < params.patternLength; ++step)
     {
         if ((result.anchorMask & (1U << step)) != 0)
-            result.anchorVelocity[step] = ComputeAccentVelocity(params.accent, step, params.patternLength, params.seed);
+            result.anchorVelocity[step] = ComputeAccentVelocity(
+                params.accent, step, params.patternLength, params.seed);
         if ((result.shimmerMask & (1U << step)) != 0)
-            result.shimmerVelocity[step] = ComputeAccentVelocity(params.accent * 0.7f, step, params.patternLength, params.seed + 1);
+            result.shimmerVelocity[step] = ComputeAccentVelocity(
+                params.accent * 0.7f, step, params.patternLength, params.seed + 1);
         if ((result.auxMask & (1U << step)) != 0)
         {
             float baseVel = 0.5f + params.energy * 0.3f;

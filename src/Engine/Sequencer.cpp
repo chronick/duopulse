@@ -2,7 +2,7 @@
 #include "config.h"
 #include "../System/logging.h"
 #include "EuclideanGen.h"  // For genre-aware Euclidean blending
-#include "PatternGenerator.h"  // For RotateWithPreserve
+#include "PatternGenerator.h"  // For GeneratePattern, RotateWithPreserve
 
 #include <algorithm>
 #include <cmath>
@@ -264,23 +264,12 @@ void Sequencer::GenerateBar()
 {
     // Get effective control values (with CV modulation)
     const float energy = state_.controls.GetEffectiveEnergy();
-    const float balance = state_.controls.balance;
-    const float drift = state_.controls.drift;
     const int patternLength = state_.controls.patternLength;
 
     // Update derived parameters
     UpdateDerivedControls();
 
-    const EnergyZone zone = state_.controls.energyZone;
-    const VoiceCoupling coupling = state_.controls.voiceCoupling;
-    const AuxDensity auxDensity = state_.controls.auxDensity;
-    const Genre genre = state_.controls.genre;
-
-    // Suppress unused variable warnings - reserved for future feature levels
-    (void)coupling;
-    (void)genre;
-
-    // Get phrase progress for BUILD modifiers
+    // Get phrase progress for SHAPE modifiers
     const float phraseProgress = state_.GetPhraseProgress();
     state_.controls.UpdateDerived(phraseProgress);
 
@@ -288,342 +277,65 @@ void Sequencer::GenerateBar()
     const bool isLongPattern = patternLength > 32;
     const int halfLength = isLongPattern ? 32 : patternLength;
 
-    // 2. Select seeds for generation (moved before budget to use for weight generation)
+    // Select seed for generation
     const uint32_t seed = SelectSeed(
-        state_.sequencer.driftState, drift, 0, patternLength
+        state_.sequencer.driftState, state_.controls.drift, 0, patternLength
     );
 
-    // V5: Generate SHAPE-based weights instead of using archetype weights (Task 40)
-    // Local weight arrays for anchor, shimmer, and aux
-    float anchorWeights[kMaxSteps];
-    float shimmerWeights[kMaxSteps];
-    float auxWeights[kMaxSteps];
-
-    // Generate V5 shape-blended weights for anchor
-    ComputeShapeBlendedWeights(state_.controls.shape, energy, seed,
-                               halfLength, anchorWeights);
-    ApplyAxisBias(anchorWeights,
-                  state_.controls.GetEffectiveAxisX(),
-                  state_.controls.GetEffectiveAxisY(),
-                  state_.controls.shape, seed, halfLength);
-
-    // V5 Task 44: Add seed-based weight perturbation for anchor variation
-    // Uses additive noise scaled to actually affect hit selection
-    {
-        // At low SHAPE, add more noise to break up the predictable pattern
-        // At high SHAPE, weights already vary naturally, so less noise needed
-        const float noiseScale = 0.4f * (1.0f - state_.controls.shape);
-        for (int step = 0; step < halfLength; ++step) {
-            // Protect beat 1 at low SHAPE (Techno kick stability)
-            if (step == 0 && state_.controls.shape < 0.3f) continue;
-
-            // Additive perturbation that can actually affect ranking
-            float noise = (HashToFloat(seed, step + 1000) - 0.5f) * noiseScale;
-            anchorWeights[step] = ClampWeight(anchorWeights[step] + noise);
-        }
-    }
-
-    // Generate V5 shape-blended weights for shimmer (different seed)
-    ComputeShapeBlendedWeights(state_.controls.shape, energy, seed + 1,
-                               halfLength, shimmerWeights);
-
-    // 1. Compute hit budget (uses clamped length internally)
-    BarBudget budget;
-    ComputeBarBudget(
-        energy, balance, zone, auxDensity, halfLength,
-        state_.controls.shapeModifiers.densityMultiplier,
-        state_.controls.shape, budget
-    );
-
-    // Apply fill boost if in fill zone
-    if (state_.controls.shapeModifiers.inFillZone)
-    {
-        ApplyFillBoost(
-            budget,
-            state_.controls.shapeModifiers.fillIntensity,
-            1.5f,  // V5: Default fill density multiplier (was archetype.fillDensityMultiplier)
-            halfLength
-        );
-    }
-
-    // 2.5. Compute Euclidean blend ratio (Task 21 Phase F6-F8)
-    // V5: Use axisX instead of fieldX (Task 27)
+    // Compute Euclidean blend ratio (genre-aware)
     const float fieldX = state_.controls.GetEffectiveAxisX();
-    const float euclideanRatio = GetGenreEuclideanRatio(genre, fieldX, zone);
+    const float euclideanRatio = GetGenreEuclideanRatio(
+        state_.controls.genre, fieldX, state_.controls.energyZone);
 
-    // 3. Generate anchor hits (first half) with optional Euclidean blend
-    uint32_t anchorMask1;
-    if (euclideanRatio > 0.01f)
-    {
-        // Use Euclidean blending (Techno/Tribal at low Field X)
-        anchorMask1 = BlendEuclideanWithWeights(
-            budget.anchorHits,
-            halfLength,
-            anchorWeights,
-            budget.anchorEligibility,
-            euclideanRatio,
-            seed
-        );
-    }
-    else
-    {
-        // Pure Gumbel selection (IDM or high Field X)
-        anchorMask1 = SelectHitsGumbelTopK(
-            anchorWeights,
-            budget.anchorEligibility,
-            budget.anchorHits,
-            seed,
-            halfLength,
-            GetMinSpacingForZone(zone)
-        );
-    }
+    // Populate parameters for GeneratePattern
+    PatternParams params;
+    params.energy = energy;
+    params.shape = state_.controls.shape;
+    params.axisX = state_.controls.GetEffectiveAxisX();
+    params.axisY = state_.controls.GetEffectiveAxisY();
+    params.drift = state_.controls.drift;
+    params.accent = state_.controls.accent;
+    params.seed = seed;
+    params.patternLength = halfLength;
 
-    // 4. Generate shimmer hits (first half) with optional Euclidean blend
-    uint32_t shimmerMask1;
-    if (euclideanRatio > 0.01f)
-    {
-        // Use Euclidean blending
-        shimmerMask1 = BlendEuclideanWithWeights(
-            budget.shimmerHits,
-            halfLength,
-            shimmerWeights,
-            budget.shimmerEligibility,
-            euclideanRatio,
-            seed ^ 0x12345678  // Different seed for shimmer
-        );
-    }
-    else
-    {
-        // Pure Gumbel selection
-        shimmerMask1 = SelectHitsGumbelTopK(
-            shimmerWeights,
-            budget.shimmerEligibility,
-            budget.shimmerHits,
-            seed ^ 0x12345678,  // Different seed for shimmer
-            halfLength,
-            GetMinSpacingForZone(zone)
-        );
-    }
+    // Firmware-specific options
+    params.balance = state_.controls.balance;
+    params.densityMultiplier = state_.controls.shapeModifiers.densityMultiplier;
+    params.inFillZone = state_.controls.shapeModifiers.inFillZone;
+    params.fillIntensity = state_.controls.shapeModifiers.fillIntensity;
+    params.fillDensityMultiplier = 1.5f;
+    params.euclideanRatio = euclideanRatio;
+    params.genre = state_.controls.genre;
+    params.auxDensity = state_.controls.auxDensity;
+    params.applySoftRepair = true;
+    params.voiceCoupling = state_.controls.voiceCoupling;
 
-    // 5. Apply V5 COMPLEMENT relationship (first half)
-    // Shimmer fills gaps in anchor pattern with drift-varied placement
-    shimmerMask1 = ApplyComplementRelationship(
-        anchorMask1, shimmerWeights, drift, seed ^ 0x12345678,
-        halfLength, budget.shimmerHits
-    );
+    // Generate first half
+    PatternResult result1;
+    GeneratePattern(params, result1);
 
-    // 6. Soft repair pass (first half)
-    SoftRepairPass(
-        anchorMask1, shimmerMask1,
-        anchorWeights,
-        shimmerWeights,
-        zone, halfLength
-    );
-
-    // 7. Hard guard rails (first half)
-    ApplyHardGuardRails(anchorMask1, shimmerMask1, zone, genre, halfLength);
-
-    // V5 Task 44: Apply seed-based rotation for anchor variation (AFTER guard rails)
-    // Rotate non-beat-1 positions while preserving step 0 for Techno kick stability
-    if (state_.controls.shape < 0.7f) {
-        int maxRotation = std::max(1, halfLength / 4);
-        int rotation = static_cast<int>(HashToFloat(seed, 2000) * maxRotation);
-        anchorMask1 = RotateWithPreserve(anchorMask1, rotation, halfLength, 0);
-    }
-
-    // 8. Generate aux hits (first half) using metric-based weights
-    // Aux avoids main voice positions and prefers weak beats
-    uint32_t combinedMask = anchorMask1 | shimmerMask1;
-    for (int i = 0; i < halfLength; ++i)
-    {
-        float metricW = GetMetricWeight(i, halfLength);
-        auxWeights[i] = 1.0f - metricW * 0.5f;
-        if ((combinedMask & (1U << i)) != 0)
-            auxWeights[i] *= 0.3f;
-    }
-    uint32_t auxMask1 = SelectHitsGumbelTopK(
-        auxWeights,
-        budget.auxEligibility,
-        budget.auxHits,
-        seed ^ 0x87654321,
-        halfLength,
-        0  // No spacing constraint for aux
-    );
-
-    // Apply aux voice relationship (first half)
-    ApplyAuxRelationship(anchorMask1, shimmerMask1, auxMask1, coupling, halfLength);
-
-    // For long patterns (>32 steps), generate second half with different seed
-    uint32_t anchorMask2 = 0;
-    uint32_t shimmerMask2 = 0;
-    uint32_t auxMask2 = 0;
-
+    // Generate second half for long patterns
+    PatternResult result2;
     if (isLongPattern)
     {
-        // Use different seed for second half to create variation
-        const uint32_t seed2 = seed ^ 0xDEADBEEF;
-
-        // V5: Regenerate SHAPE-based weights for second half with different seed
-        float anchorWeights2[kMaxSteps];
-        float shimmerWeights2[kMaxSteps];
-        float auxWeights2[kMaxSteps];
-
-        ComputeShapeBlendedWeights(state_.controls.shape, energy, seed2,
-                                   halfLength, anchorWeights2);
-        ApplyAxisBias(anchorWeights2,
-                      state_.controls.GetEffectiveAxisX(),
-                      state_.controls.GetEffectiveAxisY(),
-                      state_.controls.shape, seed2, halfLength);
-
-        // V5 Task 44: Add seed-based weight perturbation for anchor variation (second half)
-        // Uses additive noise scaled to actually affect hit selection
-        {
-            // At low SHAPE, add more noise to break up the predictable pattern
-            // At high SHAPE, weights already vary naturally, so less noise needed
-            const float noiseScale = 0.4f * (1.0f - state_.controls.shape);
-            for (int step = 0; step < halfLength; ++step) {
-                // Protect beat 1 at low SHAPE (Techno kick stability)
-                if (step == 0 && state_.controls.shape < 0.3f) continue;
-
-                // Additive perturbation that can actually affect ranking
-                float noise = (HashToFloat(seed2, step + 1000) - 0.5f) * noiseScale;
-                anchorWeights2[step] = ClampWeight(anchorWeights2[step] + noise);
-            }
-        }
-
-        ComputeShapeBlendedWeights(state_.controls.shape, energy, seed2 + 1,
-                                   halfLength, shimmerWeights2);
-
-        // Recompute budget for second half (may differ slightly due to fill zones)
-        BarBudget budget2;
-        ComputeBarBudget(
-            energy, balance, zone, auxDensity, halfLength,
-            state_.controls.shapeModifiers.densityMultiplier,
-            state_.controls.shape, budget2
-        );
-
-        if (state_.controls.shapeModifiers.inFillZone)
-        {
-            ApplyFillBoost(
-                budget2,
-                state_.controls.shapeModifiers.fillIntensity,
-                1.5f,  // V5: Default fill density multiplier (was archetype.fillDensityMultiplier)
-                halfLength
-            );
-        }
-
-        // Generate anchor (second half) with optional Euclidean blend
-        if (euclideanRatio > 0.01f)
-        {
-            anchorMask2 = BlendEuclideanWithWeights(
-                budget2.anchorHits,
-                halfLength,
-                anchorWeights2,
-                budget2.anchorEligibility,
-                euclideanRatio,
-                seed2
-            );
-        }
-        else
-        {
-            anchorMask2 = SelectHitsGumbelTopK(
-                anchorWeights2,
-                budget2.anchorEligibility,
-                budget2.anchorHits,
-                seed2,
-                halfLength,
-                GetMinSpacingForZone(zone)
-            );
-        }
-
-        // Generate shimmer (second half) with optional Euclidean blend
-        if (euclideanRatio > 0.01f)
-        {
-            shimmerMask2 = BlendEuclideanWithWeights(
-                budget2.shimmerHits,
-                halfLength,
-                shimmerWeights2,
-                budget2.shimmerEligibility,
-                euclideanRatio,
-                seed2 ^ 0x12345678
-            );
-        }
-        else
-        {
-            shimmerMask2 = SelectHitsGumbelTopK(
-                shimmerWeights2,
-                budget2.shimmerEligibility,
-                budget2.shimmerHits,
-                seed2 ^ 0x12345678,
-                halfLength,
-                GetMinSpacingForZone(zone)
-            );
-        }
-
-        // Apply V5 COMPLEMENT relationship (second half)
-        // Shimmer fills gaps in anchor pattern with drift-varied placement
-        shimmerMask2 = ApplyComplementRelationship(
-            anchorMask2, shimmerWeights2, drift, seed2 ^ 0x12345678,
-            halfLength, budget2.shimmerHits
-        );
-
-        // Soft repair (second half)
-        SoftRepairPass(
-            anchorMask2, shimmerMask2,
-            anchorWeights2,
-            shimmerWeights2,
-            zone, halfLength
-        );
-
-        // Hard guard rails (second half) - ensure downbeat at step 32 (bar 3 start)
-        ApplyHardGuardRails(anchorMask2, shimmerMask2, zone, genre, halfLength);
-
-        // V5 Task 44: Apply seed-based rotation for anchor variation (AFTER guard rails)
-        // Rotate non-beat-1 positions while preserving step 0 for Techno kick stability
-        if (state_.controls.shape < 0.7f) {
-            int maxRotation = std::max(1, halfLength / 4);
-            int rotation = static_cast<int>(HashToFloat(seed2, 2000) * maxRotation);
-            anchorMask2 = RotateWithPreserve(anchorMask2, rotation, halfLength, 0);
-        }
-
-        // Generate aux (second half) using metric-based weights
-        uint32_t combinedMask2 = anchorMask2 | shimmerMask2;
-        for (int i = 0; i < halfLength; ++i)
-        {
-            float metricW = GetMetricWeight(i, halfLength);
-            auxWeights2[i] = 1.0f - metricW * 0.5f;
-            if ((combinedMask2 & (1U << i)) != 0)
-                auxWeights2[i] *= 0.3f;
-        }
-        auxMask2 = SelectHitsGumbelTopK(
-            auxWeights2,
-            budget2.auxEligibility,
-            budget2.auxHits,
-            seed2 ^ 0x87654321,
-            halfLength,
-            0
-        );
-
-        // Apply aux voice relationship (second half)
-        ApplyAuxRelationship(anchorMask2, shimmerMask2, auxMask2, coupling, halfLength);
+        // Use different seed for second half
+        params.seed = seed ^ 0xDEADBEEF;
+        GeneratePattern(params, result2);
     }
 
-    // 9. Store hit masks in sequencer state (combine halves for 64-bit)
-    state_.sequencer.anchorMask = static_cast<uint64_t>(anchorMask1) |
-                                   (static_cast<uint64_t>(anchorMask2) << 32);
-    state_.sequencer.shimmerMask = static_cast<uint64_t>(shimmerMask1) |
-                                    (static_cast<uint64_t>(shimmerMask2) << 32);
-    state_.sequencer.auxMask = static_cast<uint64_t>(auxMask1) |
-                                (static_cast<uint64_t>(auxMask2) << 32);
+    // Store hit masks in sequencer state (combine halves for 64-bit)
+    state_.sequencer.anchorMask = static_cast<uint64_t>(result1.anchorMask) |
+                                   (static_cast<uint64_t>(result2.anchorMask) << 32);
+    state_.sequencer.shimmerMask = static_cast<uint64_t>(result1.shimmerMask) |
+                                    (static_cast<uint64_t>(result2.shimmerMask) << 32);
+    state_.sequencer.auxMask = static_cast<uint64_t>(result1.auxMask) |
+                                (static_cast<uint64_t>(result2.auxMask) << 32);
 
-    // 10. V5: Procedural accent masks (downbeats for anchor, backbeats for shimmer)
-    // Anchor accents on steps 0,8,16,24,32,40,48,56 (downbeats)
-    // Shimmer accents on steps 4,12,20,28,36,44,52,60 (backbeats)
+    // V5: Procedural accent masks (downbeats for anchor, backbeats for shimmer)
     uint64_t anchorAccent = 0x0101010101010101ULL;
     uint64_t shimmerAccent = 0x1010101010101010ULL;
     if (!isLongPattern)
     {
-        // Mask to pattern length for short patterns
         uint64_t lengthMask = (1ULL << patternLength) - 1;
         anchorAccent &= lengthMask;
         shimmerAccent &= lengthMask;

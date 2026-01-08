@@ -29,9 +29,15 @@ namespace daisysp_idm_grids
  * Input parameters for pattern generation (pure data, no state)
  *
  * All parameters are normalized to 0.0-1.0 range for consistency.
+ * Core parameters are shared between firmware and visualization tools.
+ * Firmware-specific options have defaults that match viz tool behavior.
  */
 struct PatternParams
 {
+    // =========================================================================
+    // Core parameters (required, shared with viz tool)
+    // =========================================================================
+
     float energy = 0.50f;       ///< Hit density (0.0-1.0)
     float shape = 0.30f;        ///< Pattern character (0.0-1.0)
     float axisX = 0.50f;        ///< Beat position bias (0.0-1.0)
@@ -40,6 +46,43 @@ struct PatternParams
     float accent = 0.50f;       ///< Velocity dynamics (0.0-1.0)
     uint32_t seed = 0xDEADBEEF; ///< Pattern seed for determinism
     int patternLength = 32;     ///< Steps per pattern (16 or 32)
+
+    // =========================================================================
+    // Firmware-specific options (with viz-compatible defaults)
+    // =========================================================================
+
+    /// Balance parameter for anchor/shimmer ratio in hit budget
+    /// Default 0.5 = equal balance (viz tool behavior)
+    float balance = 0.50f;
+
+    /// Density multiplier for hit budget (from SHAPE modifiers)
+    /// Default 1.0 = no boost (viz tool behavior)
+    float densityMultiplier = 1.0f;
+
+    /// Fill zone state - when true, applies fill boost
+    bool inFillZone = false;
+
+    /// Fill intensity for density boost (0.0-1.0)
+    float fillIntensity = 0.0f;
+
+    /// Fill density multiplier (how much fill boosts density)
+    float fillDensityMultiplier = 1.5f;
+
+    /// Euclidean blend ratio (0.0 = pure Gumbel, 1.0 = pure Euclidean)
+    /// Default 0.0 = no Euclidean (viz tool behavior)
+    float euclideanRatio = 0.0f;
+
+    /// Genre for guard rails
+    Genre genre = Genre::TECHNO;
+
+    /// AuxDensity setting
+    AuxDensity auxDensity = AuxDensity::NORMAL;
+
+    /// Enable soft repair pass (firmware uses true)
+    bool applySoftRepair = false;
+
+    /// Voice coupling for aux relationship
+    VoiceCoupling voiceCoupling = VoiceCoupling::INDEPENDENT;
 };
 
 // =============================================================================

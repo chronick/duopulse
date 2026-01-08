@@ -210,6 +210,14 @@ Options:
   --sweep=param    Sweep parameter: shape, energy, axis-x, axis-y
   --output=file    Output to file (default: stdout)
   --format=grid    Output format: grid, csv, mask
+
+Advanced (firmware-matching) options:
+  --balance=0.50   Balance parameter (0.0-1.0)
+  --euclidean=0.00 Euclidean blend ratio (0.0-1.0)
+  --soft-repair    Enable soft repair pass
+  --fill           Enable fill zone
+  --fill-intensity=0.50  Fill intensity (0.0-1.0)
+
   --help           Show this help
 
 Examples:
@@ -258,6 +266,16 @@ int main(int argc, char* argv[])
             format = ParseString(arg);
         else if (strncmp(arg, "--sweep=", 8) == 0)
             sweep = ParseString(arg);
+        else if (strncmp(arg, "--balance=", 10) == 0)
+            params.balance = ParseFloat(arg);
+        else if (strncmp(arg, "--euclidean=", 12) == 0)
+            params.euclideanRatio = ParseFloat(arg);
+        else if (strcmp(arg, "--soft-repair") == 0)
+            params.applySoftRepair = true;
+        else if (strcmp(arg, "--fill") == 0)
+            params.inFillZone = true;
+        else if (strncmp(arg, "--fill-intensity=", 17) == 0)
+            params.fillIntensity = ParseFloat(arg);
         else if (strcmp(arg, "--help") == 0 || strcmp(arg, "-h") == 0)
         {
             PrintUsage();
