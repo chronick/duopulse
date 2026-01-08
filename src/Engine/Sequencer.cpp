@@ -388,8 +388,12 @@ void Sequencer::GenerateBar()
         );
     }
 
-    // 5. Apply voice relationship (first half)
-    ApplyVoiceRelationship(anchorMask1, shimmerMask1, coupling, halfLength);
+    // 5. Apply V5 COMPLEMENT relationship (first half)
+    // Shimmer fills gaps in anchor pattern with drift-varied placement
+    shimmerMask1 = ApplyComplementRelationship(
+        anchorMask1, shimmerWeights, drift, seed ^ 0x12345678,
+        halfLength, budget.shimmerHits
+    );
 
     // 6. Soft repair pass (first half)
     SoftRepairPass(
@@ -515,8 +519,12 @@ void Sequencer::GenerateBar()
             );
         }
 
-        // Apply voice relationship (second half)
-        ApplyVoiceRelationship(anchorMask2, shimmerMask2, coupling, halfLength);
+        // Apply V5 COMPLEMENT relationship (second half)
+        // Shimmer fills gaps in anchor pattern with drift-varied placement
+        shimmerMask2 = ApplyComplementRelationship(
+            anchorMask2, shimmerWeights2, drift, seed2 ^ 0x12345678,
+            halfLength, budget2.shimmerHits
+        );
 
         // Soft repair (second half)
         SoftRepairPass(

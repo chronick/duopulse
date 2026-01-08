@@ -47,16 +47,16 @@ CONVERGENCE PATTERNS: 9 found
 
 ### Phase 1: Wire Up COMPLEMENT (Critical Bug Fix)
 
-- [ ] **43.1** In `Sequencer.cpp:392`, replace `ApplyVoiceRelationship()` with `ApplyComplementRelationship()`
+- [x] **43.1** In `Sequencer.cpp:392`, replace `ApplyVoiceRelationship()` with `ApplyComplementRelationship()`
   - Pass shimmer weights, drift, seed, and target hit count
   - Verify shimmer now fills gaps in anchor pattern
   - Run `make test` to ensure no regressions
 
-- [ ] **43.2** Remove deprecated `ApplyVoiceRelationship()` function from `VoiceRelation.cpp:424-435`
+- [x] **43.2** Remove deprecated `ApplyVoiceRelationship()` function from `VoiceRelation.cpp:424-435`
 
 ### Phase 2: Seed-Sensitive Placement
 
-- [ ] **43.3** Add seed parameter to `PlaceEvenlySpaced()` at `VoiceRelation.cpp:217`
+- [x] **43.3** Add seed parameter to `PlaceEvenlySpaced()` at `VoiceRelation.cpp:217`
   - Compute seed-based phase offset (0-50% of one spacing unit)
   - Use `HashToFloat(seed, gap.start)` for deterministic variation
   - Preserves even distribution while adding seed variation
@@ -75,18 +75,18 @@ int PlaceEvenlySpacedWithSeed(const Gap& gap, int hitIndex, int totalHits,
 }
 ```
 
-- [ ] **43.4** Update call site at `VoiceRelation.cpp:378-385` to pass seed
+- [x] **43.4** Update call site at `VoiceRelation.cpp:378-385` to pass seed
 
 ### Phase 3: Seed-Based Rotation (Quick Win)
 
-- [ ] **43.5** After shimmer mask is computed, apply seed-based rotation
+- [x] **43.5** After shimmer mask is computed, apply seed-based rotation
   - `int rotation = HashToInt(seed) % patternLength`
   - `shimmerMask = RotateBitMask(shimmerMask, rotation)`
   - Re-check for anchor collisions after rotation
 
 ### Phase 4: Raise Default DRIFT
 
-- [ ] **43.6** In `ControlState.h`, change default DRIFT from 0.0 to 0.25
+- [x] **43.6** In `ControlState.h`, change default DRIFT from 0.0 to 0.25
   - This enables weighted placement that uses seed
   - Document as breaking change in release notes
 

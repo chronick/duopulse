@@ -213,16 +213,29 @@ inline uint32_t NextRandom(uint32_t& state)
     return (state >> 16) & 0x7FFF;
 }
 
-// Place hit evenly spaced within gap
-int PlaceEvenlySpaced(const Gap& gap, int hitIndex, int totalHits, int patternLength)
+// Place hit evenly spaced within gap with seed-based phase variation
+int PlaceEvenlySpacedWithSeed(const Gap& gap, int hitIndex, int totalHits,
+                               int patternLength, uint32_t seed)
 {
     if (totalHits <= 0)
     {
         return gap.start;
     }
 
-    // Distribute evenly: hit 0 goes near start, last hit near end
-    int offset = (gap.length * hitIndex) / std::max(1, totalHits);
+    // Compute seed-based phase offset (0-50% of one spacing unit)
+    // Uses simple hash: (seed * prime + offset) for determinism
+    uint32_t hash = (seed * 2654435761U) ^ (static_cast<uint32_t>(gap.start) * 31);
+    float phase = static_cast<float>(hash & 0xFFFF) / 65536.0f * 0.5f;  // 0-50%
+
+    float spacing = static_cast<float>(gap.length) / static_cast<float>(totalHits + 1);
+    int offset = static_cast<int>(spacing * (hitIndex + 1 + phase) + 0.5f);
+
+    // Clamp offset to gap boundaries to prevent wraparound overflow
+    if (offset >= gap.length)
+    {
+        offset = gap.length - 1;
+    }
+
     return (gap.start + offset) % patternLength;
 }
 
@@ -382,7 +395,7 @@ uint32_t ApplyComplementRelationship(uint32_t anchorMask,
             if (drift < 0.3f)
             {
                 // Low drift: evenly spaced within gap
-                position = PlaceEvenlySpaced(gaps[g], j, gapShare, clampedLength);
+                position = PlaceEvenlySpacedWithSeed(gaps[g], j, gapShare, clampedLength, seed);
             }
             else if (drift < 0.7f)
             {
@@ -414,24 +427,25 @@ uint32_t ApplyComplementRelationship(uint32_t anchorMask,
         }
     }
 
+    // Apply seed-based rotation for additional variation
+    // Try rotations that don't cause anchor collisions to preserve hit count
+    uint32_t hashVal = seed * 2654435761U;
+    for (int attempt = 0; attempt < 4; ++attempt)
+    {
+        int rotation = static_cast<int>((hashVal >> (28 - attempt * 4)) & 0xF) % clampedLength;
+        if (rotation > 0)
+        {
+            uint32_t rotated = ShiftMaskRight(shimmerMask, rotation, clampedLength);
+            // Only apply if no collisions with anchor
+            if ((rotated & anchorMask) == 0)
+            {
+                shimmerMask = rotated;
+                break;
+            }
+        }
+    }
+
     return shimmerMask;
-}
-
-// =============================================================================
-// Legacy V4 Functions (simplified for V5 compatibility)
-// =============================================================================
-
-void ApplyVoiceRelationship(uint32_t anchorMask,
-                            uint32_t& shimmerMask,
-                            VoiceCoupling coupling,
-                            int patternLength)
-{
-    // V5: Only INDEPENDENT mode is supported
-    // INTERLOCK and SHADOW are deprecated - use ApplyComplementRelationship instead
-    (void)anchorMask;
-    (void)coupling;
-    (void)patternLength;
-    // shimmerMask is not modified in INDEPENDENT mode
 }
 
 // =============================================================================

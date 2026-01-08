@@ -389,51 +389,8 @@ TEST_CASE("Weighted selection favors high weights", "[gumbel]")
 // Voice Relation Tests
 // =============================================================================
 
-TEST_CASE("INDEPENDENT coupling allows overlap", "[voice-relation]")
-{
-    uint32_t anchor = 0x11111111;   // Quarter notes
-    uint32_t shimmer = 0x11111111;  // Same pattern
-
-    ApplyVoiceRelationship(anchor, shimmer, VoiceCoupling::INDEPENDENT, 32);
-
-    // Shimmer should be unchanged
-    REQUIRE(shimmer == 0x11111111);
-}
-
-// V5: INTERLOCK and SHADOW modes deprecated - all modes now act as INDEPENDENT
-// ApplyVoiceRelationship is a no-op in V5, use ApplyComplementRelationship instead
-TEST_CASE("V5 ApplyVoiceRelationship is no-op for all modes", "[voice-relation][v5]")
-{
-    uint32_t anchor = 0x11111111;   // Quarter notes
-    uint32_t shimmer = 0x33333333;  // Some pattern
-
-    SECTION("INTERLOCK mode is now no-op")
-    {
-        uint32_t originalShimmer = shimmer;
-        ApplyVoiceRelationship(anchor, shimmer, VoiceCoupling::INTERLOCK, 32);
-
-        // V5: Shimmer should be unchanged (no-op)
-        REQUIRE(shimmer == originalShimmer);
-    }
-
-    SECTION("SHADOW mode is now no-op")
-    {
-        uint32_t originalShimmer = shimmer;
-        ApplyVoiceRelationship(anchor, shimmer, VoiceCoupling::SHADOW, 32);
-
-        // V5: Shimmer should be unchanged (no-op)
-        REQUIRE(shimmer == originalShimmer);
-    }
-
-    SECTION("INDEPENDENT mode unchanged")
-    {
-        uint32_t originalShimmer = shimmer;
-        ApplyVoiceRelationship(anchor, shimmer, VoiceCoupling::INDEPENDENT, 32);
-
-        // INDEPENDENT mode always left shimmer unchanged
-        REQUIRE(shimmer == originalShimmer);
-    }
-}
+// V5: ApplyVoiceRelationship removed - use ApplyComplementRelationship instead
+// Tests for legacy coupling modes have been removed (Task 43)
 
 TEST_CASE("ShiftMaskLeft works correctly", "[voice-relation]")
 {
@@ -459,18 +416,7 @@ TEST_CASE("ShiftMaskLeft works correctly", "[voice-relation]")
     }
 }
 
-// Task 22 Phase C1: INTERLOCK mode removed from UI but kept for backward compatibility
-TEST_CASE("Gap-fill rescues interlock gaps", "[voice-relation]")
-{
-    // Create a pattern where interlock would create a big gap
-    uint32_t anchor = 0x00000001;   // Only step 0
-    uint32_t shimmer = 0x00000101;  // Steps 0 and 8
-
-    ApplyVoiceRelationship(anchor, shimmer, VoiceCoupling::INTERLOCK, 32);
-
-    // Step 8 shimmer should remain (not overlapping anchor)
-    REQUIRE((shimmer & 0x00000100) != 0);
-}
+// V5: ApplyVoiceRelationship removed - gap-fill tests moved to test_voice_complement.cpp
 
 TEST_CASE("FindLargestGap measures gaps correctly", "[voice-relation]")
 {
@@ -763,8 +709,8 @@ TEST_CASE("Full generation flow produces valid pattern", "[integration]")
         budget = ComputeShimmerBudget(0.5f, 0.5f, EnergyZone::GROOVE, 32);
         uint32_t shimmer = SelectHitsGumbelTopK(weights, eligibility, budget, 67890, 32, 1);
 
-        // Apply voice relation (Task 22 Phase C1: INTERLOCK kept for backward compat)
-        ApplyVoiceRelationship(anchor, shimmer, VoiceCoupling::INTERLOCK, 32);
+        // V5: ApplyVoiceRelationship removed - use ApplyComplementRelationship instead
+        // For this test, shimmer is used directly without voice relationship
 
         // Apply guard rails
         (void)ApplyHardGuardRails(anchor, shimmer, EnergyZone::GROOVE, Genre::TECHNO, 32);

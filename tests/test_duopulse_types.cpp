@@ -242,7 +242,7 @@ TEST_CASE("ControlState initialization", "[control]")
         REQUIRE(state.resetMode == ResetMode::STEP);
         REQUIRE(state.clockDiv == 1);     // V5: x1 no division
         REQUIRE(state.swing == 0.50f);    // V5: 50% neutral groove
-        REQUIRE(state.drift == 0.0f);     // V5: 0% locked pattern
+        REQUIRE(state.drift == 0.25f);    // V5: 25% enables seed variation
         REQUIRE(state.accent == 0.50f);   // V5: 50% moderate dynamics
     }
 
