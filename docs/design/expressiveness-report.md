@@ -288,6 +288,44 @@ Seed 0x4000: V1=0x44444405, V2=0x20800008
 
 **Conclusion:** 95% V2 variation is appropriate and musically safe because the call/response relationship is structurally enforced.
 
+### Velocity Dynamics Analysis
+
+**Note:** Velocity is NOT currently measured in expressiveness scoring. This section documents the velocity system for completeness.
+
+**How Velocity Creates Rhythmic Feel:**
+
+The `ComputeAccentVelocity` function maps metric position to velocity:
+```
+velocity = floor + metricWeight × (ceiling - floor)
+```
+
+| ACCENT | Floor | Ceiling | Range | Character |
+|--------|-------|---------|-------|-----------|
+| 0% | 0.80 | 0.88 | 8% | Flat dynamics |
+| 50% | 0.55 | 0.94 | 39% | Moderate feel |
+| 100% | 0.30 | 1.00 | 70% | Ghost notes + accents |
+
+**Example at ACCENT=80%:**
+| Step | Metric | Velocity | Musical Role |
+|------|--------|----------|--------------|
+| 0 | 1.00 | 0.97 | **Accented downbeat** |
+| 4 | 0.50 | 0.68 | Ghost note (quarter) |
+| 8 | 0.80 | 0.87 | Semi-accent (half-bar) |
+| 16 | 0.90 | 0.92 | **Accented** |
+| 28 | 0.50 | 0.69 | Ghost note |
+
+**Humanization:** Seed-based micro-variation adds ±1-3.5% per step.
+
+**Why Velocity Isn't in Expressiveness Metrics:**
+- Velocity is **deterministic per step position** - same step always gets similar velocity
+- Variation comes from ACCENT parameter, not from seeds
+- This is intentional: velocity creates consistent "feel", not randomness
+
+**Future Consideration:** Could add velocity metrics for:
+- Velocity range (already computed, not used in score)
+- Correlation with metric weight (should be high)
+- Consistency across seeds (should be stable)
+
 ### Future Considerations (Reference Only)
 
 These approaches were considered but **intentionally not implemented** to preserve musicality:
