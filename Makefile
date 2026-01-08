@@ -174,7 +174,7 @@ LOGDIR ?= /tmp
 # Build Targets
 ###############################################################################
 
-.PHONY: all clean rebuild daisy-build daisy-update libdaisy-build libdaisy-update program build-debug program-debug test test-coverage listen ports help pattern-viz run-pattern-viz pattern-sweep
+.PHONY: all clean rebuild daisy-build daisy-update libdaisy-build libdaisy-update program build-debug program-debug test test-coverage listen ports help pattern-viz run-pattern-viz pattern-sweep pattern-html expressiveness-report expressiveness-quick
 
 # Default target
 all: $(ELF) $(BIN) $(HEX)
@@ -447,6 +447,21 @@ pattern-sweep: $(PATTERN_VIZ)
 	@$(PATTERN_VIZ) --sweep=shape --format=csv --output=$(BUILD_DIR)/patterns/shape_sweep.csv
 	@echo "Patterns written to $(BUILD_DIR)/patterns/"
 
+# Generate HTML/SVG pattern visualization
+pattern-html: $(PATTERN_VIZ)
+	@echo "Generating HTML pattern visualization..."
+	@python3 scripts/generate-pattern-html.py --pattern-viz=$(PATTERN_VIZ) --output=docs/patterns.html
+	@echo "HTML visualization written to docs/patterns.html"
+
+# Evaluate pattern expressiveness (feedback loop for algorithm development)
+expressiveness-report: $(PATTERN_VIZ)
+	@echo "Running expressiveness evaluation..."
+	@python3 scripts/evaluate-expressiveness.py --pattern-viz=$(PATTERN_VIZ)
+
+expressiveness-quick: $(PATTERN_VIZ)
+	@echo "Running quick expressiveness evaluation..."
+	@python3 scripts/evaluate-expressiveness.py --pattern-viz=$(PATTERN_VIZ) --quick
+
 ###############################################################################
 # Help Target
 ###############################################################################
@@ -472,6 +487,9 @@ help:
 	@echo "  pattern-viz      - Build pattern visualization tool"
 	@echo "  run-pattern-viz  - Run pattern viz with default params"
 	@echo "  pattern-sweep    - Generate pattern files for all param sweeps"
+	@echo "  pattern-html     - Generate HTML/SVG pattern visualization (docs/patterns.html)"
+	@echo "  expressiveness-report - Run full expressiveness evaluation"
+	@echo "  expressiveness-quick  - Run quick expressiveness evaluation"
 	@echo "  help             - Show this help message"
 	@echo ""
 	@echo "Variables:"

@@ -44,3 +44,4 @@
 | 40 | v5-pattern-generator | V5 Pattern Generator Extraction & Spec Alignment — firmware now uses V5 SHAPE-based generation, archetype system deprecated | completed | 2026-01-06 | 2026-01-06 | completed/40-v5-pattern-generator.md |
 | 41 | v5-shape-budget-fix | V5 SHAPE Budget Fix: Zone Boundaries and Anchor/Shimmer Ratio — fix 0.33/0.66→0.30/0.70, separate multipliers | completed | 2026-01-06 | 2026-01-06 | completed/41-v5-shape-budget-fix.md |
 | 42 | v4-dead-code-cleanup | V4 Dead Code Cleanup: Remove Deprecated Archetype System — delete ~2,630 lines of unused code | completed | 2026-01-06 | 2026-01-07 | completed/42-v4-dead-code-cleanup.md |
+| 43 | v5-shimmer-seed-variation | V5 Shimmer Seed Variation: Fix pattern convergence bug | active | 2026-01-07 | 2026-01-07 | active/43-v5-shimmer-seed-variation.md |
