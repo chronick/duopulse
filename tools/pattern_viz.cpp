@@ -35,173 +35,10 @@
 #include <cmath>
 #include <algorithm>
 
-#include "../src/Engine/DuoPulseTypes.h"
-#include "../src/Engine/PatternField.h"
-#include "../src/Engine/VoiceRelation.h"
-#include "../src/Engine/VelocityCompute.h"
-#include "../src/Engine/HashUtils.h"
-#include "../src/Engine/GumbelSampler.h"
-#include "../src/Engine/HitBudget.h"
-#include "../src/Engine/GuardRails.h"
+#include "../src/Engine/PatternGenerator.h"  // Shared pattern generation
+#include "../src/Engine/PatternField.h"       // GetMetricWeight for output formatting
 
 using namespace daisysp_idm_grids;
-
-// =============================================================================
-// Pattern Generation (matches firmware exactly)
-// =============================================================================
-
-struct PatternParams
-{
-    float energy = 0.50f;
-    float shape = 0.30f;
-    float axisX = 0.50f;
-    float axisY = 0.50f;
-    float drift = 0.00f;
-    float accent = 0.50f;
-    uint32_t seed = 0xDEADBEEF;
-    int patternLength = 32;
-};
-
-struct PatternData
-{
-    uint32_t v1Mask = 0;
-    uint32_t v2Mask = 0;
-    uint32_t auxMask = 0;
-    float v1Velocity[kMaxSteps] = {0};
-    float v2Velocity[kMaxSteps] = {0};
-    float auxVelocity[kMaxSteps] = {0};
-    int patternLength = 32;
-};
-
-static int ComputeTargetHits(float energy, int patternLength, Voice voice, float shape = 0.5f)
-{
-    EnergyZone zone = GetEnergyZone(energy);
-    BarBudget budget;
-    ComputeBarBudget(energy, 0.5f, zone, AuxDensity::NORMAL, patternLength, 1.0f, shape, budget);
-
-    switch (voice)
-    {
-        case Voice::ANCHOR:  return budget.anchorHits;
-        case Voice::SHIMMER: return budget.shimmerHits;
-        case Voice::AUX:     return budget.auxHits;
-        default:             return budget.anchorHits;
-    }
-}
-
-// V5 Task 44: Helper to rotate bitmask while preserving a specific step's state
-// Used for anchor variation without disrupting beat 1 (Techno kick stability)
-static uint32_t RotateWithPreserve(uint32_t mask, int rotation, int length, int preserveStep)
-{
-    if (rotation == 0 || length <= 1) return mask;
-
-    // Check if preserve step is set
-    bool preserveWasSet = (mask & (1U << preserveStep)) != 0;
-
-    // Clear the preserve step before rotation
-    mask &= ~(1U << preserveStep);
-
-    // Rotate the remaining bits
-    rotation = rotation % length;
-    uint32_t lengthMask = (length >= 32) ? 0xFFFFFFFF : ((1U << length) - 1);
-    mask = ((mask << rotation) | (mask >> (length - rotation))) & lengthMask;
-
-    // Restore preserve step to its original position
-    if (preserveWasSet) {
-        mask |= (1U << preserveStep);
-    }
-
-    return mask;
-}
-
-static void GeneratePattern(const PatternParams& params, PatternData& out)
-{
-    out.patternLength = params.patternLength;
-    out.v1Mask = 0;
-    out.v2Mask = 0;
-    out.auxMask = 0;
-
-    EnergyZone zone = GetEnergyZone(params.energy);
-    int minSpacing = GetMinSpacingForZone(zone);
-
-    // Generate anchor weights
-    float anchorWeights[kMaxSteps];
-    ComputeShapeBlendedWeights(params.shape, params.energy, params.seed,
-                               params.patternLength, anchorWeights);
-    ApplyAxisBias(anchorWeights, params.axisX, params.axisY,
-                  params.shape, params.seed, params.patternLength);
-
-    // V5 Task 44: Add seed-based weight perturbation for anchor variation
-    // Uses additive noise scaled to actually affect hit selection
-    {
-        // At low SHAPE, add more noise to break up the predictable pattern
-        // At high SHAPE, weights already vary naturally, so less noise needed
-        const float noiseScale = 0.4f * (1.0f - params.shape);
-        for (int step = 0; step < params.patternLength; ++step) {
-            // Protect beat 1 at low SHAPE (Techno kick stability)
-            if (step == 0 && params.shape < 0.3f) continue;
-
-            // Additive perturbation that can actually affect ranking
-            float noise = (HashToFloat(params.seed, step + 1000) - 0.5f) * noiseScale;
-            anchorWeights[step] = ClampWeight(anchorWeights[step] + noise);
-        }
-    }
-
-    // Select anchor hits (SHAPE modulates budget - Task 39)
-    int v1TargetHits = ComputeTargetHits(params.energy, params.patternLength, Voice::ANCHOR, params.shape);
-    uint32_t eligibility = (1U << params.patternLength) - 1;
-    out.v1Mask = SelectHitsGumbelTopK(anchorWeights, eligibility, v1TargetHits,
-                                       params.seed, params.patternLength, minSpacing);
-
-    // Apply guard rails
-    uint32_t dummyShimmer = 0;
-    ApplyHardGuardRails(out.v1Mask, dummyShimmer, zone, Genre::TECHNO, params.patternLength);
-
-    // V5 Task 44: Apply seed-based rotation for anchor variation (AFTER guard rails)
-    // Rotate non-beat-1 positions while preserving step 0 for Techno kick stability
-    if (params.shape < 0.7f) {
-        int maxRotation = std::max(1, params.patternLength / 4);
-        int rotation = static_cast<int>(HashToFloat(params.seed, 2000) * maxRotation);
-        out.v1Mask = RotateWithPreserve(out.v1Mask, rotation, params.patternLength, 0);
-    }
-
-    // Generate shimmer with COMPLEMENT (SHAPE modulates budget - Task 39)
-    float shimmerWeights[kMaxSteps];
-    ComputeShapeBlendedWeights(params.shape, params.energy, params.seed + 1,
-                               params.patternLength, shimmerWeights);
-    int v2TargetHits = ComputeTargetHits(params.energy, params.patternLength, Voice::SHIMMER, params.shape);
-    out.v2Mask = ApplyComplementRelationship(out.v1Mask, shimmerWeights,
-                                              params.drift, params.seed + 2,
-                                              params.patternLength, v2TargetHits);
-
-    // Generate aux
-    int auxTargetHits = ComputeTargetHits(params.energy, params.patternLength, Voice::AUX);
-    float auxWeights[kMaxSteps];
-    uint32_t combinedMask = out.v1Mask | out.v2Mask;
-    for (int i = 0; i < params.patternLength; ++i)
-    {
-        float metricW = GetMetricWeight(i, params.patternLength);
-        auxWeights[i] = 1.0f - metricW * 0.5f;
-        if ((combinedMask & (1U << i)) != 0)
-            auxWeights[i] *= 0.3f;
-    }
-    out.auxMask = SelectHitsGumbelTopK(auxWeights, eligibility, auxTargetHits,
-                                        params.seed + 3, params.patternLength, 0);
-
-    // Compute velocities
-    for (int step = 0; step < params.patternLength; ++step)
-    {
-        if ((out.v1Mask & (1U << step)) != 0)
-            out.v1Velocity[step] = ComputeAccentVelocity(params.accent, step, params.patternLength, params.seed);
-        if ((out.v2Mask & (1U << step)) != 0)
-            out.v2Velocity[step] = ComputeAccentVelocity(params.accent * 0.7f, step, params.patternLength, params.seed + 1);
-        if ((out.auxMask & (1U << step)) != 0)
-        {
-            float baseVel = 0.5f + params.energy * 0.3f;
-            float variation = (HashToFloat(params.seed + 4, step) - 0.5f) * 0.15f;
-            out.auxVelocity[step] = std::max(0.3f, std::min(1.0f, baseVel + variation));
-        }
-    }
-}
 
 // =============================================================================
 // Output Formatters
@@ -215,7 +52,7 @@ static int CountHits(uint32_t mask, int length)
     return count;
 }
 
-static void PrintPatternGrid(std::ostream& out, const PatternParams& params, const PatternData& pattern)
+static void PrintPatternGrid(std::ostream& out, const PatternParams& params, const PatternResult& pattern)
 {
     out << "\n=== Pattern Visualization ===\n";
     out << "Params: ENERGY=" << std::fixed << std::setprecision(2) << params.energy
@@ -232,8 +69,8 @@ static void PrintPatternGrid(std::ostream& out, const PatternParams& params, con
 
     for (int step = 0; step < pattern.patternLength; ++step)
     {
-        bool v1Hit = (pattern.v1Mask & (1U << step)) != 0;
-        bool v2Hit = (pattern.v2Mask & (1U << step)) != 0;
+        bool v1Hit = (pattern.anchorMask & (1U << step)) != 0;
+        bool v2Hit = (pattern.shimmerMask & (1U << step)) != 0;
         bool auxHit = (pattern.auxMask & (1U << step)) != 0;
         float metric = GetMetricWeight(step, pattern.patternLength);
 
@@ -243,12 +80,12 @@ static void PrintPatternGrid(std::ostream& out, const PatternParams& params, con
             << (auxHit ? "X" : ".") << "    ";
 
         if (v1Hit)
-            out << std::fixed << std::setprecision(2) << pattern.v1Velocity[step] << "    ";
+            out << std::fixed << std::setprecision(2) << pattern.anchorVelocity[step] << "    ";
         else
             out << "----    ";
 
         if (v2Hit)
-            out << std::fixed << std::setprecision(2) << pattern.v2Velocity[step] << "    ";
+            out << std::fixed << std::setprecision(2) << pattern.shimmerVelocity[step] << "    ";
         else
             out << "----    ";
 
@@ -260,8 +97,8 @@ static void PrintPatternGrid(std::ostream& out, const PatternParams& params, con
         out << std::fixed << std::setprecision(2) << metric << "\n";
     }
 
-    int v1Hits = CountHits(pattern.v1Mask, pattern.patternLength);
-    int v2Hits = CountHits(pattern.v2Mask, pattern.patternLength);
+    int v1Hits = CountHits(pattern.anchorMask, pattern.patternLength);
+    int v2Hits = CountHits(pattern.shimmerMask, pattern.patternLength);
     int auxHits = CountHits(pattern.auxMask, pattern.patternLength);
 
     out << "\nSummary:\n";
@@ -271,12 +108,12 @@ static void PrintPatternGrid(std::ostream& out, const PatternParams& params, con
         << " (" << (v2Hits * 100 / pattern.patternLength) << "%)\n";
     out << "  Aux hits: " << auxHits << "/" << pattern.patternLength
         << " (" << (auxHits * 100 / pattern.patternLength) << "%)\n";
-    out << "  V1 mask: 0x" << std::hex << pattern.v1Mask << std::dec << "\n";
-    out << "  V2 mask: 0x" << std::hex << pattern.v2Mask << std::dec << "\n";
+    out << "  V1 mask: 0x" << std::hex << pattern.anchorMask << std::dec << "\n";
+    out << "  V2 mask: 0x" << std::hex << pattern.shimmerMask << std::dec << "\n";
     out << "  Aux mask: 0x" << std::hex << pattern.auxMask << std::dec << "\n";
 }
 
-static void PrintPatternCSV(std::ostream& out, const PatternParams& params, const PatternData& pattern, bool header = true)
+static void PrintPatternCSV(std::ostream& out, const PatternParams& params, const PatternResult& pattern, bool header = true)
 {
     if (header)
     {
@@ -285,8 +122,8 @@ static void PrintPatternCSV(std::ostream& out, const PatternParams& params, cons
 
     for (int step = 0; step < pattern.patternLength; ++step)
     {
-        bool v1Hit = (pattern.v1Mask & (1U << step)) != 0;
-        bool v2Hit = (pattern.v2Mask & (1U << step)) != 0;
+        bool v1Hit = (pattern.anchorMask & (1U << step)) != 0;
+        bool v2Hit = (pattern.shimmerMask & (1U << step)) != 0;
         bool auxHit = (pattern.auxMask & (1U << step)) != 0;
 
         out << std::fixed << std::setprecision(2)
@@ -302,20 +139,20 @@ static void PrintPatternCSV(std::ostream& out, const PatternParams& params, cons
             << (v1Hit ? 1 : 0) << ","
             << (v2Hit ? 1 : 0) << ","
             << (auxHit ? 1 : 0) << ","
-            << (v1Hit ? pattern.v1Velocity[step] : 0.0f) << ","
-            << (v2Hit ? pattern.v2Velocity[step] : 0.0f) << ","
+            << (v1Hit ? pattern.anchorVelocity[step] : 0.0f) << ","
+            << (v2Hit ? pattern.shimmerVelocity[step] : 0.0f) << ","
             << (auxHit ? pattern.auxVelocity[step] : 0.0f) << ","
             << GetMetricWeight(step, pattern.patternLength) << "\n";
     }
 }
 
-static void PrintPatternMask(std::ostream& out, const PatternParams& params, const PatternData& pattern)
+static void PrintPatternMask(std::ostream& out, const PatternParams& params, const PatternResult& pattern)
 {
     out << "ENERGY=" << std::fixed << std::setprecision(2) << params.energy
         << " SHAPE=" << params.shape
         << " SEED=0x" << std::hex << params.seed << std::dec << "\n";
-    out << "V1:  0x" << std::hex << std::setw(8) << std::setfill('0') << pattern.v1Mask << std::dec << "\n";
-    out << "V2:  0x" << std::hex << std::setw(8) << std::setfill('0') << pattern.v2Mask << std::dec << "\n";
+    out << "V1:  0x" << std::hex << std::setw(8) << std::setfill('0') << pattern.anchorMask << std::dec << "\n";
+    out << "V2:  0x" << std::hex << std::setw(8) << std::setfill('0') << pattern.shimmerMask << std::dec << "\n";
     out << "AUX: 0x" << std::hex << std::setw(8) << std::setfill('0') << pattern.auxMask << std::dec << "\n\n";
 }
 
@@ -472,7 +309,7 @@ int main(int argc, char* argv[])
                 return 1;
             }
 
-            PatternData pattern;
+            PatternResult pattern;
             GeneratePattern(sweepParams, pattern);
 
             if (format == "grid")
@@ -489,7 +326,7 @@ int main(int argc, char* argv[])
     else
     {
         // Single pattern
-        PatternData pattern;
+        PatternResult pattern;
         GeneratePattern(params, pattern);
 
         if (format == "grid")

@@ -2,6 +2,7 @@
 #include "config.h"
 #include "../System/logging.h"
 #include "EuclideanGen.h"  // For genre-aware Euclidean blending
+#include "PatternGenerator.h"  // For RotateWithPreserve
 
 #include <algorithm>
 #include <cmath>
@@ -257,31 +258,6 @@ std::array<float, 2> Sequencer::ProcessAudio()
         state_.outputs.anchorVelocity.heldVoltage,
         state_.outputs.shimmerVelocity.heldVoltage
     };
-}
-
-// V5 Task 44: Helper to rotate bitmask while preserving a specific step's state
-// Used for anchor variation without disrupting beat 1 (Techno kick stability)
-static uint32_t RotateWithPreserve(uint32_t mask, int rotation, int length, int preserveStep)
-{
-    if (rotation == 0 || length <= 1) return mask;
-
-    // Check if preserve step is set
-    bool preserveWasSet = (mask & (1U << preserveStep)) != 0;
-
-    // Clear the preserve step before rotation
-    mask &= ~(1U << preserveStep);
-
-    // Rotate the remaining bits
-    rotation = rotation % length;
-    uint32_t lengthMask = (length >= 32) ? 0xFFFFFFFF : ((1U << length) - 1);
-    mask = ((mask << rotation) | (mask >> (length - rotation))) & lengthMask;
-
-    // Restore preserve step to its original position
-    if (preserveWasSet) {
-        mask |= (1U << preserveStep);
-    }
-
-    return mask;
 }
 
 void Sequencer::GenerateBar()

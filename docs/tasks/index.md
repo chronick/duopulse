@@ -46,3 +46,4 @@
 | 42 | v4-dead-code-cleanup | V4 Dead Code Cleanup: Remove Deprecated Archetype System — delete ~2,630 lines of unused code | completed | 2026-01-06 | 2026-01-07 | completed/42-v4-dead-code-cleanup.md |
 | 43 | v5-shimmer-seed-variation | V5 Shimmer Seed Variation: Fix pattern convergence bug | completed | 2026-01-07 | 2026-01-07 | completed/43-v5-shimmer-seed-variation.md |
 | 44 | v5-anchor-seed-variation | V5 Anchor Seed Variation: Fix zero pattern diversity across seeds | completed | 2026-01-07 | 2026-01-07 | completed/44-v5-anchor-seed-variation.md |
+| 45 | pattern-generator-extraction | Pattern Generator Extraction: Shared module for firmware & viz tool | completed | 2026-01-08 | 2026-01-08 | completed/45-pattern-generator-extraction.md |
