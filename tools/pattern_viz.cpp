@@ -37,6 +37,8 @@
 
 #include "../src/Engine/PatternGenerator.h"  // Shared pattern generation
 #include "../src/Engine/PatternField.h"       // GetMetricWeight for output formatting
+#include "../src/Engine/EuclideanGen.h"       // GetGenreEuclideanRatio
+#include "../src/Engine/HitBudget.h"          // GetEnergyZone
 
 using namespace daisysp_idm_grids;
 
@@ -191,6 +193,34 @@ static const char* ParseString(const char* arg)
     return eq + 1;
 }
 
+static Genre ParseGenre(const char* arg)
+{
+    const char* val = ParseString(arg);
+    if (strcmp(val, "techno") == 0) return Genre::TECHNO;
+    if (strcmp(val, "tribal") == 0) return Genre::TRIBAL;
+    if (strcmp(val, "idm") == 0) return Genre::IDM;
+    return Genre::TECHNO;  // default
+}
+
+static AuxDensity ParseAuxDensity(const char* arg)
+{
+    const char* val = ParseString(arg);
+    if (strcmp(val, "sparse") == 0) return AuxDensity::SPARSE;
+    if (strcmp(val, "normal") == 0) return AuxDensity::NORMAL;
+    if (strcmp(val, "dense") == 0) return AuxDensity::DENSE;
+    if (strcmp(val, "busy") == 0) return AuxDensity::BUSY;
+    return AuxDensity::NORMAL;  // default
+}
+
+static VoiceCoupling ParseVoiceCoupling(const char* arg)
+{
+    const char* val = ParseString(arg);
+    if (strcmp(val, "independent") == 0) return VoiceCoupling::INDEPENDENT;
+    if (strcmp(val, "interlock") == 0) return VoiceCoupling::INTERLOCK;
+    if (strcmp(val, "shadow") == 0) return VoiceCoupling::SHADOW;
+    return VoiceCoupling::INDEPENDENT;  // default
+}
+
 static void PrintUsage()
 {
     std::cout << R"(
@@ -211,17 +241,23 @@ Options:
   --output=file    Output to file (default: stdout)
   --format=grid    Output format: grid, csv, mask
 
-Advanced (firmware-matching) options:
+Firmware-matching options:
+  --firmware       Use all firmware defaults (recommended)
   --balance=0.50   Balance parameter (0.0-1.0)
-  --euclidean=0.00 Euclidean blend ratio (0.0-1.0)
+  --euclidean=0.00 Euclidean blend ratio (0.0-1.0, or 'auto')
   --soft-repair    Enable soft repair pass
   --fill           Enable fill zone
   --fill-intensity=0.50  Fill intensity (0.0-1.0)
+  --genre=techno   Genre: techno, tribal, idm
+  --aux-density=normal   Aux density: sparse, normal, dense, busy
+  --voice-coupling=independent  Coupling: independent, interlock, shadow
+  --density-mult=1.0  Density multiplier (SHAPE-derived in firmware)
 
   --help           Show this help
 
 Examples:
   ./build/pattern_viz --energy=0.7 --shape=0.5
+  ./build/pattern_viz --firmware --energy=0.6 --shape=0.4
   ./build/pattern_viz --sweep=shape --output=shape_sweep.txt
   ./build/pattern_viz --format=csv > patterns.csv
   ./build/pattern_viz --sweep=energy --format=mask
@@ -238,6 +274,7 @@ int main(int argc, char* argv[])
     std::string outputFile;
     std::string format = "grid";
     std::string sweep;
+    bool autoEuclidean = false;  // Compute euclidean like firmware
 
     // Parse arguments
     for (int i = 1; i < argc; ++i)
@@ -266,16 +303,37 @@ int main(int argc, char* argv[])
             format = ParseString(arg);
         else if (strncmp(arg, "--sweep=", 8) == 0)
             sweep = ParseString(arg);
+        // Firmware-matching options
+        else if (strcmp(arg, "--firmware") == 0)
+        {
+            // Apply all firmware defaults
+            params.applySoftRepair = true;
+            autoEuclidean = true;
+        }
         else if (strncmp(arg, "--balance=", 10) == 0)
             params.balance = ParseFloat(arg);
         else if (strncmp(arg, "--euclidean=", 12) == 0)
-            params.euclideanRatio = ParseFloat(arg);
+        {
+            const char* val = ParseString(arg);
+            if (strcmp(val, "auto") == 0)
+                autoEuclidean = true;
+            else
+                params.euclideanRatio = ParseFloat(arg);
+        }
         else if (strcmp(arg, "--soft-repair") == 0)
             params.applySoftRepair = true;
         else if (strcmp(arg, "--fill") == 0)
             params.inFillZone = true;
         else if (strncmp(arg, "--fill-intensity=", 17) == 0)
             params.fillIntensity = ParseFloat(arg);
+        else if (strncmp(arg, "--genre=", 8) == 0)
+            params.genre = ParseGenre(arg);
+        else if (strncmp(arg, "--aux-density=", 14) == 0)
+            params.auxDensity = ParseAuxDensity(arg);
+        else if (strncmp(arg, "--voice-coupling=", 17) == 0)
+            params.voiceCoupling = ParseVoiceCoupling(arg);
+        else if (strncmp(arg, "--density-mult=", 15) == 0)
+            params.densityMultiplier = ParseFloat(arg);
         else if (strcmp(arg, "--help") == 0 || strcmp(arg, "-h") == 0)
         {
             PrintUsage();
@@ -287,6 +345,13 @@ int main(int argc, char* argv[])
             PrintUsage();
             return 1;
         }
+    }
+
+    // Compute auto-euclidean if requested (like firmware does)
+    if (autoEuclidean)
+    {
+        EnergyZone zone = GetEnergyZone(params.energy);
+        params.euclideanRatio = GetGenreEuclideanRatio(params.genre, params.axisX, zone);
     }
 
     // Setup output stream
@@ -325,6 +390,14 @@ int main(int argc, char* argv[])
             {
                 std::cerr << "Unknown sweep parameter: " << sweep << "\n";
                 return 1;
+            }
+
+            // Recompute auto-euclidean for each sweep value
+            if (autoEuclidean)
+            {
+                EnergyZone zone = GetEnergyZone(sweepParams.energy);
+                sweepParams.euclideanRatio = GetGenreEuclideanRatio(
+                    sweepParams.genre, sweepParams.axisX, zone);
             }
 
             PatternResult pattern;
