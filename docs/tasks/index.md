@@ -47,3 +47,8 @@
 | 43 | v5-shimmer-seed-variation | V5 Shimmer Seed Variation: Fix pattern convergence bug | completed | 2026-01-07 | 2026-01-07 | completed/43-v5-shimmer-seed-variation.md |
 | 44 | v5-anchor-seed-variation | V5 Anchor Seed Variation: Fix zero pattern diversity across seeds | completed | 2026-01-07 | 2026-01-07 | completed/44-v5-anchor-seed-variation.md |
 | 45 | pattern-generator-extraction | Pattern Generator Extraction: Shared module for firmware & viz tool | completed | 2026-01-08 | 2026-01-08 | completed/45-pattern-generator-extraction.md |
+| 46 | v55-noise-formula-fix | V5.5 Noise Formula Fix: Correct zone-based noise scaling | pending | 2026-01-08 | 2026-01-08 | active/46-v55-noise-formula-fix.md |
+| 47 | v55-velocity-variation | V5.5 Velocity Variation: Ghost notes and accent dynamics | pending | 2026-01-08 | 2026-01-08 | active/47-v55-velocity-variation.md |
+| 48 | v55-micro-displacement | V5.5 Micro-Displacement: Per-hit position variation | pending | 2026-01-08 | 2026-01-08 | active/48-v55-micro-displacement.md |
+| 49 | v55-aux-style-beat1 | V5.5 AUX Style Zones and Beat 1 Enforcement | pending | 2026-01-08 | 2026-01-08 | active/49-v55-aux-style-beat1.md |
+| 50 | v55-two-pass-generation | V5.5 Two-Pass Generation: Skeleton + Embellishment (conditional) | pending | 2026-01-08 | 2026-01-08 | active/50-v55-two-pass-generation.md |
