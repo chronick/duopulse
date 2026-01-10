@@ -16,14 +16,23 @@ export class Player {
     this.scheduleAheadTime = 0.1; // seconds
     this.nextStepTime = 0;
     this.timerID = null;
+    this.initialized = false;
 
     this.mutes = { v1: false, v2: false, aux: false };
     this.onStepChange = null;
     this.onPlayStateChange = null;
   }
 
+  // Lazy init - call this before any audio operation
+  async ensureInitialized() {
+    if (!this.initialized) {
+      await this.audio.init();
+      this.initialized = true;
+    }
+  }
+
   async init() {
-    await this.audio.init();
+    // No-op on load - lazy init on first user interaction
   }
 
   setPattern(pattern) {
@@ -64,10 +73,11 @@ export class Player {
     return 60 / this.bpm / 4;
   }
 
-  play() {
+  async play() {
     if (this.isPlaying || !this.pattern) return;
 
-    this.audio.resume();
+    await this.ensureInitialized();
+    await this.audio.resume();
     this.isPlaying = true;
     this.nextStepTime = this.audio.now;
     this.scheduler();
@@ -97,11 +107,11 @@ export class Player {
     }
   }
 
-  toggle() {
+  async toggle() {
     if (this.isPlaying) {
       this.pause();
     } else {
-      this.play();
+      await this.play();
     }
   }
 
@@ -154,7 +164,8 @@ export class Player {
   }
 
   // Trigger a single voice manually (for auditioning)
-  triggerVoice(voice, velocity = 1.0) {
+  async triggerVoice(voice, velocity = 1.0) {
+    await this.ensureInitialized();
     this.audio.trigger(voice, velocity);
   }
 

@@ -13,8 +13,15 @@ export class AudioEngine {
   }
 
   async init() {
-    if (this.ctx) return;
+    if (this.ctx) {
+      // Already initialized, just ensure resumed
+      if (this.ctx.state === 'suspended') {
+        await this.ctx.resume();
+      }
+      return;
+    }
 
+    // Create AudioContext only when called (should be from user gesture)
     this.ctx = new AudioContext();
 
     // Master compressor for punch
