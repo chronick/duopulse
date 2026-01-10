@@ -7,6 +7,41 @@ Total pattern sections: 15
 Total patterns generated: 122
 
 ------------------------------------------------------------------------
+PENTAGON OF MUSICALITY — ZONE COMPLIANCE
+------------------------------------------------------------------------
+
+Status: ✓ = in range (green), ~ = close (yellow), ✗ = out of range (red)
+
+## STABLE ZONE (n=32)
+   Composite Score: 24%
+
+   ✗ Syncopation       : 0.53  (target: 0.00-0.22)
+   ✗ Density           : 0.54  (target: 0.15-0.32)
+   ✓ Velocity Range    : 0.36  (target: 0.12-0.38)
+   ✓ Voice Separation  : 0.87  (target: 0.62-0.88)
+   ✗ Regularity        : 0.54  (target: 0.72-1.00)
+
+## SYNCOPATED ZONE (n=65)
+   Composite Score: 38%
+
+   ✗ Syncopation       : 0.49  (target: 0.22-0.48)
+   ✗ Density           : 0.63  (target: 0.25-0.48)
+   ✓ Velocity Range    : 0.34  (target: 0.32-0.58)
+   ✗ Voice Separation  : 0.87  (target: 0.52-0.78)
+   ✓ Regularity        : 0.47  (target: 0.42-0.68)
+
+## WILD ZONE (n=25)
+   Composite Score: 16%
+
+   ✗ Syncopation       : 0.83  (target: 0.42-0.75)
+   ✓ Density           : 0.65  (target: 0.32-0.65)
+   ✓ Velocity Range    : 0.34  (target: 0.25-0.72)
+   ✗ Voice Separation  : 0.91  (target: 0.32-0.68)
+   ✗ Regularity        : 0.56  (target: 0.12-0.48)
+
+   OVERALL ALIGNMENT: 31% [✗ POOR]
+
+------------------------------------------------------------------------
 EXPRESSIVENESS SUMMARY
 ------------------------------------------------------------------------
 

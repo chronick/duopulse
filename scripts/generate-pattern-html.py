@@ -16,6 +16,7 @@ import subprocess
 import csv
 import io
 import argparse
+import math
 from pathlib import Path
 from dataclasses import dataclass
 from typing import Optional
@@ -150,6 +151,372 @@ VELOCITY_HEIGHT = 40
 KNOB_RADIUS = 20
 KNOB_TRACK_WIDTH = 3
 KNOB_INDICATOR_WIDTH = 2
+
+# =============================================================================
+# Pentagon of Musicality Metrics
+# =============================================================================
+
+# LHL Metric weights for 32-step pattern (2 bars of 4/4 at 16th notes)
+METRIC_WEIGHTS_32 = [
+    1.00, 0.10, 0.40, 0.10, 0.80, 0.10, 0.40, 0.10,  # Steps 0-7
+    0.90, 0.10, 0.40, 0.10, 0.80, 0.10, 0.40, 0.10,  # Steps 8-15
+    0.95, 0.10, 0.40, 0.10, 0.80, 0.10, 0.40, 0.10,  # Steps 16-23
+    0.90, 0.10, 0.40, 0.10, 0.80, 0.10, 0.40, 0.10,  # Steps 24-31
+]
+
+
+@dataclass
+class PentagonMetrics:
+    """Pentagon of Musicality - 5 orthogonal metrics."""
+    raw_syncopation: float = 0.0
+    raw_density: float = 0.0
+    raw_velocity_range: float = 0.0
+    raw_voice_separation: float = 0.0
+    raw_regularity: float = 0.0
+    score_syncopation: float = 0.0
+    score_density: float = 0.0
+    score_velocity_range: float = 0.0
+    score_voice_separation: float = 0.0
+    score_regularity: float = 0.0
+    composite: float = 0.0
+    shape_zone: str = "stable"
+
+
+def compute_pentagon_syncopation(hits: list[bool], pattern_length: int = 32) -> float:
+    """Compute LHL syncopation score."""
+    weights = METRIC_WEIGHTS_32[:pattern_length]
+    syncopation_tension = 0.0
+    max_possible_tension = 0.0
+
+    for i in range(pattern_length):
+        if hits[i]:
+            next_pos = (i + 1) % pattern_length
+            weight_diff = weights[next_pos] - weights[i]
+            if weight_diff > 0 and not hits[next_pos]:
+                syncopation_tension += weight_diff
+            max_possible_tension += max(0, weights[(i + 1) % pattern_length] - weights[i])
+
+    return min(1.0, syncopation_tension / max_possible_tension) if max_possible_tension > 0 else 0.0
+
+
+def compute_pentagon_density(v1_hits: list[bool], v2_hits: list[bool], aux_hits: list[bool], pattern_length: int = 32) -> float:
+    """Compute pattern density as fraction of active steps."""
+    active_steps = sum(1 for i in range(pattern_length) if v1_hits[i] or v2_hits[i] or aux_hits[i])
+    return active_steps / pattern_length
+
+
+def compute_pentagon_velocity_range(v1_hits: list[bool], v2_hits: list[bool], aux_hits: list[bool],
+                                    v1_vels: list[float], v2_vels: list[float], aux_vels: list[float]) -> float:
+    """Compute velocity range across all voices."""
+    all_velocities = []
+    for i in range(len(v1_hits)):
+        if v1_hits[i] and v1_vels[i] > 0:
+            all_velocities.append(v1_vels[i])
+        if v2_hits[i] and v2_vels[i] > 0:
+            all_velocities.append(v2_vels[i])
+        if aux_hits[i] and aux_vels[i] > 0:
+            all_velocities.append(aux_vels[i])
+    return max(all_velocities) - min(all_velocities) if len(all_velocities) >= 2 else 0.0
+
+
+def compute_pentagon_voice_separation(v1_hits: list[bool], v2_hits: list[bool], aux_hits: list[bool], pattern_length: int = 32) -> float:
+    """Compute voice separation as inverse of overlap."""
+    overlap_count = 0
+    total_active = 0
+    for i in range(pattern_length):
+        voices_active = v1_hits[i] + v2_hits[i] + aux_hits[i]
+        if voices_active > 0:
+            total_active += 1
+        if voices_active >= 2:
+            overlap_count += 1
+    return 1.0 - (overlap_count / total_active) if total_active > 0 else 0.5
+
+
+def compute_pentagon_regularity(hits: list[bool], pattern_length: int = 32) -> float:
+    """Compute regularity as inverse of gap variance (CV)."""
+    hit_positions = [i for i, h in enumerate(hits) if h]
+    if len(hit_positions) < 2:
+        return 0.5
+
+    gaps = []
+    for i in range(len(hit_positions)):
+        next_idx = (i + 1) % len(hit_positions)
+        if next_idx == 0:
+            gap = (pattern_length - hit_positions[i]) + hit_positions[0]
+        else:
+            gap = hit_positions[next_idx] - hit_positions[i]
+        gaps.append(gap)
+
+    mean_gap = sum(gaps) / len(gaps)
+    if mean_gap == 0:
+        return 1.0
+    variance = sum((g - mean_gap) ** 2 for g in gaps) / len(gaps)
+    cv = (variance ** 0.5) / mean_gap
+    return max(0.0, 1.0 - min(1.0, cv))
+
+
+def score_pentagon_metric(raw: float, target_center: float, width: float) -> float:
+    """Score metric using parabolic function around target center."""
+    distance = abs(raw - target_center)
+    return max(0.0, 1.0 - (distance / width) ** 2)
+
+
+def compute_pentagon_metrics(pattern: "Pattern") -> PentagonMetrics:
+    """Compute full Pentagon of Musicality analysis."""
+    v1_hits = [s.v1 for s in pattern.steps]
+    v2_hits = [s.v2 for s in pattern.steps]
+    aux_hits = [s.aux for s in pattern.steps]
+    v1_vels = [s.v1_vel for s in pattern.steps]
+    v2_vels = [s.v2_vel for s in pattern.steps]
+    aux_vels = [s.aux_vel for s in pattern.steps]
+    pattern_length = pattern.length
+    shape = pattern.shape
+    energy = pattern.energy
+    accent = pattern.accent
+
+    # Raw metrics
+    raw_sync = compute_pentagon_syncopation(v1_hits, pattern_length)
+    raw_dens = compute_pentagon_density(v1_hits, v2_hits, aux_hits, pattern_length)
+    raw_vel = compute_pentagon_velocity_range(v1_hits, v2_hits, aux_hits, v1_vels, v2_vels, aux_vels)
+    raw_sep = compute_pentagon_voice_separation(v1_hits, v2_hits, aux_hits, pattern_length)
+    raw_reg = compute_pentagon_regularity(v1_hits, pattern_length)
+
+    # SHAPE-zone scoring targets (TIGHTENED v2)
+    # Syncopation: Stable: 0.00-0.22, Syncopated: 0.22-0.48, Wild: 0.42-0.75
+    # VoiceSep: Stable: 0.62-0.88, Syncopated: 0.52-0.78, Wild: 0.32-0.68
+    # Regularity: Stable: 0.72-1.00, Syncopated: 0.42-0.68, Wild: 0.12-0.48
+    if shape < 0.3:
+        sync_target, sync_width = 0.11, 0.14
+        sep_target, sep_width = 0.75, 0.16
+        reg_target, reg_width = 0.86, 0.18
+        zone = "stable"
+    elif shape < 0.7:
+        sync_target, sync_width = 0.35, 0.16
+        sep_target, sep_width = 0.65, 0.16
+        reg_target, reg_width = 0.55, 0.16
+        zone = "syncopated"
+    else:
+        sync_target, sync_width = 0.58, 0.20
+        sep_target, sep_width = 0.50, 0.22
+        reg_target, reg_width = 0.30, 0.22
+        zone = "wild"
+
+    # ENERGY-based density target (TIGHTENED v2)
+    # Stable: 0.15-0.32, Syncopated: 0.25-0.48, Wild: 0.32-0.65
+    if shape < 0.3:
+        base_min, base_max = 0.15, 0.32
+    elif shape < 0.7:
+        base_min, base_max = 0.25, 0.48
+    else:
+        base_min, base_max = 0.32, 0.65
+    zone_range = base_max - base_min
+    dens_target = base_min + energy * zone_range
+    dens_width = zone_range / 2.2
+
+    # ACCENT-based velocity target (TIGHTENED v2)
+    # Low: 0.12-0.38, Med: 0.32-0.58, High: 0.25-0.72
+    if accent < 0.3:
+        vel_target, vel_width = 0.25, 0.16
+    elif accent < 0.7:
+        vel_target, vel_width = 0.45, 0.16
+    else:
+        vel_target, vel_width = 0.48, 0.28
+
+    # Compute scores
+    s_sync = score_pentagon_metric(raw_sync, sync_target, sync_width)
+    s_dens = score_pentagon_metric(raw_dens, dens_target, dens_width)
+    s_vel = score_pentagon_metric(raw_vel, vel_target, vel_width)
+    s_sep = score_pentagon_metric(raw_sep, sep_target, sep_width)
+    s_reg = score_pentagon_metric(raw_reg, reg_target, reg_width)
+
+    # Composite (weighted sum)
+    composite = 0.25 * s_sync + 0.15 * s_dens + 0.20 * s_vel + 0.20 * s_sep + 0.20 * s_reg
+
+    return PentagonMetrics(
+        raw_syncopation=raw_sync, raw_density=raw_dens, raw_velocity_range=raw_vel,
+        raw_voice_separation=raw_sep, raw_regularity=raw_reg,
+        score_syncopation=s_sync, score_density=s_dens, score_velocity_range=s_vel,
+        score_voice_separation=s_sep, score_regularity=s_reg,
+        composite=composite, shape_zone=zone,
+    )
+
+
+# Pentagon metric definitions with full descriptions and context-sensitive guidance
+# TIGHTENED RANGES (v2) - more discriminating for better hill-climbing feedback
+PENTAGON_METRICS = {
+    "syncopation": {
+        "short": "Sync",
+        "name": "Syncopation",
+        "description": "Tension from metric displacement. Measures hits on weak beats that create anticipation toward stronger beats. Based on the Longuet-Higgins & Lee (LHL) model.",
+        "low_meaning": "Low (0-0.2): Straight, on-the-beat patterns. Good for: four-on-floor techno, marching rhythms, stable grooves.",
+        "high_meaning": "High (0.6-1.0): Heavy off-beat emphasis. Good for: IDM, broken beats, jungle, complex polyrhythms.",
+        "target_by_zone": {"stable": "0.00-0.22", "syncopated": "0.22-0.48", "wild": "0.42-0.75"},
+        "why_matters": "Syncopation creates groove and forward motion. Too little feels mechanical; too much loses the pulse.",
+    },
+    "density": {
+        "short": "Dens",
+        "name": "Density",
+        "description": "Overall activity level as fraction of steps with hits. Higher density = busier pattern with more notes per bar.",
+        "low_meaning": "Low (0.1-0.3): Sparse, breathing space between hits. Good for: dub, ambient, minimal techno.",
+        "high_meaning": "High (0.6-0.9): Busy, relentless activity. Good for: gabber, breakcore, drum & bass fills.",
+        "target_by_zone": {"stable": "0.15-0.32", "syncopated": "0.25-0.48", "wild": "0.32-0.65"},
+        "why_matters": "Density sets the energy level. Match it to ENERGY parameter for zone compliance.",
+    },
+    "velocity_range": {
+        "short": "VelRng",
+        "name": "Velocity Range",
+        "description": "Dynamic contrast between loudest and quietest hits. Wide range enables ghost notes and accents for expressive dynamics.",
+        "low_meaning": "Low (0.0-0.2): Flat, machine-like dynamics. Good for: industrial, hard techno, aggressive styles.",
+        "high_meaning": "High (0.5-1.0): Expressive dynamics with ghost notes. Good for: jazz-influenced, hip-hop, nuanced grooves.",
+        "target_by_zone": {"stable": "0.12-0.38", "syncopated": "0.32-0.58", "wild": "0.25-0.72"},
+        "why_matters": "Velocity variation humanizes patterns. Ghost notes add texture without changing rhythm.",
+    },
+    "voice_separation": {
+        "short": "VoiceSep",
+        "name": "Voice Separation",
+        "description": "Independence between voices (1 - overlap ratio). High separation means voices rarely hit simultaneously, creating clearer polyrhythms.",
+        "low_meaning": "Low (0.3-0.5): Voices often hit together. Good for: powerful unison accents, wall-of-sound.",
+        "high_meaning": "High (0.8-1.0): Voices rarely overlap. Good for: call-response, polyrhythms, complex textures.",
+        "target_by_zone": {"stable": "0.62-0.88", "syncopated": "0.52-0.78", "wild": "0.32-0.68"},
+        "why_matters": "Separation affects clarity vs. power. High DRIFT should increase separation.",
+    },
+    "regularity": {
+        "short": "Reg",
+        "name": "Regularity",
+        "description": "Temporal predictability based on inter-onset interval (IOI) consistency. Regular patterns have even spacing; irregular patterns have varied gaps.",
+        "low_meaning": "Low (0.0-0.3): Chaotic, unpredictable gaps. Good for: IDM, glitch, experimental music.",
+        "high_meaning": "High (0.8-1.0): Even, metronomic spacing. Good for: techno, house, dance music.",
+        "target_by_zone": {"stable": "0.72-1.00", "syncopated": "0.42-0.68", "wild": "0.12-0.48"},
+        "why_matters": "Regularity = danceability. Stable patterns need high regularity; wild patterns break it.",
+    },
+}
+
+
+def generate_pentagon_svg(metrics: PentagonMetrics, size: int = 120, show_values: bool = True) -> str:
+    """Generate SVG radar chart for Pentagon of Musicality."""
+    cx, cy = size / 2, size / 2
+    r = size / 2 - 20  # Radius for max score
+
+    # 5 axes at 72-degree intervals, starting from top
+    angles = [math.radians(-90 + i * 72) for i in range(5)]
+
+    # Metric keys in display order
+    metric_keys = ["syncopation", "density", "velocity_range", "voice_separation", "regularity"]
+    labels = [PENTAGON_METRICS[k]["short"] for k in metric_keys]
+    # Rich tooltips with context
+    tooltips = []
+    for k in metric_keys:
+        m = PENTAGON_METRICS[k]
+        tooltip = f'{m["name"]}: {m["why_matters"]} Target for {metrics.shape_zone}: {m["target_by_zone"].get(metrics.shape_zone, "N/A")}'
+        tooltips.append(tooltip)
+    raw_values = [
+        metrics.raw_syncopation, metrics.raw_density, metrics.raw_velocity_range,
+        metrics.raw_voice_separation, metrics.raw_regularity
+    ]
+    score_values = [
+        metrics.score_syncopation, metrics.score_density, metrics.score_velocity_range,
+        metrics.score_voice_separation, metrics.score_regularity
+    ]
+
+    svg_parts = [
+        f'<svg width="{size}" height="{size + 24}" viewBox="0 0 {size} {size + 24}" xmlns="http://www.w3.org/2000/svg">',
+        f'<rect width="100%" height="100%" fill="#1a1a1a" rx="4"/>',
+    ]
+
+    # Draw grid circles (at 25%, 50%, 75%, 100%)
+    for pct in [0.25, 0.5, 0.75, 1.0]:
+        svg_parts.append(
+            f'<circle cx="{cx}" cy="{cy}" r="{r * pct}" fill="none" stroke="#333333" stroke-width="1" opacity="0.5"/>'
+        )
+
+    # Draw axis lines and labels with color-coded range status
+    for i, (angle, label, raw_val, score_val) in enumerate(zip(angles, labels, raw_values, score_values)):
+        key = metric_keys[i]
+        meta = PENTAGON_METRICS[key]
+        target = meta["target_by_zone"].get(metrics.shape_zone, "0.0-1.0")
+
+        # Check if in range
+        in_range, distance, status_text = check_in_range(raw_val, target)
+        alignment = compute_alignment_score(raw_val, target)
+
+        x_end = cx + r * math.cos(angle)
+        y_end = cy + r * math.sin(angle)
+        svg_parts.append(
+            f'<line x1="{cx}" y1="{cy}" x2="{x_end}" y2="{y_end}" stroke="#444444" stroke-width="1"/>'
+        )
+
+        # Label position (slightly beyond the axis)
+        lx = cx + (r + 14) * math.cos(angle)
+        ly = cy + (r + 14) * math.sin(angle)
+
+        # Color based on range status: green=in, orange=close, red=far
+        if in_range:
+            label_color = "#44ff44"  # Green - in range
+            status_icon = "✓"
+        elif alignment > 0.5:
+            label_color = "#ffaa44"  # Orange - close
+            status_icon = "~"
+        else:
+            label_color = "#ff6666"  # Red - out of range
+            status_icon = "✗"
+
+        # Rich tooltip with status
+        full_tooltip = (
+            f'{meta["name"]} ({metrics.shape_zone.upper()} zone)\n'
+            f'{status_text}\n'
+            f'Value: {raw_val:.2f} | Target: {target}\n'
+            f'Alignment: {alignment:.0%}'
+        )
+
+        svg_parts.append(
+            f'<text x="{lx}" y="{ly + 3}" text-anchor="middle" fill="{label_color}" font-size="8" '
+            f'font-weight="600" style="cursor: help;">'
+            f'<title>{full_tooltip}</title>{label}</text>'
+        )
+
+    # Draw raw values polygon (dim)
+    raw_points = []
+    for i, (angle, val) in enumerate(zip(angles, raw_values)):
+        px = cx + r * val * math.cos(angle)
+        py = cy + r * val * math.sin(angle)
+        raw_points.append(f"{px},{py}")
+    svg_parts.append(
+        f'<polygon points="{" ".join(raw_points)}" fill="#4ecdc4" fill-opacity="0.15" '
+        f'stroke="#4ecdc4" stroke-width="1" stroke-opacity="0.4"/>'
+    )
+
+    # Draw scored values polygon (bright)
+    score_points = []
+    for i, (angle, val) in enumerate(zip(angles, score_values)):
+        px = cx + r * val * math.cos(angle)
+        py = cy + r * val * math.sin(angle)
+        score_points.append(f"{px},{py}")
+    svg_parts.append(
+        f'<polygon points="{" ".join(score_points)}" fill="#ff6b35" fill-opacity="0.3" '
+        f'stroke="#ff6b35" stroke-width="2"/>'
+    )
+
+    # Draw dots at scored vertices
+    for i, (angle, val) in enumerate(zip(angles, score_values)):
+        px = cx + r * val * math.cos(angle)
+        py = cy + r * val * math.sin(angle)
+        svg_parts.append(f'<circle cx="{px}" cy="{py}" r="3" fill="#ff6b35"/>')
+
+    # Composite score in center
+    svg_parts.append(
+        f'<text x="{cx}" y="{cy + 4}" text-anchor="middle" fill="#ffffff" font-size="14" font-weight="600">'
+        f'{metrics.composite:.0%}</text>'
+    )
+
+    # Zone label at bottom
+    zone_colors = {"stable": "#44aa44", "syncopated": "#aaaa44", "wild": "#aa4444"}
+    svg_parts.append(
+        f'<text x="{cx}" y="{size + 16}" text-anchor="middle" fill="{zone_colors.get(metrics.shape_zone, "#888888")}" '
+        f'font-size="10" font-weight="500">{metrics.shape_zone.upper()}</text>'
+    )
+
+    svg_parts.append('</svg>')
+    return '\n'.join(svg_parts)
 
 
 def generate_knob_svg(
@@ -645,6 +1012,316 @@ def compute_step_statistics(patterns: list[Pattern], num_steps: int = 32) -> dic
     }
 
 
+def compute_pentagon_statistics(patterns: list[Pattern]) -> dict:
+    """Compute Pentagon metric averages across a collection of patterns."""
+    if not patterns:
+        return {}
+
+    # Compute Pentagon metrics for each pattern
+    all_metrics = [compute_pentagon_metrics(p) for p in patterns]
+
+    # Aggregate by zone
+    by_zone = {"stable": [], "syncopated": [], "wild": []}
+    for m in all_metrics:
+        by_zone[m.shape_zone].append(m)
+
+    def avg_metrics(metrics_list):
+        if not metrics_list:
+            return None
+        n = len(metrics_list)
+        return {
+            "count": n,
+            "raw_syncopation": sum(m.raw_syncopation for m in metrics_list) / n,
+            "raw_density": sum(m.raw_density for m in metrics_list) / n,
+            "raw_velocity_range": sum(m.raw_velocity_range for m in metrics_list) / n,
+            "raw_voice_separation": sum(m.raw_voice_separation for m in metrics_list) / n,
+            "raw_regularity": sum(m.raw_regularity for m in metrics_list) / n,
+            "composite": sum(m.composite for m in metrics_list) / n,
+        }
+
+    return {
+        "total": avg_metrics(all_metrics),
+        "stable": avg_metrics(by_zone["stable"]),
+        "syncopated": avg_metrics(by_zone["syncopated"]),
+        "wild": avg_metrics(by_zone["wild"]),
+    }
+
+
+def parse_target_range(target_str: str) -> tuple[float, float]:
+    """Parse target range string like '0.0-0.25' into (min, max) tuple."""
+    try:
+        parts = target_str.split("-")
+        if len(parts) == 2:
+            return float(parts[0]), float(parts[1])
+    except (ValueError, IndexError):
+        pass
+    return 0.0, 1.0  # Default to full range
+
+
+def check_in_range(value: float, target_str: str) -> tuple[bool, float, str]:
+    """
+    Check if value is in target range.
+    Returns: (is_in_range, distance_from_range, status_text)
+    """
+    min_val, max_val = parse_target_range(target_str)
+
+    if min_val <= value <= max_val:
+        # In range - calculate how centered it is (0 = edge, 1 = center)
+        range_center = (min_val + max_val) / 2
+        range_width = (max_val - min_val) / 2
+        if range_width > 0:
+            centeredness = 1.0 - abs(value - range_center) / range_width
+        else:
+            centeredness = 1.0
+        return True, 0.0, f"✓ In range ({min_val:.2f}-{max_val:.2f})"
+    else:
+        # Out of range - calculate distance
+        if value < min_val:
+            distance = min_val - value
+            return False, distance, f"✗ Below target (need +{distance:.2f})"
+        else:
+            distance = value - max_val
+            return False, distance, f"✗ Above target (need -{distance:.2f})"
+
+
+def compute_alignment_score(value: float, target_str: str) -> float:
+    """
+    Compute 0-1 alignment score for a single metric.
+    1.0 = perfectly centered in target range
+    0.0 = far outside target range
+    """
+    min_val, max_val = parse_target_range(target_str)
+    range_center = (min_val + max_val) / 2
+    range_width = (max_val - min_val) / 2
+
+    distance_from_center = abs(value - range_center)
+
+    # Score is 1.0 at center, decreasing as we move away
+    # We use a tolerance of 2x the range width before hitting 0
+    tolerance = max(range_width * 2, 0.2)  # At least 0.2 tolerance
+
+    score = max(0.0, 1.0 - distance_from_center / tolerance)
+    return score
+
+
+def generate_pentagon_radar_svg(pentagon_stats: dict, size: int = 400) -> str:
+    """Generate just the radar chart SVG for Pentagon of Musicality."""
+    metric_keys = ["syncopation", "density", "velocity_range", "voice_separation", "regularity"]
+
+    chart_cx = size // 2
+    chart_cy = size // 2
+    chart_r = size // 2 - 50
+
+    svg_parts = [
+        f'<svg width="{size}" height="{size}" xmlns="http://www.w3.org/2000/svg" '
+        f'style="font-family: -apple-system, BlinkMacSystemFont, sans-serif;">',
+    ]
+
+    angles = [math.radians(-90 + i * 72) for i in range(5)]
+    labels = [PENTAGON_METRICS[k]["short"] for k in metric_keys]
+
+    total_data = pentagon_stats.get("total", {})
+    raw_attrs = ["raw_syncopation", "raw_density", "raw_velocity_range", "raw_voice_separation", "raw_regularity"]
+    total_values = [total_data.get(attr, 0.5) for attr in raw_attrs]
+
+    # Draw grid circles
+    for pct in [0.25, 0.5, 0.75, 1.0]:
+        svg_parts.append(
+            f'<circle cx="{chart_cx}" cy="{chart_cy}" r="{chart_r * pct}" fill="none" stroke="#333333" stroke-width="1" opacity="0.5"/>'
+        )
+
+    # Draw target zone bands
+    zone_colors_map = {"stable": "#44aa44", "syncopated": "#aaaa44", "wild": "#aa4444"}
+    for zone, zone_color in zone_colors_map.items():
+        zone_max_points = []
+        for i, (angle, key) in enumerate(zip(angles, metric_keys)):
+            target_str = PENTAGON_METRICS[key]["target_by_zone"].get(zone, "0.0-1.0")
+            _, t_max = parse_target_range(target_str)
+            px_max = chart_cx + chart_r * t_max * math.cos(angle)
+            py_max = chart_cy + chart_r * t_max * math.sin(angle)
+            zone_max_points.append(f"{px_max},{py_max}")
+        svg_parts.append(
+            f'<polygon points="{" ".join(zone_max_points)}" fill="none" '
+            f'stroke="{zone_color}" stroke-width="1" stroke-dasharray="4,4" opacity="0.4"/>'
+        )
+
+    # Draw axis lines and labels
+    for i, (angle, label) in enumerate(zip(angles, labels)):
+        key = metric_keys[i]
+        meta = PENTAGON_METRICS[key]
+        x_end = chart_cx + chart_r * math.cos(angle)
+        y_end = chart_cy + chart_r * math.sin(angle)
+        svg_parts.append(
+            f'<line x1="{chart_cx}" y1="{chart_cy}" x2="{x_end}" y2="{y_end}" stroke="#444444" stroke-width="1"/>'
+        )
+
+        lx = chart_cx + (chart_r + 30) * math.cos(angle)
+        ly = chart_cy + (chart_r + 30) * math.sin(angle)
+        tooltip = f'{meta["name"]}: {meta["why_matters"]}'
+        svg_parts.append(
+            f'<text x="{lx}" y="{ly + 4}" text-anchor="middle" fill="#ffffff" font-size="12" '
+            f'font-weight="600" style="cursor: help;"><title>{tooltip}</title>{label}</text>'
+        )
+
+    # Draw actual values polygon
+    points = []
+    for angle, val in zip(angles, total_values):
+        px = chart_cx + chart_r * val * math.cos(angle)
+        py = chart_cy + chart_r * val * math.sin(angle)
+        points.append(f"{px},{py}")
+    svg_parts.append(
+        f'<polygon points="{" ".join(points)}" fill="#4ecdc4" fill-opacity="0.3" stroke="#4ecdc4" stroke-width="2"/>'
+    )
+
+    # Draw dots at vertices
+    for angle, val in zip(angles, total_values):
+        px = chart_cx + chart_r * val * math.cos(angle)
+        py = chart_cy + chart_r * val * math.sin(angle)
+        svg_parts.append(f'<circle cx="{px}" cy="{py}" r="5" fill="#4ecdc4"/>')
+
+    # Composite in center
+    total_composite = total_data.get("composite", 0.5)
+    svg_parts.append(
+        f'<text x="{chart_cx}" y="{chart_cy + 8}" text-anchor="middle" fill="#ffffff" font-size="32" font-weight="700">'
+        f'{total_composite:.0%}</text>'
+    )
+    svg_parts.append(
+        f'<text x="{chart_cx}" y="{chart_cy + 28}" text-anchor="middle" fill="#666666" font-size="11">composite</text>'
+    )
+
+    svg_parts.append('</svg>')
+    return '\n'.join(svg_parts)
+
+
+def generate_pentagon_summary_html(pentagon_stats: dict) -> str:
+    """Generate HTML section for Pentagon of Musicality with radar chart and table."""
+    metric_keys = ["syncopation", "density", "velocity_range", "voice_separation", "regularity"]
+    raw_attrs = ["raw_syncopation", "raw_density", "raw_velocity_range", "raw_voice_separation", "raw_regularity"]
+    zones = [("stable", "#44aa44", "STABLE", "0-30%"), ("syncopated", "#aaaa44", "SYNCOPATED", "30-70%"), ("wild", "#aa4444", "WILD", "70-100%")]
+
+    # Track alignment scores
+    all_alignment_scores = []
+
+    # Generate radar chart SVG
+    radar_svg = generate_pentagon_radar_svg(pentagon_stats, size=380)
+
+    # Build HTML
+    html_parts = [
+        '<div style="background: #1e1e1e; border-radius: 8px; padding: 20px; margin-bottom: 20px;">',
+        '<h3 style="color: #ffffff; margin: 0 0 16px 0; font-size: 16px;">Pentagon of Musicality — Overview</h3>',
+        '<div style="display: flex; gap: 30px; align-items: flex-start;">',
+        # Left: Radar chart
+        '<div style="flex-shrink: 0;">',
+        '<div style="color: #888888; font-size: 11px; text-align: center; margin-bottom: 8px;">ALL PATTERNS AVERAGE</div>',
+        radar_svg,
+        '</div>',
+        # Right: Table
+        '<div style="flex-grow: 1;">',
+        '<table style="width: 100%; border-collapse: collapse; font-size: 13px;">',
+        '<thead>',
+        '<tr style="border-bottom: 1px solid #333;">',
+        '<th style="text-align: left; padding: 8px 12px; color: #888;">Metric</th>',
+    ]
+
+    # Zone headers
+    for zone, color, label, shape_range in zones:
+        html_parts.append(
+            f'<th style="text-align: center; padding: 8px 12px;">'
+            f'<span style="color: {color}; font-weight: 600;">{label}</span><br>'
+            f'<span style="color: #555; font-size: 10px;">SHAPE {shape_range}</span></th>'
+        )
+    html_parts.append('</tr></thead><tbody>')
+
+    # Metric rows
+    for key, attr in zip(metric_keys, raw_attrs):
+        meta = PENTAGON_METRICS[key]
+        html_parts.append('<tr style="border-bottom: 1px solid #2a2a2a;">')
+        html_parts.append(
+            f'<td style="padding: 10px 12px; max-width: 300px;">'
+            f'<span style="color: {COLORS["v1"]}; font-weight: 500;">{meta["name"]}</span><br>'
+            f'<span style="color: #666; font-size: 10px;">{meta["why_matters"]}</span></td>'
+        )
+
+        for zone, zone_color, _, _ in zones:
+            zone_data = pentagon_stats.get(zone)
+            target = meta["target_by_zone"].get(zone, "0.0-1.0")
+
+            if zone_data:
+                val = zone_data.get(attr, 0)
+                in_range, distance, status_text = check_in_range(val, target)
+                alignment = compute_alignment_score(val, target)
+                all_alignment_scores.append(alignment)
+
+                if in_range:
+                    val_color = "#44ff44"
+                elif alignment > 0.5:
+                    val_color = "#ffaa44"
+                else:
+                    val_color = "#ff4444"
+
+                html_parts.append(
+                    f'<td style="text-align: center; padding: 10px 12px;" title="{status_text} | Alignment: {alignment:.0%}">'
+                    f'<span style="color: {val_color}; font-weight: 600; font-size: 14px;">{val:.2f}</span><br>'
+                    f'<span style="color: #555; font-size: 10px;">target: {target}</span></td>'
+                )
+            else:
+                html_parts.append('<td style="text-align: center; color: #444;">—</td>')
+        html_parts.append('</tr>')
+
+    # Compliance row
+    html_parts.append('<tr style="border-top: 2px solid #333;">')
+    html_parts.append('<td style="padding: 10px 12px; color: #fff; font-weight: 600;">Zone Compliance</td>')
+    for zone, color, _, _ in zones:
+        zone_data = pentagon_stats.get(zone)
+        if zone_data:
+            comp = zone_data.get("composite", 0)
+            count = zone_data.get("count", 0)
+            html_parts.append(
+                f'<td style="text-align: center; padding: 10px 12px;">'
+                f'<span style="color: {color}; font-weight: 600; font-size: 14px;">{comp:.0%}</span><br>'
+                f'<span style="color: #555; font-size: 10px;">n={count}</span></td>'
+            )
+        else:
+            html_parts.append('<td style="text-align: center; color: #444;">—</td>')
+    html_parts.append('</tr>')
+
+    html_parts.append('</tbody></table>')
+    html_parts.append('</div></div>')  # Close table div and flex container
+
+    # Alignment score section
+    overall_alignment = sum(all_alignment_scores) / len(all_alignment_scores) if all_alignment_scores else 0.0
+    pentagon_stats["overall_alignment"] = overall_alignment
+
+    if overall_alignment >= 0.7:
+        align_color = "#44ff44"
+        align_status = "GOOD"
+    elif overall_alignment >= 0.5:
+        align_color = "#ffaa44"
+        align_status = "FAIR"
+    else:
+        align_color = "#ff4444"
+        align_status = "POOR"
+
+    total_count = pentagon_stats.get("total", {}).get("count", 0)
+
+    html_parts.append(
+        f'<div style="border-top: 2px solid #444; margin-top: 16px; padding-top: 20px; display: flex; align-items: center;">'
+        f'<div style="flex: 1;">'
+        f'<div style="color: #fff; font-weight: 700; font-size: 13px;">OVERALL ALIGNMENT SCORE</div>'
+        f'<div style="color: #666; font-size: 11px;">Hill-climbing metric (1.0 = all metrics in target ranges)</div>'
+        f'</div>'
+        f'<div style="flex: 2; text-align: center;">'
+        f'<span style="color: {align_color}; font-size: 48px; font-weight: 700;">{overall_alignment:.1%}</span>'
+        f'<span style="color: {align_color}; font-size: 18px; margin-left: 12px; vertical-align: middle;">[{align_status}]</span>'
+        f'</div>'
+        f'<div style="flex: 1; color: #666; font-size: 11px; text-align: right;">{total_count} patterns analyzed</div>'
+        f'</div>'
+    )
+
+    html_parts.append('</div>')  # Close main container
+    return '\n'.join(html_parts)
+
+
 def generate_heatmap_svg(stats: dict, title: str, width: int = 800) -> str:
     """Generate SVG heatmap showing per-step hit frequency."""
     num_steps = stats["num_steps"]
@@ -803,6 +1480,7 @@ def generate_summary_text(
     patterns: list[tuple[str, list[Pattern], Optional[str]]],
     statistics: list[tuple[str, dict]],
     title: str = "Pattern Visualization Summary",
+    pentagon_stats: Optional[dict] = None,
 ) -> str:
     """Generate AI and human-readable text summary of pattern statistics."""
     lines = []
@@ -817,6 +1495,59 @@ def generate_summary_text(
     total_patterns = sum(len(pats) for _, pats, *_ in patterns)
     lines.append(f"Total patterns generated: {total_patterns}")
     lines.append("")
+
+    # Pentagon of Musicality Summary (with status indicators)
+    if pentagon_stats:
+        lines.append("-" * 72)
+        lines.append("PENTAGON OF MUSICALITY — ZONE COMPLIANCE")
+        lines.append("-" * 72)
+        lines.append("")
+        lines.append("Status: ✓ = in range (green), ~ = close (yellow), ✗ = out of range (red)")
+        lines.append("")
+
+        metric_keys = ["syncopation", "density", "velocity_range", "voice_separation", "regularity"]
+        raw_attrs = ["raw_syncopation", "raw_density", "raw_velocity_range", "raw_voice_separation", "raw_regularity"]
+        zones = [("stable", "STABLE"), ("syncopated", "SYNCOPATED"), ("wild", "WILD")]
+
+        for zone_key, zone_label in zones:
+            zone_data = pentagon_stats.get(zone_key)
+            if not zone_data:
+                continue
+
+            lines.append(f"## {zone_label} ZONE (n={zone_data.get('count', 0)})")
+            lines.append(f"   Composite Score: {zone_data.get('composite', 0):.0%}")
+            lines.append("")
+
+            for key, attr in zip(metric_keys, raw_attrs):
+                meta = PENTAGON_METRICS[key]
+                target = meta["target_by_zone"].get(zone_key, "0.0-1.0")
+                val = zone_data.get(attr, 0)
+                in_range, distance, _ = check_in_range(val, target)
+                alignment = compute_alignment_score(val, target)
+
+                # Status indicator
+                if in_range:
+                    status = "✓"  # Green - in range
+                elif alignment > 0.5:
+                    status = "~"  # Yellow - close
+                else:
+                    status = "✗"  # Red - out of range
+
+                lines.append(f"   {status} {meta['name']:<18}: {val:.2f}  (target: {target})")
+
+            lines.append("")
+
+        # Overall alignment
+        overall_alignment = pentagon_stats.get("overall_alignment", 0.0)
+        if overall_alignment >= 0.7:
+            align_status = "✓ GOOD"
+        elif overall_alignment >= 0.5:
+            align_status = "~ FAIR"
+        else:
+            align_status = "✗ POOR"
+
+        lines.append(f"   OVERALL ALIGNMENT: {overall_alignment:.0%} [{align_status}]")
+        lines.append("")
 
     # Overall Expressiveness Summary
     lines.append("-" * 72)
@@ -935,6 +1666,7 @@ def generate_html(
     patterns: list[tuple[str, list[Pattern], Optional[str]]],
     title: str = "Pattern Visualization",
     statistics: Optional[list[tuple[str, dict]]] = None,
+    pentagon_stats: Optional[dict] = None,
 ) -> str:
     """Generate complete HTML page with multiple pattern groups and statistics."""
     html_parts = [f'''<!DOCTYPE html>
@@ -1135,11 +1867,57 @@ def generate_html(
             <span>AUX (Hat/Perc)</span>
         </div>
     </div>
+''']
 
+    # Statistics section at TOP (if provided)
+    if statistics or pentagon_stats:
+        html_parts.append('''
+    <section class="stats-section" id="statistics">
+        <h2 class="stats-title">📊 Pattern Statistics & Pentagon of Musicality</h2>
+        <div class="stats-grid">
+''')
+
+        # Pentagon summary first (using HTML table layout)
+        if pentagon_stats:
+            pentagon_summary = generate_pentagon_summary_html(pentagon_stats)
+            html_parts.append(f'''            <div class="stats-row">
+                {pentagon_summary}
+            </div>
+''')
+
+        # Existing statistics
+        if statistics:
+            for stat_name, stat_data in statistics:
+                # Generate heatmap
+                heatmap = generate_heatmap_svg(stat_data["step_stats"], stat_name)
+                # Generate expressiveness metrics
+                expr_svg = generate_expressiveness_svg(stat_data["seed_variation"], f"Seed Variation: {stat_name}")
+
+                html_parts.append(f'''            <div class="stats-row">
+                <div class="stats-label">{stat_name}</div>
+                {heatmap}
+                {expr_svg}
+            </div>
+''')
+
+            # Summary table
+            summary_stats = [(name, data["step_stats"]) for name, data in statistics]
+            summary_svg = generate_stats_summary_svg(summary_stats)
+            html_parts.append(f'''            <div class="stats-row">
+                <div class="stats-label">Summary Comparison</div>
+                {summary_svg}
+            </div>
+''')
+
+        html_parts.append('''        </div>
+    </section>
+''')
+
+    html_parts.append('''
     <div class="toc">
         <h2>Jump to Section</h2>
         <div class="toc-list">
-''']
+''')
 
     # Table of contents
     for entry in patterns:
@@ -1181,6 +1959,10 @@ def generate_html(
                 highlight_param=highlight_param,
             )
 
+            # Compute Pentagon metrics and generate radar chart
+            pentagon_metrics = compute_pentagon_metrics(pattern)
+            pentagon_svg = generate_pentagon_svg(pentagon_metrics, size=140)
+
             # Preset header (name and description if available)
             preset_header = ""
             if pattern.name:
@@ -1192,8 +1974,13 @@ def generate_html(
 
             html_parts.append(f'''            <div class="pattern-row">
                 <div class="pattern-container">{preset_header}
-                    <div class="knob-panel">
-                        {knob_panel}
+                    <div class="controls-row" style="display: flex; gap: 12px; align-items: flex-start;">
+                        <div class="knob-panel">
+                            {knob_panel}
+                        </div>
+                        <div class="pentagon-chart" title="Pentagon of Musicality: Syncopation, Density, Velocity Range, Voice Separation, Regularity">
+                            {pentagon_svg}
+                        </div>
                     </div>
                     <div class="pattern-label">
                         <div class="stats">
@@ -1215,40 +2002,6 @@ def generate_html(
                         {svg}
                     </div>
                 </div>
-            </div>
-''')
-
-        html_parts.append('''        </div>
-    </section>
-''')
-
-    # Statistics section (if provided)
-    if statistics:
-        html_parts.append('''
-    <section class="stats-section" id="statistics">
-        <h2 class="stats-title">Pattern Statistics & Expressiveness Metrics</h2>
-        <div class="stats-grid">
-''')
-
-        for stat_name, stat_data in statistics:
-            # Generate heatmap
-            heatmap = generate_heatmap_svg(stat_data["step_stats"], stat_name)
-            # Generate expressiveness metrics
-            expr_svg = generate_expressiveness_svg(stat_data["seed_variation"], f"Seed Variation: {stat_name}")
-
-            html_parts.append(f'''            <div class="stats-row">
-                <div class="stats-label">{stat_name}</div>
-                {heatmap}
-                {expr_svg}
-            </div>
-''')
-
-        # Summary table
-        summary_stats = [(name, data["step_stats"]) for name, data in statistics]
-        summary_svg = generate_stats_summary_svg(summary_stats)
-        html_parts.append(f'''            <div class="stats-row">
-                <div class="stats-label">Summary Comparison</div>
-                {summary_svg}
             </div>
 ''')
 
@@ -1541,13 +2294,26 @@ def main():
         print(f"  - {group_name}: {len(group_patterns)} patterns, "
               f"V1={seed_variation['v1_score']:.0%} V2={seed_variation['v2_score']:.0%}")
 
+    # Compute Pentagon of Musicality statistics across all patterns
+    print("Computing Pentagon metrics...")
+    all_flat_patterns = [p for _, pats, _ in all_patterns for p in pats]
+    pentagon_stats = compute_pentagon_statistics(all_flat_patterns)
+
+    # Generate summary to calculate alignment score (stored in pentagon_stats)
+    _ = generate_pentagon_summary_html(pentagon_stats)
+    alignment = pentagon_stats.get("overall_alignment", 0.0)
+
+    print(f"  - Pentagon: {pentagon_stats['total']['count']} patterns, "
+          f"Composite={pentagon_stats['total']['composite']:.0%}")
+    print(f"  - ALIGNMENT SCORE: {alignment:.1%} (hill-climbing metric)")
+
     # Generate HTML
     print("Generating HTML...")
-    html = generate_html(all_patterns, "DaisySP IDM Grids - Pattern Visualization", statistics)
+    html = generate_html(all_patterns, "DaisySP IDM Grids - Pattern Visualization", statistics, pentagon_stats)
 
     # Generate text summary
     print("Generating text summary...")
-    summary = generate_summary_text(all_patterns, statistics, "DaisySP IDM Grids - Pattern Statistics")
+    summary = generate_summary_text(all_patterns, statistics, "DaisySP IDM Grids - Pattern Statistics", pentagon_stats)
 
     # Ensure output directory exists
     args.output.parent.mkdir(parents=True, exist_ok=True)

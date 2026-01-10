@@ -24,6 +24,7 @@ import csv
 import io
 import json
 import argparse
+import math
 from pathlib import Path
 from dataclasses import dataclass, field, asdict
 from typing import Optional
@@ -132,6 +133,342 @@ class PatternMetrics:
     v1_velocity_range: float = 0.0
     v2_avg_velocity: float = 0.0
     v2_velocity_range: float = 0.0
+
+
+# =============================================================================
+# Pentagon of Musicality Metrics (v2)
+# =============================================================================
+
+# LHL Metric weights for 32-step pattern (2 bars of 4/4 at 16th notes)
+# Higher weight = stronger metric position
+METRIC_WEIGHTS_32 = [
+    1.00,  # 0:  Bar 1, Beat 1 (strongest)
+    0.10,  # 1:  16th
+    0.40,  # 2:  8th
+    0.10,  # 3:  16th (anticipation of beat 2)
+    0.80,  # 4:  Beat 2
+    0.10,  # 5:  16th
+    0.40,  # 6:  8th
+    0.10,  # 7:  16th (anticipation of beat 3)
+    0.90,  # 8:  Beat 3 (half-bar)
+    0.10,  # 9:  16th
+    0.40,  # 10: 8th
+    0.10,  # 11: 16th (anticipation of beat 4)
+    0.80,  # 12: Beat 4
+    0.10,  # 13: 16th
+    0.40,  # 14: 8th
+    0.10,  # 15: 16th (anticipation of bar 2)
+    0.95,  # 16: Bar 2, Beat 1
+    0.10,  # 17: 16th
+    0.40,  # 18: 8th
+    0.10,  # 19: 16th
+    0.80,  # 20: Beat 2
+    0.10,  # 21: 16th
+    0.40,  # 22: 8th
+    0.10,  # 23: 16th
+    0.90,  # 24: Beat 3
+    0.10,  # 25: 16th
+    0.40,  # 26: 8th
+    0.10,  # 27: 16th
+    0.80,  # 28: Beat 4
+    0.10,  # 29: 16th
+    0.40,  # 30: 8th
+    0.10,  # 31: 16th (anticipation of next bar)
+]
+
+
+@dataclass
+class PentagonMetrics:
+    """Pentagon of Musicality - 5 orthogonal metrics for pattern evaluation."""
+    # Raw values (0-1, not zone-adjusted)
+    raw_syncopation: float = 0.0
+    raw_density: float = 0.0
+    raw_velocity_range: float = 0.0
+    raw_voice_separation: float = 0.0
+    raw_regularity: float = 0.0
+
+    # Scored values (0-1, zone-adjusted based on SHAPE/ENERGY/ACCENT)
+    score_syncopation: float = 0.0
+    score_density: float = 0.0
+    score_velocity_range: float = 0.0
+    score_voice_separation: float = 0.0
+    score_regularity: float = 0.0
+
+    # Composite scores
+    composite: float = 0.0
+    zone_compliance: float = 0.0
+    shape_zone: str = "stable"
+
+
+def compute_syncopation(hits: list[bool], pattern_length: int = 32) -> float:
+    """
+    Compute LHL syncopation score.
+
+    Syncopation = tension from weak-to-strong transitions where
+    a hit on a weak position is followed by a rest on a stronger position.
+    """
+    weights = METRIC_WEIGHTS_32[:pattern_length]
+
+    syncopation_tension = 0.0
+    max_possible_tension = 0.0
+
+    for i in range(pattern_length):
+        if hits[i]:
+            next_pos = (i + 1) % pattern_length
+            weight_diff = weights[next_pos] - weights[i]
+
+            # Syncopation occurs when weak beat hit is followed by strong beat rest
+            if weight_diff > 0 and not hits[next_pos]:
+                syncopation_tension += weight_diff
+
+            # Track maximum possible for normalization
+            max_possible_tension += max(0, weights[(i + 1) % pattern_length] - weights[i])
+
+    if max_possible_tension == 0:
+        return 0.0
+
+    return min(1.0, syncopation_tension / max_possible_tension)
+
+
+def compute_density(
+    v1_hits: list[bool],
+    v2_hits: list[bool],
+    aux_hits: list[bool],
+    pattern_length: int = 32
+) -> float:
+    """Compute pattern density as fraction of active steps."""
+    active_steps = sum(
+        1 for i in range(pattern_length)
+        if v1_hits[i] or v2_hits[i] or aux_hits[i]
+    )
+    return active_steps / pattern_length
+
+
+def compute_velocity_range(
+    v1_hits: list[bool],
+    v2_hits: list[bool],
+    aux_hits: list[bool],
+    v1_vels: list[float],
+    v2_vels: list[float],
+    aux_vels: list[float]
+) -> float:
+    """Compute velocity range across all voices."""
+    all_velocities = []
+
+    for i in range(len(v1_hits)):
+        if v1_hits[i] and v1_vels[i] > 0:
+            all_velocities.append(v1_vels[i])
+        if v2_hits[i] and v2_vels[i] > 0:
+            all_velocities.append(v2_vels[i])
+        if aux_hits[i] and aux_vels[i] > 0:
+            all_velocities.append(aux_vels[i])
+
+    if len(all_velocities) < 2:
+        return 0.0
+
+    return max(all_velocities) - min(all_velocities)
+
+
+def compute_voice_separation(
+    v1_hits: list[bool],
+    v2_hits: list[bool],
+    aux_hits: list[bool],
+    pattern_length: int = 32
+) -> float:
+    """Compute voice separation as inverse of overlap."""
+    overlap_count = 0
+    total_active = 0
+
+    for i in range(pattern_length):
+        voices_active = v1_hits[i] + v2_hits[i] + aux_hits[i]
+        if voices_active > 0:
+            total_active += 1
+        if voices_active >= 2:
+            overlap_count += 1
+
+    if total_active == 0:
+        return 0.5  # Neutral for empty pattern
+
+    overlap_ratio = overlap_count / total_active
+    return 1.0 - overlap_ratio
+
+
+def compute_regularity(hits: list[bool], pattern_length: int = 32) -> float:
+    """
+    Compute regularity as inverse of gap variance.
+
+    Uses coefficient of variation (CV) = std_dev / mean
+    Regularity = 1 - min(1, CV)
+    """
+    hit_positions = [i for i, h in enumerate(hits) if h]
+
+    if len(hit_positions) < 2:
+        return 0.5  # Neutral for sparse patterns
+
+    # Compute inter-onset intervals (including wrap-around)
+    gaps = []
+    for i in range(len(hit_positions)):
+        next_idx = (i + 1) % len(hit_positions)
+        if next_idx == 0:
+            gap = (pattern_length - hit_positions[i]) + hit_positions[0]
+        else:
+            gap = hit_positions[next_idx] - hit_positions[i]
+        gaps.append(gap)
+
+    mean_gap = sum(gaps) / len(gaps)
+    if mean_gap == 0:
+        return 1.0
+
+    variance = sum((g - mean_gap) ** 2 for g in gaps) / len(gaps)
+    std_dev = variance ** 0.5
+    cv = std_dev / mean_gap  # Coefficient of variation
+
+    # Normalize: CV > 1.0 is very irregular
+    return max(0.0, 1.0 - min(1.0, cv))
+
+
+def score_syncopation(raw: float, shape: float) -> float:
+    """Score syncopation relative to SHAPE zone expectation."""
+    # Tighter ranges for more discriminating evaluation
+    # Stable: 0.00-0.22, Syncopated: 0.22-0.48, Wild: 0.42-0.75
+    if shape < 0.3:
+        target_center, target_width = 0.11, 0.14  # center=0.11, range=0.00-0.22
+    elif shape < 0.7:
+        target_center, target_width = 0.35, 0.16  # center=0.35, range=0.22-0.48
+    else:
+        target_center, target_width = 0.58, 0.20  # center=0.58, range=0.42-0.75
+
+    distance = abs(raw - target_center)
+    return max(0.0, 1.0 - (distance / target_width) ** 2)
+
+
+def score_density(raw: float, shape: float, energy: float) -> float:
+    """Score density relative to SHAPE and ENERGY."""
+    # Tighter ranges: Stable: 0.15-0.32, Syncopated: 0.25-0.48, Wild: 0.32-0.65
+    # ENERGY scales within these bounds
+    if shape < 0.3:
+        base_min, base_max = 0.15, 0.32
+    elif shape < 0.7:
+        base_min, base_max = 0.25, 0.48
+    else:
+        base_min, base_max = 0.32, 0.65
+
+    # Energy scales the target within the zone's range
+    zone_range = base_max - base_min
+    energy_target = base_min + energy * zone_range
+    width = zone_range / 2.2  # Tighter width
+
+    distance = abs(raw - energy_target)
+    return max(0.0, 1.0 - (distance / width) ** 2)
+
+
+def score_velocity_range(raw: float, accent: float) -> float:
+    """Score velocity range relative to ACCENT parameter."""
+    # Tighter ranges: Low: 0.12-0.38, Med: 0.32-0.58, High: 0.25-0.72
+    if accent < 0.3:
+        target_center, width = 0.25, 0.16  # center=0.25, range=0.12-0.38
+    elif accent < 0.7:
+        target_center, width = 0.45, 0.16  # center=0.45, range=0.32-0.58
+    else:
+        target_center, width = 0.48, 0.28  # center=0.48, range=0.25-0.72
+
+    distance = abs(raw - target_center)
+    return max(0.0, 1.0 - (distance / width) ** 2)
+
+
+def score_voice_separation(raw: float, shape: float) -> float:
+    """Score voice separation."""
+    # Tighter ranges: Stable: 0.62-0.88, Syncopated: 0.52-0.78, Wild: 0.32-0.68
+    if shape < 0.3:
+        target_center, width = 0.75, 0.16  # center=0.75, range=0.62-0.88
+    elif shape < 0.7:
+        target_center, width = 0.65, 0.16  # center=0.65, range=0.52-0.78
+    else:
+        target_center, width = 0.50, 0.22  # center=0.50, range=0.32-0.68
+
+    distance = abs(raw - target_center)
+    return max(0.0, 1.0 - (distance / width) ** 2)
+
+
+def score_regularity(raw: float, shape: float) -> float:
+    """Score regularity relative to SHAPE zone."""
+    # Tighter ranges: Stable: 0.72-1.0, Syncopated: 0.42-0.68, Wild: 0.12-0.48
+    if shape < 0.3:
+        target_center, width = 0.86, 0.18  # center=0.86, range=0.72-1.0
+    elif shape < 0.7:
+        target_center, width = 0.55, 0.16  # center=0.55, range=0.42-0.68
+    else:
+        target_center, width = 0.30, 0.22  # center=0.30, range=0.12-0.48
+
+    distance = abs(raw - target_center)
+    return max(0.0, 1.0 - (distance / width) ** 2)
+
+
+def compute_pentagon_metrics(
+    pattern: "Pattern",
+    shape: float = 0.5,
+    energy: float = 0.5,
+    accent: float = 0.5,
+) -> PentagonMetrics:
+    """Compute full Pentagon of Musicality analysis."""
+    # Extract hit and velocity lists
+    v1_hits = [s.v1 for s in pattern.steps]
+    v2_hits = [s.v2 for s in pattern.steps]
+    aux_hits = [s.aux for s in pattern.steps]
+    v1_vels = [s.v1_vel for s in pattern.steps]
+    v2_vels = [s.v2_vel for s in pattern.steps]
+    aux_vels = [s.aux_vel for s in pattern.steps]
+    pattern_length = pattern.length
+
+    # Compute raw metrics
+    raw_sync = compute_syncopation(v1_hits, pattern_length)
+    raw_dens = compute_density(v1_hits, v2_hits, aux_hits, pattern_length)
+    raw_vel = compute_velocity_range(v1_hits, v2_hits, aux_hits, v1_vels, v2_vels, aux_vels)
+    raw_sep = compute_voice_separation(v1_hits, v2_hits, aux_hits, pattern_length)
+    raw_reg = compute_regularity(v1_hits, pattern_length)
+
+    # Compute scored metrics
+    s_sync = score_syncopation(raw_sync, shape)
+    s_dens = score_density(raw_dens, shape, energy)
+    s_vel = score_velocity_range(raw_vel, accent)
+    s_sep = score_voice_separation(raw_sep, shape)
+    s_reg = score_regularity(raw_reg, shape)
+
+    # Composite (weighted sum)
+    composite = (
+        0.25 * s_sync +
+        0.15 * s_dens +
+        0.20 * s_vel +
+        0.20 * s_sep +
+        0.20 * s_reg
+    )
+
+    # Zone
+    if shape < 0.3:
+        zone = "stable"
+    elif shape < 0.7:
+        zone = "syncopated"
+    else:
+        zone = "wild"
+
+    # Zone compliance = average of all scores
+    zone_compliance = (s_sync + s_dens + s_vel + s_sep + s_reg) / 5
+
+    return PentagonMetrics(
+        raw_syncopation=raw_sync,
+        raw_density=raw_dens,
+        raw_velocity_range=raw_vel,
+        raw_voice_separation=raw_sep,
+        raw_regularity=raw_reg,
+        score_syncopation=s_sync,
+        score_density=s_dens,
+        score_velocity_range=s_vel,
+        score_voice_separation=s_sep,
+        score_regularity=s_reg,
+        composite=composite,
+        zone_compliance=zone_compliance,
+        shape_zone=zone,
+    )
 
 
 @dataclass
@@ -506,6 +843,31 @@ def generate_markdown_report(report: ExpressivenessReport) -> str:
             lines.append(f"- **{conv['v2_mask']}** produced by {conv['count']} seeds at "
                         f"E={conv['energy']:.2f} S={conv['shape']:.2f} D={conv['drift']:.2f}")
             lines.append(f"  - Seeds: {', '.join(conv['seeds'])}")
+        lines.append("")
+
+    # Pentagon of Musicality Analysis
+    lines.append("## Pentagon of Musicality Analysis")
+    lines.append("")
+    lines.append("Five orthogonal metrics measuring pattern musicality:")
+    lines.append("- **Syncopation**: Tension from metric displacement (LHL model)")
+    lines.append("- **Density**: Activity level (hits per step)")
+    lines.append("- **Velocity Range**: Dynamic contrast")
+    lines.append("- **Voice Separation**: Voice independence (1 - overlap)")
+    lines.append("- **Regularity**: Temporal predictability (1 - CV of gaps)")
+    lines.append("")
+
+    if report.shape_sweep:
+        lines.append("### Pentagon Metrics vs SHAPE")
+        lines.append("")
+        lines.append("| SHAPE | Zone | Sync | Dens | VelRng | VoiceSep | Reg | Composite |")
+        lines.append("|-------|------|------|------|--------|----------|-----|-----------|")
+        for i, val in enumerate(report.shape_sweep.param_values):
+            p = report.shape_sweep.patterns[i]
+            pm = compute_pentagon_metrics(p, p.shape, p.energy, p.accent)
+            lines.append(f"| {val:.2f} | {pm.shape_zone[:4]} | "
+                        f"{pm.raw_syncopation:.2f} | {pm.raw_density:.2f} | "
+                        f"{pm.raw_velocity_range:.2f} | {pm.raw_voice_separation:.2f} | "
+                        f"{pm.raw_regularity:.2f} | {pm.composite:.0%} |")
         lines.append("")
 
     # Parameter Sweep Analysis
