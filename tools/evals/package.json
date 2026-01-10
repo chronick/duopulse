@@ -1,0 +1,15 @@
+{
+  "name": "duopulse-evals",
+  "version": "1.0.0",
+  "description": "Pattern evaluation tools for DuoPulse v5",
+  "type": "module",
+  "scripts": {
+    "generate": "node generate-patterns.js",
+    "evaluate": "node evaluate-expressiveness.js",
+    "serve": "npx serve public -l 3000",
+    "build": "npm run generate && npm run evaluate"
+  },
+  "devDependencies": {
+    "serve": "^14.2.0"
+  }
+}

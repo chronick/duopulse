@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DuoPulse v5 Pattern Evaluation</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app">
+    <header>
+      <h1>DuoPulse v5 <span class="subtitle">Pattern Evaluation Dashboard</span></h1>
+      <div class="voice-legend">
+        <span class="legend-item v1">V1 (Anchor/Kick)</span>
+        <span class="legend-item v2">V2 (Shimmer/Snare)</span>
+        <span class="legend-item aux">AUX (Hat/Perc)</span>
+      </div>
+      <nav>
+        <button class="nav-btn active" data-view="overview">Overview</button>
+        <button class="nav-btn" data-view="presets">Presets</button>
+        <button class="nav-btn" data-view="sweeps">Parameter Sweeps</button>
+        <button class="nav-btn" data-view="seeds">Seed Variation</button>
+      </nav>
+    </header>
+
+    <main>
+      <!-- Loading state -->
+      <div id="loading" class="loading">
+        <div class="spinner"></div>
+        <p>Loading pattern data...</p>
+      </div>
+
+      <!-- Error state -->
+      <div id="error" class="error" hidden>
+        <h2>Error Loading Data</h2>
+        <p id="error-message"></p>
+        <p class="hint">Run <code>make evals</code> to generate pattern data.</p>
+      </div>
+
+      <!-- Overview (Pentagon Summary) -->
+      <section id="view-overview" class="view" hidden>
+        <h2>Pattern Statistics & Pentagon of Musicality</h2>
+        <div id="overview-container"></div>
+      </section>
+
+      <!-- Presets -->
+      <section id="view-presets" class="view" hidden>
+        <h2>Pattern Presets</h2>
+        <p class="description">Pre-configured parameter combinations demonstrating different musical styles.</p>
+        <div id="presets-container" class="presets-grid"></div>
+      </section>
+
+      <!-- Sweeps -->
+      <section id="view-sweeps" class="view" hidden>
+        <h2>Parameter Sweeps</h2>
+        <p class="description">Pattern evolution across parameter ranges.</p>
+        <div class="sweep-controls">
+          <label>
+            Parameter:
+            <select id="sweep-select">
+              <option value="shape">SHAPE</option>
+              <option value="energy">ENERGY</option>
+              <option value="axisX">AXIS X</option>
+              <option value="axisY">AXIS Y</option>
+              <option value="drift">DRIFT</option>
+              <option value="accent">ACCENT</option>
+            </select>
+          </label>
+        </div>
+        <div id="sweep-container" class="sweep-grid"></div>
+      </section>
+
+      <!-- Seed Variation -->
+      <section id="view-seeds" class="view" hidden>
+        <h2>Seed Variation Analysis</h2>
+        <p class="description">Pattern uniqueness across different random seeds.</p>
+        <div id="seeds-summary"></div>
+        <div id="seeds-container"></div>
+      </section>
+    </main>
+
+    <footer>
+      <p>Generated <span id="gen-time">-</span> | <span id="num-patterns">-</span> patterns analyzed</p>
+    </footer>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

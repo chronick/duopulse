@@ -174,7 +174,7 @@ LOGDIR ?= /tmp
 # Build Targets
 ###############################################################################
 
-.PHONY: all clean rebuild daisy-build daisy-update libdaisy-build libdaisy-update program build-debug program-debug test test-coverage listen ports help pattern-viz run-pattern-viz pattern-sweep pattern-html expressiveness-report expressiveness-quick
+.PHONY: all clean rebuild daisy-build daisy-update libdaisy-build libdaisy-update program build-debug program-debug test test-coverage listen ports help pattern-viz run-pattern-viz pattern-sweep pattern-html expressiveness-report expressiveness-quick evals evals-generate evals-serve evals-deploy
 
 # Default target
 all: $(ELF) $(BIN) $(HEX)
@@ -463,6 +463,46 @@ expressiveness-quick: $(PATTERN_VIZ)
 	@python3 scripts/evaluate-expressiveness.py --pattern-viz=$(PATTERN_VIZ) --quick
 
 ###############################################################################
+# Pattern Evaluation Dashboard (tools/evals/)
+###############################################################################
+
+EVALS_DIR := tools/evals
+
+# Build and generate all evaluation data
+evals: $(PATTERN_VIZ)
+	@echo "Setting up evaluation dashboard..."
+	@cd $(EVALS_DIR) && npm install --silent
+	@echo "Generating pattern data..."
+	@cd $(EVALS_DIR) && PATTERN_VIZ=$(CURDIR)/$(PATTERN_VIZ) node generate-patterns.js
+	@echo "Computing expressiveness metrics..."
+	@cd $(EVALS_DIR) && node evaluate-expressiveness.js
+	@echo ""
+	@echo "Evaluation dashboard ready!"
+	@echo "Run 'make evals-serve' to start local server"
+
+# Generate pattern data only
+evals-generate: $(PATTERN_VIZ)
+	@cd $(EVALS_DIR) && npm install --silent
+	@cd $(EVALS_DIR) && PATTERN_VIZ=$(CURDIR)/$(PATTERN_VIZ) node generate-patterns.js
+	@cd $(EVALS_DIR) && node evaluate-expressiveness.js
+
+# Serve evaluation dashboard locally
+evals-serve: $(EVALS_DIR)/public/data/metadata.json
+	@echo "Starting local server at http://localhost:3000"
+	@cd $(EVALS_DIR) && npx serve public -l 3000
+
+$(EVALS_DIR)/public/data/metadata.json: $(PATTERN_VIZ)
+	@$(MAKE) evals-generate
+
+# Deploy to GitHub Pages (builds to docs/evals/)
+evals-deploy: evals-generate
+	@echo "Deploying evaluation dashboard to docs/evals/..."
+	@mkdir -p docs/evals
+	@cp -r $(EVALS_DIR)/public/* docs/evals/
+	@echo "Dashboard deployed to docs/evals/"
+	@echo "Commit and push to publish via GitHub Pages"
+
+###############################################################################
 # Help Target
 ###############################################################################
 
@@ -490,6 +530,10 @@ help:
 	@echo "  pattern-html     - Generate HTML/SVG pattern visualization (docs/patterns.html)"
 	@echo "  expressiveness-report - Run full expressiveness evaluation"
 	@echo "  expressiveness-quick  - Run quick expressiveness evaluation"
+	@echo "  evals            - Build pattern evaluation dashboard (tools/evals/)"
+	@echo "  evals-generate   - Generate evaluation data only"
+	@echo "  evals-serve      - Serve evaluation dashboard locally (port 3000)"
+	@echo "  evals-deploy     - Deploy dashboard to docs/evals/ for GitHub Pages"
 	@echo "  help             - Show this help message"
 	@echo ""
 	@echo "Variables:"
