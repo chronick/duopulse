@@ -345,8 +345,8 @@ nav {
    ============================================================================ */
 
 .presets-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+  display: flex;
+  flex-direction: column;
   gap: 16px;
 }
 
@@ -605,6 +605,308 @@ nav {
   gap: 16px;
 }
 
+/* ============================================================================
+   Main Layout with Floating Player
+   ============================================================================ */
+
+.app-layout {
+  display: flex;
+  gap: 20px;
+}
+
+.main-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.player-sidebar {
+  width: 280px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 20px;
+  height: fit-content;
+  max-height: calc(100vh - 40px);
+}
+
+/* ============================================================================
+   Player Panel
+   ============================================================================ */
+
+.player-panel {
+  background: var(--bg-secondary);
+  border: 1px solid var(--grid-line);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.player-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--grid-line);
+}
+
+.player-header h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.player-kit-select select {
+  padding: 4px 8px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--grid-line);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-size: 12px;
+}
+
+/* Transport buttons */
+.player-transport {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.transport-btn {
+  width: 48px;
+  height: 48px;
+  border: 1px solid var(--grid-line);
+  border-radius: 8px;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.transport-btn:hover {
+  background: var(--bg-card);
+  border-color: var(--v2-color);
+}
+
+.transport-btn.active {
+  background: var(--v2-color);
+  border-color: var(--v2-color);
+}
+
+.transport-btn svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
+
+.transport-btn.active svg {
+  fill: var(--bg-primary);
+}
+
+/* BPM controls */
+.player-bpm {
+  margin-bottom: 16px;
+}
+
+.player-bpm label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.player-bpm .bpm-label {
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  width: 32px;
+}
+
+.player-bpm input[type="number"] {
+  width: 60px;
+  padding: 4px 8px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--grid-line);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-size: 14px;
+  text-align: center;
+}
+
+.player-bpm input[type="range"] {
+  width: 100%;
+  height: 4px;
+  background: var(--bg-tertiary);
+  border-radius: 2px;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.player-bpm input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  background: var(--v2-color);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+/* Mute buttons */
+.player-mutes {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.mute-btn {
+  flex: 1;
+  padding: 8px;
+  border: 1px solid var(--grid-line);
+  border-radius: 6px;
+  background: var(--bg-tertiary);
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.15s ease;
+}
+
+.mute-btn .mute-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.mute-btn .mute-state {
+  display: block;
+  font-size: 10px;
+  color: var(--success);
+  margin-top: 2px;
+}
+
+.mute-btn.v1 { border-color: var(--v1-dim); }
+.mute-btn.v2 { border-color: var(--v2-dim); }
+.mute-btn.aux { border-color: var(--aux-dim); }
+
+.mute-btn.v1 .mute-label { color: var(--v1-color); }
+.mute-btn.v2 .mute-label { color: var(--v2-color); }
+.mute-btn.aux .mute-label { color: var(--aux-color); }
+
+.mute-btn:hover {
+  background: var(--bg-card);
+}
+
+.mute-btn.muted {
+  background: var(--bg-tertiary);
+  opacity: 0.6;
+}
+
+.mute-btn.muted .mute-state {
+  color: var(--error);
+}
+
+/* Step display */
+.player-step-display {
+  margin-bottom: 16px;
+  padding: 12px;
+  background: var(--bg-tertiary);
+  border-radius: 6px;
+}
+
+.step-indicator {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.step-dot {
+  width: 12px;
+  height: 12px;
+  background: var(--grid-line);
+  border-radius: 2px;
+  transition: background 0.1s ease;
+}
+
+.step-dot:nth-child(4n+1) {
+  background: var(--grid-line-strong);
+}
+
+.step-dot.active {
+  background: var(--v2-color);
+  box-shadow: 0 0 8px var(--v2-color);
+}
+
+.step-counter {
+  font-size: 11px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+/* Pattern info */
+.player-pattern-info {
+  padding-top: 12px;
+  border-top: 1px solid var(--grid-line);
+}
+
+.player-pattern-info .pattern-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.player-pattern-info .pattern-params {
+  display: flex;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+/* ============================================================================
+   Selectable Pattern Grids
+   ============================================================================ */
+
+.pattern-grid.selectable {
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  margin: -2px;
+  padding: 10px;
+}
+
+.pattern-grid.selectable:hover {
+  background: var(--bg-card);
+  border-color: var(--grid-line-strong);
+}
+
+.pattern-grid.selectable.selected {
+  border-color: var(--v2-color);
+  background: rgba(78, 205, 196, 0.05);
+}
+
+/* Keyboard shortcuts hint */
+.player-shortcuts {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--grid-line);
+  font-size: 10px;
+  color: var(--text-dim);
+}
+
+.player-shortcuts kbd {
+  display: inline-block;
+  padding: 2px 5px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--grid-line);
+  border-radius: 3px;
+  font-family: monospace;
+  font-size: 10px;
+}
+
 /* Footer */
 footer {
   margin-top: 40px;
@@ -616,6 +918,35 @@ footer {
 }
 
 /* Responsive */
+@media (max-width: 1200px) {
+  .app-layout {
+    flex-direction: column;
+  }
+
+  .player-sidebar {
+    width: 100%;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    top: auto;
+    max-height: none;
+    z-index: 100;
+    padding: 0 20px 20px;
+    background: var(--bg-primary);
+    border-top: 1px solid var(--grid-line);
+  }
+
+  .player-panel {
+    max-width: 400px;
+    margin: 0 auto;
+  }
+
+  .main-content {
+    padding-bottom: 320px;
+  }
+}
+
 @media (max-width: 900px) {
   .pentagon-flex {
     flex-direction: column;

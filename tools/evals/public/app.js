@@ -3,6 +3,8 @@
  * Frontend JavaScript - fetches JSON and renders pattern visualizations
  */
 
+import { Player, createPlayerUI } from './player.js';
+
 // State
 let data = {
   metadata: null,
@@ -15,6 +17,9 @@ let data = {
 };
 
 let currentView = 'overview';
+let player = null;
+let playerUI = null;
+let selectedPatternId = null;
 
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => document.querySelectorAll(sel);
@@ -166,7 +171,8 @@ function renderPentagonRadarSVG(pentagonStats, size = 380) {
 // Pattern Grid Rendering
 // ============================================================================
 
-function renderPatternGrid(pattern, compact = false) {
+function renderPatternGrid(pattern, options = {}) {
+  const { compact = false, patternId = null, name = '' } = options;
   const { steps, params } = pattern;
   const length = params.length;
 
@@ -207,7 +213,52 @@ function renderPatternGrid(pattern, compact = false) {
     </div>
   `;
 
-  return `<div class="pattern-grid">${rows}</div>${compact ? '' : hitCounts}`;
+  const isSelected = patternId && patternId === selectedPatternId;
+  const selectableClass = patternId ? 'selectable' : '';
+  const selectedClass = isSelected ? 'selected' : '';
+  const dataAttr = patternId ? `data-pattern-id="${patternId}" data-pattern-name="${name}"` : '';
+
+  return `<div class="pattern-grid ${selectableClass} ${selectedClass}" ${dataAttr}>${rows}</div>${compact ? '' : hitCounts}`;
+}
+
+// Pattern selection handler
+function handlePatternClick(e) {
+  const grid = e.target.closest('.pattern-grid.selectable');
+  if (!grid) return;
+
+  const patternId = grid.dataset.patternId;
+  const patternName = grid.dataset.patternName || 'Pattern';
+
+  // Find pattern data
+  let pattern = null;
+
+  // Check presets
+  if (patternId.startsWith('preset-')) {
+    const idx = parseInt(patternId.replace('preset-', ''), 10);
+    pattern = data.presets[idx]?.pattern;
+  }
+  // Check sweeps
+  else if (patternId.startsWith('sweep-')) {
+    const [, param, idx] = patternId.match(/sweep-(\w+)-(\d+)/);
+    pattern = data.sweeps[param]?.[parseInt(idx, 10)];
+  }
+
+  if (pattern && player) {
+    selectedPatternId = patternId;
+    player.setPattern(pattern);
+    playerUI?.updatePatternInfo(pattern, patternName);
+    playerUI?.updateStepCount(pattern.params?.length || 16);
+
+    // Update selection visuals
+    $$('.pattern-grid.selected').forEach(g => g.classList.remove('selected'));
+    grid.classList.add('selected');
+  }
+}
+
+// Attach pattern click handlers
+function attachPatternListeners() {
+  document.removeEventListener('click', handlePatternClick);
+  document.addEventListener('click', handlePatternClick);
 }
 
 // ============================================================================
@@ -363,6 +414,7 @@ function renderPresetsView() {
 
   data.presetMetrics.forEach((preset, i) => {
     const patternData = data.presets[i].pattern;
+    const patternId = `preset-${i}`;
 
     const paramsHtml = Object.entries(preset.params)
       .filter(([k]) => !['seed', 'length'].includes(k))
@@ -375,11 +427,13 @@ function renderPresetsView() {
       <h3>${preset.name}</h3>
       <p class="preset-desc">${preset.description}</p>
       <div class="preset-params">${paramsHtml}</div>
-      ${renderPatternGrid(patternData)}
+      ${renderPatternGrid(patternData, { patternId, name: preset.name })}
     `;
 
     container.appendChild(card);
   });
+
+  attachPatternListeners();
 }
 
 // ============================================================================
@@ -397,11 +451,13 @@ function renderSweepsView() {
   container.innerHTML = patterns.map((pattern, i) => {
     const metric = metrics[i];
     const paramValue = pattern.params[paramName];
+    const patternId = `sweep-${paramName}-${i}`;
+    const name = `${paramName.toUpperCase()} ${(paramValue * 100).toFixed(0)}%`;
 
     return `
       <div class="sweep-item">
         <div class="sweep-value">${paramName.toUpperCase()} = ${paramValue.toFixed(2)}</div>
-        ${renderPatternGrid(pattern, true)}
+        ${renderPatternGrid(pattern, { compact: true, patternId, name })}
         <div style="font-size: 11px; color: var(--text-secondary); margin-top: 8px;">
           Zone: <span style="color: ${metric.pentagon.zone === 'stable' ? '#44aa44' : metric.pentagon.zone === 'syncopated' ? '#aaaa44' : '#aa4444'}">${metric.pentagon.zone}</span>
           | Score: <span style="color: ${metric.pentagon.composite > 0.5 ? '#44ff44' : '#ff6666'}">${Math.round(metric.pentagon.composite * 100)}%</span>
@@ -409,6 +465,8 @@ function renderSweepsView() {
       </div>
     `;
   }).join('');
+
+  attachPatternListeners();
 }
 
 // ============================================================================
@@ -494,6 +552,49 @@ function showView(viewName) {
 }
 
 // ============================================================================
+// Player Initialization
+// ============================================================================
+
+async function initPlayer() {
+  player = new Player();
+  await player.init();
+
+  const container = $('#player-container');
+  playerUI = createPlayerUI(player, container);
+
+  // Keyboard shortcuts
+  document.addEventListener('keydown', (e) => {
+    // Ignore if typing in input
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+
+    switch (e.code) {
+      case 'Space':
+        e.preventDefault();
+        player.toggle();
+        break;
+      case 'Escape':
+        player.stop();
+        break;
+      case 'Digit1':
+        player.toggleMute('v1');
+        document.querySelector('#mute-v1')?.classList.toggle('muted', player.getMute('v1'));
+        document.querySelector('#mute-v1 .mute-state').textContent = player.getMute('v1') ? 'OFF' : 'ON';
+        break;
+      case 'Digit2':
+        player.toggleMute('v2');
+        document.querySelector('#mute-v2')?.classList.toggle('muted', player.getMute('v2'));
+        document.querySelector('#mute-v2 .mute-state').textContent = player.getMute('v2') ? 'OFF' : 'ON';
+        break;
+      case 'Digit3':
+        player.toggleMute('aux');
+        document.querySelector('#mute-aux')?.classList.toggle('muted', player.getMute('aux'));
+        document.querySelector('#mute-aux .mute-state').textContent = player.getMute('aux') ? 'OFF' : 'ON';
+        break;
+    }
+  });
+}
+
+// ============================================================================
 // Initialization
 // ============================================================================
 
@@ -520,6 +621,9 @@ async function init() {
     const totalPatterns = data.seedVariation?.tests?.length * 8 || 0;
     $('#num-patterns').textContent = totalPatterns;
   }
+
+  // Initialize player
+  await initPlayer();
 
   showView('overview');
 }
