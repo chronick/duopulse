@@ -1,3 +1,9 @@
+---
+id: 43
+slug: v5-shimmer-seed-variation
+status: completed
+---
+
 # Task 43: V5 Shimmer Seed Variation [v5-shimmer-seed-variation]
 
 ## Context

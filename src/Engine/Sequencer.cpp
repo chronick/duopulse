@@ -745,45 +745,6 @@ void Sequencer::SetFlavorCV(float value)
 }
 
 // =============================================================================
-// Legacy v3 Compatibility
-// =============================================================================
-
-void Sequencer::SetTempoControl(float value)
-{
-    float tempoControl = Clamp(value, 0.0f, 1.0f);
-    // Map 0-1 to 90-160 BPM (v3 range)
-    float newBpm = 90.0f + (tempoControl * 70.0f);
-    SetBpm(newBpm);
-}
-
-void Sequencer::SetGateTime(float value)
-{
-    float gateTime = Clamp(value, 0.0f, 1.0f);
-    // Map 0-1 to 5-50ms
-    float gateMs = 5.0f + (gateTime * 45.0f);
-    int samples = static_cast<int>(sampleRate_ * gateMs / 1000.0f);
-    if (samples < 1) samples = 1;
-
-    state_.outputs.anchorTrigger.triggerDurationSamples = samples;
-    state_.outputs.shimmerTrigger.triggerDurationSamples = samples;
-    state_.outputs.aux.trigger.triggerDurationSamples = samples;
-}
-
-void Sequencer::SetClockDiv(float value)
-{
-    float div = Clamp(value, 0.0f, 1.0f);
-    // Map to 1, 2, 4, 8
-    if (div < 0.25f)
-        SetClockDivision(1);
-    else if (div < 0.5f)
-        SetClockDivision(2);
-    else if (div < 0.75f)
-        SetClockDivision(4);
-    else
-        SetClockDivision(8);
-}
-
-// =============================================================================
 // State Queries
 // =============================================================================
 

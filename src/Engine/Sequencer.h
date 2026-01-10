@@ -187,30 +187,6 @@ public:
     void SetFlavorCV(float value);
 
     // =========================================================================
-    // Legacy v3 Compatibility (forward to v4 equivalents)
-    // =========================================================================
-
-    void SetAnchorDensity(float value) { SetEnergy(value); }
-    void SetShimmerDensity(float value) { SetBalance(1.0f - value); }
-    void SetBroken(float value) { SetFlavorCV(value); }
-    void SetFuse(float value) { SetBalance(value); }
-    void SetLength(int bars) { SetPhraseLength(bars); }
-    void SetCouple(float value) { SetVoiceCoupling(value); }
-    void SetRatchet(float value) { SetBuild(value); }
-    void SetAnchorAccent(float value) { SetPunch(value); }
-    void SetShimmerAccent(float value) { (void)value; }
-    void SetContour(float value) { (void)value; }
-    void SetTempoControl(float value);
-    void SetSwingTaste(float value) { SetSwing(value); }
-    void SetGateTime(float value);
-    void SetHumanize(float value) { (void)value; }
-    void SetClockDiv(float value);
-    void SetFlux(float value) { SetFlavorCV(value); }
-    void SetOrbit(float value) { SetVoiceCoupling(value); }
-    void SetTerrain(float value) { (void)value; }
-    void SetGrid(float value) { (void)value; }
-
-    // =========================================================================
     // State Queries
     // =========================================================================
 
