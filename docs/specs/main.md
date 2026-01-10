@@ -9,12 +9,22 @@
 
 | Task | Spec Section | Change |
 |------|--------------|--------|
-| **Task 40** | Generation Pipeline | PatternGenerator class extraction |
+| **Task 46** | SHAPE Algorithm | V5.5 noise formula fix |
+| **Task 47** | ACCENT Velocity | V5.5 velocity variation (ghost notes) |
+| **Task 48** | Generation Pipeline | V5.5 micro-displacement |
+| **Task 49** | AUX Output | V5.5 AUX style zones, beat 1 enforcement |
+| **Task 50** | Generation Pipeline | V5.5 two-pass generation (conditional) |
 
 ### Recent Changes
 
 | Task | Date | Changes |
 |------|------|---------|
+| **Task 45** | 2026-01-08 | Pattern generator extraction (shared firmware/viz module) |
+| **Task 44** | 2026-01-07 | Anchor seed variation fix |
+| **Task 43** | 2026-01-07 | Shimmer seed variation fix |
+| **Task 42** | 2026-01-07 | V4 dead code cleanup (~2,630 lines removed) |
+| **Task 41** | 2026-01-06 | SHAPE budget zone boundaries fix |
+| **Task 40** | 2026-01-06 | PatternGenerator class extraction |
 | **Task 39** | 2026-01-06 | SHAPE-modulated hit budget for pattern variation |
 | **Task 38** | 2026-01-06 | C++ pattern visualization test tool |
 | **Task 37** | 2026-01-04 | Code review critical fixes (bounds, null checks) |
