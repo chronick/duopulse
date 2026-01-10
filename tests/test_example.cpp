@@ -21,7 +21,7 @@ TEST_CASE("Sequencer produces gates and CV pulses", "[sequencer]")
 {
     Sequencer seq;
     seq.Init(48000.0f);
-    seq.SetTempoControl(0.5f);
+    seq.SetBpm(125.0f);  // V5 API (was SetTempoControl)
 
     std::size_t kickSamples = 0;
     std::size_t snareSamples = 0;
@@ -53,7 +53,7 @@ TEST_CASE("Kick accents stay isolated from hi-hat CV", "[sequencer]")
 {
     Sequencer seq;
     seq.Init(48000.0f);
-    seq.SetTempoControl(0.5f);
+    seq.SetBpm(125.0f);  // V5 API (was SetTempoControl)
 
     seq.ForceNextStepTriggers(true, false, false, true);
 

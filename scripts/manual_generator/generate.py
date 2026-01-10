@@ -25,8 +25,6 @@ STATIC_DIR = BASE_DIR / "static"
 # Source files to combine into the manual
 SPEC_FILES = [
     DOCS_DIR / "specs" / "main.md",
-    DOCS_DIR / "misc" / "duopulse-v4" / "duopulse-v4-spec_1.md",
-    DOCS_DIR / "misc" / "duopulse-v4" / "duopulse-v4-visual-guide.md",
 ]
 
 def generate_manual():
@@ -80,7 +78,7 @@ def generate_manual():
     # Data for template
     context = {
         "content": html_content,
-        "title": "DuoPulse v4",
+        "title": "DuoPulse v5",
         "css_path": "static/style.css",
         # We might want to inject the cover image if it exists
         "cover_image": "images/patch_init_front_square.webp"

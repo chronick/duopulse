@@ -40,16 +40,15 @@
 #define FREQ_TO_RAD(freq, sr) ((freq) * 2.0f * 3.14159265359f / (sr))
 
 // =============================================================================
-// DuoPulse v4: Full Architecture Overhaul
+// DuoPulse v5: Simplified Algorithmic Sequencer
 // =============================================================================
-// v4 is a complete rewrite. v3 flag is disabled during migration.
-// The v3 code is being removed and replaced with v4 architecture.
+// v5 simplified the control surface: zero shift layers, 8 direct parameters.
 //
-// v4 key changes:
-//   - 2D Pattern Field with 3×3 archetype grid per genre
-//   - Hit budget system with Gumbel Top-K sampling
-//   - ENERGY/PUNCH, BUILD/GENRE, FIELD X/DRIFT, FIELD Y/BALANCE controls
-//   - FLAVOR parameter (from Audio In R) controls BROKEN timing stack
+// v5 key changes from v4:
+//   - SHAPE-based procedural generation (replaced archetype grid)
+//   - COMPLEMENT voice relationship (replaced coupling modes)
+//   - ACCENT velocity control (replaced PUNCH)
+//   - Zero shift layers (ENERGY/SHAPE/AXIS X/AXIS Y + CLOCK/SWING/DRIFT/ACCENT)
 //
-// #define USE_PULSE_FIELD_V3 1  // DISABLED: v3 code removed for v4 migration
+// See docs/specs/ for complete specification.
 

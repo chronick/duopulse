@@ -13,101 +13,68 @@ This project provides a custom firmware implementation for the Electro-Smith Pat
 - Multiple GPIO pins for buttons, LEDs, and encoders
 - STM32H7 microcontroller with floating-point unit
 
-## DuoPulse v4: 2-Voice Percussive Sequencer
+## DuoPulse v5: 2-Voice Algorithmic Drum Sequencer
 
-DuoPulse v4 is an opinionated 2-voice percussion sequencer designed for electronic music from club-ready techno to experimental IDM. Version 4 features a **2D pattern field** with curated archetype grids, deterministic hit budgets, and ergonomic control pairings that map directly to musical intent.
+DuoPulse v5 is an opinionated 2-voice percussion sequencer designed for electronic music from club-ready techno to experimental IDM. Version 5 features **zero shift layers** - every parameter is directly accessible through 8 knobs across two modes.
 
 ### Core Design Philosophy
 
-1. **Musicality over flexibility**: Every output should be danceable/usable
-2. **Playability**: Controls map to intent (ENERGY = tension, GENRE = feel)
-3. **Deterministic variation**: Same settings + same seed = identical output
-4. **Hit budgets over coin flips**: Guarantee density matches intent
-
-### Pattern Field System
-
-Navigate a **3×3 grid of archetype patterns** per genre (27 total):
-
-```
-        Y: COMPLEXITY
-            ↑
-    [0,2]   [1,2]   [2,2]
-    busy    poly    chaos
-
-    [0,1]   [1,1]   [2,1]
-    driving groovy  broken
-
-    [0,0]   [1,0]   [2,0]
-    minimal steady  displaced
-            ────────────────→
-            X: SYNCOPATION
-```
+1. **Zero shift layers**: Every parameter directly accessible
+2. **CV law**: CV1-4 always modulate performance parameters regardless of mode
+3. **Knob pairing**: Related functions across Performance/Config modes
+4. **Deterministic variation**: Same settings + seed = identical output
 
 ### Control Layout
 
-#### Performance Mode (Switch A) — Ergonomic Pairings
+#### Performance Mode (Switch UP)
 
-| Knob | Domain | Primary (CV-able) | +Shift |
-|------|--------|-------------------|--------|
-| K1 | **Intensity** | ENERGY (hit density) | PUNCH (velocity dynamics) |
-| K2 | **Drama** | BUILD (phrase arc) | GENRE (Techno/Tribal/IDM) |
-| K3 | **Pattern** | FIELD X (syncopation) | DRIFT (evolution rate) |
-| K4 | **Texture** | FIELD Y (complexity) | BALANCE (voice ratio) |
+| Knob | Parameter | 0% | 100% |
+|------|-----------|-----|------|
+| K1 | **ENERGY** | Sparse | Busy |
+| K2 | **SHAPE** | Stable (euclidean) | Wild (weighted random) |
+| K3 | **AXIS X** | Grounded (downbeats) | Floating (offbeats) |
+| K4 | **AXIS Y** | Simple | Complex |
 
-#### Config Mode (Switch B) — Settings
+#### Config Mode (Switch DOWN)
 
-| Knob | Domain | Primary | +Shift |
-|------|--------|---------|--------|
-| K1 | **Grid** | PATTERN LENGTH (16/24/32/64) | *(auto-derived phrase)* |
-| K2 | **Timing** | SWING (0-100%) | CLOCK DIV (÷8 to ×8) |
-| K3 | **Output** | AUX MODE (Hat/Fill/Phrase/Event) | AUX DENSITY (50-200%) |
-| K4 | **Behavior** | *(hardcoded STEP reset)* | VOICE COUPLING (Ind/Shadow) |
+| Knob | Parameter | 0% | 100% |
+|------|-----------|-----|------|
+| K1 | **CLOCK DIV** | ÷4 (slow) | ×4 (fast) |
+| K2 | **SWING** | Straight | Heavy swing |
+| K3 | **DRIFT** | Locked (same each phrase) | Evolving |
+| K4 | **ACCENT** | Flat (all hits equal) | Dynamic (ghosts to accents) |
 
 ### Key Features
 
-**ENERGY Zones**: Behavior changes based on energy level
-- 0-20% MINIMAL: Sparse skeleton, tight timing
-- 20-50% GROOVE: Stable, danceable, moderate fills
-- 50-75% BUILD: Increasing activity, phrase-end fills
-- 75-100% PEAK: Maximum activity, ratchets allowed
+**SHAPE Zones**: Three-way pattern character blending
+- 0-30% STABLE: Humanized euclidean, techno, four-on-floor
+- 30-70% SYNCOPATED: Funk, displaced, tension
+- 70-100% WILD: IDM, chaos, weighted random
 
-**BUILD Phases**: Dynamic phrase arcs
-- 0-60% GROOVE: Stable pattern
-- 60-87.5% BUILD: Ramping density + velocity
-- 87.5-100% FILL: All accents, peak energy
+**Voice Relationship (COMPLEMENT)**: Voice 2 (shimmer) fills gaps in Voice 1 (anchor) pattern. DRIFT controls placement variation.
 
-**PUNCH Dynamics**: Velocity contrast (Task 21 refinement)
-- velocityFloor: 65% → 30% (ghost notes audible)
-- accentBoost: +15% → +45% (accents pop dramatically)
+**ACCENT Velocity**: Position-aware dynamics from ghost notes to accents based on metric weight.
 
-**BALANCE Range**: Voice ratio (Task 21/22 extension)
-- 0% = shimmer silent
-- 50% = shimmer 75% of anchor
-- 100% = shimmer 150% of anchor (shimmer-heavy)
+**AUX Output**: Fill Gate (default) or secret Hat Burst mode via Hold+Switch gesture.
 
-**DRIFT Seed System**: Stratified stability per step
-- Downbeats lock until DRIFT > 100%
-- Quarter notes lock until DRIFT > 70%
-- Ghost notes vary at DRIFT > 20%
+### CV Inputs (Always Modulate Performance Params)
 
-### CV Inputs (Modulate Performance Primary Controls)
+| CV | Modulates | Range |
+|----|-----------|-------|
+| CV 1 | ENERGY | ±50% |
+| CV 2 | SHAPE | ±50% |
+| CV 3 | AXIS X | ±50% |
+| CV 4 | AXIS Y | ±50% |
 
-| CV | Modulates | Use Case |
-|----|-----------|----------|
-| CV 1 | ENERGY | Sidechain from kick, intensity envelope |
-| CV 2 | BUILD | LFO for automatic phrase dynamics |
-| CV 3 | FIELD X | Navigate syncopation axis |
-| CV 4 | FIELD Y | Navigate complexity axis |
-
-### Power-On Behavior (Task 24)
+### Power-On Behavior
 
 **Fresh-start boot**: All settings reset to musical defaults
 - Performance knobs read from hardware immediately
-- Config resets: 32 steps, 50% swing, HAT mode, INDEPENDENT coupling
-- Shift resets: PUNCH=50%, GENRE=Techno, DRIFT=0%, BALANCE=50%
+- ENERGY=50%, SHAPE=30%, AXIS X/Y=50%
+- CLOCK DIV=×1, SWING=50%, DRIFT=0%, ACCENT=50%
 - **Nothing persists** across power cycles
 
-See `docs/specs/main.md` for the complete specification.
+See [docs/specs/](docs/specs/) for the complete specification.
 
 ## Prerequisites
 
