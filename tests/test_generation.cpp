@@ -87,10 +87,114 @@ TEST_CASE("Aux budget respects density setting", "[hit-budget]")
     }
 }
 
+TEST_CASE("SHAPE affects anchor budget", "[hit-budget][shape]")
+{
+    SECTION("V5: Stable zone has most anchor hits")
+    {
+        // V5 Spec 5.4: Anchor gets FEWER hits as SHAPE increases
+        // Stable (0-30%): 100%, Syncopated (30-70%): 90-100%, Wild (70-100%): 80-90%
+        int stable = ComputeAnchorBudget(0.5f, EnergyZone::GROOVE, 32, 0.15f);
+        int sync = ComputeAnchorBudget(0.5f, EnergyZone::GROOVE, 32, 0.50f);
+        REQUIRE(stable >= sync);
+    }
+
+    SECTION("V5: Wild zone has fewest anchor hits")
+    {
+        int sync = ComputeAnchorBudget(0.5f, EnergyZone::GROOVE, 32, 0.50f);
+        int wild = ComputeAnchorBudget(0.5f, EnergyZone::GROOVE, 32, 0.85f);
+        REQUIRE(sync >= wild);
+    }
+
+    SECTION("Anchor shape multiplier values are correct (V5 Spec 5.4)")
+    {
+        // Stable zone (0-30%): 100%
+        float anchorMult = GetAnchorBudgetMultiplier(0.0f);
+        REQUIRE(anchorMult == Catch::Approx(1.0f).margin(0.01f));
+
+        anchorMult = GetAnchorBudgetMultiplier(0.29f);
+        REQUIRE(anchorMult == Catch::Approx(1.0f).margin(0.01f));
+
+        // Syncopated zone (30-70%): 100% -> 90%
+        anchorMult = GetAnchorBudgetMultiplier(0.50f);  // midpoint = 0.5 of 0.40 range = 95%
+        REQUIRE(anchorMult == Catch::Approx(0.95f).margin(0.01f));
+
+        anchorMult = GetAnchorBudgetMultiplier(0.70f);  // end of sync zone = 90%
+        REQUIRE(anchorMult == Catch::Approx(0.90f).margin(0.01f));
+
+        // Wild zone (70-100%): 90% -> 80%
+        anchorMult = GetAnchorBudgetMultiplier(1.0f);
+        REQUIRE(anchorMult == Catch::Approx(0.80f).margin(0.01f));
+    }
+
+    SECTION("Shimmer shape multiplier values are correct (V5 Spec 5.4)")
+    {
+        // Stable zone (0-30%): 100%
+        float shimmerMult = GetShimmerBudgetMultiplier(0.0f);
+        REQUIRE(shimmerMult == Catch::Approx(1.0f).margin(0.01f));
+
+        shimmerMult = GetShimmerBudgetMultiplier(0.29f);
+        REQUIRE(shimmerMult == Catch::Approx(1.0f).margin(0.01f));
+
+        // Syncopated zone (30-70%): 110% -> 130%
+        shimmerMult = GetShimmerBudgetMultiplier(0.50f);  // midpoint = 0.5 of 0.40 range = 120%
+        REQUIRE(shimmerMult == Catch::Approx(1.20f).margin(0.01f));
+
+        shimmerMult = GetShimmerBudgetMultiplier(0.70f);  // end of sync zone = 130%
+        REQUIRE(shimmerMult == Catch::Approx(1.30f).margin(0.01f));
+
+        // Wild zone (70-100%): 130% -> 150%
+        shimmerMult = GetShimmerBudgetMultiplier(1.0f);
+        REQUIRE(shimmerMult == Catch::Approx(1.50f).margin(0.01f));
+    }
+}
+
+TEST_CASE("SHAPE affects shimmer budget", "[hit-budget][shape]")
+{
+    SECTION("Shimmer increases with SHAPE (V5 divergence)")
+    {
+        // V5 Spec 5.4: Shimmer gets MORE hits as SHAPE increases
+        // Stable zone: shimmer = 100% base
+        // Syncopated zone: shimmer = 100-130% base
+        // Wild zone: shimmer = 130-150% base
+        int shimmerStable = ComputeShimmerBudget(0.5f, 0.5f, EnergyZone::GROOVE, 32, 0.15f);
+        int shimmerSync = ComputeShimmerBudget(0.5f, 0.5f, EnergyZone::GROOVE, 32, 0.50f);
+        int shimmerWild = ComputeShimmerBudget(0.5f, 0.5f, EnergyZone::GROOVE, 32, 0.85f);
+
+        // Shimmer budget should increase as SHAPE increases
+        REQUIRE(shimmerWild >= shimmerSync);
+        REQUIRE(shimmerSync >= shimmerStable);
+    }
+}
+
+TEST_CASE("ComputeBarBudget respects SHAPE parameter", "[hit-budget][shape]")
+{
+    BarBudget budgetStable;
+    BarBudget budgetNormal;
+    BarBudget budgetWild;
+
+    ComputeBarBudget(0.5f, 0.5f, EnergyZone::GROOVE, AuxDensity::NORMAL, 32, 1.0f, 0.15f, budgetStable);
+    ComputeBarBudget(0.5f, 0.5f, EnergyZone::GROOVE, AuxDensity::NORMAL, 32, 1.0f, 0.50f, budgetNormal);
+    ComputeBarBudget(0.5f, 0.5f, EnergyZone::GROOVE, AuxDensity::NORMAL, 32, 1.0f, 0.85f, budgetWild);
+
+    SECTION("Anchor hits vary with SHAPE (V5: anchor decreases with SHAPE)")
+    {
+        // V5 Spec 5.4: Anchor gets FEWER hits as SHAPE increases
+        REQUIRE(budgetStable.anchorHits >= budgetNormal.anchorHits);
+        REQUIRE(budgetWild.anchorHits <= budgetNormal.anchorHits);
+    }
+
+    SECTION("Shimmer hits vary with SHAPE (V5: shimmer increases with SHAPE)")
+    {
+        // V5 Spec 5.4: Shimmer gets MORE hits as SHAPE increases
+        REQUIRE(budgetStable.shimmerHits <= budgetNormal.shimmerHits);
+        REQUIRE(budgetWild.shimmerHits >= budgetNormal.shimmerHits);
+    }
+}
+
 TEST_CASE("ComputeBarBudget fills all fields", "[hit-budget]")
 {
     BarBudget budget;
-    ComputeBarBudget(0.5f, 0.5f, EnergyZone::GROOVE, AuxDensity::NORMAL, 32, 1.0f, budget);
+    ComputeBarBudget(0.5f, 0.5f, EnergyZone::GROOVE, AuxDensity::NORMAL, 32, 1.0f, 0.5f, budget);
 
     REQUIRE(budget.anchorHits >= 1);
     REQUIRE(budget.shimmerHits >= 1);
@@ -285,56 +389,8 @@ TEST_CASE("Weighted selection favors high weights", "[gumbel]")
 // Voice Relation Tests
 // =============================================================================
 
-TEST_CASE("INDEPENDENT coupling allows overlap", "[voice-relation]")
-{
-    uint32_t anchor = 0x11111111;   // Quarter notes
-    uint32_t shimmer = 0x11111111;  // Same pattern
-
-    ApplyVoiceRelationship(anchor, shimmer, VoiceCoupling::INDEPENDENT, 32);
-
-    // Shimmer should be unchanged
-    REQUIRE(shimmer == 0x11111111);
-}
-
-// Task 22 Phase C1: INTERLOCK mode removed from UI but kept for backward compatibility
-// This test verifies the internal implementation still works
-TEST_CASE("INTERLOCK suppresses simultaneous hits", "[voice-relation]")
-{
-    uint32_t anchor = 0x11111111;   // Quarter notes
-    uint32_t shimmer = 0x33333333;  // Overlaps on quarters, plus extra
-
-    uint32_t originalShimmer = shimmer;
-    ApplyVoiceRelationship(anchor, shimmer, VoiceCoupling::INTERLOCK, 32);
-
-    // Shimmer should no longer overlap with anchor
-    REQUIRE((shimmer & anchor) == 0);
-
-    // But shimmer should still have some hits
-    REQUIRE(shimmer != 0);
-    REQUIRE(shimmer != originalShimmer);
-}
-
-TEST_CASE("SHADOW creates echo pattern", "[voice-relation]")
-{
-    uint32_t anchor = 0x00000001;  // Only step 0
-    uint32_t shimmer = 0xFFFFFFFF; // Full pattern (will be replaced)
-
-    ApplyVoiceRelationship(anchor, shimmer, VoiceCoupling::SHADOW, 32);
-
-    // Shimmer should now be step 1 (anchor delayed by 1)
-    REQUIRE(shimmer == 0x00000002);
-}
-
-TEST_CASE("Shadow wraps around pattern", "[voice-relation]")
-{
-    uint32_t anchor = 0x80000000;  // Step 31 only
-    uint32_t shimmer = 0xFFFFFFFF;
-
-    ApplyVoiceRelationship(anchor, shimmer, VoiceCoupling::SHADOW, 32);
-
-    // Shimmer should wrap to step 0
-    REQUIRE(shimmer == 0x00000001);
-}
+// V5: ApplyVoiceRelationship removed - use ApplyComplementRelationship instead
+// Tests for legacy coupling modes have been removed (Task 43)
 
 TEST_CASE("ShiftMaskLeft works correctly", "[voice-relation]")
 {
@@ -360,18 +416,7 @@ TEST_CASE("ShiftMaskLeft works correctly", "[voice-relation]")
     }
 }
 
-// Task 22 Phase C1: INTERLOCK mode removed from UI but kept for backward compatibility
-TEST_CASE("Gap-fill rescues interlock gaps", "[voice-relation]")
-{
-    // Create a pattern where interlock would create a big gap
-    uint32_t anchor = 0x00000001;   // Only step 0
-    uint32_t shimmer = 0x00000101;  // Steps 0 and 8
-
-    ApplyVoiceRelationship(anchor, shimmer, VoiceCoupling::INTERLOCK, 32);
-
-    // Step 8 shimmer should remain (not overlapping anchor)
-    REQUIRE((shimmer & 0x00000100) != 0);
-}
+// V5: ApplyVoiceRelationship removed - gap-fill tests moved to test_voice_complement.cpp
 
 TEST_CASE("FindLargestGap measures gaps correctly", "[voice-relation]")
 {
@@ -664,8 +709,8 @@ TEST_CASE("Full generation flow produces valid pattern", "[integration]")
         budget = ComputeShimmerBudget(0.5f, 0.5f, EnergyZone::GROOVE, 32);
         uint32_t shimmer = SelectHitsGumbelTopK(weights, eligibility, budget, 67890, 32, 1);
 
-        // Apply voice relation (Task 22 Phase C1: INTERLOCK kept for backward compat)
-        ApplyVoiceRelationship(anchor, shimmer, VoiceCoupling::INTERLOCK, 32);
+        // V5: ApplyVoiceRelationship removed - use ApplyComplementRelationship instead
+        // For this test, shimmer is used directly without voice relationship
 
         // Apply guard rails
         (void)ApplyHardGuardRails(anchor, shimmer, EnergyZone::GROOVE, Genre::TECHNO, 32);

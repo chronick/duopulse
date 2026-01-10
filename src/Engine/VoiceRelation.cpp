@@ -125,100 +125,327 @@ int FindGapStart(uint32_t mask, int minGapSize, int patternLength)
 }
 
 // =============================================================================
-// Voice Relationship Core
+// V5 COMPLEMENT Relationship (Task 30)
 // =============================================================================
 
-void ApplyInterlock(uint32_t anchorMask, uint32_t& shimmerMask, int patternLength)
+int FindGaps(uint32_t anchorMask, int patternLength, Gap* gaps)
 {
-    // Remove shimmer hits that coincide with anchor
-    shimmerMask &= ~anchorMask;
-}
-
-void ApplyShadow(uint32_t anchorMask, uint32_t& shimmerMask, int patternLength)
-{
-    // Shadow: shimmer echoes anchor with 1-step delay
-    // This replaces the shimmer mask entirely
-    shimmerMask = ShiftMaskLeft(anchorMask, 1, patternLength);
-}
-
-void ApplyVoiceRelationship(uint32_t anchorMask,
-                            uint32_t& shimmerMask,
-                            VoiceCoupling coupling,
-                            int patternLength)
-{
-    // Store original for potential gap-fill
-    uint32_t originalShimmer = shimmerMask;
-
-    switch (coupling)
+    if (patternLength <= 0 || gaps == nullptr)
     {
-        case VoiceCoupling::INDEPENDENT:
-            // No modification - voices can overlap
-            break;
-
-        case VoiceCoupling::INTERLOCK:
-            ApplyInterlock(anchorMask, shimmerMask, patternLength);
-
-            // Apply gap-fill if interlock created too large a gap
-            ApplyGapFill(anchorMask, shimmerMask, originalShimmer, 8, patternLength);
-            break;
-
-        case VoiceCoupling::SHADOW:
-            ApplyShadow(anchorMask, shimmerMask, patternLength);
-            break;
-
-        default:
-            break;
-    }
-}
-
-VoiceCoupling GetEffectiveCoupling(VoiceCoupling configCoupling,
-                                   float archetypeDefault,
-                                   bool useConfig)
-{
-    if (useConfig)
-    {
-        return configCoupling;
+        return 0;
     }
 
-    // Derive from archetype's default couple value
-    return GetVoiceCouplingFromValue(archetypeDefault);
-}
+    int clampedLength = std::min(patternLength, 32);
+    int gapCount = 0;
 
-void ApplyGapFill(uint32_t anchorMask,
-                  uint32_t& shimmerMask,
-                  uint32_t originalShimmer,
-                  int maxGap,
-                  int patternLength)
-{
-    // Check if there's a large gap in the combined pattern
-    uint32_t combined = anchorMask | shimmerMask;
-    int largestGap = FindLargestGap(combined, patternLength);
-
-    if (largestGap <= maxGap)
+    // Handle empty anchor mask (entire pattern is one gap)
+    if (anchorMask == 0)
     {
-        return;  // Gap is acceptable
+        gaps[0].start = 0;
+        gaps[0].length = clampedLength;
+        return 1;
     }
 
-    // Find the gap and try to fill it with original shimmer hits
-    int gapStart = FindGapStart(combined, largestGap, patternLength);
+    // Find all gaps by scanning for runs of zeros
+    int gapStart = -1;
 
-    if (gapStart < 0)
+    for (int i = 0; i < clampedLength; ++i)
     {
-        return;
-    }
+        bool isHit = (anchorMask & (1U << i)) != 0;
 
-    // Look for original shimmer hits within the gap
-    for (int offset = 0; offset < largestGap; ++offset)
-    {
-        int step = (gapStart + offset) % patternLength;
-
-        if ((originalShimmer & (1U << step)) != 0)
+        if (!isHit && gapStart < 0)
         {
-            // Restore this shimmer hit to fill the gap
-            shimmerMask |= (1U << step);
-            break;  // Only fill one hit to break up the gap
+            // Start of a new gap
+            gapStart = i;
+        }
+        else if (isHit && gapStart >= 0)
+        {
+            // End of current gap
+            if (gapCount < kMaxGaps)
+            {
+                gaps[gapCount].start = gapStart;
+                gaps[gapCount].length = i - gapStart;
+                gapCount++;
+            }
+            gapStart = -1;
         }
     }
+
+    // Handle gap that extends to end of pattern
+    if (gapStart >= 0 && gapCount < kMaxGaps)
+    {
+        gaps[gapCount].start = gapStart;
+        gaps[gapCount].length = clampedLength - gapStart;
+        gapCount++;
+    }
+
+    // Handle wrap-around: combine first and last gaps if both touch boundaries
+    if (gapCount > 1)
+    {
+        bool firstTouchesStart = (gaps[0].start == 0);
+        bool lastTouchesEnd = (gaps[gapCount - 1].start + gaps[gapCount - 1].length == clampedLength);
+
+        if (firstTouchesStart && lastTouchesEnd)
+        {
+            // Combine: last gap wraps into first gap
+            // New gap starts at last gap's start, length is sum of both
+            int combinedLength = gaps[0].length + gaps[gapCount - 1].length;
+
+            // Keep the first gap but update to wrap-around version
+            gaps[0].start = gaps[gapCount - 1].start;
+            gaps[0].length = combinedLength;
+
+            // Remove the last gap
+            gapCount--;
+        }
+    }
+
+    return gapCount;
+}
+
+namespace
+{
+
+// Simple LCG-based pseudo-random for RT-safe seeded randomness
+inline uint32_t NextRandom(uint32_t& state)
+{
+    state = state * 1103515245U + 12345U;
+    return (state >> 16) & 0x7FFF;
+}
+
+// Place hit evenly spaced within gap with seed-based phase variation
+int PlaceEvenlySpacedWithSeed(const Gap& gap, int hitIndex, int totalHits,
+                               int patternLength, uint32_t seed)
+{
+    if (totalHits <= 0)
+    {
+        return gap.start;
+    }
+
+    // Compute seed-based phase offset (0-50% of one spacing unit)
+    // Uses simple hash: (seed * prime + offset) for determinism
+    uint32_t hash = (seed * 2654435761U) ^ (static_cast<uint32_t>(gap.start) * 31);
+    float phase = static_cast<float>(hash & 0xFFFF) / 65536.0f * 0.5f;  // 0-50%
+
+    float spacing = static_cast<float>(gap.length) / static_cast<float>(totalHits + 1);
+    int offset = static_cast<int>(spacing * (hitIndex + 1 + phase) + 0.5f);
+
+    // Clamp offset to gap boundaries to prevent wraparound overflow
+    if (offset >= gap.length)
+    {
+        offset = gap.length - 1;
+    }
+
+    return (gap.start + offset) % patternLength;
+}
+
+// Place hit at position with highest weight within gap
+int PlaceWeightedBest(const Gap& gap, const float* shimmerWeights, int patternLength,
+                      uint32_t usedMask)
+{
+    // Validate patternLength doesn't exceed array bounds
+    if (patternLength > static_cast<int>(kMaxSteps)) {
+        patternLength = static_cast<int>(kMaxSteps);
+    }
+
+    // Null check for shimmerWeights - find first available position in gap
+    if (!shimmerWeights) {
+        for (int offset = 0; offset < gap.length; ++offset) {
+            int step = (gap.start + offset) % patternLength;
+            if ((usedMask & (1U << step)) == 0) {
+                return step;
+            }
+        }
+        return gap.start;  // Fallback if all used
+    }
+
+    float bestWeight = -1.0f;
+    int bestPos = gap.start;
+
+    for (int offset = 0; offset < gap.length; ++offset)
+    {
+        int step = (gap.start + offset) % patternLength;
+
+        // Skip already-used positions
+        if ((usedMask & (1U << step)) != 0)
+        {
+            continue;
+        }
+
+        float weight = shimmerWeights[step];
+        if (weight > bestWeight)
+        {
+            bestWeight = weight;
+            bestPos = step;
+        }
+    }
+
+    return bestPos;
+}
+
+// Place hit with seed-varied randomness within gap
+int PlaceSeedVaried(const Gap& gap, uint32_t& rngState, int patternLength, uint32_t usedMask)
+{
+    // Count available positions
+    int available = 0;
+    for (int offset = 0; offset < gap.length; ++offset)
+    {
+        int step = (gap.start + offset) % patternLength;
+        if ((usedMask & (1U << step)) == 0)
+        {
+            available++;
+        }
+    }
+
+    if (available == 0)
+    {
+        return gap.start;  // Fallback
+    }
+
+    // Pick random index from available
+    int targetIdx = static_cast<int>(NextRandom(rngState) % static_cast<uint32_t>(available));
+
+    // Find the target position
+    int count = 0;
+    for (int offset = 0; offset < gap.length; ++offset)
+    {
+        int step = (gap.start + offset) % patternLength;
+        if ((usedMask & (1U << step)) == 0)
+        {
+            if (count == targetIdx)
+            {
+                return step;
+            }
+            count++;
+        }
+    }
+
+    return gap.start;  // Fallback
+}
+
+}  // anonymous namespace
+
+uint32_t ApplyComplementRelationship(uint32_t anchorMask,
+                                     const float* shimmerWeights,
+                                     float drift, uint32_t seed,
+                                     int patternLength, int targetHits)
+{
+    // Edge cases: no shimmer hits needed
+    if (targetHits <= 0 || patternLength <= 0)
+    {
+        return 0;
+    }
+
+    int clampedLength = std::min(patternLength, 32);
+
+    // Find gaps in anchor pattern
+    Gap gaps[kMaxGaps];
+    int gapCount = FindGaps(anchorMask, clampedLength, gaps);
+
+    // If no gaps, no room for shimmer
+    if (gapCount == 0)
+    {
+        return 0;
+    }
+
+    // Calculate total gap length
+    int totalGapLength = 0;
+    for (int g = 0; g < gapCount; ++g)
+    {
+        totalGapLength += gaps[g].length;
+    }
+
+    // If no gap space, return empty
+    if (totalGapLength == 0)
+    {
+        return 0;
+    }
+
+    // Better seed mixing to avoid correlation (was: seed ^ 0xDEADBEEF)
+    uint32_t rngState = (seed * 2654435761U) ^ (seed >> 16);
+    if (rngState == 0) rngState = 1;  // Avoid zero state
+
+    // Build shimmer mask by distributing hits proportionally to gaps
+    uint32_t shimmerMask = 0;
+    int remainingHits = targetHits;
+
+    for (int g = 0; g < gapCount && remainingHits > 0; ++g)
+    {
+        // Proportional hit share for this gap
+        int gapShare = (gaps[g].length * remainingHits) / std::max(1, totalGapLength);
+
+        // At least 1 if there are remaining hits and gap has length
+        if (gapShare == 0 && remainingHits > 0 && gaps[g].length > 0)
+        {
+            gapShare = 1;
+        }
+
+        // Don't exceed remaining budget or gap length
+        gapShare = std::min(gapShare, remainingHits);
+        gapShare = std::min(gapShare, gaps[g].length);
+
+        // Update remaining for next iteration
+        totalGapLength -= gaps[g].length;
+
+        // Place hits in this gap using strategy based on drift
+        for (int j = 0; j < gapShare; ++j)
+        {
+            int position;
+
+            if (drift < 0.3f)
+            {
+                // Low drift: evenly spaced within gap
+                position = PlaceEvenlySpacedWithSeed(gaps[g], j, gapShare, clampedLength, seed);
+            }
+            else if (drift < 0.7f)
+            {
+                // Mid drift: weighted by shimmer weights
+                position = PlaceWeightedBest(gaps[g], shimmerWeights, clampedLength, shimmerMask);
+            }
+            else
+            {
+                // High drift: seed-varied random
+                position = PlaceSeedVaried(gaps[g], rngState, clampedLength, shimmerMask);
+            }
+
+            shimmerMask |= (1U << position);
+            remainingHits--;
+        }
+    }
+
+    // If we still need more hits (due to rounding), fill remaining gaps
+    for (int g = 0; g < gapCount && remainingHits > 0; ++g)
+    {
+        for (int offset = 0; offset < gaps[g].length && remainingHits > 0; ++offset)
+        {
+            int step = (gaps[g].start + offset) % clampedLength;
+            if ((shimmerMask & (1U << step)) == 0)
+            {
+                shimmerMask |= (1U << step);
+                remainingHits--;
+            }
+        }
+    }
+
+    // Apply seed-based rotation for additional variation
+    // Try rotations that don't cause anchor collisions to preserve hit count
+    uint32_t hashVal = seed * 2654435761U;
+    for (int attempt = 0; attempt < 4; ++attempt)
+    {
+        int rotation = static_cast<int>((hashVal >> (28 - attempt * 4)) & 0xF) % clampedLength;
+        if (rotation > 0)
+        {
+            uint32_t rotated = ShiftMaskRight(shimmerMask, rotation, clampedLength);
+            // Only apply if no collisions with anchor
+            if ((rotated & anchorMask) == 0)
+            {
+                shimmerMask = rotated;
+                break;
+            }
+        }
+    }
+
+    return shimmerMask;
 }
 
 // =============================================================================
@@ -231,35 +458,13 @@ void ApplyAuxRelationship(uint32_t anchorMask,
                           VoiceCoupling coupling,
                           int patternLength)
 {
-    // Aux voice (hi-hat) has simpler rules
-    switch (coupling)
-    {
-        case VoiceCoupling::INDEPENDENT:
-            // Aux fires independently
-            break;
-
-        case VoiceCoupling::INTERLOCK:
-            // In interlock mode, aux avoids anchor but can coincide with shimmer
-            // This creates rhythmic interplay: kick → hat → snare patterns
-            auxMask &= ~anchorMask;
-            break;
-
-        case VoiceCoupling::SHADOW:
-            // In shadow mode, aux adds density around both voices
-            // Keep aux hits that are adjacent to anchor or shimmer
-            {
-                uint32_t neighbors = ShiftMaskLeft(anchorMask | shimmerMask, 1, patternLength) |
-                                     ShiftMaskRight(anchorMask | shimmerMask, 1, patternLength);
-                // Keep original aux that's near other voices, or on standalone positions
-                uint32_t nearVoices = auxMask & neighbors;
-                uint32_t awayFromVoices = auxMask & ~(anchorMask | shimmerMask);
-                auxMask = nearVoices | awayFromVoices;
-            }
-            break;
-
-        default:
-            break;
-    }
+    // V5: Aux always operates independently
+    // Legacy coupling modes are ignored
+    (void)anchorMask;
+    (void)shimmerMask;
+    (void)coupling;
+    (void)patternLength;
+    // auxMask is not modified in INDEPENDENT mode
 }
 
 } // namespace daisysp_idm_grids

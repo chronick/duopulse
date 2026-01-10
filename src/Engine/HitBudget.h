@@ -95,9 +95,10 @@ struct BarBudget
  * @param energy ENERGY parameter (0.0-1.0)
  * @param zone Current energy zone
  * @param patternLength Steps per bar (16, 24, 32, or 64)
+ * @param shape SHAPE parameter (0.0-1.0), affects density via zone
  * @return Target number of anchor hits
  */
-int ComputeAnchorBudget(float energy, EnergyZone zone, int patternLength);
+int ComputeAnchorBudget(float energy, EnergyZone zone, int patternLength, float shape = 0.5f);
 
 /**
  * Compute hit budget for shimmer voice based on energy, zone, and balance
@@ -106,9 +107,10 @@ int ComputeAnchorBudget(float energy, EnergyZone zone, int patternLength);
  * @param balance BALANCE parameter (0.0-1.0, 0=anchor-heavy, 1=shimmer-heavy)
  * @param zone Current energy zone
  * @param patternLength Steps per bar
+ * @param shape SHAPE parameter (0.0-1.0), affects density via zone
  * @return Target number of shimmer hits
  */
-int ComputeShimmerBudget(float energy, float balance, EnergyZone zone, int patternLength);
+int ComputeShimmerBudget(float energy, float balance, EnergyZone zone, int patternLength, float shape = 0.5f);
 
 /**
  * Compute hit budget for aux voice
@@ -130,6 +132,7 @@ int ComputeAuxBudget(float energy, EnergyZone zone, AuxDensity auxDensity, int p
  * @param auxDensity AUX density setting
  * @param patternLength Steps per bar
  * @param buildMultiplier Density multiplier from BUILD (1.0 = no change)
+ * @param shape SHAPE parameter (0.0-1.0), affects density via zone
  * @param outBudget Output budget struct
  */
 void ComputeBarBudget(float energy,
@@ -138,6 +141,7 @@ void ComputeBarBudget(float energy,
                       AuxDensity auxDensity,
                       int patternLength,
                       float buildMultiplier,
+                      float shape,
                       BarBudget& outBudget);
 
 // =============================================================================
@@ -211,5 +215,31 @@ int CountBits(uint32_t mask);
  * @return Clamped pattern length (max 32)
  */
 int ClampPatternLength(int patternLength);
+
+/**
+ * Get anchor budget multiplier based on SHAPE zone
+ *
+ * V5 Spec 5.4:
+ * - Stable (0-30%): 100% (1.0)
+ * - Syncopated (30-70%): 90-100% (lerp 1.0 -> 0.90)
+ * - Wild (70-100%): 80-90% (lerp 0.90 -> 0.80)
+ *
+ * @param shape SHAPE parameter (0.0-1.0)
+ * @return Multiplier for anchor hit budget (0.80-1.0)
+ */
+float GetAnchorBudgetMultiplier(float shape);
+
+/**
+ * Get shimmer budget multiplier based on SHAPE zone
+ *
+ * V5 Spec 5.4:
+ * - Stable (0-30%): 100% (1.0)
+ * - Syncopated (30-70%): 110-130% (lerp 1.10 -> 1.30)
+ * - Wild (70-100%): 130-150% (lerp 1.30 -> 1.50)
+ *
+ * @param shape SHAPE parameter (0.0-1.0)
+ * @return Multiplier for shimmer hit budget (1.0-1.5)
+ */
+float GetShimmerBudgetMultiplier(float shape);
 
 } // namespace daisysp_idm_grids

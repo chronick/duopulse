@@ -7,16 +7,17 @@ namespace daisysp_idm_grids
 {
 
 /**
- * Build phase enumeration for 3-stage phrase arc.
+ * Shape phase enumeration for 3-stage phrase arc.
  *
- * BUILD operates in three phases based on phrase progress:
+ * SHAPE operates in three phases based on phrase progress:
  * - GROOVE (0-60%): Stable pattern, no modification
  * - BUILD (60-87.5%): Ramping density and velocity
  * - FILL (87.5-100%): Maximum energy, forced accents
  *
+ * V5 Change: Renamed from BuildPhase to ShapePhase (Task 27)
  * Reference: Task 21 Phase D
  */
-enum class BuildPhase
+enum class ShapePhase
 {
     GROOVE,   // 0-60%: stable
     BUILD,    // 60-87.5%: ramping
@@ -24,67 +25,81 @@ enum class BuildPhase
 };
 
 /**
- * PunchParams: Velocity dynamics derived from PUNCH parameter
+ * AccentParams: Velocity dynamics derived from ACCENT parameter
  *
- * PUNCH controls how dynamic the groove feels—the contrast between
- * loud and soft hits.
+ * V5 ACCENT (Task 35): Maps musical metric weight to velocity.
+ * - ACCENT=0%: Flat dynamics (all hits 80-88%)
+ * - ACCENT=100%: Wide dynamics (ghost notes 30%, accents 100%)
  *
- * Reference: docs/specs/main.md section 4.3 and 7.2
+ * The velocity is based on metric weight (downbeats stronger, offbeats weaker)
+ * rather than V4's random accent probability.
+ *
+ * Reference: docs/specs/v5-design-final.md Appendix A.7
  */
-struct PunchParams
+struct AccentParams
 {
-    /// How often hits are accented (0.15-0.50)
-    float accentProbability;
-
-    /// Minimum velocity for non-accented hits (0.30-0.70)
+    /// Minimum velocity (0.80 - accent * 0.50 -> range: 0.80-0.30)
     float velocityFloor;
 
-    /// How much louder accents are (+0.10 to +0.35)
-    float accentBoost;
+    /// Maximum velocity (0.88 + accent * 0.12 -> range: 0.88-1.00)
+    float velocityCeiling;
 
-    /// Random variation range (±0.05 to ±0.20)
-    float velocityVariation;
+    /// Micro-variation for human feel (0.02 + accent * 0.05 -> range: 0.02-0.07)
+    float variation;
 
     /**
-     * Initialize with default values (moderate punch)
+     * Initialize with default values (50% accent)
      */
     void Init()
     {
-        accentProbability = 0.25f;
-        velocityFloor     = 0.55f;
-        accentBoost       = 0.20f;
-        velocityVariation = 0.10f;
+        velocityFloor   = 0.55f;   // 0.80 - 0.50 * 0.50
+        velocityCeiling = 0.94f;   // 0.88 + 0.12 * 0.50
+        variation       = 0.045f;  // 0.02 + 0.05 * 0.50
     }
 
     /**
-     * Compute punch parameters from PUNCH knob value (0.0-1.0)
+     * Compute accent parameters from ACCENT knob value (0.0-1.0)
      *
-     * @param punch PUNCH parameter value (0.0-1.0)
+     * V5 (Task 35): Position-aware velocity based on metric weight
+     * - velocityFloor: 80% -> 30% as ACCENT increases
+     * - velocityCeiling: 88% -> 100% as ACCENT increases
+     * - variation: 2% -> 7% as ACCENT increases
+     *
+     * @param accent ACCENT parameter value (0.0-1.0)
      */
-    void ComputeFromPunch(float punch)
+    void ComputeFromAccent(float accent)
     {
         // Clamp input
-        if (punch < 0.0f) punch = 0.0f;
-        if (punch > 1.0f) punch = 1.0f;
+        if (accent < 0.0f) accent = 0.0f;
+        if (accent > 1.0f) accent = 1.0f;
 
-        // PUNCH = 0%: Flat dynamics (all similar velocity)
-        // PUNCH = 100%: Maximum dynamics (huge contrasts)
-        accentProbability = 0.15f + punch * 0.35f;       // 15% to 50%
-        velocityFloor     = 0.70f - punch * 0.40f;       // 70% down to 30%
-        accentBoost       = 0.10f + punch * 0.25f;       // +10% to +35%
-        velocityVariation = 0.05f + punch * 0.15f;       // ±5% to ±20%
+        // V5 (Task 35): Metric weight-based velocity
+        // ACCENT = 0%: Flat dynamics (80-88% range)
+        // ACCENT = 100%: Wide dynamics (30-100% range)
+        velocityFloor   = 0.80f - accent * 0.50f;   // 80% -> 30%
+        velocityCeiling = 0.88f + accent * 0.12f;   // 88% -> 100%
+        variation       = 0.02f + accent * 0.05f;   // 2% -> 7%
+    }
+
+    /// Legacy alias for ComputeFromAccent (V5: renamed from ComputeFromPunch)
+    void ComputeFromPunch(float punch)
+    {
+        ComputeFromAccent(punch);
     }
 };
 
 /**
- * BuildModifiers: Phrase arc modifiers derived from BUILD parameter
+ * ShapeModifiers: Phrase arc modifiers derived from SHAPE parameter
  *
- * BUILD controls the narrative arc of each phrase—how much tension
+ * SHAPE controls the narrative arc of each phrase-how much tension
  * builds toward the end.
+ *
+ * V5 Change: Renamed from BuildModifiers to ShapeModifiers (Task 27)
+ * The internal algorithm remains unchanged for now (Task 28 will update it).
  *
  * Reference: docs/specs/main.md section 4.4
  */
-struct BuildModifiers
+struct ShapeModifiers
 {
     /// Density multiplier based on phrase position (1.0 = no change)
     float densityMultiplier;
@@ -98,17 +113,17 @@ struct BuildModifiers
     /// Current phrase progress (0.0-1.0)
     float phraseProgress;
 
-    /// Current build phase (GROOVE/BUILD/FILL)
-    BuildPhase phase;
+    /// Current shape phase (GROOVE/BUILD/FILL)
+    ShapePhase phase;
 
     /// Velocity floor boost (+0.0 to +0.15)
     float velocityBoost;
 
-    /// Force all hits to be accented (FILL phase at high BUILD)
+    /// Force all hits to be accented (FILL phase at high SHAPE)
     bool forceAccents;
 
     /**
-     * Initialize with default values (no build)
+     * Initialize with default values (no shape modulation)
      */
     void Init()
     {
@@ -116,47 +131,56 @@ struct BuildModifiers
         fillIntensity     = 0.0f;
         inFillZone        = false;
         phraseProgress    = 0.0f;
-        phase             = BuildPhase::GROOVE;
+        phase             = ShapePhase::GROOVE;
         velocityBoost     = 0.0f;
         forceAccents      = false;
     }
 
     /**
-     * Compute build modifiers from BUILD value and phrase position
+     * Compute shape modifiers from SHAPE value and phrase position
      *
-     * @param build BUILD parameter value (0.0-1.0)
+     * V5 Change: Renamed from ComputeFromBuild to ComputeFromShape (Task 27)
+     * The algorithm is unchanged for now (Task 28 will update it).
+     *
+     * @param shape SHAPE parameter value (0.0-1.0)
      * @param progress Current phrase progress (0.0-1.0)
      */
-    void ComputeFromBuild(float build, float progress)
+    void ComputeFromShape(float shape, float progress)
     {
         // Clamp inputs
-        if (build < 0.0f) build = 0.0f;
-        if (build > 1.0f) build = 1.0f;
+        if (shape < 0.0f) shape = 0.0f;
+        if (shape > 1.0f) shape = 1.0f;
         if (progress < 0.0f) progress = 0.0f;
         if (progress > 1.0f) progress = 1.0f;
 
         phraseProgress = progress;
 
-        // BUILD = 0%: Flat throughout (no density change)
-        // BUILD = 100%: Dramatic arc (density increases toward end)
+        // SHAPE = 0%: Flat throughout (no density change)
+        // SHAPE = 100%: Dramatic arc (density increases toward end)
 
         // Density ramps up toward phrase end
-        float rampAmount = build * progress * 0.5f;  // Up to 50% denser at end
+        float rampAmount = shape * progress * 0.5f;  // Up to 50% denser at end
         densityMultiplier = 1.0f + rampAmount;
 
         // Fill zone is last 12.5% of phrase (last bar of 8-bar phrase)
         inFillZone = (progress > 0.875f);
 
-        // Fill intensity increases with BUILD and proximity to phrase end
+        // Fill intensity increases with SHAPE and proximity to phrase end
         if (inFillZone)
         {
             float fillProgress = (progress - 0.875f) / 0.125f;  // 0-1 within fill zone
-            fillIntensity = build * fillProgress;
+            fillIntensity = shape * fillProgress;
         }
         else
         {
             fillIntensity = 0.0f;
         }
+    }
+
+    /// Legacy alias for ComputeFromShape (V5: renamed from ComputeFromBuild)
+    void ComputeFromBuild(float build, float progress)
+    {
+        ComputeFromShape(build, progress);
     }
 };
 
@@ -205,73 +229,92 @@ struct FillInputState
  * knobs, CVs, and buttons. It represents the current "intent" of
  * the performer.
  *
+ * V5 Changes (Task 27):
+ * - Renamed fieldX/fieldY to axisX/axisY
+ * - Renamed build to shape
+ * - Renamed punch to accent (moved to config K4)
+ * - Removed genre, balance, auxDensity, voiceCoupling (internal only)
+ * - Added clockDiv to config mode
+ * - Moved drift to config K3
+ * - Eliminated shift layers (all parameters now direct-access)
+ *
  * Reference: docs/specs/main.md section 4
  */
 struct ControlState
 {
     // =========================================================================
-    // Performance Mode Primary (CV-able)
+    // V5 Performance Mode (4 direct knobs, CV-modulatable)
     // =========================================================================
 
     /// ENERGY: Hit density (0.0-1.0)
     float energy;
 
-    /// BUILD: Phrase arc (0.0-1.0)
-    float build;
+    /// SHAPE: Phrase arc / algorithm blending (0.0-1.0)
+    /// V5 Change: Renamed from BUILD (Task 27)
+    float shape;
 
-    /// FIELD X: Syncopation axis (0.0-1.0)
-    float fieldX;
+    /// AXIS X: Beat/syncopation position (0.0-1.0)
+    /// V5 Change: Renamed from FIELD X (Task 27)
+    float axisX;
 
-    /// FIELD Y: Complexity axis (0.0-1.0)
-    float fieldY;
+    /// AXIS Y: Intricacy/complexity (0.0-1.0)
+    /// V5 Change: Renamed from FIELD Y (Task 27)
+    float axisY;
 
     // =========================================================================
-    // Performance Mode Shift
+    // V5 Config Mode (4 direct knobs, no shift layer)
     // =========================================================================
 
-    /// PUNCH: Velocity dynamics (0.0-1.0)
-    float punch;
+    /// CLOCK DIV: Tempo division/multiplication
+    /// V5 Change: Was shift+K2, now config K1 (Task 27)
+    /// Values: -4 (÷4), -2 (÷2), 1 (×1), 4 (×4)
+    int clockDiv;
 
-    /// GENRE: Style bank selection
-    Genre genre;
+    /// SWING: Base groove amount (0.0-1.0)
+    /// V5: Unchanged, config K2
+    float swing;
 
     /// DRIFT: Pattern evolution rate (0.0-1.0)
+    /// V5 Change: Was perf shift+K3, now config K3 (Task 27)
     float drift;
 
-    /// BALANCE: Voice ratio (0.0-1.0, 0=anchor-heavy, 1=shimmer-heavy)
-    float balance;
+    /// ACCENT: Velocity dynamics (0.0-1.0)
+    /// V5 Change: Renamed from PUNCH, was perf shift+K1, now config K4 (Task 27)
+    float accent;
 
     // =========================================================================
-    // Config Mode Primary
+    // Internal Parameters (not exposed in V5 UI)
     // =========================================================================
 
     /// Pattern length in steps (16, 24, 32, or 64)
+    /// V5: Auto-derived or preset, not knob-controlled
     int patternLength;
 
-    /// Base swing amount (0.0-1.0)
-    float swing;
-
     /// AUX output mode
+    /// V5: Auto-derived or preset, not knob-controlled
     AuxMode auxMode;
 
-    /// Reset behavior
+    /// Reset behavior (always STEP in V5)
     ResetMode resetMode;
 
-    // =========================================================================
-    // Config Mode Shift
-    // =========================================================================
-
-    /// Phrase length in bars (auto-derived from patternLength, legacy field kept for persistence)
+    /// Phrase length in bars (auto-derived from patternLength)
     int phraseLength;
 
-    /// Clock division (1, 2, 4, or 8)
+    /// Clock division (legacy alias for clockDiv)
+    /// V5: Kept for backward compatibility
     int clockDivision;
 
-    /// AUX density setting
+    /// AUX density setting (always NORMAL in V5)
     AuxDensity auxDensity;
 
-    /// Voice coupling mode
+    /// Voice coupling mode (always INDEPENDENT in V5, COMPLEMENT in Task 30)
     VoiceCoupling voiceCoupling;
+
+    /// Genre (always TECHNO in V5)
+    Genre genre;
+
+    /// Balance (0.5 = equal voices, internal only in V5)
+    float balance;
 
     // =========================================================================
     // Derived Parameters
@@ -280,11 +323,13 @@ struct ControlState
     /// Current energy zone (derived from energy)
     EnergyZone energyZone;
 
-    /// Computed punch parameters
-    PunchParams punchParams;
+    /// Computed accent parameters
+    /// V5 Change: Renamed from punchParams (Task 27)
+    AccentParams accentParams;
 
-    /// Computed build modifiers
-    BuildModifiers buildModifiers;
+    /// Computed shape modifiers
+    /// V5 Change: Renamed from buildModifiers (Task 27)
+    ShapeModifiers shapeModifiers;
 
     /// Fill input state
     FillInputState fillInput;
@@ -296,14 +341,17 @@ struct ControlState
     /// CV modulation for energy (±0.5)
     float energyCV;
 
-    /// CV modulation for build (±0.5)
-    float buildCV;
+    /// CV modulation for shape (±0.5)
+    /// V5 Change: Renamed from buildCV (Task 27)
+    float shapeCV;
 
-    /// CV modulation for field X (±0.5)
-    float fieldXCV;
+    /// CV modulation for axis X (±0.5)
+    /// V5 Change: Renamed from fieldXCV (Task 27)
+    float axisXCV;
 
-    /// CV modulation for field Y (±0.5)
-    float fieldYCV;
+    /// CV modulation for axis Y (±0.5)
+    /// V5 Change: Renamed from fieldYCV (Task 27)
+    float axisYCV;
 
     /// FLAVOR CV input (0.0-1.0, affects timing/BROKEN)
     float flavorCV;
@@ -313,45 +361,54 @@ struct ControlState
     // =========================================================================
 
     /**
-     * Initialize with default values
+     * Initialize with V5 boot defaults
+     *
+     * V5 Boot Defaults (Task 27):
+     * - energy = 0.50f (50% neutral density)
+     * - shape = 0.30f (30% humanized euclidean zone)
+     * - axisX = 0.50f (50% neutral beat position)
+     * - axisY = 0.50f (50% moderate intricacy)
+     * - clockDiv = 1 (x1 no division)
+     * - swing = 0.50f (50% neutral groove)
+     * - drift = 0.25f (25% enables weighted placement for seed variation)
+     * - accent = 0.50f (50% moderate dynamics)
      */
     void Init()
     {
-        // Performance primary
-        energy = 0.6f;   // Match MainControlState (Task 24)
-        build  = 0.0f;
-        fieldX = 0.5f;   // Match MainControlState (Task 24)
-        fieldY = 0.33f;  // Match MainControlState (Task 24)
+        // V5 Performance Mode (4 direct knobs)
+        energy = 0.50f;  // V5: 50% neutral density
+        shape  = 0.30f;  // V5: 30% humanized euclidean zone
+        axisX  = 0.50f;  // V5: 50% neutral beat position
+        axisY  = 0.50f;  // V5: 50% moderate intricacy
 
-        // Performance shift
-        punch   = 0.5f;
-        genre   = Genre::TECHNO;
-        drift   = 0.0f;
-        balance = 0.5f;
+        // V5 Config Mode (4 direct knobs)
+        clockDiv = 1;     // V5: x1 no division
+        swing    = 0.50f; // V5: 50% neutral groove
+        drift    = 0.25f; // V5: 25% enables weighted placement for seed variation
+        accent   = 0.50f; // V5: 50% moderate dynamics
 
-        // Config primary
+        // Internal parameters (not exposed in V5 UI)
         patternLength = 32;
-        swing         = 0.5f;  // 50% neutral (Task 24)
-        auxMode       = AuxMode::HAT;
-        resetMode     = ResetMode::STEP;  // Hardcoded - no longer exposed in UI
-
-        // Config shift
+        auxMode       = AuxMode::FILL_GATE;  // V5 Task 32: Boot default is FILL_GATE
+        resetMode     = ResetMode::STEP;
         phraseLength  = 4;
-        clockDivision = 1;
+        clockDivision = 1;  // Legacy alias for clockDiv
         auxDensity    = AuxDensity::NORMAL;
         voiceCoupling = VoiceCoupling::INDEPENDENT;
+        genre         = Genre::TECHNO;
+        balance       = 0.5f;
 
         // Derived
         energyZone = EnergyZone::GROOVE;
-        punchParams.Init();
-        buildModifiers.Init();
+        accentParams.Init();
+        shapeModifiers.Init();
         fillInput.Init();
 
         // CV modulation
         energyCV = 0.0f;
-        buildCV  = 0.0f;
-        fieldXCV = 0.0f;
-        fieldYCV = 0.0f;
+        shapeCV  = 0.0f;
+        axisXCV  = 0.0f;
+        axisYCV  = 0.0f;
         flavorCV = 0.0f;
     }
 
@@ -363,8 +420,8 @@ struct ControlState
     void UpdateDerived(float phraseProgress)
     {
         energyZone = GetEnergyZone(energy);
-        punchParams.ComputeFromPunch(punch);
-        buildModifiers.ComputeFromBuild(build, phraseProgress);
+        accentParams.ComputeFromAccent(accent);
+        shapeModifiers.ComputeFromShape(shape, phraseProgress);
     }
 
     /**
@@ -379,37 +436,84 @@ struct ControlState
     }
 
     /**
-     * Get effective build (knob + CV modulation, clamped 0-1)
+     * Get effective shape (knob + CV modulation, clamped 0-1)
+     * V5 Change: Renamed from GetEffectiveBuild (Task 27)
      */
-    float GetEffectiveBuild() const
+    float GetEffectiveShape() const
     {
-        float val = build + buildCV;
+        float val = shape + shapeCV;
         if (val < 0.0f) val = 0.0f;
         if (val > 1.0f) val = 1.0f;
         return val;
     }
 
     /**
-     * Get effective field X (knob + CV modulation, clamped 0-1)
+     * Get effective axis X (knob + CV modulation, clamped 0-1)
+     * V5 Change: Renamed from GetEffectiveFieldX (Task 27)
      */
-    float GetEffectiveFieldX() const
+    float GetEffectiveAxisX() const
     {
-        float val = fieldX + fieldXCV;
+        float val = axisX + axisXCV;
         if (val < 0.0f) val = 0.0f;
         if (val > 1.0f) val = 1.0f;
         return val;
     }
 
     /**
-     * Get effective field Y (knob + CV modulation, clamped 0-1)
+     * Get effective axis Y (knob + CV modulation, clamped 0-1)
+     * V5 Change: Renamed from GetEffectiveFieldY (Task 27)
      */
-    float GetEffectiveFieldY() const
+    float GetEffectiveAxisY() const
     {
-        float val = fieldY + fieldYCV;
+        float val = axisY + axisYCV;
         if (val < 0.0f) val = 0.0f;
         if (val > 1.0f) val = 1.0f;
         return val;
     }
+
+    // =========================================================================
+    // Legacy Accessors (for backward compatibility)
+    // =========================================================================
+
+    /// Legacy alias for shape
+    float GetEffectiveBuild() const { return GetEffectiveShape(); }
+
+    /// Legacy alias for axisX
+    float GetEffectiveFieldX() const { return GetEffectiveAxisX(); }
+
+    /// Legacy alias for axisY
+    float GetEffectiveFieldY() const { return GetEffectiveAxisY(); }
+
+    // =========================================================================
+    // Legacy Field References (for backward compatibility)
+    // =========================================================================
+
+    /// Legacy reference: build is alias for shape
+    float& build = shape;
+
+    /// Legacy reference: fieldX is alias for axisX
+    float& fieldX = axisX;
+
+    /// Legacy reference: fieldY is alias for axisY
+    float& fieldY = axisY;
+
+    /// Legacy reference: punch is alias for accent
+    float& punch = accent;
+
+    /// Legacy reference: buildCV is alias for shapeCV
+    float& buildCV = shapeCV;
+
+    /// Legacy reference: fieldXCV is alias for axisXCV
+    float& fieldXCV = axisXCV;
+
+    /// Legacy reference: fieldYCV is alias for axisYCV
+    float& fieldYCV = axisYCV;
+
+    /// Legacy reference: punchParams is alias for accentParams
+    AccentParams& punchParams = accentParams;
+
+    /// Legacy reference: buildModifiers is alias for shapeModifiers
+    ShapeModifiers& buildModifiers = shapeModifiers;
 
     /**
      * Get auto-derived phrase length based on pattern length
@@ -432,5 +536,18 @@ struct ControlState
         }
     }
 };
+
+// =============================================================================
+// Legacy Type Aliases (for backward compatibility)
+// =============================================================================
+
+/// Legacy alias for ShapePhase (V5: renamed from BuildPhase)
+using BuildPhase = ShapePhase;
+
+/// Legacy alias for AccentParams (V5: renamed from PunchParams)
+using PunchParams = AccentParams;
+
+/// Legacy alias for ShapeModifiers (V5: renamed from BuildModifiers)
+using BuildModifiers = ShapeModifiers;
 
 } // namespace daisysp_idm_grids

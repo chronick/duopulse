@@ -1,27 +1,32 @@
-# DuoPulse v4: Algorithmic Drum Sequencer Specification
+# DuoPulse v5: Algorithmic Drum Sequencer Specification
 
 **Target Platform**: Daisy Patch.init() (Electro-Smith)
-**Version**: 4.2
-**Status**: ✅ Complete (ready for hardware testing)
-**Last Updated**: 2026-01-03
+**Version**: 5.0
+**Status**: Complete
+**Last Updated**: 2026-01-06
 
 ### Pending Changes (Active Tasks)
 
-The following changes are planned in active tasks and will update this spec when shipped:
-
 | Task | Spec Section | Change |
 |------|--------------|--------|
-| *(none)* | - | - |
+| **Task 40** | Generation Pipeline | PatternGenerator class extraction |
 
 ### Recent Changes
 
 | Task | Date | Changes |
 |------|------|---------|
-| **Task 26** | 2026-01-03 | Bug fixes: phrase length auto-derivation, removed freed controls from main loop, consistent boot defaults |
-| **Task 24** | 2026-01-01 | Boot behavior: All settings reset to defaults on power-on, performance knobs read from hardware, no persistence |
-| **Task 23** | 2026-01-01 | Immediate field updates: Field X/Y changes trigger regeneration at beat boundaries (max 1-beat latency) |
-| **Task 22** | 2026-01-01 | Simplified config mode: auto-derive phrase length, hardcode reset mode to STEP, remove INTERLOCK coupling |
-| **Task 21** | 2025-12-31 | Musicality improvements: archetype weight retuning, velocity contrast widening (30-45%), Euclidean foundation, BUILD phases, balance range 0-150% |
+| **Task 39** | 2026-01-06 | SHAPE-modulated hit budget for pattern variation |
+| **Task 38** | 2026-01-06 | C++ pattern visualization test tool |
+| **Task 37** | 2026-01-04 | Code review critical fixes (bounds, null checks) |
+| **Task 35** | 2026-01-04 | ACCENT parameter with metric weight velocity |
+| **Task 34** | 2026-01-04 | 5-layer priority LED feedback system |
+| **Task 33** | 2026-01-04 | Boot-time AUX mode selection gesture |
+| **Task 32** | 2026-01-04 | Hold+Switch gesture for runtime AUX mode |
+| **Task 31** | 2026-01-04 | Hat burst pattern-aware fill triggers |
+| **Task 30** | 2026-01-04 | Voice COMPLEMENT relationship with DRIFT |
+| **Task 29** | 2026-01-04 | AXIS X/Y bidirectional biasing |
+| **Task 28** | 2026-01-04 | SHAPE 3-way blending algorithm |
+| **Task 27** | 2026-01-04 | Control renaming, zero shift layers |
 
 ---
 
@@ -31,15 +36,16 @@ The following changes are planned in active tasks and will update this spec when
 2. [Architecture Overview](#2-architecture-overview)
 3. [Hardware Interface](#3-hardware-interface)
 4. [Control System](#4-control-system)
-5. [Pattern Field System](#5-pattern-field-system)
-6. [Generation Pipeline](#6-generation-pipeline)
-7. [Timing System (BROKEN Stack)](#7-timing-system-broken-stack)
-8. [Output System](#8-output-system)
-9. [LED Feedback System](#9-led-feedback-system)
-10. [Data Structures](#10-data-structures)
-11. [Implementation Pseudocode](#11-implementation-pseudocode)
-12. [Configuration & Persistence](#12-configuration--persistence)
-13. [Testing Requirements](#13-testing-requirements)
+5. [SHAPE Algorithm](#5-shape-algorithm)
+6. [AXIS Biasing](#6-axis-biasing)
+7. [Voice Relationship (COMPLEMENT)](#7-voice-relationship-complement)
+8. [ACCENT Velocity](#8-accent-velocity)
+9. [Fill System](#9-fill-system)
+10. [AUX Output System](#10-aux-output-system)
+11. [LED Feedback System](#11-led-feedback-system)
+12. [Boot Behavior](#12-boot-behavior)
+13. [Clock and Reset](#13-clock-and-reset)
+14. [Testing Requirements](#14-testing-requirements)
 
 ---
 
@@ -48,44 +54,43 @@ The following changes are planned in active tasks and will update this spec when
 ### Outputs
 | Output | Hardware | Signal |
 |--------|----------|--------|
-| **Anchor Trig** | Gate Out 1 | 5V trigger on anchor hits |
-| **Shimmer Trig** | Gate Out 2 | 5V trigger on shimmer hits |
-| **Anchor Velocity** | Audio Out L | 0-5V sample & hold (persists until next trig) |
-| **Shimmer Velocity** | Audio Out R | 0-5V sample & hold (persists until next trig) |
-| **AUX** | CV Out 1 | Clock (if no ext clock) OR Hat/FillGate/PhraseCV/Event |
-| **LED** | CV Out 2 | Visual feedback (brightness = trigger activity) |
+| **Voice 1 Trig** | Gate Out 1 | 5V trigger on anchor hits |
+| **Voice 2 Trig** | Gate Out 2 | 5V trigger on shimmer hits |
+| **Voice 1 Velocity** | Audio Out L | 0-5V sample & hold |
+| **Voice 2 Velocity** | Audio Out R | 0-5V sample & hold |
+| **AUX** | CV Out 1 | Fill Gate (default) OR Hat Burst |
+| **LED** | CV Out 2 | Visual feedback (brightness) |
 
 ### Inputs
 | Input | Hardware | Function |
 |-------|----------|----------|
-| **Clock** | Gate In 1 | External clock (if patched, enables AUX modes) |
+| **Clock** | Gate In 1 | External clock (disables internal when patched) |
 | **Reset** | Gate In 2 | Reset to step 0 |
-| **Fill CV** | Audio In L | Pressure-sensitive fill trigger (0-5V = intensity) |
-| ~~**Flavor CV**~~ | ~~Audio In R~~ | ~~Removed in v4~~ (timing now controlled by GENRE + SWING config) |
+| **Fill CV** | Audio In L | Fill trigger (>1V gate) |
 
-### Performance Mode (Switch A) — Ergonomic Pairings
-| Knob | Domain | Primary (CV-able) | +Shift |
-|------|--------|-------------------|--------|
-| K1 | **Intensity** | ENERGY (hit density) | PUNCH (velocity dynamics) |
-| K2 | **Drama** | BUILD (phrase arc) | GENRE (style bank) |
-| K3 | **Pattern** | FIELD X (syncopation) | DRIFT (evolution rate) |
-| K4 | **Texture** | FIELD Y (complexity) | BALANCE (voice ratio) |
+### Performance Mode (Switch UP)
+| Knob | Parameter | 0% | 100% |
+|------|-----------|-----|------|
+| K1 | **ENERGY** | Sparse | Busy |
+| K2 | **SHAPE** | Stable (humanized euclidean) | Wild (weighted) |
+| K3 | **AXIS X** | Grounded (downbeats) | Floating (offbeats) |
+| K4 | **AXIS Y** | Simple | Complex |
 
-### Config Mode (Switch B) — Domain-Based
-| Knob | Domain | Primary | +Shift |
-|------|--------|---------|--------|
-| K1 | **Grid** | PATTERN LENGTH (16/24/32/64) | PHRASE LENGTH (1/2/4/8 bars) |
-| K2 | **Timing** | SWING (0-100%) | CLOCK DIV (1/2/4/8) |
-| K3 | **Output** | AUX MODE (Hat/Fill/Phrase/Event) | AUX DENSITY (50-200%) |
-| K4 | **Behavior** | RESET MODE (Phrase/Bar/Step) | VOICE COUPLING (Ind/Lock/Shadow) |
+### Config Mode (Switch DOWN)
+| Knob | Parameter | 0% | 100% |
+|------|-----------|-----|------|
+| K1 | **CLOCK DIV** | ÷4 (slow) | ×4 (fast) |
+| K2 | **SWING** | Straight | Heavy swing |
+| K3 | **DRIFT** | Locked (same each phrase) | Evolving |
+| K4 | **ACCENT** | Flat (all hits equal) | Dynamic (ghosts to accents) |
 
-### CV Inputs (modulate primary performance controls)
-| CV In | Modulates | Use Case |
-|-------|-----------|----------|
-| CV 1 | ENERGY | Sidechain from kick, intensity envelope |
-| CV 2 | BUILD | LFO for automatic phrase dynamics! |
-| CV 3 | FIELD X | Navigate syncopation axis |
-| CV 4 | FIELD Y | Navigate complexity axis |
+### CV Inputs (always modulate Performance params)
+| CV In | Modulates | Range |
+|-------|-----------|-------|
+| CV 1 | ENERGY | ±50% |
+| CV 2 | SHAPE | ±50% |
+| CV 3 | AXIS X | ±50% |
+| CV 4 | AXIS Y | ±50% |
 
 ---
 
@@ -93,30 +98,37 @@ The following changes are planned in active tasks and will update this spec when
 
 ### 1.1 Design Philosophy
 
-DuoPulse v4 is an **opinionated drum sequencer** that prioritizes:
+DuoPulse v5 is an **opinionated drum sequencer** with:
 
-1. **Musicality over flexibility**: Every output should be danceable/usable. No "probability soup."
-2. **Playability**: Controls map directly to musical intent. ENERGY = tension. GENRE = feel.
-3. **Deterministic variation**: Same settings + same seed = identical output. Variation is controlled, not random.
-4. **Constraint-first generation**: Define what's *possible* (eligibility), then what's *probable* (weights).
-5. **Hit budgets over coin flips**: Guarantee density matches intent; vary placement, not count.
+1. **Zero shift layers**: Every parameter is directly accessible
+2. **CV law**: CV1-4 always modulate performance parameters, regardless of mode
+3. **Knob pairing**: Related functions across Performance/Config modes
+4. **Secret mode**: Hat burst as discoverable easter egg ("2.5 pulse")
+5. **Deterministic variation**: Same settings + seed = identical output
 
-### 1.2 Genre Targets
+### 1.2 Key Changes from v4
 
-The sequencer is optimized for:
-- **Techno**: Four-on-floor, driving, minimal-to-industrial
-- **Tribal/Broken Techno**: Syncopated, polyrhythmic, off-beat emphasis
-- **IDM/Glitch**: Displaced, fragmented, controlled chaos
+| Aspect | v4 | v5 |
+|--------|----|----|
+| Shift layers | 4 shift parameters | None |
+| Parameters | 12+ with enums | 8 direct knobs |
+| GENRE control | 3 selectable genres | Algorithm-driven (removed) |
+| BALANCE | Voice ratio knob | Removed (SHAPE handles) |
+| BUILD | Phrase arc | Replaced by SHAPE |
+| PUNCH | Velocity dynamics | Replaced by ACCENT |
+| Voice coupling | Independent/Shadow/Interlock | COMPLEMENT only |
+| AUX modes | 4 config options | 2 via gesture (HAT/FILL GATE) |
 
-### 1.3 Key Innovations (vs v2/v3)
+### 1.3 Knob Pairing Concept
 
-| Problem | v2 Issue | v3 Issue | v4 Solution |
-|---------|----------|----------|-------------|
-| Pattern variety | Discrete, abrupt transitions | Too much variety, hard to control | 2D field with smooth morphing |
-| Musicality | Good patterns but hard to navigate | Probability can produce bad patterns | Eligibility masks + guard rails |
-| Density control | Unpredictable | Clumping/silence from coin flips | Hit budgets with weighted sampling |
-| Genre coherence | Terrain/grid mismatch | Genre emerges unpredictably | GENRE selects timing profile; patterns use archetype grid |
-| Repeatability | No determinism | DRIFT=0 works but fragile | Seed-controlled everything |
+Each knob position has related functions across modes:
+
+| Knob | Performance | Config | Conceptual Link |
+|------|-------------|--------|-----------------|
+| K1 | ENERGY | CLOCK DIV | Rate/Density |
+| K2 | SHAPE | SWING | Timing Feel |
+| K3 | AXIS X | DRIFT | Variation/Movement |
+| K4 | AXIS Y | ACCENT | Intricacy/Depth |
 
 ---
 
@@ -129,62 +141,37 @@ The sequencer is optimized for:
 │                           CONTROL LAYER                                  │
 │                                                                          │
 │   ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐                    │
-│   │ ENERGY  │  │  BUILD  │  │ FIELD X │  │ FIELD Y │                    │
+│   │ ENERGY  │  │  SHAPE  │  │ AXIS X  │  │ AXIS Y  │                    │
 │   │  (K1)   │  │  (K2)   │  │  (K3)   │  │  (K4)   │                    │
 │   └────┬────┘  └────┬────┘  └────┬────┘  └────┬────┘                    │
 │        │            │            │            │                          │
-│        ▼            │            └──────┬─────┘                          │
-│   ┌─────────┐       │                   │                                │
-│   │  ZONE   │       │                   ▼                                │
-│   │ COMPUTE │       │        ┌────────────────────┐                      │
-│   └────┬────┘       │        │  ARCHETYPE MORPH   │                      │
-│        │            │        │ (winner-take-more) │                      │
-│        │            │        └──────────┬─────────┘                      │
-└────────┼────────────┼───────────────────┼────────────────────────────────┘
-         │            │                   │
-         ▼            ▼                   ▼
+│        ▼            ▼            └──────┬─────┘                          │
+│   ┌─────────┐  ┌─────────────┐         │                                │
+│   │   HIT   │  │  3-WAY      │         ▼                                │
+│   │  BUDGET │  │  BLENDING   │  ┌────────────────┐                      │
+│   └────┬────┘  └──────┬──────┘  │ AXIS BIASING   │                      │
+│        │              │         └───────┬────────┘                      │
+└────────┼──────────────┼─────────────────┼───────────────────────────────┘
+         │              │                 │
+         ▼              ▼                 ▼
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                         GENERATION LAYER                                 │
 │                                                                          │
-│  ┌────────────────┐  ┌────────────────┐  ┌────────────────┐             │
-│  │   HIT BUDGET   │  │  ELIGIBILITY   │  │  STEP WEIGHTS  │             │
-│  │ (from ENERGY   │  │     MASK       │  │ (from archetype│             │
-│  │  + BALANCE)    │  │ (from ENERGY)  │  │   morph)       │             │
-│  │                │  │                │  │                │             │
-│  └───────┬────────┘  └───────┬────────┘  └───────┬────────┘             │
-│          │                   │                   │                       │
-│          └───────────────────┼───────────────────┘                       │
-│                              ▼                                           │
-│                   ┌─────────────────────┐                                │
-│                   │  WEIGHTED SAMPLING  │◄──── DRIFT seed control        │
-│                   │  (Gumbel Top-K)     │                                │
-│                   │  + spacing rules    │                                │
-│                   └──────────┬──────────┘                                │
-│                              │                                           │
-│                              ▼                                           │
-│                   ┌─────────────────────┐                                │
-│                   │  VOICE RELATION   │ (archetype-driven)             │
-│                   └──────────┬──────────┘                                │
-│                              │                                           │
-│                              ▼                                           │
-│                   ┌─────────────────────┐                                │
-│                   │  SOFT REPAIR PASS   │ (bias rescue steps)            │
-│                   └──────────┬──────────┘                                │
-│                              │                                           │
-│                              ▼                                           │
-│                   ┌─────────────────────┐                                │
-│                   │  HARD GUARD RAILS   │ (final constraints)            │
-│                   └──────────┬──────────┘                                │
-└──────────────────────────────┼───────────────────────────────────────────┘
-                               │
-                               ▼
-┌─────────────────────────────────────────────────────────────────────────┐
-│                          TIMING LAYER                                    │
-│                                                                          │
 │  ┌────────────────────────────────────────────────────────────────────┐ │
-│  │                       BROKEN STACK                                  │ │
-│  │  swing → microtiming jitter → step displacement → velocity chaos   │ │
-│  │  (all bounded by zone, all deterministic per seed)                 │ │
+│  │                     WEIGHTED SAMPLING                               │ │
+│  │  (Gumbel Top-K with SHAPE-blended weights + AXIS-biased scores)    │ │
+│  └────────────────────────────────────────────────────────────────────┘ │
+│                              │                                           │
+│                              ▼                                           │
+│  ┌────────────────────────────────────────────────────────────────────┐ │
+│  │                   COMPLEMENT RELATIONSHIP                           │ │
+│  │  (Voice 2 fills gaps in Voice 1, placement varies with DRIFT)       │ │
+│  └────────────────────────────────────────────────────────────────────┘ │
+│                              │                                           │
+│                              ▼                                           │
+│  ┌────────────────────────────────────────────────────────────────────┐ │
+│  │                    ACCENT VELOCITY                                  │ │
+│  │  (Metric weight → velocity, range scaled by ACCENT param)           │ │
 │  └────────────────────────────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────────────────┘
                                │
@@ -194,25 +181,24 @@ The sequencer is optimized for:
 │                                                                          │
 │  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐           │
 │  │ GATE 1  │ │ GATE 2  │ │ OUT L   │ │ OUT R   │ │  CV 1   │           │
-│  │ Anchor  │ │ Shimmer │ │ Anc Vel │ │ Shm Vel │ │   AUX   │           │
+│  │ Voice 1 │ │ Voice 2 │ │ V1 Vel  │ │ V2 Vel  │ │   AUX   │           │
 │  │  Trig   │ │  Trig   │ │  (S&H)  │ │  (S&H)  │ │         │           │
 │  └─────────┘ └─────────┘ └─────────┘ └─────────┘ └─────────┘           │
 │                                                                          │
-│  CV_OUT_2 = LED (visual feedback, not shown in signal flow)              │
+│  CV_OUT_2 = LED (visual feedback)                                        │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### 2.2 Processing Flow Per Bar
 
-1. **Compute hit budgets** for Anchor, Shimmer, Aux based on ENERGY + BALANCE + zone
-2. **Compute eligibility mask** based on ENERGY (which steps *can* fire)
-3. **Get blended weights** from pattern field based on FIELD X/Y position
-4. **Select hits via Gumbel Top-K** sampling (deterministic, seeded by DRIFT)
-5. **Apply voice relationship** (archetype-driven, suppress/boost based on voice relationship)
-6. **Soft repair pass** (bias rescue steps if constraints nearly violated)
-7. **Hard guard rails** (force corrections only if still violating)
-8. **Store hit masks** for the bar
-9. **On each step**: apply BROKEN timing stack, output triggers + CVs
+1. **Compute hit budgets** from ENERGY (SHAPE modulates anchor/shimmer ratio)
+2. **Generate SHAPE-blended weights** (stable ↔ syncopated ↔ wild)
+3. **Apply AXIS biasing** (X = beat position, Y = intricacy)
+4. **Select hits via Gumbel Top-K** sampling
+5. **Apply COMPLEMENT** for Voice 2 (gap-filling with DRIFT variation)
+6. **Compute velocities** from ACCENT + metric position
+7. **Store hit masks** for the bar
+8. **On each step**: apply SWING timing, output triggers + velocities
 
 ---
 
@@ -222,88 +208,38 @@ The sequencer is optimized for:
 
 | Hardware | Label | Function |
 |----------|-------|----------|
-| Knob 1 | CTRL_1 | K1: ENERGY / PUNCH (shifted) |
-| Knob 2 | CTRL_2 | K2: BUILD / GENRE (shifted) |
-| Knob 3 | CTRL_3 | K3: FIELD X / DRIFT (shifted) |
-| Knob 4 | CTRL_4 | K4: FIELD Y / BALANCE (shifted) |
-| CV In 1 | CV_1 | ENERGY CV modulation |
-| CV In 2 | CV_2 | BUILD CV modulation |
-| CV In 3 | CV_3 | FIELD X CV modulation |
-| CV In 4 | CV_4 | FIELD Y CV modulation |
-| Audio In L | IN_L | FILL CV input (0-5V = fill intensity, pressure-sensitive) |
-| ~~Audio In R~~ | ~~IN_R~~ | ~~Removed~~ (timing controlled by GENRE + SWING config) |
+| Knob 1 | CTRL_1 | K1: ENERGY (perf) / CLOCK DIV (config) |
+| Knob 2 | CTRL_2 | K2: SHAPE (perf) / SWING (config) |
+| Knob 3 | CTRL_3 | K3: AXIS X (perf) / DRIFT (config) |
+| Knob 4 | CTRL_4 | K4: AXIS Y (perf) / ACCENT (config) |
+| CV In 1 | CV_1 | ENERGY modulation |
+| CV In 2 | CV_2 | SHAPE modulation |
+| CV In 3 | CV_3 | AXIS X modulation |
+| CV In 4 | CV_4 | AXIS Y modulation |
+| Audio In L | IN_L | FILL CV input (>1V triggers fill) |
 | Gate In 1 | GATE_IN_1 | Clock input |
 | Gate In 2 | GATE_IN_2 | Reset input |
-| Gate Out 1 | GATE_OUT_1 | Anchor trigger |
-| Gate Out 2 | GATE_OUT_2 | Shimmer trigger |
-| CV Out 1 | CV_OUT_1 | AUX output (clock if internal, else AUX mode) |
-| CV Out 2 | CV_OUT_2 | **LED output** (directly controlled) |
-| Audio Out L | OUT_L | Anchor velocity (0-5V, sample & hold) |
-| Audio Out R | OUT_R | Shimmer velocity (0-5V, sample & hold) |
-| Button | SW_1 | Shift (hold) / Fill (tap) / Reseed (double-tap) |
-| Switch | SW_2 | Performance (A) / Config (B) mode |
+| Gate Out 1 | GATE_OUT_1 | Voice 1 trigger |
+| Gate Out 2 | GATE_OUT_2 | Voice 2 trigger |
+| CV Out 1 | CV_OUT_1 | AUX output (Fill Gate or Hat Burst) |
+| CV Out 2 | CV_OUT_2 | LED output |
+| Audio Out L | OUT_L | Voice 1 velocity (0-5V S&H) |
+| Audio Out R | OUT_R | Voice 2 velocity (0-5V S&H) |
+| Button | SW_1 | Fill (tap) / Reseed (hold 3s) / AUX gesture |
+| Switch | SW_2 | Performance (UP) / Config (DOWN) |
 
-### 3.2 CV Input Processing
+### 3.2 CV Input Behavior
 
-CV inputs 1-4 directly modulate the four main performance parameters:
+CV inputs **always modulate Performance mode parameters**, regardless of current mode:
 
 | CV Input | Modulates | Behavior |
 |----------|-----------|----------|
 | CV_1 | ENERGY | Bipolar: 0V = no mod, ±5V = ±50% |
-| CV_2 | BUILD | Bipolar: 0V = no mod, ±5V = ±50% |
-| CV_3 | FIELD X | Bipolar: 0V = no mod, ±5V = ±50% |
-| CV_4 | FIELD Y | Bipolar: 0V = no mod, ±5V = ±50% |
+| CV_2 | SHAPE | Bipolar: 0V = no mod, ±5V = ±50% |
+| CV_3 | AXIS X | Bipolar: 0V = no mod, ±5V = ±50% |
+| CV_4 | AXIS Y | Bipolar: 0V = no mod, ±5V = ±50% |
 
-### 3.3 Audio Input Processing
-
-Audio inputs are repurposed as CV inputs for additional control:
-
-| Audio Input | Function | Behavior |
-|-------------|----------|----------|
-| IN_L | **Fill CV** | Gate (>1V) triggers fill; CV level (0-5V) = fill intensity |
-| ~~IN_R~~ | ~~**Flavor CV**~~ | ~~Removed~~ (timing controlled by GENRE + SWING config) |
-
-### 3.4 Clock and Reset Behavior [exclusive-external-clock]
-
-The sequencer supports both internal and external clock sources with **exclusive** operation:
-
-#### Clock Source Selection
-
-| Condition | Clock Source | Step Advancement |
-|-----------|--------------|------------------|
-| **Gate In 1 unpatched** | Internal Metro at configured BPM | Steps advance on internal clock ticks |
-| **Gate In 1 patched** | External clock only | Steps advance ONLY on rising edges, internal clock disabled |
-
-**Acceptance Criteria**:
-- ✅ When external clock is patched, internal Metro is completely disabled (not just suppressed)
-- ✅ Steps advance only on rising edges detected at Gate In 1
-- ✅ No timeout-based fallback to internal clock while external clock is patched
-- ✅ Unplugging external clock restores internal clock operation immediately
-- ✅ Clock source detection is deterministic and predictable
-
-#### Reset Behavior
-
-Reset (Gate In 2) operates identically regardless of clock source:
-
-| Reset Mode | Behavior | Clock Source Independence |
-|------------|----------|---------------------------|
-| **PHRASE** | Reset to step 0, bar 0, regenerate pattern | ✅ Works with internal or external clock |
-| **BAR** | Reset to step 0, keep current bar | ✅ Works with internal or external clock |
-| **STEP** | Reset to step 0 only | ✅ Works with internal or external clock |
-
-**Acceptance Criteria**:
-- ✅ Reset detects rising edges reliably
-- ✅ Reset behavior is identical whether using internal or external clock
-- ✅ Reset respects configured reset mode in all cases
-
-#### Implementation Simplifications
-
-To ensure predictable behavior:
-
-1. **No parallel clock operation**: Internal Metro stops completely when external clock detected
-2. **No timeout logic**: External clock remains active until physically unplugged
-3. **Simple rising edge detection**: Both clock and reset use consistent edge detection
-4. **Immediate switchover**: Clock source changes take effect within one audio callback cycle
+This allows CV sequences to keep running while adjusting config settings.
 
 ---
 
@@ -313,623 +249,411 @@ To ensure predictable behavior:
 
 | Mode | Switch Position | Knob Behavior |
 |------|-----------------|---------------|
-| **Performance** | A (up) | ENERGY / BUILD / FIELD X / FIELD Y |
-| **Config** | B (down) | PATTERN LENGTH / PHRASE LENGTH / AUX MODE / SWING BASE |
+| **Performance** | UP | ENERGY / SHAPE / AXIS X / AXIS Y |
+| **Config** | DOWN | CLOCK DIV / SWING / DRIFT / ACCENT |
 
-### 4.2 Performance Mode Controls — Ergonomic Pairings
+**No shift layers exist.** Each mode has 4 direct parameters.
 
-Each knob controls a conceptual "domain" with primary/shift being two aspects of that domain:
+### 4.2 Performance Mode Parameters
 
-#### Primary Controls (no shift) — CV-able
+| Knob | Parameter | Range | Function |
+|------|-----------|-------|----------|
+| K1 | **ENERGY** | 0-100% | Hit density: how many hits per bar |
+| K2 | **SHAPE** | 0-100% | Pattern character: stable → syncopated → wild |
+| K3 | **AXIS X** | 0-100% | Beat position: grounded (downbeats) → floating (offbeats) |
+| K4 | **AXIS Y** | 0-100% | Intricacy: simple → complex |
 
-| Knob | Domain | Parameter | Range | Function |
-|------|--------|-----------|-------|----------|
-| K1 | Intensity | **ENERGY** | 0-100% | Hit density: how many hits per bar |
-| K2 | Drama | **BUILD** | 0-100% | Phrase arc: flat (0%) → climactic (100%) |
-| K3 | Pattern | **FIELD X** | 0-100% | Syncopation: straight → broken |
-| K4 | Texture | **FIELD Y** | 0-100% | Complexity: sparse → dense |
+### 4.3 Config Mode Parameters
 
-#### Shift Controls (button held + knob)
+| Knob | Parameter | Range | Function |
+|------|-----------|-------|----------|
+| K1 | **CLOCK DIV** | ÷4 to ×4 | Clock division/multiplication |
+| K2 | **SWING** | 0-100% | Timing feel: straight → heavy swing |
+| K3 | **DRIFT** | 0-100% | Evolution: locked → varies each phrase |
+| K4 | **ACCENT** | 0-100% | Velocity range: flat → dynamic |
 
-| Combo | Domain | Parameter | Range | Function |
-|-------|--------|-----------|-------|----------|
-| Shift+K1 | Intensity | **PUNCH** | 0-100% | Velocity dynamics: flat (0%) → punchy (100%) |
-| Shift+K2 | Drama | **GENRE** | 3 zones | Style bank: Techno / Tribal / IDM |
-| Shift+K3 | Pattern | **DRIFT** | 0-100% | Evolution: locked (0%) → evolving (100%) |
-| Shift+K4 | Texture | **BALANCE** | 0-100% | Voice ratio: anchor-heavy (0%) → shimmer-heavy (100%) |
+### 4.4 Button Gestures
 
-### 4.3 PUNCH Parameter (Velocity Dynamics)
+| Gesture | Effect |
+|---------|--------|
+| **Tap** (20-500ms) | Trigger Fill |
+| **Hold 3s** | Reseed pattern on release |
+| **Hold + Switch UP** | Set AUX to HAT mode (secret "2.5 pulse") |
+| **Hold + Switch DOWN** | Set AUX to FILL GATE mode (default) |
 
-PUNCH controls how dynamic the groove feels—the contrast between loud and soft hits:
+### 4.5 AUX Mode Gesture Priority
 
-```
-PUNCH = 0%:   Flat dynamics. All hits similar velocity. Hypnotic, machine-like.
-              ●●●●●●●● (all same intensity)
-
-PUNCH = 50%:  Normal dynamics. Standard groove with natural accents.
-              ●○●○●○●○ (accented and normal hits)
-
-PUNCH = 100%: Maximum dynamics. Accents POP, ghosts nearly silent.
-              ●  ● ●  ● (huge velocity differences)
-```
-
-**Velocity ranges** (v4.1):
-- velocityFloor: 65% down to 30% (widened for more contrast)
-- accentBoost: +15% to +45% (increased for punch)
-- Minimum output velocity: 30% (for VCA audibility)
-
-### 4.4 BUILD Parameter (Phrase Dynamics)
-
-BUILD controls the narrative arc of each phrase—how much tension builds toward the end:
-
-```
-BUILD = 0%:   Flat throughout. No builds, no fills. Pure repetition.
-              ████████████████ (constant energy)
-
-BUILD = 50%:  Subtle build. Slight density increase, fills at phrase end.
-              ████████████▲▲▲▲ (gentle rise)
-
-BUILD = 100%: Dramatic arc. Big builds, intense fills, energy peaks.
-              ████▲▲▲▲▲▲▲▲████ (tension → release)
-```
-
-**BUILD operates in three phases** (v4.1):
-
-| Phrase % | Phase | Density | Velocity | Notes |
-|----------|-------|---------|----------|-------|
-| 0-60% | GROOVE | 1.0× | normal | Stable pattern |
-| 60-87.5% | BUILD | +0-35% | +0-8% floor | Ramping energy |
-| 87.5-100% | FILL | +35-50% | +8-12% floor | All accents (BUILD>60%) |
-
-Phase boundaries are computed from phrase progress, respecting configured phrase length.
-
-### 4.5 Config Mode Controls — Domain-Based
-
-#### K1: GRID Domain (Loop Architecture)
-
-| Mode | Parameter | Values | Function |
-|------|-----------|--------|----------|
-| Primary | **PATTERN LENGTH** | 16 / 24 / 32 / 64 | Steps per bar |
-| Shift | ~~**PHRASE LENGTH**~~ | *(unused)* | **Auto-derived** from pattern length (16→8 bars, 24→5 bars, 32→4 bars, 64→2 bars) |
-
-**Rationale**: Phrase length is now automatically derived to maintain ~128 steps per phrase for consistent phrase arc timing. Config+Shift K1 is freed for future features.
-
-#### K2: TIMING Domain (Feel)
-
-| Mode | Parameter | Values | Function |
-|------|-----------|--------|----------|
-| Primary | **SWING** | 0-100% | Swing multiplier (0×-2× of GENRE base swing) |
-| Shift | **CLOCK DIV** | ÷8 / ÷4 / ÷2 / ×1 / ×2 / ×4 / ×8 | Clock division/multiplication (applies to both internal and external clock) |
-
-#### K3: OUTPUT Domain (Signal Configuration)
-
-| Mode | Parameter | Values | Function |
-|------|-----------|--------|----------|
-| Primary | **AUX MODE** | Hat / Fill Gate / Phrase CV / Event | What AUX output does |
-| Shift | **AUX DENSITY** | 50% / 100% / 150% / 200% | Aux hit budget multiplier |
-
-#### K4: BEHAVIOR Domain (Module Response)
-
-| Mode | Parameter | Values | Function |
-|------|-----------|--------|----------|
-| Primary | ~~**RESET MODE**~~ | *(unused)* | **Hardcoded to STEP** (reset always goes to step 0, preserves bar/phrase position) |
-| Shift | **VOICE COUPLING** | Independent / Shadow | Voice relationship override (0-50% = Independent, 50-100% = Shadow) |
-
-**Rationale**: Reset mode hardcoded to STEP for simplicity. INTERLOCK coupling removed due to broken 1:1 trigger behavior. Config K4 primary is freed for future features.
-
-### 4.6 Button Behavior
-
-| Gesture | Action | Timing |
-|---------|--------|--------|
-| **Tap** (<200ms) | Queue fill for next phrase | Immediate feedback via LED |
-| **Hold** (>200ms) | Shift modifier active | LED dims while held |
-| **Hold** (>500ms, no knob moved) | Live fill mode (temporary boost) | LED pulses |
-| **Double-tap** (<400ms between) | Reseed pattern at next phrase boundary | LED flashes 100% |
-
-### 4.7 Energy Zones
-
-ENERGY doesn't just scale density—it changes behavioral rules:
-
-| Zone | ENERGY Range | Characteristics |
-|------|--------------|-----------------|
-| **MINIMAL** | 0-20% | Sparse, skeleton only, large gaps allowed, tight timing |
-| **GROOVE** | 20-50% | Stable, danceable, locked pattern, moderate fills, tight timing |
-| **BUILD** | 50-75% | Increasing ghosts, phrase-end fills, aux active, timing loosens |
-| **PEAK** | 75-100% | Maximum activity, ratchets allowed, all voices busy, expressive timing |
+When button is held and switch moves:
+1. Cancel any pending fill
+2. Set AUX mode based on switch direction
+3. Consume switch event (don't change Perf/Config mode)
+4. Button release returns to normal (no fill triggered)
 
 ---
 
-## 5. Pattern Field System
+## 5. SHAPE Algorithm
 
-### 5.1 3×3 Archetype Grid
+SHAPE (K2) controls pattern regularity through THREE character zones with crossfade transitions.
 
-Each genre has a 3×3 grid of archetypes (9 per genre, 27 total):
+### 5.1 Zone Overview
+
+| Zone | SHAPE Range | Character |
+|------|-------------|-----------|
+| **Stable** | 0-30% | Humanized euclidean, techno, four-on-floor |
+| **Syncopated** | 30-70% | Funk, displaced, tension |
+| **Wild** | 70-100% | IDM, chaos, weighted random |
+
+### 5.2 Three-Way Blending
 
 ```
-              Y: COMPLEXITY (pattern density/intricacy)
-                    ↑
-                    │
-           complex  │  [0,2]         [1,2]         [2,2]
-              2     │  busy          polyrhythm    chaos
-                    │  driving 16ths  3-vs-4       glitchy fills
-                    │
-                    │  [0,1]         [1,1]         [2,1]
-              1     │  driving       groovy        broken
-                    │  steady 8ths   swing pocket  displaced hits
-                    │
-           sparse   │  [0,0]         [1,0]         [2,0]
-              0     │  minimal       steady        displaced
-                    │  just kicks    basic groove  off-grid sparse
-                    │
-                    └──────────────────────────────────────→
-                         0              1              2
-                      straight     syncopated      broken
-                                X: SYNCOPATION
+SHAPE  0%          30%          50%          70%         100%
+       |--- Stable --|-- Crossfade --|-- Syncopated --|-- Crossfade --|-- Wild --|
+                   (4%)                              (4%)
 ```
 
-### 5.2 Archetype DNA Structure
+Crossfade windows (4% overlap) prevent discontinuities at zone boundaries.
 
-Each archetype stores more than just step weights:
+### 5.3 Algorithm
 
-```cpp
-struct ArchetypeDNA {
-    // Step weights for each voice (32 steps max)
-    float anchorWeights[32];     // 0.0-1.0 probability weight per step
-    float shimmerWeights[32];    // 0.0-1.0 probability weight per step
-    float auxWeights[32];        // 0.0-1.0 probability weight per step (hat lane)
-    
-    // Accent eligibility (which steps CAN accent, not which WILL)
-    uint32_t anchorAccentMask;   // Bitmask: 1 = accent-eligible
-    uint32_t shimmerAccentMask;
-    
-    // Timing characteristics
-    float swingAmount;           // 0.0-1.0, base swing for this archetype
-    float swingPattern;          // Which beats swing (0=8ths, 1=16ths, 2=mixed)
-    
-    // Voice relationship defaults
-    float defaultCouple;         // 0.0-1.0, suggested COUPLE value
-    
-    // Fill behavior
-    float fillDensityMultiplier; // How much denser during fills
-    uint32_t ratchetEligibleMask;// Which steps can ratchet
-    
-    // Metadata
-    uint8_t gridX;               // Position in grid (0-2)
-    uint8_t gridY;               // Position in grid (0-2)
-};
+```
+FOR each step:
+  IF shape < 0.28:
+    // Pure Zone 1: stable with humanization
+    weight = stableWeight[step]
+    humanize = 0.05 * (1.0 - shape/0.28)
+    weight += (hash(seed, step) - 0.5) * humanize
+
+  ELSE IF shape < 0.32:
+    // Crossfade Zone 1 → Zone 2
+    fade = (shape - 0.28) / 0.04
+    weight = lerp(stableWeight, syncopatedWeight, fade)
+
+  ELSE IF shape < 0.68:
+    // Zone 2: stable ↔ syncopated ↔ wild
+    t = (shape - 0.32) / 0.36
+    IF t < 0.5:
+      weight = lerp(stableWeight, syncopatedWeight, t * 2)
+    ELSE:
+      weight = lerp(syncopatedWeight, wildWeight, (t - 0.5) * 2)
+
+  ELSE IF shape < 0.72:
+    // Crossfade Zone 2 → Zone 3
+    fade = (shape - 0.68) / 0.04
+    weight = lerp(syncopatedWeight, wildWeight, fade)
+
+  ELSE:
+    // Pure Zone 3: wild with chaos
+    weight = wildWeight[step]
+    chaos = (shape - 0.72) / 0.28 * 0.15
+    weight += (hash(seed ^ 0xCAFEBABE, step) - 0.5) * chaos
 ```
 
-### 5.3 Winner-Take-More Blending
+### 5.4 SHAPE-Modulated Hit Budget
 
-When FIELD X/Y is between grid points, blend using softmax with temperature. Lower temperature = more winner-take-all behavior, preserving archetype character during transitions.
+SHAPE also affects anchor/shimmer hit ratio:
 
-### 5.4 Genre-Specific Grids
-
-Each genre has its own 3×3 grid tuned to that style:
-
-#### Techno Grid Characteristics
-
-| Position | Name | Anchor Character | Shimmer Character |
-|----------|------|------------------|-------------------|
-| [0,0] | Minimal | Quarter notes only | Sparse, 2&4 |
-| [1,0] | Steady | Quarter + some 8ths | Backbeat + off-8ths |
-| [2,0] | Displaced | Skipped beat 3 | Anticipated snares |
-| [0,1] | Driving | Straight 8ths | Steady 8th hats |
-| [1,1] | Groovy | Swung 8ths | Shuffled backbeat |
-| [2,1] | Broken | Missing downbeats | Syncopated claps |
-| [0,2] | Busy | 16th kicks | Driving 16ths |
-| [1,2] | Polyrhythm | 3-feel over 4 | Counter-rhythm |
-| [2,2] | Chaos | Irregular clusters | Fragmented |
+| Zone | Anchor Budget | Shimmer Budget |
+|------|---------------|----------------|
+| Stable (0-30%) | 100% of base | 100% of base |
+| Syncopated (30-70%) | 90-100% | 110-130% |
+| Wild (70-100%) | 80-90% | 130-150% |
 
 ---
 
-## 6. Generation Pipeline
+## 6. AXIS Biasing
 
-### 6.1 Hit Budget Calculation
+AXIS X/Y provide continuous control with bidirectional effect (no dead zones).
 
-Hit budgets guarantee density matches intent. Budget is calculated from ENERGY + BALANCE + zone, then BUILD modifiers adjust for phrase position.
+### 6.1 AXIS X: Beat Position
 
-### 6.1.1 Regeneration Timing and Immediate Field Updates (Task 23)
+```
+xBias = (axisX - 0.5) * 2.0  // [-1.0, 1.0]
 
-Pattern regeneration occurs at specific musical boundaries to balance responsiveness with rhythmic stability:
+FOR each step:
+  positionStrength = GetPositionStrength(step)  // negative=downbeat, positive=offbeat
 
-**Standard Regeneration Points**:
-- **Bar boundaries**: Always regenerate (primary regeneration point)
-- **Phrase boundaries**: Regenerate and update phrase seed
-- **Reset trigger**: Force immediate regeneration on Gate In 2
+  IF xBias > 0:
+    // Moving toward offbeats
+    IF positionStrength < 0:
+      xEffect = -xBias * |positionStrength| * 0.45  // Suppress downbeats
+    ELSE:
+      xEffect = xBias * positionStrength * 0.60     // Boost offbeats
+  ELSE:
+    // Moving toward downbeats
+    IF positionStrength < 0:
+      xEffect = -xBias * |positionStrength| * 0.60  // Boost downbeats
+    ELSE:
+      xEffect = xBias * positionStrength * 0.45     // Suppress offbeats
 
-**Immediate Field Updates** (since v4.2):
+  weight[step] = clamp(baseWeight[step] + xEffect, 0.05, 1.0)
+```
 
-When Field X or Y changes significantly, pattern regeneration is triggered at the next beat boundary rather than waiting for the next bar boundary. This provides immediate feedback when adjusting pattern character while maintaining musical timing.
+### 6.2 AXIS Y: Intricacy
 
-- **Threshold**: 10% change in Field X or Field Y position (0.1 on 0-1 scale)
-- **Regeneration occurs**: At next beat boundary (every 4 steps on 16th-note grid)
-- **Maximum latency**: 1 beat (4 steps) instead of 1 bar (16-64 steps)
-- **Debouncing**: Threshold prevents noise-triggered regeneration from analog knobs
-- **CV modulation**: Includes CV-modulated effective field position
+```
+yBias = (axisY - 0.5) * 2.0  // [-1.0, 1.0]
 
-**Implementation Details**:
-- Field change detection runs every step in `ProcessAudio()`
-- Uses `abs(currentFieldX - previousFieldX) > 0.1` threshold
-- Sets `fieldChangeRegenPending` flag when threshold exceeded
-- Flag checked at beat boundaries (`step % 4 == 0`)
-- Prevents double-regeneration at bar boundaries (which are also beat boundaries)
-- Flag cleared after regeneration or at bar boundaries
+FOR each step:
+  isWeakPosition = GetMetricWeight(step) < 0.5
 
-**Performance Impact**:
-- Minimal overhead: 2 float subtractions, 2 comparisons per audio callback
-- Real-time safe: No heap allocation, no blocking operations
-- Responsive: Knob adjustments audible within 1 beat maximum
+  IF yBias > 0:
+    yEffect = yBias * (isWeakPosition ? 0.50 : 0.15)   // Boost weak positions
+  ELSE:
+    yEffect = yBias * (isWeakPosition ? 0.50 : -0.25)  // Suppress weak positions
 
-This feature addresses user feedback from Task 16 hardware testing, where users expected immediate pattern changes when turning Field X/Y knobs rather than waiting for phrase/bar boundaries.
+  weight[step] = clamp(weight[step] + yEffect, 0.05, 1.0)
+```
 
-### 6.2 Eligibility Mask Computation
+### 6.3 Broken Mode (High SHAPE + High AXIS X)
 
-Standard masks for 32-step patterns define which metric positions can fire based on ENERGY level.
+When SHAPE > 60% AND AXIS X > 70%, enter "broken" mode:
 
-### 6.3 Gumbel Top-K Selection
+```
+brokenIntensity = (shape - 0.6) * 2.5 * (axisX - 0.7) * 3.33
 
-Weighted sampling without replacement using Gumbel noise provides deterministic, seeded hit selection with spacing rules to prevent clumping.
-
-### 6.3.1 Euclidean Foundation (Genre-Dependent, v4.1)
-
-Before Gumbel Top-K selection, an optional Euclidean foundation guarantees even hit distribution:
-
-| Genre | Base Euclidean Ratio | Notes |
-|-------|---------------------|-------|
-| Techno | 70% at Field X=0 | Ensures four-on-floor at low complexity |
-| Tribal | 40% at Field X=0 | Balances structure with polyrhythm |
-| IDM | 0% (disabled) | Allows maximum irregularity |
-
-- Field X reduces Euclidean ratio by up to 70% (at X=1.0, ratio ≈ 0.3× base)
-- Only active in MINIMAL and GROOVE zones
-- Rotation derived from seed for determinism
-
-### 6.4 Voice Relationship
-
-VOICE COUPLING config parameter controls voice interaction:
-- **Independent (0-50%)**: Voices fire freely, can overlap
-- **Shadow (50-100%)**: Shimmer echoes anchor with 1-step delay
-
-**Note**: INTERLOCK mode was removed in Task 22 due to broken 1:1 trigger behavior reported in hardware validation.
-
-### 6.5 Soft Repair Pass
-
-Bias rescue steps if constraints nearly violated—swap weakest hit for strongest rescue candidate without changing total hit count.
-
-### 6.6 Hard Guard Rails
-
-Force corrections only if still violating:
-- Downbeat protection (force anchor on beat 1 if missing)
-- Max gap rule (no more than 8 steps without anchor in GROOVE+)
-- Max consecutive shimmer (4 unless PEAK zone)
-- Genre-specific floors (e.g., Techno backbeat)
-
-### 6.7 DRIFT Seed System
-
-DRIFT controls pattern evolution:
-- **patternSeed**: Fixed per "song", changes only on reseed
-- **phraseSeed**: Changes each phrase, derived from patternSeed + counter
-- Step stability determines which seed is used (downbeats use locked seed longer)
+FOR step IN downbeatPositions:
+  IF hash(seed ^ 0xDEADBEEF, step) < brokenIntensity * 0.6:
+    weight[step] *= 0.25  // Suppress some downbeats completely
+```
 
 ---
 
-## 7. Timing System (BROKEN Stack)
+## 7. Voice Relationship (COMPLEMENT)
 
-### 7.1 BROKEN Stack Overview
+Voice 2 (shimmer) fills gaps in Voice 1 (anchor) pattern. DRIFT controls placement variation.
 
-Timing is controlled by **GENRE** (Performance+Shift K2) and **SWING** (Config K2):
+### 7.1 Gap Finding
 
-| Layer | Control | Range | Zone Limit |
-|-------|---------|-------|------------|
-| **Swing** | Config K2 (SWING) | 0-100% (straight → heavy triplet) | GENRE-dependent max |
-| **Microtiming Jitter** | GENRE-based | ±0ms (Techno) to ±12ms (IDM) | Genre profiles |
-| **Step Displacement** | GENRE-based | Never (Techno) to 40% chance (IDM) | Genre profiles |
-| **Velocity Chaos** | PUNCH parameter | ±0% to ±25% variation | Always allowed |
+```
+gaps = FindGaps(anchorMask, patternLength)
 
-**Note**: Audio In R (FLAVOR CV) removed in v4. Timing feel is now determined by GENRE selection and SWING config only.
+// Handle wrap-around: combine tail+head if both are gaps
+IF gaps[0].start == 0 AND gaps[last].end == patternLength:
+  CombineWrapAroundGaps(gaps)
+```
 
-### 7.2 Velocity Computation (PUNCH-driven)
+### 7.2 Shimmer Placement by DRIFT
 
-Velocity is controlled by the PUNCH parameter:
-- **accentProbability**: How often hits are accented (20% to 50%)
-- **velocityFloor**: Minimum velocity for non-accented hits (65% down to 30%)
-- **accentBoost**: How much louder accents are (+15% to +45%)
-- **velocityVariation**: Random variation range (±3% to ±15%)
-- **Minimum output**: 30% (ensures audibility through VCA)
+| DRIFT Range | Placement Strategy |
+|-------------|-------------------|
+| 0-30% | Evenly spaced within gaps |
+| 30-70% | Weight-based selection (best metric positions) |
+| 70-100% | Seed-varied (controlled randomness) |
+
+```
+FOR each gap:
+  gapShare = max(1, round(gap.length * targetHits / totalGapLength))
+
+  FOR j = 0 TO gapShare - 1:
+    IF drift < 0.3:
+      position = EvenlySpaced(gap, j, gapShare)
+    ELSE IF drift < 0.7:
+      position = WeightedBest(gap, shimmerWeights)
+    ELSE:
+      position = SeedVaried(gap, seed, j)
+
+    PlaceShimmerHit(position)
+```
 
 ---
 
-## 8. Output System
+## 8. ACCENT Velocity
 
-### 8.1 Output Mapping
+ACCENT (Config K4) controls velocity range based on metric position.
 
-| Output | Signal | Voltage Range | Update Rate |
-|--------|--------|---------------|-------------|
-| GATE_OUT_1 | Anchor trigger | 0V / 5V | Per step |
-| GATE_OUT_2 | Shimmer trigger | 0V / 5V | Per step |
-| CV_OUT_1 | AUX output | 0-5V | Mode-dependent (clock if unpatched) |
-| CV_OUT_2 | LED | 0-5V (brightness) | Continuous |
-| OUT_L | Anchor velocity | 0-5V (sample & hold) | On anchor trigger |
-| OUT_R | Shimmer velocity | 0-5V (sample & hold) | On shimmer trigger |
+### 8.1 Velocity Computation
 
-### 8.2 Velocity Output (Sample & Hold)
+```
+metricWeight = GetMetricWeight(step)  // 0.0-1.0
 
-Velocity outputs use **sample & hold** behavior—the voltage is set on trigger and held until the next trigger on that channel.
+// Velocity range scales with ACCENT
+velocityFloor = 0.80 - accent * 0.50    // 80% → 30%
+velocityCeiling = 0.88 + accent * 0.12  // 88% → 100%
 
-### 8.3 AUX Output Modes
+// Map metric weight to velocity
+velocity = velocityFloor + metricWeight * (velocityCeiling - velocityFloor)
+
+// Micro-variation for human feel
+variation = 0.02 + accent * 0.05
+velocity += (hash(seed, step) - 0.5) * variation
+
+RETURN clamp(velocity, 0.30, 1.0)
+```
+
+### 8.2 ACCENT Effect
+
+| ACCENT | Velocity Floor | Velocity Ceiling | Feel |
+|--------|----------------|------------------|------|
+| 0% | 80% | 88% | Flat, machine-like |
+| 50% | 55% | 94% | Normal dynamics |
+| 100% | 30% | 100% | Extreme ghost/accent contrast |
+
+---
+
+## 9. Fill System
+
+### 9.1 Fill Triggering
+
+| Trigger | Behavior |
+|---------|----------|
+| Button tap (20-500ms) | Queue fill for next phrase |
+| Fill CV (>1V) | Immediate fill |
+
+### 9.2 Fill Modifiers
+
+```
+IF fillActive:
+  // Exponential density curve
+  maxBoost = 0.6 + energy * 0.4
+  densityMultiplier = 1.0 + maxBoost * (fillProgress^2)
+
+  // Velocity boost
+  velocityBoost = 0.10 + 0.15 * fillProgress
+
+  // Accent probability ramp
+  accentProbability = 0.50 + 0.50 * fillProgress
+  forceAccents = (fillProgress > 0.85)
+
+  // Eligibility expansion
+  expandEligibility = (fillProgress > 0.5)
+```
+
+---
+
+## 10. AUX Output System
+
+### 10.1 AUX Modes
 
 | Mode | Signal | Description |
 |------|--------|-------------|
-| HAT | Trigger | Third trigger voice (ghost/hi-hat pattern) |
-| FILL_GATE | Gate | High during fill zones |
-| PHRASE_CV | 0-5V | Ramp over phrase, resets at loop boundary |
-| EVENT | Trigger | Fires on "interesting" moments (accents, fills, section changes) |
+| **FILL GATE** (default) | Gate | HIGH during fill duration |
+| **HAT** (secret) | Trigger | Pattern-aware hat burst during fill |
+
+### 10.2 Hat Burst Generation
+
+```
+// Determine trigger count (2-12)
+triggerCount = max(1, round(2 + energy * 10))
+
+FOR i = 0 TO triggerCount - 1:
+  IF burst.count >= 12: BREAK
+
+  IF shape < 0.3:
+    step = (i * fillDuration) / triggerCount  // Evenly spaced
+  ELSE IF shape < 0.7:
+    step = EuclideanWithJitter(i, fillDuration, shape, seed)
+  ELSE:
+    step = RandomStep(fillDuration, seed, i)
+
+  // Collision detection: nudge to nearest empty
+  IF step IN usedSteps:
+    step = FindNearestEmpty(step, fillDuration, usedSteps)
+
+  burst.triggers[burst.count++] = step
+
+// Velocity ducking near main hits
+FOR each trigger:
+  nearMainHit = CheckProximity(trigger.step, mainPattern, 1)
+  baseVelocity = 0.65 + 0.35 * energy
+  trigger.velocity = nearMainHit ? baseVelocity * 0.30 : baseVelocity
+```
+
+### 10.3 Hat Burst Data Structure
+
+```cpp
+struct HatBurst {
+    struct Trigger { uint8_t step; float velocity; };
+    Trigger triggers[12];  // Pre-allocated, no heap
+    uint8_t count, fillStart, fillDuration, _pad;
+};
+```
 
 ---
 
-## 9. LED Feedback System
+## 11. LED Feedback System
 
-### 9.1 LED Output (CV_OUT_2)
+### 11.1 5-Layer Priority System
 
-| Brightness | Meaning |
-|------------|---------|
-| 0% | Off (no activity) |
-| 30% | Shimmer trigger |
-| 80% | Anchor trigger |
-| 100% | Flash (mode change, reset, reseed) |
-| Pulse | Live fill mode active |
-| Gradient | Continuous parameter being adjusted |
+| Layer | Priority | State | Behavior |
+|-------|----------|-------|----------|
+| 1 | Base | Idle (perf) | Gentle breath synced to clock |
+| 1 | Base | Idle (config) | Slower breath |
+| 2 | Additive | Clock sync | Subtle pulse on beats |
+| 3 | Maximum | Trigger activity | Pulse on hits, envelope decay |
+| 4 | Maximum | Fill active | Accelerating strobe + trigger overlay |
+| 5 | Replace | Reseed progress | Building pulse (1-5Hz over 3s) |
+| 5 | Replace | Reseed confirm | POP POP POP (3 flashes) |
+| 5 | Replace | Mode switch | Quick signature |
+| 5 | Replace | AUX mode unlock | Triple rising flash |
+| 5 | Replace | AUX mode reset | Single fade |
 
----
+### 11.2 Layer Composition
 
-## 10. Data Structures
+```
+finalBrightness = max(
+  baseBrightness,
+  clockPulse,      // Layer 2 additive
+  triggerPulse,    // Layer 3 maximum
+  fillStrobe       // Layer 4 maximum
+)
 
-See implementation pseudocode section for complete struct definitions including:
-- `ArchetypeDNA` - Pattern archetype with weights and metadata
-- `GenreField` - 3×3 grid of archetypes per genre
-- `ControlState` - All runtime control parameters
-- `SequencerState` - Position, hit masks, event flags
-- `DuoPulseState` - Complete firmware state
-
----
-
-## 11. Implementation Pseudocode
-
-### 11.1 Main Audio Callback
-
-Core audio callback processes clock, advances steps, generates bar patterns, computes step outputs, and writes to hardware outputs.
-
-### 11.2 Bar Generation
-
-Per-bar generation computes hit budgets, eligibility masks, selects hits via Gumbel Top-K, applies voice relationship, runs repair passes, and applies guard rails.
-
-### 11.3 Step Processing
-
-Per-step processing checks hit masks, computes velocities from PUNCH, applies BROKEN timing stack (swing, jitter, displacement), and updates event flags.
-
-### 11.4 Control Processing
-
-Control processing reads hardware, applies CV modulation, handles mode/shift switching, and computes derived parameters.
+IF layer5Active:
+  finalBrightness = layer5Value  // Layer 5 replaces all
+```
 
 ---
 
-## 12. Configuration & Persistence
+## 12. Boot Behavior
 
-### 12.1 Boot Behavior (Task 24)
+### 12.1 Boot Defaults
 
-DuoPulse v4 uses a **fresh-start boot strategy**: all settings reset to musical defaults on power-on. This ensures:
-- Predictable, known-good state every boot
-- No "what state am I in?" confusion
-- Module immediately playable after power-on
-- Simpler firmware (no flash persistence)
+All parameters reset to musical defaults on power-on:
 
-**Boot Sequence**:
-1. Hardware init (DaisySP, ADC, GPIO)
-2. Set all config and shift parameters to defaults
-3. Read performance knobs (K1-K4) from hardware
-4. Initialize sequencer with current knob values
-5. Start audio callback
-6. Begin internal clock
-
-### 12.2 Boot Defaults
-
-All parameters are initialized to musical defaults on power-on:
-
-#### Config Settings (Primary)
 | Parameter | Default | Rationale |
 |-----------|---------|-----------|
-| **Pattern Length** | 32 steps | Standard techno bar length |
-| **Swing** | 50% | Neutral starting point |
-| **AUX Mode** | HAT | Most common third voice |
-| **Reset Mode** | STEP | Hardcoded (see Task 22) |
+| ENERGY | 50% | Neutral density |
+| SHAPE | 30% | Humanized euclidean zone |
+| AXIS X | 50% | Neutral beat position |
+| AXIS Y | 50% | Moderate intricacy |
+| CLOCK DIV | ×1 | No division |
+| SWING | 50% | Neutral |
+| DRIFT | 0% | Locked pattern |
+| ACCENT | 50% | Normal dynamics |
+| AUX MODE | FILL GATE | Default (no HAT) |
+| PATTERN LENGTH | 16 | Compile-time default |
 
-#### Config Settings (Shift)
-| Parameter | Default | Rationale |
-|-----------|---------|-----------|
-| **Phrase Length** | 4 bars | Auto-derived from pattern length (see Task 22) |
-| **Clock Division** | x1 | No division/multiplication |
-| **AUX Density** | 100% (NORMAL) | Standard density |
-| **Voice Coupling** | INDEPENDENT | Voices fire freely |
+### 12.2 Boot-Time AUX Mode Selection
 
-#### Shift Parameters
-| Parameter | Default | Rationale |
-|-----------|---------|-----------|
-| **PUNCH** | 50% | Normal velocity dynamics |
-| **GENRE** | Techno (0%) | Primary use case |
-| **DRIFT** | 0% | Locked pattern, no evolution |
-| **BALANCE** | 50% | Equal voice balance |
+Optional gesture during power-on:
+- Hold button during power-on
+- Switch UP → HAT mode (triple rising flash)
+- Switch DOWN → FILL GATE mode (single fade)
 
-#### Performance Primary (Read from Hardware)
-| Parameter | Source | Notes |
-|-----------|--------|-------|
-| **ENERGY** | K1 knob position | No soft takeover needed |
-| **BUILD** | K2 knob position | Immediate response |
-| **FIELD X** | K3 knob position | Reads actual hardware |
-| **FIELD Y** | K4 knob position | Direct mapping |
+AUX mode is **volatile** (not persisted across power cycles).
 
-### 12.3 Persistence Policy
+### 12.3 Performance Knob Reading
 
-**Nothing persists across power cycles** (Task 24). This is intentional:
-- Ensures reproducible behavior
-- Avoids unexpected state on boot
-- Simplifies firmware (no flash wear management)
-- User can quickly return to known-good defaults by power cycling
-
-**Note**: Earlier versions included auto-save to flash, but this was removed based on hardware validation feedback (Task 16) where users preferred fresh starts over persistence.
+On boot, performance knobs (K1-K4) are read from hardware immediately:
+- No soft takeover needed
+- Values apply directly
+- Provides immediate playability
 
 ---
 
-## 13. Runtime Logging System [runtime-logging]
+## 13. Clock and Reset
 
-### 13.1 Overview
+### 13.1 Clock Source Selection
 
-DuoPulse v4 includes a compile-time and runtime configurable logging system for debugging and development without needing to rebuild firmware. The system follows embedded best practices:
+| Condition | Clock Source | Behavior |
+|-----------|--------------|----------|
+| Gate In 1 unpatched | Internal Metro | Steps advance on internal clock |
+| Gate In 1 patched | External only | Internal clock disabled |
 
-- **Compile-time level cap**: Strip debug logs from release builds (zero cost)
-- **Runtime level control**: Adjust verbosity without rebuilding firmware
-- **USB serial transport**: Uses libDaisy's logger (StartLog/PrintLine)
-- **Real-time safe**: No logging from audio callback (main loop only)
+External clock is **exclusive**: no timeout fallback, no parallel operation.
 
-### 13.2 Log Levels
+### 13.2 Reset Behavior
 
-The system provides five log levels:
-
-| Level | Value | Purpose | Example Use Case |
-|-------|-------|---------|------------------|
-| **TRACE** | 0 | Verbose debugging | Per-step state dumps, loop internals |
-| **DEBUG** | 1 | Development info | Bar generation, archetype selection, pattern changes |
-| **INFO** | 2 | Normal operation | Boot messages, mode changes, config updates |
-| **WARN** | 3 | Warnings | Constraint violations, soft repair triggers |
-| **ERROR** | 4 | Critical issues | Hardware init failures, invalid state |
-| **OFF** | 5 | Disable logging | Production builds |
-
-### 13.3 Compile-Time Configuration
-
-Build-time flags in `Makefile` control what gets compiled into the binary:
-
-```makefile
-# Development build (keep DEBUG+ logs, default to INFO at runtime)
-CFLAGS += -DLOG_COMPILETIME_LEVEL=1  # 0=TRACE, 1=DEBUG, 2=INFO, etc.
-CFLAGS += -DLOG_DEFAULT_LEVEL=2      # Default runtime level
-
-# Release build (only WARN/ERROR, quiet by default)
-CFLAGS += -DLOG_COMPILETIME_LEVEL=3
-CFLAGS += -DLOG_DEFAULT_LEVEL=3
-```
-
-**Acceptance Criteria**:
-- ✅ Logs below `LOG_COMPILETIME_LEVEL` are stripped at compile time (zero code size)
-- ✅ `LOG_DEFAULT_LEVEL` sets initial runtime filter level
-
-### 13.4 Runtime Control
-
-Runtime log level can be adjusted programmatically:
-
-```cpp
-logging::SetLevel(logging::DEBUG);  // Show DEBUG+ logs
-logging::SetLevel(logging::WARN);   // Only show WARN/ERROR
-```
-
-**Future enhancement**: Add control via button combo (e.g., Shift + double-tap cycles levels)
-
-**Acceptance Criteria**:
-- ✅ Runtime level filter works even if compile-time level allows logs
-- ✅ Changing runtime level takes effect immediately
-- ✅ Runtime level defaults to `LOG_DEFAULT_LEVEL` on boot
-
-### 13.5 Usage Pattern
-
-Logging macros include file/line info for easy debugging:
-
-```cpp
-#include "logging.h"
-
-// In main.cpp Init():
-logging::Init(true);  // Wait for host to open serial (optional)
-
-// In application code:
-LOGT("Trace: per-step state dump");           // TRACE
-LOGD("Debug: selected archetype [%d,%d]", x, y);  // DEBUG
-LOGI("Info: mode changed to %s", modeName);   // INFO
-LOGW("Warning: guard rail triggered");        // WARN
-LOGE("Error: hardware init failed");          // ERROR
-```
-
-**Output format**:
-```
-[INFO] main.cpp:142 boot
-[DEBUG] Engine/GenerationPipeline.cpp:87 selected archetype [1,2]
-[WARN] Engine/GuardRails.cpp:45 downbeat missing, forcing anchor
-```
-
-### 13.6 Real-Time Safety
-
-**Critical Rule**: Never log from audio callback. USB serial I/O is blocking and will cause audio dropouts.
-
-**Accepted patterns**:
-- ✅ Log from `main()` loop during initialization
-- ✅ Log from control processing (button/knob handlers)
-- ✅ Log before/after bar generation (outside audio callback)
-
-**Forbidden**:
-- ❌ Logging inside `AudioCallback()`
-- ❌ `PrintLine()` directly from sample processing
-
-**Future enhancement**: Ring buffer event system for audio-safe logging (push events from callback, flush from main loop)
-
-**Acceptance Criteria**:
-- ✅ No logging calls in audio callback path
-- ✅ Audio timing unaffected by logging activity
-
-### 13.7 Implementation Requirements
-
-**Core Files**:
-- `src/System/logging.h` - Level enum, macros, API declarations
-- `src/System/logging.cpp` - Implementation using DaisyPatchSM::StartLog/PrintLine
-
-**API**:
-```cpp
-namespace logging {
-    void Init(bool wait_for_pc = true);  // Call after hw.Init()
-    void SetLevel(Level lvl);
-    Level GetLevel();
-    void Print(Level lvl, const char* file, int line, const char* fmt, ...);
-}
-```
-
-**Macros** (compile-time + runtime gating):
-```cpp
-LOGT(...) // TRACE
-LOGD(...) // DEBUG
-LOGI(...) // INFO
-LOGW(...) // WARN
-LOGE(...) // ERROR
-```
-
-**Acceptance Criteria**:
-- ✅ `logging::Init()` initializes USB serial logger
-- ✅ Macros include file:line info automatically
-- ✅ Printf-style formatting supported (`%d`, `%s`, `%f`, etc.)
-- ✅ Message buffer sized to avoid truncation (192 chars minimum)
-- ✅ Stack-only allocation (no heap, safe for embedded)
-
-### 13.8 Testing Requirements
-
-**Unit Tests**:
-- Verify compile-time gating strips logs below threshold
-- Verify runtime filter prevents logs below current level
-- Test all five log levels produce correct output format
-
-**Integration Tests**:
-- Boot with wait_for_pc=true, verify no messages missed
-- Change runtime level, verify immediate effect
-- Stress test: 100+ logs in main loop, verify no buffer overruns
-
-**Hardware Validation**:
-- Connect USB serial (screen/minicom), verify boot messages appear
-- Adjust runtime level, verify log verbosity changes
-- Confirm audio performance unaffected by logging
+Reset (Gate In 2) always resets to step 0. Pattern regeneration occurs at bar boundaries.
 
 ---
 
@@ -939,35 +663,58 @@ LOGE(...) // ERROR
 
 | Test Area | Tests Required |
 |-----------|----------------|
-| **Hit Budget** | Budget scales with energy; balance splits correctly; fill bias on last bar |
-| **Eligibility Mask** | Energy unlocks metric levels; flavor adds offbeats; zone restrictions |
-| **Gumbel Top-K** | Correct count selected; spacing rules enforced; deterministic with seed |
-| **Voice Relationship** | Interlock suppresses simultaneous; shadow creates echoes; gap-fill works |
-| **Guard Rails** | Downbeat forced when missing; max gap enforced; consecutive shimmer limited |
-| **BROKEN Stack** | Swing applied to correct steps; jitter bounded by zone; displacement zone-gated |
-| **Archetype Blend** | Softmax sharpens weights; continuous properties interpolate; discrete from dominant |
-| **DRIFT** | Seed selection by stability; phrase seed changes; reseed works |
+| **SHAPE Blending** | Zone transitions, crossfade smoothness, determinism |
+| **AXIS Biasing** | Bidirectional effect, no dead zones, broken mode |
+| **COMPLEMENT** | Gap finding, wrap-around handling, DRIFT placement |
+| **ACCENT Velocity** | Range scaling, metric weight mapping, micro-variation |
+| **Hat Burst** | Pre-allocation, collision detection, velocity ducking |
+| **LED Layers** | Priority ordering, layer composition |
 
-### 13.2 Integration Tests
+### 14.2 Integration Tests
 
 | Test | Description |
 |------|-------------|
-| **Full Bar Generation** | Generate 100 bars, verify all have valid hit counts and pass guard rails |
-| **Energy Sweep** | Sweep energy 0-100%, verify zone transitions and density changes |
-| **Field Navigation** | Navigate all 9 grid positions, verify distinct character at each |
-| **Genre Switch** | Switch genres mid-phrase, verify clean transition |
-| **Clock Stability** | External clock at various tempos (60-200 BPM), verify timing accuracy |
-| **Boot Defaults** | Power cycle, verify all parameters reset to documented defaults |
+| **Full Bar Generation** | Generate 100 bars, verify hit counts and patterns |
+| **SHAPE Sweep** | Sweep 0-100%, verify smooth character transitions |
+| **AXIS Navigation** | Full X/Y range, verify continuous effect |
+| **Fill Behavior** | Button tap, CV trigger, AUX output |
+| **Boot Defaults** | Power cycle, verify all parameters reset |
 
-### 13.3 Musical Validation
+### 14.3 Musical Validation
 
-| Test | Expected Outcome |
-|------|------------------|
-| **ENERGY=30%, GENRE=Techno** | Steady techno groove, tight timing, predictable |
-| **ENERGY=80%, GENRE=IDM, SWING=70%** | Busy broken beat, fills at phrase end, loose timing |
-| **DRIFT=0%** | Identical pattern every phrase |
-| **DRIFT=100%** | Varied pattern but same density feel |
-| **Field [0,0] → [2,2]** | Clear progression from minimal to chaos |
+| Settings | Expected Outcome |
+|----------|------------------|
+| ENERGY=45%, SHAPE=25% | Driving techno, stable groove |
+| ENERGY=55%, SHAPE=50%, AXIS X=65% | Groovy funk, syncopated |
+| ENERGY=65%, SHAPE=60%, AXIS X=75% | Broken beat mode |
+| ENERGY=85%, SHAPE=90% | IDM chaos |
+| DRIFT=0% | Identical pattern every phrase |
+| DRIFT=100% | Varied placement, same density feel |
+
+---
+
+## Appendix: Style Preset Map
+
+### Performance Mode Settings
+
+| Style | ENERGY | SHAPE | AXIS X | AXIS Y |
+|-------|--------|-------|--------|--------|
+| Minimal Techno | 20% | 10% | 20% | 20% |
+| Driving Techno | 45% | 25% | 30% | 40% |
+| Groovy/Funk | 55% | 50% | 65% | 55% |
+| Broken Beat | 65% | 60% | 75% | 70% |
+| Tribal/Poly | 70% | 45% | 60% | 80% |
+| IDM/Chaos | 85% | 90% | 85% | 90% |
+
+### Config Mode Settings
+
+| Style | CLOCK DIV | SWING | DRIFT | ACCENT |
+|-------|-----------|-------|-------|--------|
+| Minimal Techno | 50% | 20% | 10% | 70% |
+| Driving Techno | 50% | 30% | 20% | 75% |
+| Groovy/Funk | 50% | 60% | 40% | 65% |
+| Broken Beat | 50% | 45% | 55% | 60% |
+| IDM/Chaos | Varies | Varies | 80% | 85% |
 
 ---
 
@@ -975,22 +722,16 @@ LOGE(...) // ERROR
 
 | Term | Definition |
 |------|------------|
-| **Anchor** | Primary voice, typically kick-like role |
-| **Shimmer** | Secondary voice, typically snare/clap-like role |
-| **AUX** | Third voice, typically hi-hat/percussion role |
-| **Hit Budget** | Target number of hits per bar, guarantees density |
-| **Eligibility Mask** | Bitmask of steps that *can* fire (possible vs probable) |
-| **Gumbel Top-K** | Weighted sampling method using Gumbel noise for deterministic selection |
-| **COUPLE** | Voice relationship parameter stored in archetypes (independent → interlock → shadow) |
-| **PUNCH** | Velocity dynamics parameter (flat dynamics → punchy with accent contrast) |
-| **BUILD** | Phrase arc parameter (flat phrase → climactic with fills and builds) |
-| **DRIFT** | Pattern evolution rate (0% = locked, 100% = varies each phrase) |
-| **BROKEN** | Timing stack: swing + jitter + displacement + velocity chaos |
-| **Guard Rails** | Hard rules that guarantee musicality (downbeat protection, max gap, etc.) |
-| **Energy Zone** | Behavioral mode derived from ENERGY: MINIMAL/GROOVE/BUILD/PEAK |
-| **Archetype** | One of 9 curated pattern templates per genre |
-| **Pattern Field** | 3×3 grid of archetypes navigated by FIELD X/Y |
-| **Winner-Take-More** | Softmax blending that preserves dominant archetype character |
+| **Voice 1 / Anchor** | Primary voice, typically kick-like role |
+| **Voice 2 / Shimmer** | Secondary voice, fills gaps in Voice 1 |
+| **COMPLEMENT** | Voice 2 gap-filling relationship |
+| **SHAPE** | Pattern character (stable → syncopated → wild) |
+| **AXIS X** | Beat position control (downbeats ↔ offbeats) |
+| **AXIS Y** | Intricacy control (simple ↔ complex) |
+| **ACCENT** | Velocity range (flat → dynamic) |
+| **DRIFT** | Pattern evolution rate (locked → varies each phrase) |
+| **Hat Burst** | Pattern-aware fill triggers on AUX output |
+| **Broken Mode** | High SHAPE + high AXIS X interaction zone |
 
 ---
 

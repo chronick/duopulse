@@ -20,13 +20,7 @@ TEST_CASE("Sequencer generates non-empty patterns at high energy", "[probe][gene
     // Force regeneration with current controls
     seq.TriggerReset();
 
-    float w0 = seq.GetBlendedAnchorWeight(0);
-    float w4 = seq.GetBlendedAnchorWeight(4);
-    float w8 = seq.GetBlendedAnchorWeight(8);
-    REQUIRE(w0 > 0.1f);
-    REQUIRE(w4 > 0.1f);
-    REQUIRE(w8 > 0.1f);
-
+    // V5: Check pattern mask directly (procedural generation doesn't expose weights)
     // Anchor mask should have multiple hits at peak energy
     uint64_t anchorMask = seq.GetAnchorMask();
     int anchorHits = CountBits(static_cast<uint32_t>(anchorMask & 0xFFFFFFFF));

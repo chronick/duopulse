@@ -314,53 +314,55 @@ TEST_CASE("Velocity chaos is clamped to valid range", "[timing][velocity]")
 }
 
 // =============================================================================
-// VelocityCompute PUNCH Tests
+// VelocityCompute PUNCH/ACCENT Tests
 // =============================================================================
 
 TEST_CASE("ComputePunch scales parameters with punch value", "[velocity][punch]")
 {
+    // V5 Task 35: Updated to use metric weight-based velocity
     PunchParams low, mid, high;
 
     ComputePunch(0.0f, low);
     ComputePunch(0.5f, mid);
     ComputePunch(1.0f, high);
 
-    // Accent probability increases with punch
-    REQUIRE(low.accentProbability < mid.accentProbability);
-    REQUIRE(mid.accentProbability < high.accentProbability);
-
     // Velocity floor decreases with punch (more dynamics)
     REQUIRE(low.velocityFloor > mid.velocityFloor);
     REQUIRE(mid.velocityFloor > high.velocityFloor);
 
-    // Accent boost increases with punch
-    REQUIRE(low.accentBoost < mid.accentBoost);
-    REQUIRE(mid.accentBoost < high.accentBoost);
+    // Velocity ceiling increases with punch
+    REQUIRE(low.velocityCeiling < mid.velocityCeiling);
+    REQUIRE(mid.velocityCeiling < high.velocityCeiling);
 
-    // Velocity variation increases with punch
-    REQUIRE(low.velocityVariation < mid.velocityVariation);
-    REQUIRE(mid.velocityVariation < high.velocityVariation);
+    // Velocity range (ceiling - floor) increases with punch
+    float lowContrast = low.velocityCeiling - low.velocityFloor;
+    float midContrast = mid.velocityCeiling - mid.velocityFloor;
+    float highContrast = high.velocityCeiling - high.velocityFloor;
+    REQUIRE(highContrast > lowContrast);
+    REQUIRE(midContrast > lowContrast);
+
+    // Variation increases with punch
+    REQUIRE(low.variation < mid.variation);
+    REQUIRE(mid.variation < high.variation);
 }
 
 TEST_CASE("ComputePunch has expected range values", "[velocity][punch]")
 {
+    // V5 Task 35: Metric weight-based velocity
     PunchParams low, high;
 
     ComputePunch(0.0f, low);
     ComputePunch(1.0f, high);
 
-    // At punch=0: flat dynamics
-    // Task 21 Phase B: Updated ranges for wider velocity contrast
-    REQUIRE(low.accentProbability == Approx(0.20f).margin(0.01f));  // was 0.15
-    REQUIRE(low.velocityFloor == Approx(0.65f).margin(0.01f));      // was 0.70
-    REQUIRE(low.accentBoost == Approx(0.15f).margin(0.01f));        // was 0.10
-    REQUIRE(low.velocityVariation == Approx(0.03f).margin(0.01f));  // was 0.05
+    // At accent=0: flat dynamics (80-88% range)
+    REQUIRE(low.velocityFloor == Approx(0.80f).margin(0.01f));
+    REQUIRE(low.velocityCeiling == Approx(0.88f).margin(0.01f));
+    REQUIRE(low.variation == Approx(0.02f).margin(0.01f));
 
-    // At punch=1: maximum dynamics
-    REQUIRE(high.accentProbability == Approx(0.50f).margin(0.01f));
+    // At accent=1: wide dynamics (30-100% range)
     REQUIRE(high.velocityFloor == Approx(0.30f).margin(0.01f));
-    REQUIRE(high.accentBoost == Approx(0.45f).margin(0.01f));       // was 0.35
-    REQUIRE(high.velocityVariation == Approx(0.15f).margin(0.01f)); // was 0.20
+    REQUIRE(high.velocityCeiling == Approx(1.00f).margin(0.01f));
+    REQUIRE(high.variation == Approx(0.07f).margin(0.01f));
 }
 
 // =============================================================================
@@ -442,29 +444,33 @@ TEST_CASE("ComputeVelocity produces valid output range", "[velocity]")
     }
 }
 
-TEST_CASE("Velocity contrast scales with punch", "[velocity][punch]")
+TEST_CASE("Velocity contrast scales with ACCENT", "[velocity][accent]")
 {
-    PunchParams lowPunch, highPunch;
-    BuildModifiers mods;
+    // V5 Task 35: Velocity contrast is now based on metric weight, not accent flag
+    // At low ACCENT: downbeat and offbeat have similar velocity
+    // At high ACCENT: downbeat is much louder than offbeat
+    AccentParams lowAccent, highAccent;
+    ShapeModifiers mods;
 
-    ComputePunch(0.0f, lowPunch);
-    ComputePunch(1.0f, highPunch);
-    ComputeBuildModifiers(0.0f, 0.5f, mods);
+    ComputeAccent(0.0f, lowAccent);
+    ComputeAccent(1.0f, highAccent);
+    ComputeShapeModifiers(0.0f, 0.5f, mods);
 
     const uint32_t seed = 0x12345678;
-    const int step = 0;
+    const int downbeat = 0;   // Metric weight = 1.0
+    const int offbeat = 1;    // Metric weight = 0.25
 
-    // At low punch: accented and non-accented should be similar
-    float lowAccent = ComputeVelocity(lowPunch, mods, true, seed, step);
-    float lowNormal = ComputeVelocity(lowPunch, mods, false, seed, step);
-    float lowContrast = lowAccent - lowNormal;
+    // At low ACCENT: downbeat and offbeat should be similar (flat dynamics)
+    float lowDownbeat = ComputeVelocity(lowAccent, mods, true, seed, downbeat);
+    float lowOffbeat = ComputeVelocity(lowAccent, mods, false, seed, offbeat);
+    float lowContrast = lowDownbeat - lowOffbeat;
 
-    // At high punch: accented should be much higher than non-accented
-    float highAccent = ComputeVelocity(highPunch, mods, true, seed, step);
-    float highNormal = ComputeVelocity(highPunch, mods, false, seed, step);
-    float highContrast = highAccent - highNormal;
+    // At high ACCENT: downbeat should be much louder than offbeat
+    float highDownbeat = ComputeVelocity(highAccent, mods, true, seed, downbeat);
+    float highOffbeat = ComputeVelocity(highAccent, mods, false, seed, offbeat);
+    float highContrast = highDownbeat - highOffbeat;
 
-    // High punch should have more contrast
+    // High ACCENT should have more contrast between downbeat and offbeat
     REQUIRE(highContrast > lowContrast);
 }
 

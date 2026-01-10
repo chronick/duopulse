@@ -277,19 +277,24 @@ TEST_CASE("Button Gesture Detection", "[ControlProcessor][Button]")
     state.Init();
     processor.Init(state);
 
+    // V5 Task 32: ProcessButtonGestures now takes switch state parameters
+    // Use fixed switch position (false) and matching prevSwitchUp to avoid AUX gesture
+    const bool switchUp = false;
+    const bool prevSwitchUp = false;
+
     SECTION("Tap detection (< 200ms press)")
     {
         // Press button
-        processor.ProcessButtonGestures(true, 0, false);
+        processor.ProcessButtonGestures(true, switchUp, prevSwitchUp, 0, false, state.auxMode);
         REQUIRE(processor.GetButtonState().pressed == true);
         REQUIRE(processor.GetButtonState().tapDetected == false);
 
         // Hold for 100ms (still below tap threshold)
-        processor.ProcessButtonGestures(true, 100, false);
+        processor.ProcessButtonGestures(true, switchUp, switchUp, 100, false, state.auxMode);
         REQUIRE(processor.GetButtonState().shiftActive == false);
 
         // Release
-        processor.ProcessButtonGestures(false, 150, false);
+        processor.ProcessButtonGestures(false, switchUp, switchUp, 150, false, state.auxMode);
         REQUIRE(processor.GetButtonState().tapDetected == true);
         REQUIRE(processor.GetButtonState().pressDurationMs == 150);
     }
@@ -297,14 +302,14 @@ TEST_CASE("Button Gesture Detection", "[ControlProcessor][Button]")
     SECTION("Hold detection (> 200ms press)")
     {
         // Press button
-        processor.ProcessButtonGestures(true, 0, false);
+        processor.ProcessButtonGestures(true, switchUp, prevSwitchUp, 0, false, state.auxMode);
 
         // Hold for 250ms
-        processor.ProcessButtonGestures(true, 250, false);
+        processor.ProcessButtonGestures(true, switchUp, switchUp, 250, false, state.auxMode);
         REQUIRE(processor.GetButtonState().shiftActive == true);
 
         // Release
-        processor.ProcessButtonGestures(false, 300, false);
+        processor.ProcessButtonGestures(false, switchUp, switchUp, 300, false, state.auxMode);
         REQUIRE(processor.GetButtonState().shiftActive == false);
         REQUIRE(processor.GetButtonState().tapDetected == false);  // Too long for tap
     }
@@ -312,60 +317,60 @@ TEST_CASE("Button Gesture Detection", "[ControlProcessor][Button]")
     SECTION("Live fill mode (> 500ms, no knob moved)")
     {
         // Press button
-        processor.ProcessButtonGestures(true, 0, false);
+        processor.ProcessButtonGestures(true, switchUp, prevSwitchUp, 0, false, state.auxMode);
 
         // Hold for 500ms without moving knobs
-        processor.ProcessButtonGestures(true, 500, false);
+        processor.ProcessButtonGestures(true, switchUp, switchUp, 500, false, state.auxMode);
         REQUIRE(processor.GetButtonState().liveFillActive == true);
 
         // Release
-        processor.ProcessButtonGestures(false, 600, false);
+        processor.ProcessButtonGestures(false, switchUp, switchUp, 600, false, state.auxMode);
         REQUIRE(processor.GetButtonState().liveFillActive == false);
     }
 
     SECTION("Live fill cancelled by knob movement")
     {
         // Press button
-        processor.ProcessButtonGestures(true, 0, false);
+        processor.ProcessButtonGestures(true, switchUp, prevSwitchUp, 0, false, state.auxMode);
 
         // Move a knob at 300ms
-        processor.ProcessButtonGestures(true, 300, true);
+        processor.ProcessButtonGestures(true, switchUp, switchUp, 300, true, state.auxMode);
 
         // Hold for 600ms total
-        processor.ProcessButtonGestures(true, 600, false);
+        processor.ProcessButtonGestures(true, switchUp, switchUp, 600, false, state.auxMode);
         REQUIRE(processor.GetButtonState().liveFillActive == false);  // Should NOT be active
     }
 
     SECTION("Double-tap detection")
     {
         // First tap
-        processor.ProcessButtonGestures(true, 0, false);
-        processor.ProcessButtonGestures(false, 100, false);
+        processor.ProcessButtonGestures(true, switchUp, prevSwitchUp, 0, false, state.auxMode);
+        processor.ProcessButtonGestures(false, switchUp, switchUp, 100, false, state.auxMode);
         REQUIRE(processor.GetButtonState().tapDetected == true);
         REQUIRE(processor.GetButtonState().doubleTapDetected == false);
 
         // Clear tap flag on next process
-        processor.ProcessButtonGestures(false, 150, false);
+        processor.ProcessButtonGestures(false, switchUp, switchUp, 150, false, state.auxMode);
         REQUIRE(processor.GetButtonState().tapDetected == false);
 
         // Second tap within window (< 400ms from first release)
-        processor.ProcessButtonGestures(true, 200, false);
-        processor.ProcessButtonGestures(false, 300, false);
+        processor.ProcessButtonGestures(true, switchUp, switchUp, 200, false, state.auxMode);
+        processor.ProcessButtonGestures(false, switchUp, switchUp, 300, false, state.auxMode);
         REQUIRE(processor.GetButtonState().doubleTapDetected == true);
     }
 
     SECTION("Double-tap window expires")
     {
         // First tap
-        processor.ProcessButtonGestures(true, 0, false);
-        processor.ProcessButtonGestures(false, 100, false);
+        processor.ProcessButtonGestures(true, switchUp, prevSwitchUp, 0, false, state.auxMode);
+        processor.ProcessButtonGestures(false, switchUp, switchUp, 100, false, state.auxMode);
 
         // Wait for window to expire
-        processor.ProcessButtonGestures(false, 600, false);  // > 400ms later
+        processor.ProcessButtonGestures(false, switchUp, switchUp, 600, false, state.auxMode);  // > 400ms later
 
         // Second tap should be a new tap, not double-tap
-        processor.ProcessButtonGestures(true, 700, false);
-        processor.ProcessButtonGestures(false, 800, false);
+        processor.ProcessButtonGestures(true, switchUp, switchUp, 700, false, state.auxMode);
+        processor.ProcessButtonGestures(false, switchUp, switchUp, 800, false, state.auxMode);
         REQUIRE(processor.GetButtonState().doubleTapDetected == false);
         REQUIRE(processor.GetButtonState().tapDetected == true);
     }
@@ -403,17 +408,20 @@ TEST_CASE("Mode Switching", "[ControlProcessor][Mode]")
         input.modeSwitch = true;
         processor.ProcessControls(input, state, 0.0f);
 
-        // Activate shift (simulated by button hold)
-        processor.ProcessButtonGestures(true, 0, false);
-        processor.ProcessButtonGestures(true, 250, false);  // Hold > 200ms
-        REQUIRE(processor.GetButtonState().shiftActive == true);
+        // Activate shift by setting buttonPressed and time in input, then calling ProcessControls
+        // ProcessControls internally calls ProcessButtonGestures with input values
+        input.buttonPressed = true;
+        input.currentTimeMs = 0;
+        processor.ProcessControls(input, state, 0.0f);  // Button press start
 
-        // Process controls with shift active
-        processor.ProcessControls(input, state, 0.0f);
+        input.currentTimeMs = 250;  // Hold > 200ms
+        processor.ProcessControls(input, state, 0.0f);  // Shift activates
+        REQUIRE(processor.GetButtonState().shiftActive == true);
         REQUIRE(processor.GetModeState().shiftActive == true);
 
         // Release shift
-        processor.ProcessButtonGestures(false, 300, false);
+        input.buttonPressed = false;
+        input.currentTimeMs = 300;
         processor.ProcessControls(input, state, 0.0f);
         REQUIRE(processor.GetModeState().shiftActive == false);
     }
@@ -445,8 +453,8 @@ TEST_CASE("Control State Updates", "[ControlProcessor][Integration]")
         // energyCV should be +0.25
         REQUIRE(state.energyCV == Approx(0.25f));
 
-        // Effective energy should be 0.85 (0.6 base + 0.25 CV)
-        REQUIRE(state.GetEffectiveEnergy() == Approx(0.85f));
+        // Effective energy should be 0.75 (0.5 base + 0.25 CV)
+        REQUIRE(state.GetEffectiveEnergy() == Approx(0.75f));
     }
 
     SECTION("Effective values are clamped")
@@ -539,11 +547,14 @@ TEST_CASE("Reseed and Fill Queue", "[ControlProcessor]")
     state.Init();
     processor.Init(state);
 
+    // V5 Task 32: ProcessButtonGestures now takes switch state parameters
+    const bool switchUp = false;
+
     SECTION("Tap queues fill")
     {
         // Simulate tap
-        processor.ProcessButtonGestures(true, 0, false);
-        processor.ProcessButtonGestures(false, 100, false);
+        processor.ProcessButtonGestures(true, switchUp, switchUp, 0, false, state.auxMode);
+        processor.ProcessButtonGestures(false, switchUp, switchUp, 100, false, state.auxMode);
 
         REQUIRE(processor.FillQueued() == true);
     }
@@ -551,12 +562,12 @@ TEST_CASE("Reseed and Fill Queue", "[ControlProcessor]")
     SECTION("Double-tap requests reseed")
     {
         // First tap
-        processor.ProcessButtonGestures(true, 0, false);
-        processor.ProcessButtonGestures(false, 100, false);
+        processor.ProcessButtonGestures(true, switchUp, switchUp, 0, false, state.auxMode);
+        processor.ProcessButtonGestures(false, switchUp, switchUp, 100, false, state.auxMode);
 
         // Second tap within window
-        processor.ProcessButtonGestures(true, 200, false);
-        processor.ProcessButtonGestures(false, 300, false);
+        processor.ProcessButtonGestures(true, switchUp, switchUp, 200, false, state.auxMode);
+        processor.ProcessButtonGestures(false, switchUp, switchUp, 300, false, state.auxMode);
 
         REQUIRE(processor.ReseedRequested() == true);
     }

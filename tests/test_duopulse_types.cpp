@@ -2,7 +2,6 @@
 #include <catch2/catch_approx.hpp>
 
 #include "../src/Engine/DuoPulseTypes.h"
-#include "../src/Engine/ArchetypeDNA.h"
 #include "../src/Engine/ControlState.h"
 #include "../src/Engine/SequencerState.h"
 #include "../src/Engine/OutputState.h"
@@ -108,26 +107,18 @@ TEST_CASE("DuoPulseTypes helper functions", "[types]")
 
     SECTION("GetVoiceCouplingFromValue maps knob correctly")
     {
-        // Task 22 Phase C1: INTERLOCK removed, now 2 modes
-        // 0-50% = INDEPENDENT, 50-100% = SHADOW
+        // V5: VoiceCoupling is no longer exposed in UI, always returns INDEPENDENT
         REQUIRE(GetVoiceCouplingFromValue(0.0f) == VoiceCoupling::INDEPENDENT);
-        REQUIRE(GetVoiceCouplingFromValue(0.20f) == VoiceCoupling::INDEPENDENT);
-        REQUIRE(GetVoiceCouplingFromValue(0.40f) == VoiceCoupling::INDEPENDENT);
-        REQUIRE(GetVoiceCouplingFromValue(0.49f) == VoiceCoupling::INDEPENDENT);
-        REQUIRE(GetVoiceCouplingFromValue(0.50f) == VoiceCoupling::SHADOW);
-        REQUIRE(GetVoiceCouplingFromValue(0.60f) == VoiceCoupling::SHADOW);
-        REQUIRE(GetVoiceCouplingFromValue(0.80f) == VoiceCoupling::SHADOW);
-        REQUIRE(GetVoiceCouplingFromValue(1.0f) == VoiceCoupling::SHADOW);
+        REQUIRE(GetVoiceCouplingFromValue(0.50f) == VoiceCoupling::INDEPENDENT);
+        REQUIRE(GetVoiceCouplingFromValue(1.0f) == VoiceCoupling::INDEPENDENT);
     }
 
     SECTION("GetGenreFromValue maps knob correctly")
     {
+        // V5: Genre is no longer exposed in UI, always returns TECHNO
         REQUIRE(GetGenreFromValue(0.0f) == Genre::TECHNO);
-        REQUIRE(GetGenreFromValue(0.20f) == Genre::TECHNO);
-        REQUIRE(GetGenreFromValue(0.40f) == Genre::TRIBAL);
-        REQUIRE(GetGenreFromValue(0.60f) == Genre::TRIBAL);
-        REQUIRE(GetGenreFromValue(0.80f) == Genre::IDM);
-        REQUIRE(GetGenreFromValue(1.0f) == Genre::IDM);
+        REQUIRE(GetGenreFromValue(0.50f) == Genre::TECHNO);
+        REQUIRE(GetGenreFromValue(1.0f) == Genre::TECHNO);
     }
 }
 
@@ -135,139 +126,91 @@ TEST_CASE("Constants are defined correctly", "[types]")
 {
     REQUIRE(kMaxSteps == 32);
     REQUIRE(kMaxPhraseSteps == 256);
-    REQUIRE(kArchetypesPerGenre == 9);
-    REQUIRE(kNumGenres == 3);
-}
-
-// =============================================================================
-// ArchetypeDNA.h Tests
-// =============================================================================
-
-TEST_CASE("ArchetypeDNA initialization", "[archetype]")
-{
-    ArchetypeDNA archetype;
-    archetype.Init();
-
-    SECTION("Weights are initialized")
-    {
-        // Downbeats should be strongest
-        REQUIRE(archetype.anchorWeights[0] == Approx(1.0f));
-        REQUIRE(archetype.anchorWeights[8] == Approx(0.85f));  // Half note
-        REQUIRE(archetype.anchorWeights[16] == Approx(1.0f)); // Bar 2 downbeat
-
-        // Backbeats should be strongest for shimmer
-        REQUIRE(archetype.shimmerWeights[8] == Approx(1.0f));
-        REQUIRE(archetype.shimmerWeights[24] == Approx(1.0f));
-    }
-
-    SECTION("Default values are reasonable")
-    {
-        REQUIRE(archetype.swingAmount >= 0.0f);
-        REQUIRE(archetype.swingAmount <= 1.0f);
-        REQUIRE(archetype.defaultCouple >= 0.0f);
-        REQUIRE(archetype.defaultCouple <= 1.0f);
-        REQUIRE(archetype.fillDensityMultiplier >= 1.0f);
-    }
-
-    SECTION("Grid position defaults to origin")
-    {
-        REQUIRE(archetype.gridX == 0);
-        REQUIRE(archetype.gridY == 0);
-    }
-}
-
-TEST_CASE("GenreField initialization", "[archetype]")
-{
-    GenreField field;
-    field.Init();
-
-    SECTION("All 9 archetypes are initialized")
-    {
-        for (int y = 0; y < 3; ++y)
-        {
-            for (int x = 0; x < 3; ++x)
-            {
-                const auto& arch = field.GetArchetype(x, y);
-                REQUIRE(arch.gridX == x);
-                REQUIRE(arch.gridY == y);
-            }
-        }
-    }
-
-    SECTION("GetArchetype clamps out-of-range indices")
-    {
-        // Should not crash, should return corner archetypes
-        const auto& corner00 = field.GetArchetype(-1, -1);
-        REQUIRE(corner00.gridX == 0);
-        REQUIRE(corner00.gridY == 0);
-
-        const auto& corner22 = field.GetArchetype(5, 5);
-        REQUIRE(corner22.gridX == 2);
-        REQUIRE(corner22.gridY == 2);
-    }
+    // V5: Archetype constants removed (kArchetypesPerGenre, kNumGenres)
 }
 
 // =============================================================================
 // ControlState.h Tests
 // =============================================================================
 
-TEST_CASE("PunchParams computation", "[control]")
+TEST_CASE("AccentParams computation", "[control]")
 {
-    PunchParams params;
+    // V5: Renamed from PunchParams (Task 27), updated algorithm (Task 35)
+    AccentParams params;
 
-    SECTION("PUNCH=0 gives flat dynamics")
+    SECTION("ACCENT=0 gives flat dynamics")
     {
-        params.ComputeFromPunch(0.0f);
-        REQUIRE(params.accentProbability == Approx(0.15f));
-        REQUIRE(params.velocityFloor == Approx(0.70f));
-        REQUIRE(params.accentBoost == Approx(0.10f));
-        REQUIRE(params.velocityVariation == Approx(0.05f));
+        // V5 Task 35: Metric weight-based velocity
+        // At ACCENT=0: velocityFloor=0.80, velocityCeiling=0.88, variation=0.02
+        params.ComputeFromAccent(0.0f);
+        REQUIRE(params.velocityFloor == Approx(0.80f));
+        REQUIRE(params.velocityCeiling == Approx(0.88f));
+        REQUIRE(params.variation == Approx(0.02f));
     }
 
-    SECTION("PUNCH=1 gives maximum dynamics")
+    SECTION("ACCENT=1 gives maximum dynamics")
     {
-        params.ComputeFromPunch(1.0f);
-        REQUIRE(params.accentProbability == Approx(0.50f));
+        // V5 Task 35: At ACCENT=1: velocityFloor=0.30, velocityCeiling=1.00, variation=0.07
+        params.ComputeFromAccent(1.0f);
         REQUIRE(params.velocityFloor == Approx(0.30f));
-        REQUIRE(params.accentBoost == Approx(0.35f));
-        REQUIRE(params.velocityVariation == Approx(0.20f));
+        REQUIRE(params.velocityCeiling == Approx(1.00f));
+        REQUIRE(params.variation == Approx(0.07f));
     }
 
-    SECTION("PUNCH=0.5 gives medium dynamics")
+    SECTION("ACCENT=0.5 gives medium dynamics")
     {
-        params.ComputeFromPunch(0.5f);
-        REQUIRE(params.accentProbability == Approx(0.325f));
-        REQUIRE(params.velocityFloor == Approx(0.50f));
+        // V5 Task 35: At ACCENT=0.5: velocityFloor=0.55, velocityCeiling=0.94, variation=0.045
+        params.ComputeFromAccent(0.5f);
+        REQUIRE(params.velocityFloor == Approx(0.55f));
+        REQUIRE(params.velocityCeiling == Approx(0.94f));
+        REQUIRE(params.variation == Approx(0.045f));
+    }
+
+    SECTION("Legacy PunchParams alias works")
+    {
+        // V5: PunchParams is now an alias for AccentParams
+        PunchParams legacyParams;
+        legacyParams.ComputeFromAccent(0.5f);
+        REQUIRE(legacyParams.velocityFloor == Approx(0.55f));
     }
 }
 
-TEST_CASE("BuildModifiers computation", "[control]")
+TEST_CASE("ShapeModifiers computation", "[control]")
 {
-    BuildModifiers mods;
+    // V5: Renamed from BuildModifiers (Task 27)
+    ShapeModifiers mods;
 
-    SECTION("BUILD=0 gives flat phrase")
+    SECTION("SHAPE=0 gives flat phrase")
     {
-        mods.ComputeFromBuild(0.0f, 0.5f);
+        mods.ComputeFromShape(0.0f, 0.5f);
         REQUIRE(mods.densityMultiplier == Approx(1.0f));
         REQUIRE(mods.fillIntensity == Approx(0.0f));
         REQUIRE(mods.inFillZone == false);
     }
 
-    SECTION("BUILD=1 at phrase end gives density boost")
+    SECTION("SHAPE=1 at phrase end gives density boost")
     {
-        mods.ComputeFromBuild(1.0f, 1.0f);
+        mods.ComputeFromShape(1.0f, 1.0f);
         REQUIRE(mods.densityMultiplier > 1.0f);
         REQUIRE(mods.densityMultiplier <= 1.5f);
     }
 
     SECTION("Fill zone detection works")
     {
-        mods.ComputeFromBuild(1.0f, 0.5f);
+        mods.ComputeFromShape(1.0f, 0.5f);
         REQUIRE(mods.inFillZone == false);
 
-        mods.ComputeFromBuild(1.0f, 0.9f);
+        mods.ComputeFromShape(1.0f, 0.9f);
         REQUIRE(mods.inFillZone == true);
         REQUIRE(mods.fillIntensity > 0.0f);
+    }
+
+    SECTION("Legacy BuildModifiers alias works")
+    {
+        // V5: BuildModifiers is now an alias for ShapeModifiers
+        BuildModifiers legacyMods;
+        legacyMods.ComputeFromShape(0.5f, 0.5f);
+        REQUIRE(legacyMods.densityMultiplier >= 1.0f);
     }
 }
 
@@ -276,21 +219,31 @@ TEST_CASE("ControlState initialization", "[control]")
     ControlState state;
     state.Init();
 
-    SECTION("Performance controls have sensible defaults")
+    SECTION("Performance controls have V5 boot defaults")
     {
-        REQUIRE(state.energy == 0.6f);
-        REQUIRE(state.build == 0.0f);
-        REQUIRE(state.fieldX == 0.5f);
-        REQUIRE(state.fieldY == 0.33f);
+        // V5 Boot Defaults (Task 27)
+        REQUIRE(state.energy == 0.50f);
+        REQUIRE(state.shape == 0.30f);  // V5: renamed from build
+        REQUIRE(state.axisX == 0.50f);  // V5: renamed from fieldX
+        REQUIRE(state.axisY == 0.50f);  // V5: renamed from fieldY
         REQUIRE(state.genre == Genre::TECHNO);
+
+        // Legacy aliases should also work
+        REQUIRE(state.build == state.shape);
+        REQUIRE(state.fieldX == state.axisX);
+        REQUIRE(state.fieldY == state.axisY);
     }
 
-    SECTION("Config controls have sensible defaults")
+    SECTION("Config controls have V5 boot defaults")
     {
         REQUIRE(state.patternLength == 32);
         REQUIRE(state.phraseLength == 4);
-        REQUIRE(state.auxMode == AuxMode::HAT);
-        REQUIRE(state.resetMode == ResetMode::STEP);  // Task 22: Reset mode hardcoded to STEP
+        REQUIRE(state.auxMode == AuxMode::FILL_GATE);  // V5: FILL_GATE is boot default
+        REQUIRE(state.resetMode == ResetMode::STEP);
+        REQUIRE(state.clockDiv == 1);     // V5: x1 no division
+        REQUIRE(state.swing == 0.50f);    // V5: 50% neutral groove
+        REQUIRE(state.drift == 0.25f);    // V5: 25% enables seed variation
+        REQUIRE(state.accent == 0.50f);   // V5: 50% moderate dynamics
     }
 
     SECTION("GetEffective* clamps CV modulation")
@@ -302,6 +255,21 @@ TEST_CASE("ControlState initialization", "[control]")
         state.energy = 0.2f;
         state.energyCV = -0.5f;  // Would push to -0.3
         REQUIRE(state.GetEffectiveEnergy() == Approx(0.0f));
+    }
+
+    SECTION("V5 GetEffective* accessors work")
+    {
+        state.shape = 0.5f;
+        state.shapeCV = 0.2f;
+        REQUIRE(state.GetEffectiveShape() == Approx(0.7f));
+
+        state.axisX = 0.5f;
+        state.axisXCV = -0.3f;
+        REQUIRE(state.GetEffectiveAxisX() == Approx(0.2f));
+
+        state.axisY = 0.8f;
+        state.axisYCV = 0.4f;  // Would push to 1.2
+        REQUIRE(state.GetEffectiveAxisY() == Approx(1.0f));
     }
 }
 
@@ -682,14 +650,6 @@ TEST_CASE("Struct sizes are reasonable", "[sizes]")
     // These tests ensure structs don't accidentally grow too large
     // (which could indicate memory issues or padding problems)
 
-    SECTION("ArchetypeDNA is reasonable size")
-    {
-        // 3 arrays of 32 floats (3 * 32 * 4 = 384 bytes)
-        // Plus masks, timing, metadata (~40 bytes)
-        // Should be under 512 bytes
-        REQUIRE(sizeof(ArchetypeDNA) < 512);
-    }
-
     SECTION("ControlState is reasonable size")
     {
         // Should be under 512 bytes
@@ -714,7 +674,7 @@ TEST_CASE("Struct sizes are reasonable", "[sizes]")
 
     SECTION("DuoPulseState is reasonable size")
     {
-        // Complete state including GenreField (9 archetypes)
+        // Complete state for sequencer
         // Could be a few KB, but should be under 8KB
         REQUIRE(sizeof(DuoPulseState) < 8192);
     }

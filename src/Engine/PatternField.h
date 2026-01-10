@@ -1,159 +1,221 @@
 #pragma once
 
-#include "ArchetypeDNA.h"
 #include "DuoPulseTypes.h"
 
 namespace daisysp_idm_grids
 {
 
 /**
- * PatternField: 2D pattern morphing and archetype blending
+ * PatternField: V5 SHAPE-based pattern generation
  *
- * The Pattern Field system provides smooth morphing between archetypes
- * using a "winner-take-more" blending approach. This preserves the
- * character of the dominant archetype during transitions while still
- * allowing smooth parameter changes.
+ * The Pattern Field system generates per-step weights using a 7-zone SHAPE
+ * parameter that morphs between stable (euclidean), syncopation, and wild
+ * (chaotic) patterns. AXIS X/Y provide bidirectional biasing for beat emphasis
+ * and rhythmic complexity.
  *
- * Reference: docs/specs/main.md section 5.3
+ * V5 replaces the V4 archetype grid system with procedural generation.
+ *
+ * Reference: docs/specs/main.md section 5
  */
 
 // =============================================================================
-// Constants
-// =============================================================================
-
-/// Default temperature for softmax blending (lower = more winner-take-all)
-constexpr float kDefaultSoftmaxTemperature = 0.5f;
-
-/// Minimum weight to consider (avoid numerical issues)
-constexpr float kMinWeight = 1e-6f;
-
-// =============================================================================
-// Blending Functions
+// Shape-Based Pattern Generation
 // =============================================================================
 
 /**
- * Apply softmax with temperature to sharpen weights
- *
- * Lower temperature = more winner-take-all behavior
- * Higher temperature = more equal blending
- *
- * @param weights Array of 4 weights (will be modified in place)
- * @param temperature Softmax temperature (0.1 to 2.0 typical range)
+ * Minimum weight value to avoid completely silencing any step.
+ * This ensures even "impossible" steps have some chance of firing.
  */
-void SoftmaxWithTemperature(float weights[4], float temperature);
+constexpr float kMinStepWeight = 0.05f;
 
 /**
- * Compute bilinear interpolation weights for a position in the grid
+ * Zone boundaries for SHAPE parameter (0.0-1.0 range)
  *
- * Given a position (fieldX, fieldY) in 0-1 range, computes weights for
- * the four surrounding archetypes. These weights can then be sharpened
- * with softmax for winner-take-more behavior.
- *
- * @param fieldX X position in pattern field (0.0-1.0)
- * @param fieldY Y position in pattern field (0.0-1.0)
- * @param outWeights Array of 4 weights: [bottomLeft, bottomRight, topLeft, topRight]
- * @param outGridX0 Output: lower X grid index (0 or 1)
- * @param outGridX1 Output: upper X grid index (1 or 2)
- * @param outGridY0 Output: lower Y grid index (0 or 1)
- * @param outGridY1 Output: upper Y grid index (1 or 2)
+ * The SHAPE parameter maps to a 7-zone system:
+ *   Zone 1 pure:       [0.00, 0.28) - Stable humanized euclidean
+ *   Crossfade 1->2a:   [0.28, 0.32) - Blend stable to syncopation
+ *   Zone 2a:           [0.32, 0.48) - Pure syncopation (lower)
+ *   Crossfade 2a->2b:  [0.48, 0.52) - Mid syncopation transition
+ *   Zone 2b:           [0.52, 0.68) - Pure syncopation (upper)
+ *   Crossfade 2->3:    [0.68, 0.72) - Blend syncopation to wild
+ *   Zone 3 pure:       [0.72, 1.00] - Wild weighted random
  */
-void ComputeGridWeights(float fieldX, float fieldY,
-                        float outWeights[4],
-                        int& outGridX0, int& outGridX1,
-                        int& outGridY0, int& outGridY1);
+constexpr float kShapeZone1End = 0.28f;        // End of pure stable zone
+constexpr float kShapeCrossfade1End = 0.32f;   // End of stable->syncopation crossfade
+constexpr float kShapeZone2aEnd = 0.48f;       // End of lower syncopation zone
+constexpr float kShapeCrossfade2End = 0.52f;   // End of mid syncopation crossfade
+constexpr float kShapeZone2bEnd = 0.68f;       // End of upper syncopation zone
+constexpr float kShapeCrossfade3End = 0.72f;   // End of syncopation->wild crossfade
 
 /**
- * Blend four archetypes using weighted combination
+ * Generate stable (euclidean-based) pattern weights
  *
- * Performs winner-take-more blending of archetypes based on FIELD X/Y
- * position. Continuous properties (weights, timing) are interpolated,
- * while discrete properties come from the dominant archetype.
+ * Produces techno-style, four-on-floor patterns with:
+ * - High weights on downbeats (steps 0, 4, 8, 12, 16, 20, 24, 28)
+ * - Medium weights on half-beats (steps 2, 6, 10, 14, 18, 22, 26, 30)
+ * - Lower weights on 16th note positions
  *
- * @param archetypes Array of 4 archetypes to blend [BL, BR, TL, TR]
- * @param weights Array of 4 weights (should sum to ~1.0)
- * @param outArchetype Output blended archetype
+ * Energy scales the overall weight envelope.
+ *
+ * @param energy ENERGY parameter value (0.0-1.0), scales weight intensity
+ * @param patternLength Number of steps in pattern (typically 16 or 32)
+ * @param outWeights Output array of per-step weights (must be patternLength size)
  */
-void BlendArchetypes(const ArchetypeDNA* archetypes[4],
-                     const float weights[4],
-                     ArchetypeDNA& outArchetype);
+void GenerateStablePattern(float energy, int patternLength, float* outWeights);
 
 /**
- * Get blended archetype from a genre field at a given position
+ * Generate syncopation pattern weights
  *
- * This is the main entry point for pattern field lookup. It combines
- * grid position calculation, weight computation, softmax sharpening,
- * and archetype blending into a single function.
+ * Produces funk-style, displaced patterns with:
+ * - Suppressed downbeats (beat 1 at 50-70% of normal weight)
+ * - Boosted anticipation positions (step before downbeat)
+ * - Boosted weak offbeats
+ * - Creates tension and forward motion
  *
- * @param field The genre's 3x3 archetype grid
- * @param fieldX X position in pattern field (0.0-1.0)
- * @param fieldY Y position in pattern field (0.0-1.0)
- * @param temperature Softmax temperature (default 0.5 for winner-take-more)
- * @param outArchetype Output blended archetype
+ * Seed provides deterministic variation in exact suppression/boost amounts.
+ *
+ * @param energy ENERGY parameter value (0.0-1.0), scales weight intensity
+ * @param seed Pattern seed for deterministic variation
+ * @param patternLength Number of steps in pattern
+ * @param outWeights Output array of per-step weights
  */
-void GetBlendedArchetype(const GenreField& field,
-                         float fieldX, float fieldY,
-                         float temperature,
-                         ArchetypeDNA& outArchetype);
+void GenerateSyncopationPattern(float energy, uint32_t seed, int patternLength, float* outWeights);
 
 /**
- * Get the genre field for a specific genre
+ * Generate wild (chaotic) pattern weights
  *
- * Returns a reference to the pre-initialized genre field containing
- * the 9 archetypes for that genre.
+ * Produces IDM-style, unpredictable patterns with:
+ * - Weighted random distribution with high variation
+ * - Seed-based deterministic chaos
+ * - Some structural hints preserved (downbeats slightly more likely)
  *
- * @param genre The genre to get the field for
- * @return Reference to the genre's archetype field
+ * @param energy ENERGY parameter value (0.0-1.0), scales weight intensity
+ * @param seed Pattern seed for deterministic variation
+ * @param patternLength Number of steps in pattern
+ * @param outWeights Output array of per-step weights
  */
-const GenreField& GetGenreField(Genre genre);
+void GenerateWildPattern(float energy, uint32_t seed, int patternLength, float* outWeights);
 
 /**
- * Initialize all genre fields with their archetype data
+ * Compute shape-blended weights using 7-zone system
  *
- * Must be called once at startup before using GetGenreField().
- * Loads archetype data from the constexpr tables in ArchetypeData.h.
+ * Main entry point for SHAPE parameter processing. Blends between three
+ * character zones (stable, syncopation, wild) with smooth crossfade
+ * transitions.
+ *
+ * Zone behavior:
+ * - Zone 1 (stable): Adds humanization that decreases toward boundary
+ * - Zone 2 (syncopation): Pure displaced rhythm character
+ * - Zone 3 (wild): Adds chaos injection that increases toward 100%
+ *
+ * Crossfade zones (4% each) provide smooth transitions without sudden jumps.
+ *
+ * @param shape SHAPE parameter value (0.0-1.0)
+ * @param energy ENERGY parameter value (0.0-1.0)
+ * @param seed Pattern seed for deterministic variation
+ * @param patternLength Number of steps in pattern (1-32)
+ * @param outWeights Output array of per-step weights (must be patternLength size)
+ *
+ * Guarantees:
+ * - All output weights are in range [kMinStepWeight, 1.0]
+ * - Same inputs always produce identical outputs (deterministic)
+ * - No heap allocations (RT audio safe)
  */
-void InitializeGenreFields();
+void ComputeShapeBlendedWeights(float shape, float energy,
+                                 uint32_t seed, int patternLength,
+                                 float* outWeights);
 
 /**
- * Check if genre fields have been initialized
+ * Linear interpolation helper for crossfade zones
  *
- * @return true if InitializeGenreFields() has been called
+ * @param a First value
+ * @param b Second value
+ * @param t Blend factor (0.0 = a, 1.0 = b)
+ * @return Interpolated value
  */
-bool AreGenreFieldsInitialized();
+inline float LerpWeight(float a, float b, float t)
+{
+    return a + (b - a) * t;
+}
+
+/**
+ * Clamp a weight to valid range [kMinStepWeight, 1.0]
+ *
+ * @param weight Raw weight value
+ * @return Clamped weight
+ */
+inline float ClampWeight(float weight)
+{
+    if (weight < kMinStepWeight) return kMinStepWeight;
+    if (weight > 1.0f) return 1.0f;
+    return weight;
+}
 
 // =============================================================================
-// Utility Functions
+// AXIS X/Y Bidirectional Biasing (Task 29)
 // =============================================================================
 
 /**
- * Find the index of the dominant (highest weight) archetype
+ * Get the metric weight for a step position
  *
- * @param weights Array of 4 weights
- * @return Index of the highest weight (0-3)
+ * Returns a value in [0.0, 1.0] indicating how metrically strong the position is:
+ * - 1.0 = bar downbeat (steps 0, 16)
+ * - 0.75 = quarter notes (steps 4, 8, 12, 20, 24, 28)
+ * - 0.5 = 8th notes
+ * - 0.25 = 16th notes (weakest)
+ *
+ * @param step Step index within pattern (0 to patternLength-1)
+ * @param patternLength Total pattern length
+ * @return Metric weight in range [0.0, 1.0]
  */
-int FindDominantArchetype(const float weights[4]);
+float GetMetricWeight(int step, int patternLength);
 
 /**
- * Interpolate a single float value using weights
+ * Get position strength for a step (bidirectional)
  *
- * @param values Array of 4 values
- * @param weights Array of 4 weights
- * @return Weighted average
+ * Converts metric weight to a bidirectional value:
+ * - -1.0 = strong downbeat
+ * - 0.0 = neutral
+ * - +1.0 = weak offbeat
+ *
+ * Formula: positionStrength = 1.0 - 2.0 * metricWeight
+ *
+ * @param step Step index within pattern
+ * @param patternLength Total pattern length
+ * @return Position strength in range [-1.0, +1.0]
  */
-float InterpolateFloat(const float values[4], const float weights[4]);
+float GetPositionStrength(int step, int patternLength);
 
 /**
- * Interpolate a step weight array using archetype weights
+ * Apply AXIS X/Y biasing to pattern weights
  *
- * @param archetypes Array of 4 archetypes
- * @param weights Blending weights
- * @param stepIndex Which step to interpolate
- * @param voice Which voice (0=anchor, 1=shimmer, 2=aux)
- * @return Interpolated weight for that step
+ * Bidirectional AXIS X (beat position):
+ * - 0.0 = Grounded (emphasize downbeats, suppress offbeats)
+ * - 0.5 = Neutral (no bias)
+ * - 1.0 = Floating (emphasize offbeats, suppress downbeats)
+ *
+ * Bidirectional AXIS Y (intricacy):
+ * - 0.0 = Simple (suppress weak positions)
+ * - 0.5 = Neutral (no bias)
+ * - 1.0 = Complex (boost weak positions, add intricacy)
+ *
+ * "Broken Mode" emergent feature:
+ * When SHAPE > 0.6 AND AXIS X > 0.7, some downbeats are stochastically
+ * suppressed for an unstable, "broken" feel.
+ *
+ * @param baseWeights Array of weights to modify in-place (must be patternLength size)
+ * @param axisX AXIS X parameter (0.0-1.0)
+ * @param axisY AXIS Y parameter (0.0-1.0)
+ * @param shape SHAPE parameter for broken mode detection (0.0-1.0)
+ * @param seed Pattern seed for deterministic broken mode behavior
+ * @param patternLength Number of steps in pattern (1-32)
+ *
+ * Guarantees:
+ * - All output weights are clamped to [kMinStepWeight, 1.0]
+ * - Same inputs always produce identical outputs (deterministic)
+ * - No heap allocations (RT audio safe)
  */
-float InterpolateStepWeight(const ArchetypeDNA* archetypes[4],
-                            const float weights[4],
-                            int stepIndex,
-                            int voice);
+void ApplyAxisBias(float* baseWeights, float axisX, float axisY,
+                   float shape, uint32_t seed, int patternLength);
 
 } // namespace daisysp_idm_grids

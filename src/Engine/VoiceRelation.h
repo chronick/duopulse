@@ -7,110 +7,80 @@ namespace daisysp_idm_grids
 {
 
 /**
- * VoiceRelation: Voice coupling and relationship logic
+ * VoiceRelation: V5 Voice COMPLEMENT Relationship
  *
- * Controls how voices interact with each other:
- * - INDEPENDENT: Voices fire freely, can overlap
- * - INTERLOCK: Suppress simultaneous hits, call-response feel
- * - SHADOW: Shimmer echoes anchor with 1-step delay
+ * V5 uses a single COMPLEMENT mode where shimmer fills gaps in anchor pattern.
+ * The DRIFT parameter controls placement variation within gaps:
+ * - Low DRIFT (0-30%): Evenly spaced within gaps
+ * - Mid DRIFT (30-70%): Weighted by shimmer step weights
+ * - High DRIFT (70-100%): Seed-varied random within gaps
  *
- * Reference: docs/specs/main.md section 6.4
+ * Reference: docs/specs/main.md section 6.4, Task 30
  */
 
 // =============================================================================
-// Voice Relationship Functions
+// Gap Detection Types
+// =============================================================================
+
+/// Maximum number of gaps that can be detected (RT-safe fixed allocation)
+constexpr int kMaxGaps = 16;
+
+/**
+ * Gap: Represents a contiguous gap in the anchor pattern
+ */
+struct Gap
+{
+    int start;   ///< First step of gap (0-based)
+    int length;  ///< Number of steps in gap
+};
+
+// =============================================================================
+// V5 COMPLEMENT Relationship (Task 30)
 // =============================================================================
 
 /**
- * Apply voice relationship to shimmer mask based on anchor mask
+ * Find gaps in anchor mask
  *
- * Modifies the shimmer hit mask according to the coupling mode:
- * - INDEPENDENT: No change to shimmer
- * - INTERLOCK: Remove shimmer hits that coincide with anchor
- * - SHADOW: Replace shimmer with delayed copy of anchor
+ * Detects contiguous runs of empty steps in the anchor pattern.
+ * Handles wrap-around: if pattern ends and starts with gaps, they're combined.
+ *
+ * @param anchorMask Anchor hit mask
+ * @param patternLength Pattern length in steps
+ * @param gaps Output array of gaps (must have space for kMaxGaps)
+ * @return Number of gaps found
+ */
+int FindGaps(uint32_t anchorMask, int patternLength, Gap* gaps);
+
+/**
+ * Apply V5 COMPLEMENT voice relationship
+ *
+ * Places shimmer hits in gaps of the anchor pattern.
+ * Hit distribution is proportional to gap length.
+ * Placement strategy varies with DRIFT parameter.
  *
  * @param anchorMask Anchor hit mask (read-only)
- * @param shimmerMask Shimmer hit mask (will be modified)
- * @param coupling Voice coupling mode
+ * @param shimmerWeights Per-step shimmer weights from archetype (0.0-1.0)
+ * @param drift DRIFT parameter (0.0-1.0) controls placement strategy
+ * @param seed Random seed for high-DRIFT variation
  * @param patternLength Pattern length in steps
+ * @param targetHits Desired number of shimmer hits
+ * @return Shimmer hit mask with hits placed in gaps
  */
-void ApplyVoiceRelationship(uint32_t anchorMask,
-                            uint32_t& shimmerMask,
-                            VoiceCoupling coupling,
-                            int patternLength);
-
-/**
- * Apply interlock to shimmer mask
- *
- * Removes shimmer hits that coincide with anchor hits,
- * creating a call-response feel.
- *
- * @param anchorMask Anchor hit mask
- * @param shimmerMask Shimmer mask to modify
- * @param patternLength Pattern length
- */
-void ApplyInterlock(uint32_t anchorMask, uint32_t& shimmerMask, int patternLength);
-
-/**
- * Apply shadow effect to shimmer mask
- *
- * Makes shimmer echo anchor with a 1-step delay.
- * The original shimmer mask is replaced with delayed anchor.
- *
- * @param anchorMask Anchor hit mask
- * @param shimmerMask Shimmer mask to replace
- * @param patternLength Pattern length
- */
-void ApplyShadow(uint32_t anchorMask, uint32_t& shimmerMask, int patternLength);
-
-/**
- * Get voice coupling from config or archetype
- *
- * Archetype provides a default coupling value, but the config setting
- * can override it.
- *
- * @param configCoupling Coupling mode from config (VoiceCoupling enum)
- * @param archetypeDefault Archetype's default couple value (0.0-1.0)
- * @param useConfig Whether to use config value (true) or derive from archetype
- * @return Effective VoiceCoupling mode
- */
-VoiceCoupling GetEffectiveCoupling(VoiceCoupling configCoupling,
-                                   float archetypeDefault,
-                                   bool useConfig);
-
-/**
- * Apply gap-fill logic for INTERLOCK mode
- *
- * In INTERLOCK mode, if there's a large gap without any hits,
- * allow shimmer to fill the gap even if it would normally be suppressed.
- *
- * @param anchorMask Anchor hit mask
- * @param shimmerMask Shimmer mask (will be modified to add gap fills)
- * @param originalShimmer Original shimmer mask before interlock
- * @param maxGap Maximum allowed gap before filling
- * @param patternLength Pattern length
- */
-void ApplyGapFill(uint32_t anchorMask,
-                  uint32_t& shimmerMask,
-                  uint32_t originalShimmer,
-                  int maxGap,
-                  int patternLength);
-
-// =============================================================================
-// Aux Voice Relationship
-// =============================================================================
+uint32_t ApplyComplementRelationship(uint32_t anchorMask,
+                                     const float* shimmerWeights,
+                                     float drift, uint32_t seed,
+                                     int patternLength, int targetHits);
 
 /**
  * Apply voice relationship to aux mask
  *
- * Aux voice (hi-hat) has simpler relationship rules:
- * - Can optionally avoid anchor hits
- * - Can be densified around shimmer hits
+ * Aux voice (hi-hat) relationship rules.
+ * V5: Simplified to INDEPENDENT behavior only.
  *
  * @param anchorMask Anchor hit mask
  * @param shimmerMask Shimmer hit mask
  * @param auxMask Aux mask to modify
- * @param coupling Voice coupling mode
+ * @param coupling Voice coupling mode (V5: ignored, always INDEPENDENT)
  * @param patternLength Pattern length
  */
 void ApplyAuxRelationship(uint32_t anchorMask,
