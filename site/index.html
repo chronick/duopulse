@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DuoPulse v5 | Algorithmic Percussion Sequencer for Eurorack</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🥁</text></svg>">
+</head>
+<body>
+  <div class="container">
+    <header class="hero">
+      <div class="logo">
+        <span class="logo-icon">◈</span>
+        <h1>DuoPulse <span class="version">v5</span></h1>
+      </div>
+      <p class="tagline">2-Voice Algorithmic Percussion Sequencer for Eurorack</p>
+      <p class="subtitle">Custom firmware for the Electro-Smith Patch.Init() module</p>
+    </header>
+
+    <nav class="nav-links">
+      <a href="https://github.com/chronick/duopulse" class="nav-link" target="_blank" rel="noopener">
+        <svg class="icon" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+        </svg>
+        GitHub
+      </a>
+      <a href="evals/" class="nav-link">
+        <svg class="icon" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M1 2.5A1.5 1.5 0 012.5 1h3A1.5 1.5 0 017 2.5v3A1.5 1.5 0 015.5 7h-3A1.5 1.5 0 011 5.5v-3zM2.5 2a.5.5 0 00-.5.5v3a.5.5 0 00.5.5h3a.5.5 0 00.5-.5v-3a.5.5 0 00-.5-.5h-3zm6.5.5A1.5 1.5 0 0110.5 1h3A1.5 1.5 0 0115 2.5v3A1.5 1.5 0 0113.5 7h-3A1.5 1.5 0 019 5.5v-3zm1.5-.5a.5.5 0 00-.5.5v3a.5.5 0 00.5.5h3a.5.5 0 00.5-.5v-3a.5.5 0 00-.5-.5h-3zM1 10.5A1.5 1.5 0 012.5 9h3A1.5 1.5 0 017 10.5v3A1.5 1.5 0 015.5 15h-3A1.5 1.5 0 011 13.5v-3zm1.5-.5a.5.5 0 00-.5.5v3a.5.5 0 00.5.5h3a.5.5 0 00.5-.5v-3a.5.5 0 00-.5-.5h-3zm6.5.5A1.5 1.5 0 0110.5 9h3a1.5 1.5 0 011.5 1.5v3a1.5 1.5 0 01-1.5 1.5h-3A1.5 1.5 0 019 13.5v-3zm1.5-.5a.5.5 0 00-.5.5v3a.5.5 0 00.5.5h3a.5.5 0 00.5-.5v-3a.5.5 0 00-.5-.5h-3z"/>
+        </svg>
+        Pattern Evals
+      </a>
+      <a href="https://github.com/chronick/duopulse/blob/main/docs/specs/main.md" class="nav-link" target="_blank" rel="noopener">
+        <svg class="icon" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M14.5 3a.5.5 0 01.5.5v9a.5.5 0 01-.5.5h-13a.5.5 0 01-.5-.5v-9a.5.5 0 01.5-.5h13zm-13-1A1.5 1.5 0 000 3.5v9A1.5 1.5 0 001.5 14h13a1.5 1.5 0 001.5-1.5v-9A1.5 1.5 0 0014.5 2h-13z"/>
+          <path d="M3 5.5a.5.5 0 01.5-.5h9a.5.5 0 010 1h-9a.5.5 0 01-.5-.5zM3 8a.5.5 0 01.5-.5h9a.5.5 0 010 1h-9A.5.5 0 013 8zm0 2.5a.5.5 0 01.5-.5h6a.5.5 0 010 1h-6a.5.5 0 01-.5-.5z"/>
+        </svg>
+        Spec
+      </a>
+    </nav>
+
+    <main class="content">
+      <section class="module-showcase">
+        <div class="module-image">
+          <div class="module-placeholder">
+            <div class="panel">
+              <div class="panel-header">DUOPULSE</div>
+              <div class="controls">
+                <div class="knob-row">
+                  <div class="knob" title="ENERGY"><span>E</span></div>
+                  <div class="knob" title="SHAPE"><span>S</span></div>
+                </div>
+                <div class="knob-row">
+                  <div class="knob" title="AXIS X"><span>X</span></div>
+                  <div class="knob" title="AXIS Y"><span>Y</span></div>
+                </div>
+              </div>
+              <div class="jacks">
+                <div class="jack-row">
+                  <div class="jack cv"></div>
+                  <div class="jack cv"></div>
+                  <div class="jack cv"></div>
+                  <div class="jack cv"></div>
+                </div>
+                <div class="jack-row">
+                  <div class="jack out v1"></div>
+                  <div class="jack out v2"></div>
+                </div>
+              </div>
+              <div class="led-strip">
+                <div class="led on"></div>
+                <div class="led on dim"></div>
+                <div class="led"></div>
+                <div class="led on"></div>
+                <div class="led"></div>
+                <div class="led on dim"></div>
+                <div class="led"></div>
+                <div class="led on"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="module-info">
+          <h2>Algorithmic Rhythm Generator</h2>
+          <ul class="features">
+            <li><strong>ENERGY</strong> — Pattern density from sparse to busy</li>
+            <li><strong>SHAPE</strong> — Generation method: Euclidean to weighted random</li>
+            <li><strong>AXIS X/Y</strong> — Bias placement: downbeats/offbeats, simple/complex</li>
+            <li><strong>Anchor + Shimmer</strong> — Two complementary rhythm voices</li>
+          </ul>
+          <p class="tech-specs">
+            Built on <a href="https://www.electro-smith.com/daisy/patch-init" target="_blank" rel="noopener">Electro-Smith Patch.Init()</a>
+            with STM32H7 @ 480MHz, 64MB SDRAM, and stereo audio I/O.
+          </p>
+        </div>
+      </section>
+
+      <section class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon">◇</div>
+          <h3>Pattern Field</h3>
+          <p>Navigate a 2D space of rhythmic possibilities. X-axis biases beat placement, Y-axis controls complexity.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">◈</div>
+          <h3>Dual Voice</h3>
+          <p>Anchor voice grounds the groove while Shimmer voice adds syncopation and texture.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">◆</div>
+          <h3>CV Control</h3>
+          <p>Full ±5V CV input for all parameters. Morph patterns in real-time with external modulation.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">◊</div>
+          <h3>Trigger Outputs</h3>
+          <p>Two independent trigger outputs with velocity/accent information for expressive drum programming.</p>
+        </div>
+      </section>
+
+      <section class="evals-section">
+        <h2>Pattern Evaluation Dashboard</h2>
+        <p class="section-intro">
+          How do you know if an algorithmic rhythm generator produces <em>good</em> patterns?
+          That's the question the evaluation system answers.
+        </p>
+
+        <div class="evals-content">
+          <div class="evals-explanation">
+            <h3>The Problem</h3>
+            <p>
+              Building a rhythm generator is deceptively hard. It's easy to make something that produces
+              <em>random</em> patterns, but making something that produces <em>musical</em> patterns
+              requires understanding what makes a rhythm feel good.
+            </p>
+            <p>
+              Worse, subjective listening tests don't scale. You can't listen to thousands of parameter
+              combinations to find the sweet spots. And small code changes can have subtle effects
+              that are hard to notice but easy to measure.
+            </p>
+
+            <h3>The Solution: Measurable Musicality</h3>
+            <p>
+              The evaluation dashboard quantifies pattern quality using metrics derived from music theory
+              and rhythmic analysis:
+            </p>
+            <ul class="metrics-list">
+              <li><strong>Hit Distribution</strong> — Are hits placed musically across the bar?</li>
+              <li><strong>Voice Independence</strong> — Do the two voices complement or clash?</li>
+              <li><strong>Syncopation Score</strong> — Does the pattern have rhythmic interest?</li>
+              <li><strong>Density Consistency</strong> — Does ENERGY smoothly scale pattern density?</li>
+              <li><strong>Seed Variance</strong> — Are different random seeds producing unique patterns?</li>
+            </ul>
+
+            <h3>Hill-Climbing Development</h3>
+            <p>
+              With objective metrics, development becomes iterative improvement. Each code change
+              gets evaluated against the test suite, showing exactly how the algorithm's output changes.
+              Bad changes show up immediately as regressions in the metrics.
+            </p>
+            <p>
+              This lets us climb the hill toward better patterns: tweak a weight, run the evals,
+              see if the numbers improved. It's not perfect—the metrics are proxies for musical
+              quality—but it's vastly better than guessing.
+            </p>
+          </div>
+
+          <div class="evals-cta">
+            <a href="evals/" class="evals-button">
+              <span class="button-icon">◈</span>
+              <span class="button-text">
+                <strong>Explore the Dashboard</strong>
+                <small>Visualize patterns, compare presets, analyze sweeps</small>
+              </span>
+            </a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p>
+        <a href="https://github.com/chronick/duopulse" target="_blank" rel="noopener">DuoPulse</a>
+        is open source firmware for the
+        <a href="https://www.electro-smith.com/" target="_blank" rel="noopener">Electro-Smith</a> Patch.Init() module.
+      </p>
+    </footer>
+  </div>
+</body>
+</html>
