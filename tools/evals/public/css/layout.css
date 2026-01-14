@@ -9,6 +9,21 @@ header {
   padding-bottom: 16px;
 }
 
+.header-top {
+  margin-bottom: 12px;
+}
+
+.back-link {
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 13px;
+  transition: color 0.2s;
+}
+
+.back-link:hover {
+  color: var(--v2-color);
+}
+
 header h1 {
   font-size: 24px;
   font-weight: 600;

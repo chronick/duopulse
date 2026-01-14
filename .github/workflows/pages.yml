@@ -1,11 +1,22 @@
-# GitHub Pages deployment for Pattern Evaluation Dashboard
-name: Deploy Evals to Pages
+# GitHub Pages deployment for DuoPulse site with Pattern Evaluation Dashboard
+name: Build & Deploy Site
 
 on:
-  # Run on pushes to main when evals content changes
+  # Run on pushes to main
   push:
     branches: [main]
     paths:
+      - 'site/**'
+      - 'tools/evals/**'
+      - 'src/Engine/**'
+      - 'tools/pattern_viz.cpp'
+      - '.github/workflows/pages.yml'
+
+  # Run tests on PRs
+  pull_request:
+    branches: [main]
+    paths:
+      - 'site/**'
       - 'tools/evals/**'
       - 'src/Engine/**'
       - 'tools/pattern_viz.cpp'
@@ -26,8 +37,27 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Run tests first
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install test dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential catch2
+
+      - name: Run unit tests
+        run: make test
+
+  # Build and deploy site
   build:
     runs-on: ubuntu-latest
+    needs: test
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -50,15 +80,30 @@ jobs:
       - name: Generate evaluation data
         run: make evals-generate
 
+      - name: Assemble site
+        run: |
+          # Create build directory
+          mkdir -p _site
+
+          # Copy landing page
+          cp site/index.html _site/
+          cp site/styles.css _site/
+
+          # Copy evals to /evals subdirectory
+          mkdir -p _site/evals
+          cp -r tools/evals/public/* _site/evals/
+
       - name: Setup Pages
         uses: actions/configure-pages@v4
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: 'tools/evals/public'
+          path: '_site'
 
   deploy:
+    # Only deploy on push to main, not on PRs
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
