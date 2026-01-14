@@ -53,3 +53,4 @@
 | 49 | v55-aux-style-beat1 | V5.5 AUX Style Zones and Beat 1 Enforcement | pending | 2026-01-08 | 2026-01-08 | active/49-v55-aux-style-beat1.md |
 | 50 | v55-two-pass-generation | V5.5 Two-Pass Generation: Skeleton + Embellishment (conditional) | pending | 2026-01-08 | 2026-01-08 | active/50-v55-two-pass-generation.md |
 | 51 | github-pages | GitHub Pages Site with Evals Integration | completed | 2026-01-13 | 2026-01-13 | misc/51-github-pages.md |
+| 52 | release-builds | CI Release Builds on Version Tags | pending | 2026-01-13 | 2026-01-13 | misc/52-release-builds.md |
