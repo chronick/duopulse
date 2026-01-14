@@ -69,11 +69,6 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install ARM toolchain
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gcc-arm-none-eabi
-
       - name: Build pattern_viz
         run: make pattern-viz
 
