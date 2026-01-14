@@ -140,8 +140,8 @@ sudo cmake --build build/ --target install
 **Quick Setup** (recommended):
 ```bash
 # Clone the repository
-git clone --recursive https://github.com/yourusername/daisysp-idm-grids.git
-cd daisysp-idm-grids
+git clone --recursive https://github.com/yourusername/duopulse.git
+cd duopulse
 
 # Run setup script (initializes submodules and builds DaisySP)
 ./setup.sh
@@ -153,8 +153,8 @@ make
 **Manual Setup**:
 1. **Clone the repository** (including submodules):
    ```bash
-   git clone --recursive https://github.com/yourusername/daisysp-idm-grids.git
-   cd daisysp-idm-grids
+   git clone --recursive https://github.com/yourusername/duopulse.git
+   cd duopulse
    ```
 
    If you've already cloned without submodules:

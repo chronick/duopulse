@@ -1,0 +1,94 @@
+/**
+ * Pattern Grid styles - Step sequencer visualization
+ */
+
+.pattern-grid {
+  background: var(--bg-tertiary);
+  border-radius: 4px;
+  padding: 8px;
+  overflow-x: auto;
+}
+
+.pattern-row {
+  display: flex;
+  align-items: center;
+  height: var(--step-height);
+  margin-bottom: var(--voice-gap);
+}
+
+.pattern-row:last-child {
+  margin-bottom: 0;
+}
+
+.voice-label {
+  width: var(--label-width);
+  font-size: 11px;
+  font-weight: 500;
+  text-align: right;
+  padding-right: 8px;
+}
+
+.voice-label.v1 { color: var(--v1-color); }
+.voice-label.v2 { color: var(--v2-color); }
+.voice-label.aux { color: var(--aux-color); }
+
+.pattern-steps {
+  display: flex;
+  gap: 1px;
+}
+
+.step {
+  width: var(--step-width);
+  height: calc(var(--step-height) - 4px);
+  border-radius: 3px;
+}
+
+.step.hit {
+  background: var(--step-color);
+}
+
+.step.empty {
+  background: var(--step-dim);
+  opacity: 0.3;
+}
+
+.step.downbeat {
+  border-left: 2px solid var(--grid-line-strong);
+}
+
+.hit-counts {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 11px;
+}
+
+.hit-count {
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: var(--bg-tertiary);
+}
+
+.hit-count.v1 { color: var(--v1-color); }
+.hit-count.v2 { color: var(--v2-color); }
+.hit-count.aux { color: var(--aux-color); }
+
+/* Selectable pattern grids */
+.pattern-grid.selectable {
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  margin: -2px;
+  padding: 10px;
+}
+
+.pattern-grid.selectable:hover {
+  background: var(--bg-card);
+  border-color: var(--grid-line-strong);
+}
+
+.pattern-grid.selectable.selected {
+  border-color: var(--v2-color);
+  background: rgba(78, 205, 196, 0.05);
+}

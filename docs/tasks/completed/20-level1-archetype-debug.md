@@ -171,7 +171,7 @@ Based on diagnostic output:
 
 **Logs**
 ```
-  daisysp-idm-grids git:(task/16-v4-hardware-validation) ✗ make listen
+  duopulse git:(task/16-v4-hardware-validation) ✗ make listen
 Listening on /dev/cu.usbmodem3856367734321 @ 115200 baud
 Log file: /tmp/daisy_20251228_153100.log
 
@@ -240,7 +240,7 @@ One more note: the external clock is patched however the logs say ExtClock=inter
 
 **Logs**
 
-➜  daisysp-idm-grids git:(task/16-v4-hardware-validation) ✗ make listen
+➜  duopulse git:(task/16-v4-hardware-validation) ✗ make listen
 Listening on /dev/cu.usbmodem3856367734321 @ 115200 baud
 Log file: /tmp/daisy_20251228_153630.log
 
@@ -298,7 +298,7 @@ Crashing after Ctrl-C is still an issue.
 Another note: not feeling like I'm getting very musical beats, nor am I getting much variety. Lets add a task to inspect and improve the musicality.
 
 **Logs**
-➜  daisysp-idm-grids git:(task/16-v4-hardware-validation) ✗ make listen
+➜  duopulse git:(task/16-v4-hardware-validation) ✗ make listen
 Listening on /dev/cu.usbmodem3856367734321 @ 115200 baud
 Log file: /tmp/daisy_20251228_155250.log
 

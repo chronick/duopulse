@@ -1,0 +1,8 @@
+# Generated data (rebuild with make evals-generate)
+public/data/
+
+# Node dependencies
+node_modules/
+
+# npm debug logs
+npm-debug.log*

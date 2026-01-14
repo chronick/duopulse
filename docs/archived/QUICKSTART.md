@@ -19,8 +19,8 @@ dfu-util --version
 
 ```bash
 # 1. Clone the repository
-git clone --recursive https://github.com/yourusername/daisysp-idm-grids.git
-cd daisysp-idm-grids
+git clone --recursive https://github.com/yourusername/duopulse.git
+cd duopulse
 
 # 2. Run setup script
 ./setup.sh

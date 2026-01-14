@@ -1,0 +1,70 @@
+/**
+ * Responsive styles - Media queries for different screen sizes
+ */
+
+@media (max-width: 1200px) {
+  .app-layout {
+    flex-direction: column;
+  }
+
+  .player-sidebar {
+    width: 100%;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    top: auto;
+    max-height: none;
+    z-index: 100;
+    padding: 0 20px 20px;
+    background: var(--bg-primary);
+    border-top: 1px solid var(--grid-line);
+  }
+
+  .player-panel {
+    max-width: 400px;
+    margin: 0 auto;
+  }
+
+  .main-content {
+    padding-bottom: 320px;
+  }
+}
+
+@media (max-width: 900px) {
+  .pentagon-flex {
+    flex-direction: column;
+  }
+
+  .pentagon-chart {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+}
+
+@media (max-width: 768px) {
+  #app {
+    padding: 12px;
+  }
+
+  nav {
+    flex-wrap: wrap;
+  }
+
+  .presets-grid {
+    grid-template-columns: 1fr;
+  }
+
+  :root {
+    --step-width: 18px;
+    --step-height: 24px;
+    --label-width: 40px;
+  }
+
+  .seed-bars {
+    flex-direction: column;
+    gap: 12px;
+  }
+}

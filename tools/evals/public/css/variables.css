@@ -1,0 +1,44 @@
+/**
+ * CSS Variables - Design tokens for DuoPulse theme
+ */
+
+:root {
+  /* Background colors */
+  --bg-primary: #1e1e1e;
+  --bg-secondary: #2d2d2d;
+  --bg-tertiary: #1a1a1a;
+  --bg-card: #252525;
+
+  /* Grid colors */
+  --grid-line: #3d3d3d;
+  --grid-line-strong: #505050;
+
+  /* Text colors */
+  --text-primary: #cccccc;
+  --text-secondary: #888888;
+  --text-dim: #555555;
+
+  /* Voice colors */
+  --v1-color: #ff6b35;
+  --v1-dim: #994020;
+  --v2-color: #4ecdc4;
+  --v2-dim: #2e7a75;
+  --aux-color: #95e1d3;
+  --aux-dim: #5a8a82;
+
+  /* Zone colors */
+  --zone-stable: #44aa44;
+  --zone-syncopated: #aaaa44;
+  --zone-wild: #aa4444;
+
+  /* Status colors */
+  --success: #44ff44;
+  --warning: #ffaa44;
+  --error: #ff4444;
+
+  /* Layout */
+  --step-width: 24px;
+  --step-height: 32px;
+  --voice-gap: 4px;
+  --label-width: 60px;
+}
