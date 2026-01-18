@@ -5,7 +5,7 @@ status: in_progress
 created_date: 2026-01-18
 updated_date: 2026-01-18
 branch: feature/hill-climbing-infrastructure
-tasks: [53, 54, 55, 56, 57, 58, 59, 61, 61a, 61b, 62, 63, 64, 65]
+tasks: [53, 54, 55, 56, 57, 58, 59, 61, 61a, 61b, 62, 63, 64, 65, 66]
 completed_tasks: [56, 59, 60, 61a, 61b, 63]
 ---
 
@@ -39,6 +39,7 @@ Create a feedback loop using git + GitHub + PRs/issues + Actions to automaticall
 > **Note**: This order was revised 2026-01-18 based on design review feedback.
 > Key changes: Task 61 split into 61a/61b prerequisites, Task 63 moved before 55,
 > Task 55 simplified to single-pass, Task 56 reduced scope, Task 64 added for permissions.
+> **Task 66 added** to fix config→pattern generation disconnect discovered in Task 63.
 
 ### Phase 1: Foundation + Baseline (Tasks 56, 59, 61a, 61b)
 
@@ -76,27 +77,32 @@ Create a feedback loop using git + GitHub + PRs/issues + Actions to automaticall
 
 ---
 
-### Phase 2: Iteration Core (Tasks 63, 55, 64)
+### Phase 2: Iteration Core (Tasks 66, 63, 55, 64)
 
 **Goal**: Enable sensitivity-informed iteration with proper permissions.
 
+> **Updated**: Task 66 added as prerequisite to Task 55 to fix config→generation wiring.
+
 ```
-63 Sensitivity Analysis ──► 55 Iterate Command ──► 64 Claude Permissions
-        │                           │                      │
-        │                           │                      │
-   Know which weights          /iterate "goal"        contents: write
-   affect which metrics        Single-pass only       pull-requests: write
-   Bootstrap levers used       PR if improved         issues: write
+63 Sensitivity Analysis ──► 66 PatternField Wiring ──► 55 Iterate Command ──► 64 Claude Permissions
+        │                           │                           │                      │
+        │                           │                           │                      │
+   Infrastructure          Wire zone thresholds          /iterate "goal"        contents: write
+   complete (zeros)        to actual generation          Single-pass only       pull-requests: write
+                           Non-zero sensitivity          PR if improved         issues: write
 ```
 
 | Order | Task | Title | Est. | Notes |
 |-------|------|-------|------|-------|
-| 5 | **63** | Parameter Sensitivity Analysis | 4-5h | Moved earlier (was Phase 1 end) |
+| 5 | **63** | Parameter Sensitivity Analysis | 4-5h | COMPLETED but produces zeros |
+| 5.5 | **66** | Wire Zone Thresholds into PatternField | 3-4h | NEW: Unblocks sensitivity data |
 | 6 | **55** | Iteration Command System | 4-5h | Simplified: no Designer/Critic split |
 | 7 | **64** | Claude Permissions Update | 1h | NEW: Update claude.yml |
 
 **Phase 2 Exit Criteria**:
-- [ ] Sensitivity matrix shows weight→metric impacts
+- [x] Sensitivity analysis infrastructure complete (Task 63)
+- [ ] Zone thresholds wired to pattern generation (Task 66)
+- [ ] Sensitivity matrix shows weight→metric impacts (requires 66)
 - [ ] `/iterate "improve X"` triggers single-pass workflow
 - [ ] `/iterate auto` suggests goal from weakest metric
 - [ ] PRs created with before/after metrics
@@ -204,7 +210,11 @@ Create a feedback loop using git + GitHub + PRs/issues + Actions to automaticall
         └──────┬──────┘
                │
             ┌──▼───┐
-            │  63  │ Sensitivity Analysis
+            │  63  │ Sensitivity Analysis (infra only)
+            └──┬───┘
+               │
+            ┌──▼───┐
+            │  66  │ PatternField Config Wiring (NEW)
             └──┬───┘
                │
             ┌──▼───┐
@@ -250,6 +260,7 @@ Independent:
 | 63 | parameter-sensitivity | Parameter Sensitivity Analysis | **completed** | 2 |
 | 64 | claude-permissions | Claude Permissions Update | pending | 2 |
 | 65 | phrase-aware-weights | Phrase-Aware Weight Modulation | backlog | 5 |
+| 66 | config-patternfield-wiring | Wire Zone Thresholds into PatternField | pending | 2 |
 
 ---
 
@@ -266,6 +277,7 @@ This epic was revised based on design review feedback. Key issues addressed:
 | No CI comparison | New Task 61b adds workflow |
 | Task 56 over-scoped | Split per-section to future Task 65 |
 | Task 55 listening tests | Removed from scope (future work) |
+| **Sensitivity produces zeros** | **New Task 66 wires config to generation** |
 
 ---
 
@@ -331,7 +343,7 @@ Once the iteration system is built, use **tasks 46-50** (now in `backlog/`) to v
 
 ---
 
-## Design Limitation Discovered (Task 63)
+## Design Limitation Discovered (Task 63) - RESOLVED
 
 During Task 63 implementation, a disconnect was discovered between the configuration system and pattern generation:
 
@@ -340,11 +352,10 @@ During Task 63 implementation, a disconnect was discovered between the configura
 2. `PatternField.cpp` uses separate hardcoded zone thresholds (`kShapeZone1End`, etc.)
 3. These zone constants aren't connected to `AlgorithmConfig`
 
-**Impact**: The sensitivity analysis infrastructure is complete and working, but produces no meaningful data until this architecture issue is resolved.
+**Resolution**: Task 66 created to wire zone thresholds into PatternField as a runtime-configurable struct.
 
-**Approaches to fix** (requires new task):
-1. Wire `AlgorithmConfig` values into `PatternField.cpp` zone logic
-2. Replace `constexpr` zone constants with runtime-configurable values
-3. Use `make weights-header` to recompile for each sweep point (slow)
+**Key insight from design review**: AlgorithmConfig and PatternField zones are conceptually different:
+- AlgorithmConfig: proportional blend weights ("60% euclidean")
+- PatternField zones: SHAPE value thresholds ("use syncopation at SHAPE > 0.28")
 
-This should be addressed before Task 55 (Iterate Command) can make use of lever recommendations.
+Task 66 makes PatternField zones configurable independently, using correct terminology.

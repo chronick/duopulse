@@ -69,3 +69,4 @@
 | 63 | parameter-sensitivity | Parameter Sensitivity Analysis | pending | 2026-01-18 | 2026-01-18 | active/63-parameter-sensitivity.md |
 | 64 | claude-permissions | Claude Permissions Update | pending | 2026-01-18 | 2026-01-18 | active/64-claude-permissions.md |
 | 65 | phrase-aware-weights | Phrase-Aware Weight Modulation | backlog | 2026-01-18 | 2026-01-18 | backlog/65-phrase-aware-weights.md |
+| 66 | config-patternfield-wiring | Wire Zone Thresholds into PatternField | pending | 2026-01-18 | 2026-01-18 | active/66-config-patternfield-wiring.md |
