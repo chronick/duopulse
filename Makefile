@@ -174,7 +174,7 @@ LOGDIR ?= /tmp
 # Build Targets
 ###############################################################################
 
-.PHONY: all clean rebuild daisy-build daisy-update libdaisy-build libdaisy-update program build-debug program-debug test test-coverage listen ports help pattern-viz run-pattern-viz pattern-sweep pattern-html expressiveness-report expressiveness-quick evals evals-generate evals-serve evals-deploy weights-header baseline
+.PHONY: all clean rebuild daisy-build daisy-update libdaisy-build libdaisy-update program build-debug program-debug test test-coverage listen ports help pattern-viz run-pattern-viz pattern-sweep pattern-html expressiveness-report expressiveness-quick evals evals-generate evals-serve evals-deploy weights-header baseline sensitivity-sweep sensitivity-matrix sensitivity-levers
 
 # Default target
 all: $(ELF) $(BIN) $(HEX)
@@ -529,6 +529,30 @@ baseline: evals-generate
 	@echo "Baseline saved to metrics/baseline.json"
 
 ###############################################################################
+# Sensitivity Analysis
+###############################################################################
+
+# Run parameter sweep and collect metrics
+sensitivity-sweep: $(PATTERN_VIZ)
+	@echo "Running parameter sensitivity sweep..."
+	@node scripts/sensitivity/run-sweep.js --verbose --output metrics/sweep-data.json
+	@echo "Sweep data saved to metrics/sweep-data.json"
+
+# Compute sensitivity matrix from sweep data
+sensitivity-matrix: $(PATTERN_VIZ)
+	@echo "Computing sensitivity matrix..."
+	@node scripts/sensitivity/compute-matrix.js --verbose
+	@cp metrics/sensitivity-matrix.json $(EVALS_DIR)/public/data/sensitivity.json 2>/dev/null || true
+	@echo "Sensitivity matrix saved to metrics/sensitivity-matrix.json"
+	@echo "Dashboard data updated at $(EVALS_DIR)/public/data/sensitivity.json"
+
+# Show lever recommendations for a specific metric
+# Usage: make sensitivity-levers METRIC=syncopation
+METRIC ?= syncopation
+sensitivity-levers:
+	@node scripts/sensitivity/identify-levers.js --target $(METRIC)
+
+###############################################################################
 # Help Target
 ###############################################################################
 
@@ -560,6 +584,9 @@ help:
 	@echo "  evals-generate   - Generate evaluation data only"
 	@echo "  evals-serve      - Serve evaluation dashboard locally (port 3000)"
 	@echo "  evals-deploy     - Deploy dashboard to docs/evals/ for GitHub Pages"
+	@echo "  sensitivity-sweep  - Run parameter sweep for sensitivity analysis"
+	@echo "  sensitivity-matrix - Compute sensitivity matrix (weight -> metric impacts)"
+	@echo "  sensitivity-levers - Show lever recommendations (METRIC=syncopation)"
 	@echo "  help             - Show this help message"
 	@echo ""
 	@echo "Variables:"

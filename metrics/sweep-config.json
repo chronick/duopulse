@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "version": "1.0.0",
+  "description": "Configuration for parameter sensitivity analysis sweeps",
+
+  "parameters": {
+    "euclideanFadeStart": {
+      "path": "euclidean.fadeStart",
+      "min": 0.10,
+      "max": 0.50,
+      "steps": 9,
+      "description": "SHAPE value where euclidean algorithm begins fading out"
+    },
+    "euclideanFadeEnd": {
+      "path": "euclidean.fadeEnd",
+      "min": 0.50,
+      "max": 0.90,
+      "steps": 9,
+      "description": "SHAPE value where euclidean algorithm fully fades out"
+    },
+    "syncopationCenter": {
+      "path": "syncopation.center",
+      "min": 0.30,
+      "max": 0.70,
+      "steps": 9,
+      "description": "SHAPE value where syncopation algorithm peaks (bell curve center)"
+    },
+    "syncopationWidth": {
+      "path": "syncopation.width",
+      "min": 0.10,
+      "max": 0.50,
+      "steps": 9,
+      "description": "Width of syncopation bell curve (higher = wider active range)"
+    },
+    "randomFadeStart": {
+      "path": "random.fadeStart",
+      "min": 0.30,
+      "max": 0.70,
+      "steps": 9,
+      "description": "SHAPE value where random algorithm begins fading in"
+    },
+    "randomFadeEnd": {
+      "path": "random.fadeEnd",
+      "min": 0.70,
+      "max": 1.00,
+      "steps": 9,
+      "description": "SHAPE value where random algorithm fully fades in"
+    }
+  },
+
+  "controlSweep": {
+    "energy": [0.2, 0.4, 0.6, 0.8],
+    "shape": [0.15, 0.30, 0.50, 0.70, 0.85],
+    "description": "Control parameter values to test at during each sweep"
+  },
+
+  "baseline": {
+    "energy": 0.50,
+    "shape": 0.50,
+    "axisX": 0.50,
+    "axisY": 0.50,
+    "drift": 0.00,
+    "accent": 0.50,
+    "seed": 3735928559,
+    "length": 32
+  }
+}

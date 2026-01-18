@@ -8,6 +8,7 @@ import { parseTargetRange, checkInRange, computeAlignmentScore, getStatusColor, 
 import { METRIC_KEYS, ZONES, VOICE_KEYS } from './js/constants.js';
 import { renderPatternGrid, getPatternFromClick } from './js/pattern-grid.js';
 import { renderPentagonRadarSVG } from './js/pentagon.js';
+import { renderSensitivityHeatmap, sensitivityStyles } from './js/sensitivity.js';
 
 // State
 let data = {
@@ -18,6 +19,7 @@ let data = {
   sweepMetrics: null,
   seedVariation: null,
   expressiveness: null,
+  sensitivity: null,
 };
 
 let currentView = 'overview';
@@ -61,6 +63,16 @@ async function loadData() {
       data.seedVariation,
       data.expressiveness,
     ] = results;
+
+    // Try to load sensitivity data (optional - may not exist yet)
+    try {
+      const sensitivityRes = await fetch('data/sensitivity.json');
+      if (sensitivityRes.ok) {
+        data.sensitivity = await sensitivityRes.json();
+      }
+    } catch (e) {
+      console.log('Sensitivity data not available (run "make sensitivity-matrix" to generate)');
+    }
 
     return true;
   } catch (err) {
@@ -371,6 +383,24 @@ function renderSeedsView() {
 }
 
 // ============================================================================
+// Sensitivity View
+// ============================================================================
+
+function renderSensitivityView() {
+  const container = $('#sensitivity-container');
+
+  // Inject styles if not already present
+  if (!document.getElementById('sensitivity-styles')) {
+    const styleEl = document.createElement('style');
+    styleEl.id = 'sensitivity-styles';
+    styleEl.textContent = sensitivityStyles;
+    document.head.appendChild(styleEl);
+  }
+
+  container.innerHTML = renderSensitivityHeatmap(data.sensitivity);
+}
+
+// ============================================================================
 // Navigation
 // ============================================================================
 
@@ -387,6 +417,7 @@ function showView(viewName) {
       case 'presets': renderPresetsView(); break;
       case 'sweeps': renderSweepsView(); break;
       case 'seeds': renderSeedsView(); break;
+      case 'sensitivity': renderSensitivityView(); break;
     }
   }
 

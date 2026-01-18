@@ -1,0 +1,425 @@
+{
+  "generated_at": "2026-01-18T21:16:27.736Z",
+  "baseline_commit": "ca87ede0128eab64d31ac359d6210d204bd75449",
+  "sweep_source": "computed",
+  "matrix": {
+    "euclideanFadeStart": {
+      "syncopation": 0,
+      "density": 0,
+      "velocityRange": 0,
+      "voiceSeparation": 0,
+      "regularity": 0
+    },
+    "euclideanFadeEnd": {
+      "syncopation": 0,
+      "density": 0,
+      "velocityRange": 0,
+      "voiceSeparation": 0,
+      "regularity": 0
+    },
+    "syncopationCenter": {
+      "syncopation": 0,
+      "density": 0,
+      "velocityRange": 0,
+      "voiceSeparation": 0,
+      "regularity": 0
+    },
+    "syncopationWidth": {
+      "syncopation": 0,
+      "density": 0,
+      "velocityRange": 0,
+      "voiceSeparation": 0,
+      "regularity": 0
+    },
+    "randomFadeStart": {
+      "syncopation": 0,
+      "density": 0,
+      "velocityRange": 0,
+      "voiceSeparation": 0,
+      "regularity": 0
+    },
+    "randomFadeEnd": {
+      "syncopation": 0,
+      "density": 0,
+      "velocityRange": 0,
+      "voiceSeparation": 0,
+      "regularity": 0
+    }
+  },
+  "levers": {
+    "syncopation": {
+      "primary": [],
+      "secondary": [],
+      "lowImpact": [
+        "euclideanFadeStart",
+        "euclideanFadeEnd",
+        "syncopationCenter",
+        "syncopationWidth",
+        "randomFadeStart",
+        "randomFadeEnd"
+      ]
+    },
+    "density": {
+      "primary": [],
+      "secondary": [],
+      "lowImpact": [
+        "euclideanFadeStart",
+        "euclideanFadeEnd",
+        "syncopationCenter",
+        "syncopationWidth",
+        "randomFadeStart",
+        "randomFadeEnd"
+      ]
+    },
+    "velocityRange": {
+      "primary": [],
+      "secondary": [],
+      "lowImpact": [
+        "euclideanFadeStart",
+        "euclideanFadeEnd",
+        "syncopationCenter",
+        "syncopationWidth",
+        "randomFadeStart",
+        "randomFadeEnd"
+      ]
+    },
+    "voiceSeparation": {
+      "primary": [],
+      "secondary": [],
+      "lowImpact": [
+        "euclideanFadeStart",
+        "euclideanFadeEnd",
+        "syncopationCenter",
+        "syncopationWidth",
+        "randomFadeStart",
+        "randomFadeEnd"
+      ]
+    },
+    "regularity": {
+      "primary": [],
+      "secondary": [],
+      "lowImpact": [
+        "euclideanFadeStart",
+        "euclideanFadeEnd",
+        "syncopationCenter",
+        "syncopationWidth",
+        "randomFadeStart",
+        "randomFadeEnd"
+      ]
+    }
+  },
+  "details": {
+    "euclideanFadeStart": {
+      "syncopation": {
+        "rawSlope": 0,
+        "sensitivity": 0,
+        "rSquared": 0,
+        "dataPoints": 9,
+        "metricRange": {
+          "min": 0,
+          "max": 0
+        }
+      },
+      "density": {
+        "rawSlope": 0,
+        "sensitivity": 0,
+        "rSquared": 0,
+        "dataPoints": 9,
+        "metricRange": {
+          "min": 0,
+          "max": 0
+        }
+      },
+      "velocityRange": {
+        "rawSlope": 0,
+        "sensitivity": 0,
+        "rSquared": 0,
+        "dataPoints": 9,
+        "metricRange": {
+          "min": 0,
+          "max": 0
+        }
+      },
+      "voiceSeparation": {
+        "rawSlope": 0,
+        "sensitivity": 0,
+        "rSquared": 0,
+        "dataPoints": 9,
+        "metricRange": {
+          "min": 0.5,
+          "max": 0.5
+        }
+      },
+      "regularity": {
+        "rawSlope": 0,
+        "sensitivity": 0,
+        "rSquared": 0,
+        "dataPoints": 9,
+        "metricRange": {
+          "min": 0.5,
+          "max": 0.5
+        }
+      }
+    },
+    "euclideanFadeEnd": {
+      "syncopation": {
+        "rawSlope": 0,
+        "sensitivity": 0,
+        "rSquared": 0,
+        "dataPoints": 9,
+        "metricRange": {
+          "min": 0,
+          "max": 0
+        }
+      },
+      "density": {
+        "rawSlope": 0,
+        "sensitivity": 0,
+        "rSquared": 0,
+        "dataPoints": 9,
+        "metricRange": {
+          "min": 0,
+          "max": 0
+        }
+      },
+      "velocityRange": {
+        "rawSlope": 0,
+        "sensitivity": 0,
+        "rSquared": 0,
+        "dataPoints": 9,
+        "metricRange": {
+          "min": 0,
+          "max": 0
+        }
+      },
+      "voiceSeparation": {
+        "rawSlope": 0,
+        "sensitivity": 0,
+        "rSquared": 0,
+        "dataPoints": 9,
+        "metricRange": {
+          "min": 0.5,
+          "max": 0.5
+        }
+      },
+      "regularity": {
+        "rawSlope": 0,
+        "sensitivity": 0,
+        "rSquared": 0,
+        "dataPoints": 9,
+        "metricRange": {
+          "min": 0.5,
+          "max": 0.5
+        }
+      }
+    },
+    "syncopationCenter": {
+      "syncopation": {
+        "rawSlope": 0,
+        "sensitivity": 0,
+        "rSquared": 0,
+        "dataPoints": 9,
+        "metricRange": {
+          "min": 0,
+          "max": 0
+        }
+      },
+      "density": {
+        "rawSlope": 0,
+        "sensitivity": 0,
+        "rSquared": 0,
+        "dataPoints": 9,
+        "metricRange": {
+          "min": 0,
+          "max": 0
+        }
+      },
+      "velocityRange": {
+        "rawSlope": 0,
+        "sensitivity": 0,
+        "rSquared": 0,
+        "dataPoints": 9,
+        "metricRange": {
+          "min": 0,
+          "max": 0
+        }
+      },
+      "voiceSeparation": {
+        "rawSlope": 0,
+        "sensitivity": 0,
+        "rSquared": 0,
+        "dataPoints": 9,
+        "metricRange": {
+          "min": 0.5,
+          "max": 0.5
+        }
+      },
+      "regularity": {
+        "rawSlope": 0,
+        "sensitivity": 0,
+        "rSquared": 0,
+        "dataPoints": 9,
+        "metricRange": {
+          "min": 0.5,
+          "max": 0.5
+        }
+      }
+    },
+    "syncopationWidth": {
+      "syncopation": {
+        "rawSlope": 0,
+        "sensitivity": 0,
+        "rSquared": 0,
+        "dataPoints": 9,
+        "metricRange": {
+          "min": 0,
+          "max": 0
+        }
+      },
+      "density": {
+        "rawSlope": 0,
+        "sensitivity": 0,
+        "rSquared": 0,
+        "dataPoints": 9,
+        "metricRange": {
+          "min": 0,
+          "max": 0
+        }
+      },
+      "velocityRange": {
+        "rawSlope": 0,
+        "sensitivity": 0,
+        "rSquared": 0,
+        "dataPoints": 9,
+        "metricRange": {
+          "min": 0,
+          "max": 0
+        }
+      },
+      "voiceSeparation": {
+        "rawSlope": 0,
+        "sensitivity": 0,
+        "rSquared": 0,
+        "dataPoints": 9,
+        "metricRange": {
+          "min": 0.5,
+          "max": 0.5
+        }
+      },
+      "regularity": {
+        "rawSlope": 0,
+        "sensitivity": 0,
+        "rSquared": 0,
+        "dataPoints": 9,
+        "metricRange": {
+          "min": 0.5,
+          "max": 0.5
+        }
+      }
+    },
+    "randomFadeStart": {
+      "syncopation": {
+        "rawSlope": 0,
+        "sensitivity": 0,
+        "rSquared": 0,
+        "dataPoints": 9,
+        "metricRange": {
+          "min": 0,
+          "max": 0
+        }
+      },
+      "density": {
+        "rawSlope": 0,
+        "sensitivity": 0,
+        "rSquared": 0,
+        "dataPoints": 9,
+        "metricRange": {
+          "min": 0,
+          "max": 0
+        }
+      },
+      "velocityRange": {
+        "rawSlope": 0,
+        "sensitivity": 0,
+        "rSquared": 0,
+        "dataPoints": 9,
+        "metricRange": {
+          "min": 0,
+          "max": 0
+        }
+      },
+      "voiceSeparation": {
+        "rawSlope": 0,
+        "sensitivity": 0,
+        "rSquared": 0,
+        "dataPoints": 9,
+        "metricRange": {
+          "min": 0.5,
+          "max": 0.5
+        }
+      },
+      "regularity": {
+        "rawSlope": 0,
+        "sensitivity": 0,
+        "rSquared": 0,
+        "dataPoints": 9,
+        "metricRange": {
+          "min": 0.5,
+          "max": 0.5
+        }
+      }
+    },
+    "randomFadeEnd": {
+      "syncopation": {
+        "rawSlope": 0,
+        "sensitivity": 0,
+        "rSquared": 0,
+        "dataPoints": 9,
+        "metricRange": {
+          "min": 0,
+          "max": 0
+        }
+      },
+      "density": {
+        "rawSlope": 0,
+        "sensitivity": 0,
+        "rSquared": 0,
+        "dataPoints": 9,
+        "metricRange": {
+          "min": 0,
+          "max": 0
+        }
+      },
+      "velocityRange": {
+        "rawSlope": 0,
+        "sensitivity": 0,
+        "rSquared": 0,
+        "dataPoints": 9,
+        "metricRange": {
+          "min": 0,
+          "max": 0
+        }
+      },
+      "voiceSeparation": {
+        "rawSlope": 0,
+        "sensitivity": 0,
+        "rSquared": 0,
+        "dataPoints": 9,
+        "metricRange": {
+          "min": 0.5,
+          "max": 0.5
+        }
+      },
+      "regularity": {
+        "rawSlope": 0,
+        "sensitivity": 0,
+        "rSquared": 0,
+        "dataPoints": 9,
+        "metricRange": {
+          "min": 0.5,
+          "max": 0.5
+        }
+      }
+    }
+  }
+}
