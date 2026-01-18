@@ -14,7 +14,7 @@
  *   --verbose           Show progress output
  */
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { spawnSync } from 'child_process';
@@ -22,9 +22,17 @@ import { spawnSync } from 'child_process';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = join(__dirname, '../..');
 const PATTERN_VIZ = process.env.PATTERN_VIZ || join(PROJECT_ROOT, 'build/pattern_viz');
-const BASELINE_CONFIG = join(PROJECT_ROOT, 'config/weights/baseline.json');
 const SWEEP_CONFIG = join(PROJECT_ROOT, 'metrics/sweep-config.json');
-const TEMP_CONFIG = join(PROJECT_ROOT, 'metrics/.sweep-temp-config.json');
+
+// Map sweep parameter names to pattern_viz CLI argument names
+const PARAM_TO_CLI = {
+  euclideanFadeStart: '--euclidean-fade-start',
+  euclideanFadeEnd: '--euclidean-fade-end',
+  syncopationCenter: '--syncopation-center',
+  syncopationWidth: '--syncopation-width',
+  randomFadeStart: '--random-fade-start',
+  randomFadeEnd: '--random-fade-end',
+};
 
 // Parse CLI args
 const args = process.argv.slice(2);
@@ -51,23 +59,9 @@ const METRIC_WEIGHTS_32 = [
 ];
 
 /**
- * Deep clone and set nested property
+ * Run pattern_viz with given parameters and weight overrides
  */
-function setNestedProperty(obj, path, value) {
-  const clone = JSON.parse(JSON.stringify(obj));
-  const parts = path.split('.');
-  let current = clone;
-  for (let i = 0; i < parts.length - 1; i++) {
-    current = current[parts[i]];
-  }
-  current[parts[parts.length - 1]] = value;
-  return clone;
-}
-
-/**
- * Run pattern_viz with given parameters and config
- */
-function runPatternViz(controlParams, configPath) {
+function runPatternViz(controlParams, weightOverrides = {}) {
   const args = [
     `--energy=${controlParams.energy.toFixed(2)}`,
     `--shape=${controlParams.shape.toFixed(2)}`,
@@ -80,8 +74,12 @@ function runPatternViz(controlParams, configPath) {
     '--format=csv',
   ];
 
-  if (configPath) {
-    args.push(`--config=${configPath}`);
+  // Add weight override arguments
+  for (const [param, value] of Object.entries(weightOverrides)) {
+    const cliArg = PARAM_TO_CLI[param];
+    if (cliArg) {
+      args.push(`${cliArg}=${value.toFixed(2)}`);
+    }
   }
 
   const result = spawnSync(PATTERN_VIZ, args, { encoding: 'utf-8' });
@@ -243,18 +241,12 @@ if (!existsSync(PATTERN_VIZ)) {
   process.exit(1);
 }
 
-if (!existsSync(BASELINE_CONFIG)) {
-  console.error(`Error: baseline config not found at ${BASELINE_CONFIG}`);
-  process.exit(1);
-}
-
 if (!existsSync(SWEEP_CONFIG)) {
   console.error(`Error: sweep config not found at ${SWEEP_CONFIG}`);
   process.exit(1);
 }
 
-// Load configs
-const baselineWeights = JSON.parse(readFileSync(BASELINE_CONFIG, 'utf-8'));
+// Load sweep config
 const sweepConfig = JSON.parse(readFileSync(SWEEP_CONFIG, 'utf-8'));
 const { parameters, controlSweep, baseline } = sweepConfig;
 
@@ -277,15 +269,14 @@ for (const [paramName, paramConfig] of Object.entries(paramsToSweep)) {
     console.error(`\nSweeping ${paramName}...`);
   }
 
-  const { path, min, max, steps } = paramConfig;
+  const { min, max, steps } = paramConfig;
   const sweepPoints = [];
 
   for (let i = 0; i < steps; i++) {
     const value = min + (i / (steps - 1)) * (max - min);
 
-    // Create modified config
-    const modifiedConfig = setNestedProperty(baselineWeights, path, value);
-    writeFileSync(TEMP_CONFIG, JSON.stringify(modifiedConfig, null, 2));
+    // Build weight overrides for this sweep point
+    const weightOverrides = { [paramName]: value };
 
     // Collect metrics across control parameter combinations
     const controlMetrics = [];
@@ -295,7 +286,7 @@ for (const [paramName, paramConfig] of Object.entries(paramsToSweep)) {
         const controlParams = { ...baseline, energy, shape };
 
         try {
-          const steps = runPatternViz(controlParams, TEMP_CONFIG);
+          const steps = runPatternViz(controlParams, weightOverrides);
           const metrics = computePentagonMetrics(steps, controlParams.length);
           controlMetrics.push({ energy, shape, metrics });
         } catch (err) {
@@ -338,7 +329,6 @@ for (const [paramName, paramConfig] of Object.entries(paramsToSweep)) {
   }
 
   results[paramName] = {
-    path,
     min,
     max,
     steps,
@@ -346,20 +336,9 @@ for (const [paramName, paramConfig] of Object.entries(paramsToSweep)) {
   };
 }
 
-// Cleanup temp file
-try {
-  if (existsSync(TEMP_CONFIG)) {
-    const fs = await import('fs/promises');
-    await fs.unlink(TEMP_CONFIG);
-  }
-} catch (e) {
-  // Ignore cleanup errors
-}
-
 // Output
 const output = {
   generated_at: new Date().toISOString(),
-  baseline_config: BASELINE_CONFIG,
   sweep_config: SWEEP_CONFIG,
   parameters: results,
 };

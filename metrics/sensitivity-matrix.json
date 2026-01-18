@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-01-18T21:16:27.736Z",
-  "baseline_commit": "ca87ede0128eab64d31ac359d6210d204bd75449",
+  "generated_at": "2026-01-18T21:24:21.103Z",
+  "baseline_commit": "a0619538f4415ce9dbdcb9d222e750e42de50396",
   "sweep_source": "computed",
   "matrix": {
     "euclideanFadeStart": {
@@ -111,33 +111,33 @@
   "details": {
     "euclideanFadeStart": {
       "syncopation": {
-        "rawSlope": 0,
-        "sensitivity": 0,
+        "rawSlope": -2.4651903288156615e-31,
+        "sensitivity": -9.860761315262646e-32,
         "rSquared": 0,
         "dataPoints": 9,
         "metricRange": {
-          "min": 0,
-          "max": 0
+          "min": 0.8008645807617445,
+          "max": 0.8008645807617445
         }
       },
       "density": {
-        "rawSlope": 0,
-        "sensitivity": 0,
+        "rawSlope": -2.4651903288156615e-31,
+        "sensitivity": -9.860761315262646e-32,
         "rSquared": 0,
         "dataPoints": 9,
         "metricRange": {
-          "min": 0,
-          "max": 0
+          "min": 0.565625,
+          "max": 0.565625
         }
       },
       "velocityRange": {
-        "rawSlope": 0,
-        "sensitivity": 0,
+        "rawSlope": -1.2325951644078307e-31,
+        "sensitivity": -4.930380657631323e-32,
         "rSquared": 0,
         "dataPoints": 9,
         "metricRange": {
-          "min": 0,
-          "max": 0
+          "min": 0.36649999999999994,
+          "max": 0.36649999999999994
         }
       },
       "voiceSeparation": {
@@ -146,8 +146,8 @@
         "rSquared": 0,
         "dataPoints": 9,
         "metricRange": {
-          "min": 0.5,
-          "max": 0.5
+          "min": 0.8650301224620645,
+          "max": 0.8650301224620645
         }
       },
       "regularity": {
@@ -156,40 +156,40 @@
         "rSquared": 0,
         "dataPoints": 9,
         "metricRange": {
-          "min": 0.5,
-          "max": 0.5
+          "min": 0.5668977110430321,
+          "max": 0.5668977110430321
         }
       }
     },
     "euclideanFadeEnd": {
       "syncopation": {
-        "rawSlope": 0,
-        "sensitivity": 0,
+        "rawSlope": -3.2869204384208822e-31,
+        "sensitivity": -1.314768175368353e-31,
         "rSquared": 0,
         "dataPoints": 9,
         "metricRange": {
-          "min": 0,
-          "max": 0
+          "min": 0.8008645807617445,
+          "max": 0.8008645807617445
         }
       },
       "density": {
-        "rawSlope": 0,
-        "sensitivity": 0,
+        "rawSlope": -3.2869204384208822e-31,
+        "sensitivity": -1.314768175368353e-31,
         "rSquared": 0,
         "dataPoints": 9,
         "metricRange": {
-          "min": 0,
-          "max": 0
+          "min": 0.565625,
+          "max": 0.565625
         }
       },
       "velocityRange": {
-        "rawSlope": 0,
-        "sensitivity": 0,
+        "rawSlope": -1.6434602192104411e-31,
+        "sensitivity": -6.573840876841765e-32,
         "rSquared": 0,
         "dataPoints": 9,
         "metricRange": {
-          "min": 0,
-          "max": 0
+          "min": 0.36649999999999994,
+          "max": 0.36649999999999994
         }
       },
       "voiceSeparation": {
@@ -198,8 +198,8 @@
         "rSquared": 0,
         "dataPoints": 9,
         "metricRange": {
-          "min": 0.5,
-          "max": 0.5
+          "min": 0.8650301224620645,
+          "max": 0.8650301224620645
         }
       },
       "regularity": {
@@ -208,40 +208,40 @@
         "rSquared": 0,
         "dataPoints": 9,
         "metricRange": {
-          "min": 0.5,
-          "max": 0.5
+          "min": 0.5668977110430321,
+          "max": 0.5668977110430321
         }
       }
     },
     "syncopationCenter": {
       "syncopation": {
-        "rawSlope": 0,
-        "sensitivity": 0,
+        "rawSlope": -2.4651903288156623e-31,
+        "sensitivity": -9.860761315262648e-32,
         "rSquared": 0,
         "dataPoints": 9,
         "metricRange": {
-          "min": 0,
-          "max": 0
+          "min": 0.8008645807617445,
+          "max": 0.8008645807617445
         }
       },
       "density": {
-        "rawSlope": 0,
-        "sensitivity": 0,
+        "rawSlope": -2.4651903288156623e-31,
+        "sensitivity": -9.860761315262648e-32,
         "rSquared": 0,
         "dataPoints": 9,
         "metricRange": {
-          "min": 0,
-          "max": 0
+          "min": 0.565625,
+          "max": 0.565625
         }
       },
       "velocityRange": {
-        "rawSlope": 0,
-        "sensitivity": 0,
+        "rawSlope": -1.2325951644078312e-31,
+        "sensitivity": -4.930380657631324e-32,
         "rSquared": 0,
         "dataPoints": 9,
         "metricRange": {
-          "min": 0,
-          "max": 0
+          "min": 0.36649999999999994,
+          "max": 0.36649999999999994
         }
       },
       "voiceSeparation": {
@@ -250,8 +250,8 @@
         "rSquared": 0,
         "dataPoints": 9,
         "metricRange": {
-          "min": 0.5,
-          "max": 0.5
+          "min": 0.8650301224620645,
+          "max": 0.8650301224620645
         }
       },
       "regularity": {
@@ -260,40 +260,40 @@
         "rSquared": 0,
         "dataPoints": 9,
         "metricRange": {
-          "min": 0.5,
-          "max": 0.5
+          "min": 0.5668977110430321,
+          "max": 0.5668977110430321
         }
       }
     },
     "syncopationWidth": {
       "syncopation": {
-        "rawSlope": 0,
-        "sensitivity": 0,
+        "rawSlope": -2.4651903288156615e-31,
+        "sensitivity": -9.860761315262646e-32,
         "rSquared": 0,
         "dataPoints": 9,
         "metricRange": {
-          "min": 0,
-          "max": 0
+          "min": 0.8008645807617445,
+          "max": 0.8008645807617445
         }
       },
       "density": {
-        "rawSlope": 0,
-        "sensitivity": 0,
+        "rawSlope": -2.4651903288156615e-31,
+        "sensitivity": -9.860761315262646e-32,
         "rSquared": 0,
         "dataPoints": 9,
         "metricRange": {
-          "min": 0,
-          "max": 0
+          "min": 0.565625,
+          "max": 0.565625
         }
       },
       "velocityRange": {
-        "rawSlope": 0,
-        "sensitivity": 0,
+        "rawSlope": -1.2325951644078307e-31,
+        "sensitivity": -4.930380657631323e-32,
         "rSquared": 0,
         "dataPoints": 9,
         "metricRange": {
-          "min": 0,
-          "max": 0
+          "min": 0.36649999999999994,
+          "max": 0.36649999999999994
         }
       },
       "voiceSeparation": {
@@ -302,8 +302,8 @@
         "rSquared": 0,
         "dataPoints": 9,
         "metricRange": {
-          "min": 0.5,
-          "max": 0.5
+          "min": 0.8650301224620645,
+          "max": 0.8650301224620645
         }
       },
       "regularity": {
@@ -312,40 +312,40 @@
         "rSquared": 0,
         "dataPoints": 9,
         "metricRange": {
-          "min": 0.5,
-          "max": 0.5
+          "min": 0.5668977110430321,
+          "max": 0.5668977110430321
         }
       }
     },
     "randomFadeStart": {
       "syncopation": {
-        "rawSlope": 0,
-        "sensitivity": 0,
+        "rawSlope": -2.4651903288156623e-31,
+        "sensitivity": -9.860761315262648e-32,
         "rSquared": 0,
         "dataPoints": 9,
         "metricRange": {
-          "min": 0,
-          "max": 0
+          "min": 0.8008645807617445,
+          "max": 0.8008645807617445
         }
       },
       "density": {
-        "rawSlope": 0,
-        "sensitivity": 0,
+        "rawSlope": -2.4651903288156623e-31,
+        "sensitivity": -9.860761315262648e-32,
         "rSquared": 0,
         "dataPoints": 9,
         "metricRange": {
-          "min": 0,
-          "max": 0
+          "min": 0.565625,
+          "max": 0.565625
         }
       },
       "velocityRange": {
-        "rawSlope": 0,
-        "sensitivity": 0,
+        "rawSlope": -1.2325951644078312e-31,
+        "sensitivity": -4.930380657631324e-32,
         "rSquared": 0,
         "dataPoints": 9,
         "metricRange": {
-          "min": 0,
-          "max": 0
+          "min": 0.36649999999999994,
+          "max": 0.36649999999999994
         }
       },
       "voiceSeparation": {
@@ -354,8 +354,8 @@
         "rSquared": 0,
         "dataPoints": 9,
         "metricRange": {
-          "min": 0.5,
-          "max": 0.5
+          "min": 0.8650301224620645,
+          "max": 0.8650301224620645
         }
       },
       "regularity": {
@@ -364,40 +364,40 @@
         "rSquared": 0,
         "dataPoints": 9,
         "metricRange": {
-          "min": 0.5,
-          "max": 0.5
+          "min": 0.5668977110430321,
+          "max": 0.5668977110430321
         }
       }
     },
     "randomFadeEnd": {
       "syncopation": {
-        "rawSlope": 0,
-        "sensitivity": 0,
+        "rawSlope": -1.3147681753683522e-30,
+        "sensitivity": -3.9443045261050573e-31,
         "rSquared": 0,
         "dataPoints": 9,
         "metricRange": {
-          "min": 0,
-          "max": 0
+          "min": 0.8008645807617445,
+          "max": 0.8008645807617445
         }
       },
       "density": {
-        "rawSlope": 0,
-        "sensitivity": 0,
+        "rawSlope": -1.3147681753683522e-30,
+        "sensitivity": -3.9443045261050573e-31,
         "rSquared": 0,
         "dataPoints": 9,
         "metricRange": {
-          "min": 0,
-          "max": 0
+          "min": 0.565625,
+          "max": 0.565625
         }
       },
       "velocityRange": {
-        "rawSlope": 0,
-        "sensitivity": 0,
+        "rawSlope": -6.573840876841761e-31,
+        "sensitivity": -1.9721522630525286e-31,
         "rSquared": 0,
         "dataPoints": 9,
         "metricRange": {
-          "min": 0,
-          "max": 0
+          "min": 0.36649999999999994,
+          "max": 0.36649999999999994
         }
       },
       "voiceSeparation": {
@@ -406,8 +406,8 @@
         "rSquared": 0,
         "dataPoints": 9,
         "metricRange": {
-          "min": 0.5,
-          "max": 0.5
+          "min": 0.8650301224620645,
+          "max": 0.8650301224620645
         }
       },
       "regularity": {
@@ -416,8 +416,8 @@
         "rSquared": 0,
         "dataPoints": 9,
         "metricRange": {
-          "min": 0.5,
-          "max": 0.5
+          "min": 0.5668977110430321,
+          "max": 0.5668977110430321
         }
       }
     }
