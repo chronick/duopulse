@@ -2,10 +2,11 @@
 id: 61b
 slug: pr-metrics-comparison
 title: "PR Metrics Comparison"
-status: pending
+status: completed
 created_date: 2026-01-18
 updated_date: 2026-01-18
-branch: feature/pr-metrics-comparison
+completed_date: 2026-01-18
+branch: feature/weight-based-blending
 spec_refs: []
 depends_on:
   - 61a  # Baseline infrastructure
@@ -41,49 +42,49 @@ This task was split from Task 61 during design review (2026-01-18). It builds on
 ## Subtasks
 
 ### CI Workflow
-- [ ] Create or modify workflow for PR metrics
-- [ ] Build pattern_viz on PR branches
-- [ ] Run evals with PR code
-- [ ] Compare against baseline.json
+- [x] Create or modify workflow for PR metrics
+- [x] Build pattern_viz on PR branches
+- [x] Run evals with PR code
+- [x] Compare against baseline.json
 
 ### Comparison Script
-- [ ] Create `scripts/compare-metrics.js` (or bash)
-- [ ] Read baseline from `metrics/baseline.json`
-- [ ] Read PR metrics from evals output
-- [ ] Calculate deltas (absolute and percentage)
-- [ ] Determine pass/fail based on thresholds
+- [x] Create `scripts/compare-metrics.js` (or bash)
+- [x] Read baseline from `metrics/baseline.json`
+- [x] Read PR metrics from evals output
+- [x] Calculate deltas (absolute and percentage)
+- [x] Determine pass/fail based on thresholds
 
 ### PR Comment
-- [ ] Post metric comparison table as PR comment
-- [ ] Show before/after values
-- [ ] Highlight regressions in red
-- [ ] Include overall pass/fail status
-- [ ] Update existing comment instead of creating new ones
+- [x] Post metric comparison table as PR comment
+- [x] Show before/after values
+- [x] Highlight regressions in red
+- [x] Include overall pass/fail status
+- [x] Update existing comment instead of creating new ones
 
 ### Regression Threshold
-- [ ] Default threshold: 2% regression
-- [ ] Configurable via workflow input or file
-- [ ] Different thresholds for different metrics (optional)
+- [x] Default threshold: 2% regression
+- [x] Configurable via workflow input or file
+- [ ] Different thresholds for different metrics (optional, deferred)
 
 ### Override Mechanism
-- [ ] Create `allow-regression` label
-- [ ] When label present, regression doesn't fail CI
-- [ ] Comment notes that override was used
+- [x] Create `allow-regression` label
+- [x] When label present, regression doesn't fail CI
+- [x] Comment notes that override was used
 
 ### Tests
-- [ ] Test comparison script with sample data
-- [ ] Test pass/fail logic
-- [ ] Test PR comment formatting
-- [ ] All tests pass
+- [x] Test comparison script with sample data (local testing)
+- [x] Test pass/fail logic
+- [x] Test PR comment formatting
+- [x] All tests pass (373 tests)
 
 ## Acceptance Criteria
 
-- [ ] PRs trigger metrics comparison
-- [ ] Comparison posted as PR comment
-- [ ] Regressions > 2% fail CI
-- [ ] Override label allows intentional regressions
-- [ ] Comment updates on push (no duplicates)
-- [ ] Works for iteration PRs and regular PRs
+- [x] PRs trigger metrics comparison
+- [x] Comparison posted as PR comment
+- [x] Regressions > 2% fail CI
+- [x] Override label allows intentional regressions
+- [x] Comment updates on push (no duplicates)
+- [x] Works for iteration PRs and regular PRs
 
 ## Implementation Notes
 
