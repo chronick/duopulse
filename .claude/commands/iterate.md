@@ -95,8 +95,8 @@ Guidelines:
 ### Step 6: Create Iteration Branch
 
 ```bash
-# Generate iteration ID
-ITER_ID=$(date +%Y-%m-%d)-$(printf "%03d" $(($(ls docs/design/iterations/*.md 2>/dev/null | wc -l) + 1)))
+# Generate iteration ID using dedicated script
+ITER_ID=$(node scripts/iterate/generate-iteration-id.js)
 
 # Create branch
 git checkout -b feature/iterate-${ITER_ID}

@@ -25,18 +25,72 @@ const REGRESSION_THRESHOLD = 0.02; // 2% regression tolerance
 const METRICS = ['syncopation', 'density', 'velocityRange', 'voiceSeparation', 'regularity', 'composite'];
 const ZONES = ['stable', 'syncopated', 'wild', 'total'];
 
-function loadMetrics(filePath) {
+function loadMetricsFile(filePath) {
   const content = fs.readFileSync(filePath, 'utf-8');
-  const data = JSON.parse(content);
+  return JSON.parse(content);
+}
 
+function extractPentagonStats(data) {
   // Handle both baseline.json format and raw metrics format
   if (data.metrics && data.metrics.pentagonStats) {
     return data.metrics.pentagonStats;
   } else if (data.pentagonStats) {
     return data.pentagonStats;
   } else {
-    throw new Error(`Unexpected metrics format in ${filePath}`);
+    throw new Error('Unexpected metrics format');
   }
+}
+
+function extractMetricDefinitions(data) {
+  // Extract target ranges from baseline.json
+  if (data.metrics && data.metrics.metricDefinitions) {
+    return data.metrics.metricDefinitions;
+  } else if (data.metricDefinitions) {
+    return data.metricDefinitions;
+  }
+  return null;
+}
+
+function parseTargetRange(rangeStr) {
+  // Parse "0.12-0.48" → {min: 0.12, max: 0.48}
+  if (!rangeStr) return null;
+  const parts = rangeStr.split('-').map(s => parseFloat(s.trim()));
+  if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+    return { min: parts[0], max: parts[1] };
+  }
+  return null;
+}
+
+function isRegression(before, after, targetRange) {
+  // Direction-aware regression detection:
+  // - A change is a regression if it moves AWAY from the target range
+  // - A change toward the target range is an improvement, not regression
+
+  if (!targetRange) {
+    // No target range info - fall back to simple "decrease is bad"
+    return after < before;
+  }
+
+  const delta = after - before;
+  const { min, max } = targetRange;
+
+  // If we're above the target max, decreasing is good
+  if (before > max) {
+    return after > before; // increasing when already too high is regression
+  }
+
+  // If we're below the target min, increasing is good
+  if (before < min) {
+    return after < before; // decreasing when already too low is regression
+  }
+
+  // We're in range - moving out of range is regression
+  if (after < min || after > max) {
+    return true; // moved out of target range
+  }
+
+  // Still in range - not a regression
+  return false;
 }
 
 function calculateDelta(before, after) {
@@ -80,13 +134,24 @@ function main() {
   }
 
   // Load metrics
-  let baseline, newMetrics;
+  let baselineData, newData, baseline, newMetrics, metricDefinitions;
   try {
-    baseline = loadMetrics(baselinePath);
-    newMetrics = loadMetrics(newPath);
+    baselineData = loadMetricsFile(baselinePath);
+    newData = loadMetricsFile(newPath);
+    baseline = extractPentagonStats(baselineData);
+    newMetrics = extractPentagonStats(newData);
+    metricDefinitions = extractMetricDefinitions(baselineData);
   } catch (err) {
     console.error(`Error loading metrics: ${err.message}`);
     process.exit(2);
+  }
+
+  // Helper to get target range for a metric/zone combination
+  function getTargetRange(metric, zone) {
+    if (!metricDefinitions || !metricDefinitions[metric]) return null;
+    const targetByZone = metricDefinitions[metric].targetByZone;
+    if (!targetByZone || !targetByZone[zone]) return null;
+    return parseTargetRange(targetByZone[zone]);
   }
 
   // Calculate deltas
@@ -109,20 +174,26 @@ function main() {
       if (before === undefined || after === undefined) continue;
 
       const delta = calculateDelta(before, after);
-      deltas[zone][metric] = { before, after, delta };
+      const targetRange = getTargetRange(metric, zone);
+      const regressed = isRegression(before, after, targetRange);
+
+      deltas[zone][metric] = { before, after, delta, targetRange, regressed };
 
       // Track target metric improvement
       if (targetMetric === metric && (targetZone === zone || targetZone === null || zone === 'total')) {
         if (targetImprovement === null || Math.abs(delta) > Math.abs(targetImprovement.delta)) {
-          targetImprovement = { metric, zone, delta, before, after };
+          targetImprovement = { metric, zone, delta, before, after, targetRange };
         }
       }
 
-      // Track max regression (negative delta is regression for most metrics)
-      // Note: Some metrics like "regularity" in wild zone might want to decrease
-      if (delta < -maxRegression) {
-        maxRegression = -delta;
-        maxRegressionInfo = { metric, zone, delta, before, after };
+      // Track max regression using direction-aware detection
+      // Only count as regression if it actually regressed toward wrong direction
+      if (regressed) {
+        const regressionAmount = Math.abs(delta);
+        if (regressionAmount > maxRegression) {
+          maxRegression = regressionAmount;
+          maxRegressionInfo = { metric, zone, delta, before, after, targetRange };
+        }
       }
     }
   }
@@ -165,11 +236,14 @@ function main() {
     console.log('');
   }
 
-  // Check max regression
-  console.log('### Regression Check');
+  // Check max regression (direction-aware)
+  console.log('### Regression Check (Direction-Aware)');
   if (maxRegressionInfo) {
     console.log(`- Worst regression: ${maxRegressionInfo.metric} in ${maxRegressionInfo.zone}`);
     console.log(`- Amount: ${formatPercent(maxRegressionInfo.delta)}`);
+    if (maxRegressionInfo.targetRange) {
+      console.log(`- Target range: ${maxRegressionInfo.targetRange.min.toFixed(2)}-${maxRegressionInfo.targetRange.max.toFixed(2)}`);
+    }
 
     if (maxRegression <= REGRESSION_THRESHOLD) {
       console.log(`- Status: PASS (<= ${formatPercent(REGRESSION_THRESHOLD)} threshold)`);
@@ -179,7 +253,7 @@ function main() {
       issues.push(`Regression in ${maxRegressionInfo.metric}/${maxRegressionInfo.zone}: ${formatPercent(maxRegressionInfo.delta)}`);
     }
   } else {
-    console.log('- No regressions detected');
+    console.log('- No regressions detected (changes move toward target ranges)');
   }
 
   console.log('\n---\n');
