@@ -6,7 +6,7 @@ created_date: 2026-01-18
 updated_date: 2026-01-18
 branch: feature/hill-climbing-infrastructure
 tasks: [53, 54, 55, 56, 57, 58, 59, 61, 61a, 61b, 62, 63, 64, 65, 66]
-completed_tasks: [55, 56, 59, 60, 61a, 61b, 63, 66]
+completed_tasks: [55, 56, 59, 60, 61a, 61b, 63, 64, 66]
 ---
 
 # Epic: Semi-Autonomous Hill-Climbing Iteration System
@@ -106,7 +106,7 @@ Create a feedback loop using git + GitHub + PRs/issues + Actions to automaticall
 - [x] `/iterate "improve X"` triggers single-pass workflow (Task 55)
 - [x] `/iterate auto` suggests goal from weakest metric (Task 55)
 - [x] PRs created with before/after metrics (Task 55)
-- [ ] Claude can push branches and create PRs (Task 64)
+- [x] Claude can push branches and create PRs (Task 64)
 
 ---
 
@@ -258,7 +258,7 @@ Independent:
 | 61b | pr-metrics-comparison | PR Metrics Comparison | **completed** | 1 |
 | 62 | ensemble-weight-search | Ensemble Weight Search | pending | 3 |
 | 63 | parameter-sensitivity | Parameter Sensitivity Analysis | **completed** | 2 |
-| 64 | claude-permissions | Claude Permissions Update | pending | 2 |
+| 64 | claude-permissions | Claude Permissions Update | **completed** | 2 |
 | 65 | phrase-aware-weights | Phrase-Aware Weight Modulation | backlog | 5 |
 | 66 | config-patternfield-wiring | Wire Zone Thresholds into PatternField | **completed** | 2 |
 
