@@ -6,7 +6,7 @@ created_date: 2026-01-18
 updated_date: 2026-01-18
 branch: feature/hill-climbing-infrastructure
 tasks: [53, 54, 55, 56, 57, 58, 59, 61, 61a, 61b, 62, 63, 64, 65, 66]
-completed_tasks: [56, 59, 60, 61a, 61b, 63]
+completed_tasks: [56, 59, 60, 61a, 61b, 63, 66]
 ---
 
 # Epic: Semi-Autonomous Hill-Climbing Iteration System
@@ -101,8 +101,8 @@ Create a feedback loop using git + GitHub + PRs/issues + Actions to automaticall
 
 **Phase 2 Exit Criteria**:
 - [x] Sensitivity analysis infrastructure complete (Task 63)
-- [ ] Zone thresholds wired to pattern generation (Task 66)
-- [ ] Sensitivity matrix shows weight→metric impacts (requires 66)
+- [x] Zone thresholds wired to pattern generation (Task 66)
+- [x] Sensitivity matrix shows weight→metric impacts (requires 66)
 - [ ] `/iterate "improve X"` triggers single-pass workflow
 - [ ] `/iterate auto` suggests goal from weakest metric
 - [ ] PRs created with before/after metrics
@@ -260,7 +260,7 @@ Independent:
 | 63 | parameter-sensitivity | Parameter Sensitivity Analysis | **completed** | 2 |
 | 64 | claude-permissions | Claude Permissions Update | pending | 2 |
 | 65 | phrase-aware-weights | Phrase-Aware Weight Modulation | backlog | 5 |
-| 66 | config-patternfield-wiring | Wire Zone Thresholds into PatternField | pending | 2 |
+| 66 | config-patternfield-wiring | Wire Zone Thresholds into PatternField | **completed** | 2 |
 
 ---
 
@@ -343,19 +343,23 @@ Once the iteration system is built, use **tasks 46-50** (now in `backlog/`) to v
 
 ---
 
-## Design Limitation Discovered (Task 63) - RESOLVED
+## Design Limitation Discovered (Task 63) - RESOLVED BY TASK 66
 
 During Task 63 implementation, a disconnect was discovered between the configuration system and pattern generation:
 
-**Problem**: Sensitivity analysis shows all zeros because:
+**Problem**: Sensitivity analysis showed all zeros because:
 1. `AlgorithmConfig` weights (Task 56) define blend parameters, but
 2. `PatternField.cpp` uses separate hardcoded zone thresholds (`kShapeZone1End`, etc.)
-3. These zone constants aren't connected to `AlgorithmConfig`
+3. These zone constants weren't connected to the CLI args
 
-**Resolution**: Task 66 created to wire zone thresholds into PatternField as a runtime-configurable struct.
+**Resolution**: Task 66 implemented `PatternFieldConfig` struct with runtime-configurable zone thresholds.
 
 **Key insight from design review**: AlgorithmConfig and PatternField zones are conceptually different:
 - AlgorithmConfig: proportional blend weights ("60% euclidean")
 - PatternField zones: SHAPE value thresholds ("use syncopation at SHAPE > 0.28")
 
-Task 66 makes PatternField zones configurable independently, using correct terminology.
+**Result**: Sensitivity matrix now produces non-zero values:
+- `shapeCrossfade1End`: -0.038 sensitivity for syncopation
+- `shapeZone1End`: 0.009 sensitivity for voiceSeparation
+
+CLI args renamed to match PatternField terminology (`--shape-zone1-end`, etc.).
