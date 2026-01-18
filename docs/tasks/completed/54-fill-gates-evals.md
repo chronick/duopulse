@@ -11,7 +11,7 @@ spec_refs:
   - "docs/specs/main.md#9-fill-system"
   - "docs/specs/main.md#10-aux-output-system"
 commits:
-  - pending
+  - 7d70bbe
 ---
 
 # Task 54: Fill Gate Evaluation in Pentagon Metrics
