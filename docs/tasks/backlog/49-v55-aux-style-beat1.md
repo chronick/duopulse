@@ -2,7 +2,7 @@
 id: 49
 slug: v55-aux-style-beat1
 title: "V5.5 AUX Style Zones and Beat 1 Enforcement"
-status: pending
+status: backlog
 created_date: 2026-01-08
 updated_date: 2026-01-08
 branch: feature/v55-pattern-expressiveness

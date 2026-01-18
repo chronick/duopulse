@@ -2,7 +2,7 @@
 id: 50
 slug: v55-two-pass-generation
 title: "V5.5 Two-Pass Generation: Skeleton + Embellishment (Conditional)"
-status: pending
+status: backlog
 created_date: 2026-01-08
 updated_date: 2026-01-08
 branch: feature/v55-pattern-expressiveness

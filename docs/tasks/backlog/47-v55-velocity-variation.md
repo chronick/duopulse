@@ -2,7 +2,7 @@
 id: 47
 slug: v55-velocity-variation
 title: "V5.5 Velocity Variation: Ghost Notes and Accent Dynamics"
-status: pending
+status: backlog
 created_date: 2026-01-08
 updated_date: 2026-01-08
 branch: feature/v55-pattern-expressiveness

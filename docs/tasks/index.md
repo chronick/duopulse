@@ -47,10 +47,21 @@
 | 43 | v5-shimmer-seed-variation | V5 Shimmer Seed Variation: Fix pattern convergence bug | completed | 2026-01-07 | 2026-01-07 | completed/43-v5-shimmer-seed-variation.md |
 | 44 | v5-anchor-seed-variation | V5 Anchor Seed Variation: Fix zero pattern diversity across seeds | completed | 2026-01-07 | 2026-01-07 | completed/44-v5-anchor-seed-variation.md |
 | 45 | pattern-generator-extraction | Pattern Generator Extraction: Shared module for firmware & viz tool | completed | 2026-01-08 | 2026-01-08 | completed/45-pattern-generator-extraction.md |
-| 46 | v55-noise-formula-fix | V5.5 Noise Formula Fix: Correct zone-based noise scaling | pending | 2026-01-08 | 2026-01-08 | active/46-v55-noise-formula-fix.md |
-| 47 | v55-velocity-variation | V5.5 Velocity Variation: Ghost notes and accent dynamics | pending | 2026-01-08 | 2026-01-08 | active/47-v55-velocity-variation.md |
-| 48 | v55-micro-displacement | V5.5 Micro-Displacement: Per-hit position variation | pending | 2026-01-08 | 2026-01-08 | active/48-v55-micro-displacement.md |
-| 49 | v55-aux-style-beat1 | V5.5 AUX Style Zones and Beat 1 Enforcement | pending | 2026-01-08 | 2026-01-08 | active/49-v55-aux-style-beat1.md |
-| 50 | v55-two-pass-generation | V5.5 Two-Pass Generation: Skeleton + Embellishment (conditional) | pending | 2026-01-08 | 2026-01-08 | active/50-v55-two-pass-generation.md |
+| 46 | v55-noise-formula-fix | V5.5 Noise Formula Fix: Correct zone-based noise scaling | backlog | 2026-01-08 | 2026-01-18 | backlog/46-v55-noise-formula-fix.md |
+| 47 | v55-velocity-variation | V5.5 Velocity Variation: Ghost notes and accent dynamics | backlog | 2026-01-08 | 2026-01-18 | backlog/47-v55-velocity-variation.md |
+| 48 | v55-micro-displacement | V5.5 Micro-Displacement: Per-hit position variation | backlog | 2026-01-08 | 2026-01-18 | backlog/48-v55-micro-displacement.md |
+| 49 | v55-aux-style-beat1 | V5.5 AUX Style Zones and Beat 1 Enforcement | backlog | 2026-01-08 | 2026-01-18 | backlog/49-v55-aux-style-beat1.md |
+| 50 | v55-two-pass-generation | V5.5 Two-Pass Generation: Skeleton + Embellishment (conditional) | backlog | 2026-01-08 | 2026-01-18 | backlog/50-v55-two-pass-generation.md |
 | 51 | github-pages | GitHub Pages Site with Evals Integration | completed | 2026-01-13 | 2026-01-13 | misc/51-github-pages.md |
 | 52 | release-builds | CI Release Builds on Version Tags | pending | 2026-01-13 | 2026-01-13 | misc/52-release-builds.md |
+| 53 | grid-expansion-64 | Grid Expansion to 64 Steps with Flam Resolution | pending | 2026-01-18 | 2026-01-18 | active/53-grid-expansion-64.md |
+| 54 | fill-gates-evals | Fill Gate Evaluation in Pentagon Metrics | pending | 2026-01-18 | 2026-01-18 | active/54-fill-gates-evals.md |
+| 55 | iterate-command | Iteration Command System for Hill-Climbing | pending | 2026-01-18 | 2026-01-18 | active/55-iterate-command.md |
+| 56 | weight-based-blending | Weight-Based Algorithm Blending System | pending | 2026-01-18 | 2026-01-18 | active/56-weight-based-blending.md |
+| 57 | pr-workflow-integration | PR Workflow Integration for Claude Feedback | pending | 2026-01-18 | 2026-01-18 | active/57-pr-workflow-integration.md |
+| 58 | website-iteration-timeline | Website Iteration Timeline and Progress Tracking | pending | 2026-01-18 | 2026-01-18 | active/58-website-iteration-timeline.md |
+| 59 | algorithm-weight-config | Algorithm Weight Configuration System | pending | 2026-01-18 | 2026-01-18 | active/59-algorithm-weight-config.md |
+| 60 | audio-preview-player | Audio Preview Player for Pattern Evaluation | completed | 2026-01-18 | 2026-01-18 | active/60-audio-preview-player.md |
+| 61 | regression-detection | Automated Regression Detection in CI | pending | 2026-01-18 | 2026-01-18 | active/61-regression-detection.md |
+| 62 | ensemble-weight-search | Ensemble Weight Search with Tournament Selection | pending | 2026-01-18 | 2026-01-18 | active/62-ensemble-weight-search.md |
+| 63 | parameter-sensitivity | Parameter Sensitivity Analysis | pending | 2026-01-18 | 2026-01-18 | active/63-parameter-sensitivity.md |

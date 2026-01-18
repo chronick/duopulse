@@ -2,7 +2,7 @@
 id: 46
 slug: v55-noise-formula-fix
 title: "V5.5 Noise Formula Fix: Correct Zone-Based Noise Scaling"
-status: pending
+status: backlog
 created_date: 2026-01-08
 updated_date: 2026-01-08
 branch: feature/v55-pattern-expressiveness

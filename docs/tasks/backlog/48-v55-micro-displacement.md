@@ -2,7 +2,7 @@
 id: 48
 slug: v55-micro-displacement
 title: "V5.5 Micro-Displacement: Per-Hit Position Variation"
-status: pending
+status: backlog
 created_date: 2026-01-08
 updated_date: 2026-01-08
 branch: feature/v55-pattern-expressiveness
