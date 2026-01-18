@@ -39,6 +39,7 @@
 #include "../src/Engine/PatternField.h"       // GetMetricWeight for output formatting
 #include "../src/Engine/EuclideanGen.h"       // GetGenreEuclideanRatio
 #include "../src/Engine/HitBudget.h"          // GetEnergyZone
+#include "../src/Engine/AlgorithmWeights.h"   // ComputeAlgorithmWeightsDebug
 
 using namespace daisysp_idm_grids;
 
@@ -158,6 +159,61 @@ static void PrintPatternMask(std::ostream& out, const PatternParams& params, con
     out << "AUX: 0x" << std::hex << std::setw(8) << std::setfill('0') << pattern.auxMask << std::dec << "\n\n";
 }
 
+static void PrintDebugWeights(std::ostream& out, const PatternParams& params)
+{
+    AlgorithmWeightsDebug debug = ComputeAlgorithmWeightsDebug(
+        params.shape, params.energy, params.seed, params.patternLength);
+
+    out << "\n=== Algorithm Weights Debug ===\n";
+    out << "Input Parameters:\n";
+    out << "  SHAPE:  " << std::fixed << std::setprecision(2) << debug.shape << "\n";
+    out << "  ENERGY: " << std::fixed << std::setprecision(2) << debug.energy << "\n\n";
+
+    out << "Configuration Values:\n";
+    out << "  Euclidean fade:    [" << debug.euclideanFadeStart
+        << ", " << debug.euclideanFadeEnd << "]\n";
+    out << "  Syncopation curve: center=" << debug.syncopationCenter
+        << ", width=" << debug.syncopationWidth << "\n";
+    out << "  Random fade:       [" << debug.randomFadeStart
+        << ", " << debug.randomFadeEnd << "]\n\n";
+
+    out << "Raw (Unnormalized) Weights:\n";
+    out << "  Euclidean:    " << std::fixed << std::setprecision(3) << debug.rawEuclidean << "\n";
+    out << "  Syncopation:  " << std::fixed << std::setprecision(3) << debug.rawSyncopation << "\n";
+    out << "  Random:       " << std::fixed << std::setprecision(3) << debug.rawRandom << "\n";
+    out << "  Total:        " << std::fixed << std::setprecision(3)
+        << (debug.rawEuclidean + debug.rawSyncopation + debug.rawRandom) << "\n\n";
+
+    out << "Normalized Weights (sum=1.0):\n";
+    float total = debug.weights.euclidean + debug.weights.syncopation + debug.weights.random;
+    out << "  Euclidean:    " << std::fixed << std::setprecision(1)
+        << (debug.weights.euclidean * 100) << "%\n";
+    out << "  Syncopation:  " << std::fixed << std::setprecision(1)
+        << (debug.weights.syncopation * 100) << "%\n";
+    out << "  Random:       " << std::fixed << std::setprecision(1)
+        << (debug.weights.random * 100) << "%\n";
+    out << "  Verify total: " << std::fixed << std::setprecision(3) << total << "\n\n";
+
+    out << "Per-Channel Euclidean Parameters:\n";
+    out << "  Anchor k:   " << debug.channelParams.anchorK << " hits\n";
+    out << "  Shimmer k:  " << debug.channelParams.shimmerK << " hits\n";
+    out << "  Aux k:      " << debug.channelParams.auxK << " hits\n";
+    out << "  Rotation:   " << debug.channelParams.rotation << " steps\n\n";
+
+    // Visual weight bar
+    out << "Weight Distribution:\n";
+    int eucBar = static_cast<int>(debug.weights.euclidean * 40);
+    int syncBar = static_cast<int>(debug.weights.syncopation * 40);
+    int randBar = static_cast<int>(debug.weights.random * 40);
+
+    out << "  Euclidean   |" << std::string(eucBar, '#')
+        << std::string(40 - eucBar, '.') << "|\n";
+    out << "  Syncopation |" << std::string(syncBar, '#')
+        << std::string(40 - syncBar, '.') << "|\n";
+    out << "  Random      |" << std::string(randBar, '#')
+        << std::string(40 - randBar, '.') << "|\n";
+}
+
 // =============================================================================
 // Argument Parsing
 // =============================================================================
@@ -253,6 +309,10 @@ Firmware-matching options:
   --voice-coupling=independent  Coupling: independent, interlock, shadow
   --density-mult=1.0  Density multiplier (SHAPE-derived in firmware)
 
+Debug options:
+  --debug-weights  Show algorithm blend weight breakdown
+  --debug-euclidean Show per-channel euclidean parameters
+
   --help           Show this help
 
 Examples:
@@ -275,6 +335,8 @@ int main(int argc, char* argv[])
     std::string format = "grid";
     std::string sweep;
     bool autoEuclidean = false;  // Compute euclidean like firmware
+    bool debugWeights = false;   // Show algorithm weight breakdown
+    bool debugEuclidean = false; // Show per-channel euclidean params
 
     // Parse arguments
     for (int i = 1; i < argc; ++i)
@@ -334,6 +396,11 @@ int main(int argc, char* argv[])
             params.voiceCoupling = ParseVoiceCoupling(arg);
         else if (strncmp(arg, "--density-mult=", 15) == 0)
             params.densityMultiplier = ParseFloat(arg);
+        // Debug options
+        else if (strcmp(arg, "--debug-weights") == 0)
+            debugWeights = true;
+        else if (strcmp(arg, "--debug-euclidean") == 0)
+            debugEuclidean = true;
         else if (strcmp(arg, "--help") == 0 || strcmp(arg, "-h") == 0)
         {
             PrintUsage();
@@ -426,6 +493,12 @@ int main(int argc, char* argv[])
             PrintPatternCSV(*out, params, pattern);
         else if (format == "mask")
             PrintPatternMask(*out, params, pattern);
+
+        // Print debug info if requested
+        if (debugWeights || debugEuclidean)
+        {
+            PrintDebugWeights(*out, params);
+        }
     }
 
     return 0;

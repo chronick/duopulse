@@ -2,9 +2,10 @@
 id: 56
 slug: weight-based-blending
 title: "Weight-Based Algorithm Blending System"
-status: pending
+status: completed
 created_date: 2026-01-18
 updated_date: 2026-01-18
+completed_date: 2026-01-18
 branch: feature/weight-based-blending
 spec_refs:
   - "docs/specs/main.md#5-shape-algorithm"
@@ -144,60 +145,60 @@ analysis provides data-driven recommendations.
 ## Subtasks
 
 ### Weight Calculator
-- [ ] Create `AlgorithmWeights` struct with euclidean/syncopation/random weights
-- [ ] Implement `ComputeAlgorithmWeights()` function
-- [ ] Add smoothstep and bell_curve utility functions
-- [ ] Validate weights sum to 1.0
+- [x] Create `AlgorithmWeights` struct with euclidean/syncopation/random weights
+- [x] Implement `ComputeAlgorithmWeights()` function
+- [x] Add smoothstep and bell_curve utility functions
+- [x] Validate weights sum to 1.0
 
 ### Euclidean Building Blocks
-- [ ] Parameterize euclidean generator with (n, k, rotation)
-- [ ] Add per-channel k calculation based on ENERGY
-- [ ] Implement euclidean pattern cache for efficiency
-- [ ] Support AXIS X rotation of euclidean patterns
+- [x] Parameterize euclidean generator with (n, k, rotation)
+- [x] Add per-channel k calculation based on ENERGY
+- [ ] Implement euclidean pattern cache for efficiency (deferred - existing system adequate)
+- [x] Support AXIS X rotation of euclidean patterns
 
 ### Syncopation Overlay
-- [ ] Create syncopation weight array based on AXIS X/Y
-- [ ] Blend syncopation weights with euclidean base
-- [ ] Add SHAPE-based syncopation intensity
+- [x] Create syncopation weight array based on AXIS X/Y (via existing PatternField)
+- [x] Blend syncopation weights with euclidean base (via weight normalization)
+- [x] Add SHAPE-based syncopation intensity (bell curve)
 
 ### Random Perturbation
-- [ ] Implement noise layer with SHAPE-based intensity
-- [ ] Add seed-based deterministic randomness
-- [ ] Apply random perturbation to final weights
+- [x] Implement noise layer with SHAPE-based intensity (via random weight)
+- [x] Add seed-based deterministic randomness (via HashToFloat)
+- [x] Apply random perturbation to final weights
 
 ### Weighted Blend
-- [ ] Combine all algorithm outputs with computed weights
-- [ ] Ensure smooth transitions across parameter space
-- [ ] Validate output falls within expected ranges
+- [x] Combine all algorithm outputs with computed weights
+- [x] Ensure smooth transitions across parameter space
+- [x] Validate output falls within expected ranges
 
 ### Configuration System
-- [ ] Add algorithm weight configuration in `inc/algorithm_config.h`
-- [ ] Support compile-time weight adjustment
-- [ ] Add `--debug-weights` flag to pattern_viz
+- [x] Add algorithm weight configuration in `inc/algorithm_config.h`
+- [x] Support compile-time weight adjustment
+- [x] Add `--debug-weights` flag to pattern_viz
 
 ### Bootstrap Lever Table
-- [ ] Document lever→metric mappings in algorithm_config.h
-- [ ] Include direction hints (increase/decrease)
-- [ ] Note which levers interact or conflict
+- [x] Document lever→metric mappings in algorithm_config.h
+- [x] Include direction hints (increase/decrease)
+- [x] Note which levers interact or conflict
 
 ### Tests
-- [ ] Test weight normalization
-- [ ] Test euclidean parameter scaling
-- [ ] Test blend smoothness across SHAPE range
-- [ ] All tests pass
+- [x] Test weight normalization
+- [x] Test euclidean parameter scaling
+- [x] Test blend smoothness across SHAPE range
+- [x] All tests pass (373 tests)
 
 ## Acceptance Criteria
 
-- [ ] Algorithm weights explicitly computed from parameters
-- [ ] Low SHAPE produces euclidean-dominant patterns
-- [ ] High SHAPE produces random-dominant patterns
-- [ ] Per-channel euclidean parameters scale with ENERGY
-- [ ] Weights are configurable without code changes
-- [ ] Smooth transitions across entire parameter space
-- [ ] Bootstrap lever table documented in algorithm_config.h
-- [ ] `pattern_viz --debug-weights` shows algorithm blend percentages
-- [ ] No performance regression in pattern generation
-- [ ] All existing tests pass
+- [x] Algorithm weights explicitly computed from parameters
+- [x] Low SHAPE produces euclidean-dominant patterns
+- [x] High SHAPE produces random-dominant patterns
+- [x] Per-channel euclidean parameters scale with ENERGY
+- [x] Weights are configurable without code changes
+- [x] Smooth transitions across entire parameter space
+- [x] Bootstrap lever table documented in algorithm_config.h
+- [x] `pattern_viz --debug-weights` shows algorithm blend percentages
+- [x] No performance regression in pattern generation
+- [x] All existing tests pass
 
 ## Implementation Notes
 
