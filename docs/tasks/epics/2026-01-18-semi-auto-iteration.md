@@ -281,6 +281,28 @@ This epic was revised based on design review feedback. Key issues addressed:
 
 ---
 
+## Code Review Fixes (2026-01-18)
+
+Post-implementation code review of Tasks 55 and 64 identified and fixed these issues:
+
+| Issue | Resolution | Commit |
+|-------|------------|--------|
+| Workflow comment referenced wrong path | Changed `active/` → `completed/` in claude.yml | `0e4d38c` |
+| Inconsistent iteration ID generation | Use `generate-iteration-id.js` script in command | `0e4d38c` |
+| Direction-unaware regression detection | Added target range awareness to compare-metrics.js | `0e4d38c` |
+
+### Deferred Enhancements
+
+The following were noted but deferred for future work:
+
+- **Script unit tests** - compare-metrics.js and generate-iteration-id.js lack automated tests
+- **`--json` output mode** - For machine-parseable compare-metrics output
+- **`--dry-run` flag** - Preview changes before applying in /iterate
+- **Auto-generated iteration index** - Currently manual maintenance
+- **Concurrent ID collision handling** - No locking in generate-iteration-id.js
+
+---
+
 ## How to Use This Epic
 
 ### Start Implementation

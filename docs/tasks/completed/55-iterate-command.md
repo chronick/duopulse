@@ -7,6 +7,9 @@ created_date: 2026-01-18
 updated_date: 2026-01-18
 completed_date: 2026-01-18
 branch: feature/iterate-command
+commits:
+  - 392d003  # Initial implementation
+  - 0e4d38c  # Code review fixes
 spec_refs:
   - "docs/SDD_WORKFLOW.md"
 depends_on:
@@ -234,3 +237,35 @@ SUCCESS if:
 ## Estimated Effort
 
 4-5 hours (simplified from original 6-8h estimate)
+
+---
+
+## Post-Implementation Code Review (2026-01-18)
+
+### Fixes Applied
+
+| Issue | File | Fix | Commit |
+|-------|------|-----|--------|
+| Wrong task path in workflow comment | `.github/workflows/claude.yml:49` | Changed `active/` → `completed/` | `0e4d38c` |
+| Inconsistent iteration ID generation | `.claude/commands/iterate.md:99` | Use `generate-iteration-id.js` instead of inline shell | `0e4d38c` |
+| Direction-unaware regression detection | `scripts/iterate/compare-metrics.js` | Added direction-aware logic using `metricDefinitions.targetByZone` | `0e4d38c` |
+
+### Direction-Aware Regression Logic
+
+The compare-metrics.js script now uses target ranges from baseline.json to determine if a change is a regression:
+
+- If metric is **above** target max → decrease is improvement (not regression)
+- If metric is **below** target min → increase is improvement
+- Example: `regularity` in wild zone (0.606) is above target (0.12-0.48), so a decrease would be good
+
+### Deferred Items (Future Enhancements)
+
+1. **Automated unit tests for scripts** - compare-metrics.js and generate-iteration-id.js have no automated tests. Manual verification was performed. Consider adding Jest tests in future.
+
+2. **`--json` output mode** - compare-metrics.js only outputs markdown. A JSON mode would enable downstream automation.
+
+3. **`--dry-run` flag** - The iterate command could benefit from a dry-run mode that shows proposed changes without applying them.
+
+4. **Auto-generated README index** - The `docs/design/iterations/README.md` index table must be manually maintained. A script could auto-populate it.
+
+5. **Concurrent iteration ID collision** - generate-iteration-id.js has no locking for concurrent execution. Unlikely in practice but noted.
