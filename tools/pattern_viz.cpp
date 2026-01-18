@@ -34,6 +34,7 @@
 #include <cstring>
 #include <cmath>
 #include <algorithm>
+#include <vector>
 
 #include "../src/Engine/PatternGenerator.h"  // Shared pattern generation
 #include "../src/Engine/PatternField.h"       // GetMetricWeight for output formatting
@@ -166,6 +167,74 @@ static void PrintPatternMask(std::ostream& out, const PatternParams& params, con
     out << "V1:  0x" << std::hex << std::setw(8) << std::setfill('0') << pattern.anchorMask << std::dec << "\n";
     out << "V2:  0x" << std::hex << std::setw(8) << std::setfill('0') << pattern.shimmerMask << std::dec << "\n";
     out << "AUX: 0x" << std::hex << std::setw(8) << std::setfill('0') << pattern.auxMask << std::dec << "\n\n";
+}
+
+// =============================================================================
+// JSON Output for Fill Patterns
+// =============================================================================
+
+static void PrintFillPatternJSON(std::ostream& out, const PatternParams& params, const PatternResult& pattern, bool isFirst)
+{
+    if (!isFirst)
+        out << ",\n";
+
+    out << "  {\n";
+    out << "    \"params\": {\n";
+    out << "      \"energy\": " << std::fixed << std::setprecision(2) << params.energy << ",\n";
+    out << "      \"shape\": " << params.shape << ",\n";
+    out << "      \"axisX\": " << params.axisX << ",\n";
+    out << "      \"axisY\": " << params.axisY << ",\n";
+    out << "      \"drift\": " << params.drift << ",\n";
+    out << "      \"accent\": " << params.accent << ",\n";
+    out << "      \"fillProgress\": " << params.fillProgress << "\n";
+    out << "    },\n";
+
+    // Summary masks
+    out << "    \"masks\": {\n";
+    out << "      \"anchor\": \"0x" << std::hex << pattern.anchorMask << std::dec << "\",\n";
+    out << "      \"shimmer\": \"0x" << std::hex << pattern.shimmerMask << std::dec << "\",\n";
+    out << "      \"aux\": \"0x" << std::hex << pattern.auxMask << std::dec << "\"\n";
+    out << "    },\n";
+
+    // Hit counts
+    int anchorHits = CountHits(pattern.anchorMask, pattern.patternLength);
+    int shimmerHits = CountHits(pattern.shimmerMask, pattern.patternLength);
+    int auxHits = CountHits(pattern.auxMask, pattern.patternLength);
+
+    out << "    \"hitCounts\": {\n";
+    out << "      \"anchor\": " << anchorHits << ",\n";
+    out << "      \"shimmer\": " << shimmerHits << ",\n";
+    out << "      \"aux\": " << auxHits << ",\n";
+    out << "      \"total\": " << (anchorHits + shimmerHits + auxHits) << "\n";
+    out << "    },\n";
+
+    // Step-by-step fill data
+    out << "    \"fillSteps\": [\n";
+    bool firstStep = true;
+    for (int step = 0; step < pattern.patternLength; ++step)
+    {
+        bool anchorHit = (pattern.anchorMask & (1U << step)) != 0;
+        bool shimmerHit = (pattern.shimmerMask & (1U << step)) != 0;
+        bool auxHit = (pattern.auxMask & (1U << step)) != 0;
+
+        if (anchorHit || shimmerHit || auxHit)
+        {
+            if (!firstStep)
+                out << ",\n";
+            firstStep = false;
+
+            out << "      { \"step\": " << step;
+            if (anchorHit)
+                out << ", \"anchor\": true, \"anchorVel\": " << std::fixed << std::setprecision(3) << pattern.anchorVelocity[step];
+            if (shimmerHit)
+                out << ", \"shimmer\": true, \"shimmerVel\": " << std::fixed << std::setprecision(3) << pattern.shimmerVelocity[step];
+            if (auxHit)
+                out << ", \"aux\": true, \"auxVel\": " << std::fixed << std::setprecision(3) << pattern.auxVelocity[step];
+            out << " }";
+        }
+    }
+    out << "\n    ]\n";
+    out << "  }";
 }
 
 static void PrintDebugWeights(std::ostream& out, const PatternParams& params)
@@ -315,8 +384,9 @@ Firmware-matching options:
   --balance=0.50   Balance parameter (0.0-1.0)
   --euclidean=0.00 Euclidean blend ratio (0.0-1.0, or 'auto')
   --soft-repair    Enable soft repair pass
-  --fill           Enable fill zone
-  --fill-intensity=0.50  Fill intensity (0.0-1.0)
+  --fill           Generate fill patterns (JSON output)
+  --fill-progress=0.50  Fill progress for single point (0.0-1.0)
+  --fill-intensity=0.50  Fill intensity (0.0-1.0, legacy)
   --genre=techno   Genre: techno, tribal, idm
   --aux-density=normal   Aux density: sparse, normal, dense, busy
   --voice-coupling=independent  Coupling: independent, interlock, shadow
@@ -345,6 +415,11 @@ Examples:
   ./build/pattern_viz --sweep=shape --output=shape_sweep.txt
   ./build/pattern_viz --format=csv > patterns.csv
   ./build/pattern_viz --sweep=energy --format=mask
+
+Fill pattern examples:
+  ./build/pattern_viz --energy=0.5 --fill                      # Sweep progress 0.25,0.5,0.75,1.0
+  ./build/pattern_viz --energy=0.7 --fill --fill-progress=0.5  # Single progress point
+  ./build/pattern_viz --fill --output=fill.json                # Output to file
 )";
 }
 
@@ -362,6 +437,8 @@ int main(int argc, char* argv[])
     bool autoEuclidean = false;  // Compute euclidean like firmware
     bool debugWeights = false;   // Show algorithm weight breakdown
     bool debugEuclidean = false; // Show per-channel euclidean params
+    bool fillSweep = false;      // Generate fill patterns at multiple progress points
+    float fillProgressValue = -1.0f;  // Specific fill progress (-1 = use default sweep)
 
     // Parse arguments
     for (int i = 1; i < argc; ++i)
@@ -410,7 +487,9 @@ int main(int argc, char* argv[])
         else if (strcmp(arg, "--soft-repair") == 0)
             params.applySoftRepair = true;
         else if (strcmp(arg, "--fill") == 0)
-            params.inFillZone = true;
+            fillSweep = true;  // Enable fill sweep mode (JSON output)
+        else if (strncmp(arg, "--fill-progress=", 16) == 0)
+            fillProgressValue = ParseFloat(arg);
         else if (strncmp(arg, "--fill-intensity=", 17) == 0)
             params.fillIntensity = ParseFloat(arg);
         else if (strncmp(arg, "--genre=", 8) == 0)
@@ -519,6 +598,49 @@ int main(int argc, char* argv[])
             return 1;
         }
         out = &fileOut;
+    }
+
+    // Generate fill patterns (JSON output)
+    if (fillSweep)
+    {
+        // Determine progress points to generate
+        std::vector<float> progressPoints;
+        if (fillProgressValue >= 0.0f)
+        {
+            // Single progress point specified
+            progressPoints.push_back(fillProgressValue);
+        }
+        else
+        {
+            // Default sweep: 0.25, 0.5, 0.75, 1.0
+            progressPoints = {0.25f, 0.50f, 0.75f, 1.0f};
+        }
+
+        // Output JSON array
+        *out << "[\n";
+        bool isFirst = true;
+        for (float progress : progressPoints)
+        {
+            PatternParams fillParams = params;
+            fillParams.fillProgress = progress;
+
+            // Recompute auto-euclidean if requested
+            if (autoEuclidean)
+            {
+                EnergyZone zone = GetEnergyZone(fillParams.energy);
+                fillParams.euclideanRatio = GetGenreEuclideanRatio(
+                    fillParams.genre, fillParams.axisX, zone);
+            }
+
+            PatternResult pattern;
+            GenerateFillPattern(fillParams, pattern);
+
+            PrintFillPatternJSON(*out, fillParams, pattern, isFirst);
+            isFirst = false;
+        }
+        *out << "\n]\n";
+
+        return 0;
     }
 
     // Generate pattern(s)

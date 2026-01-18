@@ -69,6 +69,10 @@ struct PatternParams
     /// Fill density multiplier (how much fill boosts density)
     float fillDensityMultiplier = 1.5f;
 
+    /// Fill progress (0.0-1.0, position within fill for ramping effects)
+    /// Used by GenerateFillPattern() to compute density/velocity curves
+    float fillProgress = 0.0f;
+
     /// Euclidean blend ratio (0.0 = pure Gumbel, 1.0 = pure Euclidean)
     /// Default 0.0 = no Euclidean (viz tool behavior)
     float euclideanRatio = 0.0f;
@@ -138,6 +142,22 @@ struct PatternResult
  * @param result Output masks and velocities (modified in place)
  */
 void GeneratePattern(const PatternParams& params, PatternResult& result);
+
+/**
+ * Generate a fill pattern with density and velocity ramping.
+ *
+ * Fill patterns use progressive modifiers based on fillProgress (0.0-1.0):
+ * - Density multiplier: 1.0 + maxBoost * (fillProgress^2), where maxBoost = 0.6 + energy * 0.4
+ * - Velocity boost: 0.10 + 0.15 * fillProgress added to all velocities
+ * - Accent probability: 0.50 + 0.50 * fillProgress
+ * - Force accents when fillProgress > 0.85
+ *
+ * Reference: docs/specs/main.md section 9.2
+ *
+ * @param params Input parameters (fillProgress field controls ramping)
+ * @param result Output masks and velocities with fill modifiers applied
+ */
+void GenerateFillPattern(const PatternParams& params, PatternResult& result);
 
 // =============================================================================
 // Rotation Utilities

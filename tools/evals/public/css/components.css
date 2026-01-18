@@ -340,3 +340,182 @@
   display: flex;
   gap: 16px;
 }
+
+/* Fills */
+.fill-controls {
+  margin-bottom: 16px;
+}
+
+.fill-controls select {
+  padding: 8px 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--grid-line);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.fill-metrics-section {
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+  border: 1px solid var(--grid-line);
+}
+
+.fill-metrics-section h3 {
+  font-size: 16px;
+  margin-bottom: 16px;
+  color: var(--text-primary);
+}
+
+.fill-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.fill-metric-item {
+  background: var(--bg-tertiary);
+  border-radius: 6px;
+  padding: 12px;
+}
+
+.fill-metric-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.fill-metric-label {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+.fill-metric-value {
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.fill-metric-desc {
+  font-size: 10px;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+}
+
+.fill-metric-bar {
+  height: 8px;
+  background: var(--bg-primary);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.fill-metric-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+/* Fill Pattern Grid */
+.fill-pattern-grid {
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  padding: 16px;
+  border: 1px solid var(--grid-line);
+  overflow-x: auto;
+}
+
+.fill-grid-header {
+  margin-bottom: 12px;
+}
+
+.fill-energy-label {
+  font-weight: 600;
+  color: var(--v2-color);
+  font-size: 14px;
+}
+
+.fill-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.fill-progress-label {
+  width: 50px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-align: right;
+  padding-right: 8px;
+}
+
+.fill-steps {
+  display: flex;
+  gap: 1px;
+}
+
+.fill-step {
+  width: 20px;
+  height: 24px;
+  border-radius: 2px;
+  position: relative;
+}
+
+.fill-step.hit {
+  cursor: pointer;
+}
+
+.fill-step.empty {
+  opacity: 0.3;
+}
+
+.fill-step.downbeat {
+  border-left: 2px solid var(--grid-line-strong);
+}
+
+.fill-step .multi-hit {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 4px;
+  height: 4px;
+  background: #000;
+  border-radius: 50%;
+}
+
+.fill-hit-count {
+  width: 60px;
+  font-size: 10px;
+  color: var(--text-dim);
+  text-align: left;
+  padding-left: 8px;
+}
+
+.fill-step-numbers {
+  display: flex;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.fill-step-num {
+  width: 20px;
+  font-size: 9px;
+  color: var(--text-dim);
+  text-align: center;
+}
+
+.no-data {
+  color: var(--text-secondary);
+  padding: 20px;
+  text-align: center;
+}
+
+.no-data code {
+  background: var(--bg-tertiary);
+  padding: 2px 6px;
+  border-radius: 3px;
+  color: var(--v2-color);
+}

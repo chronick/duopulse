@@ -206,4 +206,72 @@ void GeneratePattern(const PatternParams& params, PatternResult& result)
     }
 }
 
+// =============================================================================
+// Fill Pattern Generation
+// =============================================================================
+
+void GenerateFillPattern(const PatternParams& params, PatternResult& result)
+{
+    // Create a modified copy of params with fill boosts applied
+    PatternParams fillParams = params;
+
+    // Clamp fillProgress to valid range
+    float fillProgress = std::max(0.0f, std::min(1.0f, params.fillProgress));
+
+    // Enable fill zone
+    fillParams.inFillZone = true;
+    fillParams.fillIntensity = fillProgress;
+
+    // Compute fill density multiplier (spec 9.2):
+    // maxBoost = 0.6 + energy * 0.4
+    // densityMultiplier = 1.0 + maxBoost * (fillProgress^2)
+    float maxBoost = 0.6f + params.energy * 0.4f;
+    float fillProgressSquared = fillProgress * fillProgress;
+    fillParams.fillDensityMultiplier = 1.0f + maxBoost * fillProgressSquared;
+
+    // Generate base pattern with fill modifiers
+    GeneratePattern(fillParams, result);
+
+    // Post-process velocities with fill-specific velocity boost (spec 9.2):
+    // velocityBoost = 0.10 + 0.15 * fillProgress
+    float velocityBoost = 0.10f + 0.15f * fillProgress;
+
+    // Apply velocity boost to all active hits
+    for (int step = 0; step < result.patternLength; ++step)
+    {
+        if ((result.anchorMask & (1U << step)) != 0)
+        {
+            result.anchorVelocity[step] = std::min(1.0f, result.anchorVelocity[step] + velocityBoost);
+        }
+        if ((result.shimmerMask & (1U << step)) != 0)
+        {
+            result.shimmerVelocity[step] = std::min(1.0f, result.shimmerVelocity[step] + velocityBoost);
+        }
+        if ((result.auxMask & (1U << step)) != 0)
+        {
+            result.auxVelocity[step] = std::min(1.0f, result.auxVelocity[step] + velocityBoost);
+        }
+    }
+
+    // Force accents when fillProgress > 0.85 (spec 9.2)
+    // This is done by boosting velocities to near-maximum for strong positions
+    if (fillProgress > 0.85f)
+    {
+        const float forceAccentVelocity = 0.95f;
+        for (int step = 0; step < result.patternLength; ++step)
+        {
+            // Force anchor accents on downbeats (steps 0, 4, 8, 12, etc.)
+            if ((result.anchorMask & (1U << step)) != 0 && (step % 4 == 0))
+            {
+                result.anchorVelocity[step] = std::max(result.anchorVelocity[step], forceAccentVelocity);
+            }
+            // Force shimmer accents on all hits when fillProgress > 0.85
+            if ((result.shimmerMask & (1U << step)) != 0)
+            {
+                result.shimmerVelocity[step] = std::max(result.shimmerVelocity[step], forceAccentVelocity * 0.9f);
+            }
+        }
+    }
+}
+
 } // namespace daisysp_idm_grids
