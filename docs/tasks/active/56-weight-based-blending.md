@@ -15,7 +15,7 @@ spec_refs:
 
 ## Objective
 
-Make the pattern generation algorithm easier to iterate by introducing explicit weight-based blending of generation methods. This enables fine-grained control over algorithm contributions based on input parameters and supports per-channel, per-section variation.
+Make the pattern generation algorithm easier to iterate by introducing explicit weight-based blending of generation methods. This enables fine-grained control over algorithm contributions based on input parameters.
 
 ## Context
 
@@ -24,7 +24,6 @@ Make the pattern generation algorithm easier to iterate by introducing explicit 
 - SHAPE parameter controls 3-zone blending (stable/syncopated/wild)
 - Euclidean and weighted random are hard-blended based on SHAPE
 - No per-channel parameter variation
-- No per-section (verse/chorus) differentiation
 - Algorithm weights are embedded in code, hard to adjust
 
 ### Target State
@@ -32,9 +31,14 @@ Make the pattern generation algorithm easier to iterate by introducing explicit 
 - Algorithm contributions controlled by explicit weight arrays
 - Euclidean strength varies by SHAPE (low SHAPE = more euclidean)
 - Per-channel euclidean parameters (different k values for anchor/shimmer)
-- Per-section euclidean variation (verse vs chorus feel)
-- Euclidean "building blocks" assembled based on ENERGY/SHAPE/AXIS X+Y
 - Weights easily adjustable via configuration
+- **Bootstrap lever table** for initial `/iterate` usage
+
+### Scope Reduction (2026-01-18)
+
+> **Note**: Per-section variation (intro/verse/chorus weight profiles) was removed from
+> this task based on design review. It requires API changes to `PatternParams` and is
+> now tracked as **Task 65: Phrase-Aware Weight Modulation** (backlog).
 
 ## Design
 
@@ -98,12 +102,44 @@ int shimmerK = 6 + int(energy * 10);  // 6-16
 int auxK = 2 + int(energy * 6);       // 2-8
 ```
 
-### Per-Section Variation
+### Bootstrap Lever Table
 
-Sections defined by phrase position:
-- Intro (bars 1-2): Sparse euclidean, minimal syncopation
-- Verse (bars 3-6): Standard weights
-- Chorus (bars 7-8): Boosted density, more syncopation
+Until Task 63 (Sensitivity Analysis) runs, the `/iterate` command needs heuristic
+guidance for which weights affect which metrics. This table provides initial mapping:
+
+```cpp
+// inc/algorithm_config.h - Bootstrap lever table for /iterate command
+//
+// Format: {metric, primary_lever, direction, secondary_lever}
+// Direction: "+" = increase lever to improve metric, "-" = decrease
+//
+// These are manual estimates. Task 63 will generate a data-driven version.
+//
+namespace BootstrapLevers {
+    // Syncopation improvement
+    // - Primary: kSyncopationCenter (+) - shifts bell curve peak
+    // - Secondary: kRandomFadeStart (-) - earlier random = more chaotic
+
+    // Density/regularity improvement
+    // - Primary: kEuclideanFadeEnd (+) - euclidean persists longer
+    // - Secondary: kSyncopationWidth (-) - narrower = more predictable
+
+    // Voice separation improvement
+    // - Primary: shimmer drift (+) - more offset from anchor
+    // - Secondary: kAnchorKMax (-) - sparser anchor = more gaps
+
+    // Velocity variation improvement
+    // - Primary: accent parameter (+) - direct control
+    // - Secondary: kSyncopationCenter (+) - more syncopated = more accents
+
+    // Wild zone responsiveness
+    // - Primary: kRandomFadeStart (-) - random kicks in earlier
+    // - Secondary: kEuclideanFadeStart (-) - euclidean fades earlier
+}
+```
+
+This will be consumed by `/iterate` to make initial proposals before sensitivity
+analysis provides data-driven recommendations.
 
 ## Subtasks
 
@@ -135,14 +171,18 @@ Sections defined by phrase position:
 - [ ] Validate output falls within expected ranges
 
 ### Configuration System
-- [ ] Add algorithm weight configuration (JSON or header)
-- [ ] Support runtime weight adjustment for testing
-- [ ] Add weight visualization to evals dashboard
+- [ ] Add algorithm weight configuration in `inc/algorithm_config.h`
+- [ ] Support compile-time weight adjustment
+- [ ] Add `--debug-weights` flag to pattern_viz
+
+### Bootstrap Lever Table
+- [ ] Document lever→metric mappings in algorithm_config.h
+- [ ] Include direction hints (increase/decrease)
+- [ ] Note which levers interact or conflict
 
 ### Tests
 - [ ] Test weight normalization
 - [ ] Test euclidean parameter scaling
-- [ ] Test per-section variation
 - [ ] Test blend smoothness across SHAPE range
 - [ ] All tests pass
 
@@ -152,9 +192,10 @@ Sections defined by phrase position:
 - [ ] Low SHAPE produces euclidean-dominant patterns
 - [ ] High SHAPE produces random-dominant patterns
 - [ ] Per-channel euclidean parameters scale with ENERGY
-- [ ] Per-section variation produces musical phrasing
 - [ ] Weights are configurable without code changes
 - [ ] Smooth transitions across entire parameter space
+- [ ] Bootstrap lever table documented in algorithm_config.h
+- [ ] `pattern_viz --debug-weights` shows algorithm blend percentages
 - [ ] No performance regression in pattern generation
 - [ ] All existing tests pass
 
@@ -170,34 +211,53 @@ Sections defined by phrase position:
 ### Files to Modify
 
 - `src/Engine/PatternGenerator.cpp` - Use new weight system
-- `src/Engine/PatternField.cpp` - Per-section awareness
 - `inc/config.h` - Algorithm weight defaults
+- `tools/pattern_viz/main.cpp` - Add `--debug-weights` flag
 - `tools/evals/evaluate-expressiveness.js` - Weight analysis
 
 ### Weight Configuration Format
 
 ```cpp
-// inc/config.h
+// inc/algorithm_config.h
 namespace AlgorithmConfig {
-    // Euclidean influence curve
-    constexpr float kEuclideanFadeStart = 0.3f;
-    constexpr float kEuclideanFadeEnd = 0.7f;
+    // =======================================================================
+    // EUCLIDEAN INFLUENCE CURVE
+    // Controls how strongly euclidean patterns dominate at low SHAPE values
+    // =======================================================================
+    constexpr float kEuclideanFadeStart = 0.3f;  // Euclidean starts fading
+    constexpr float kEuclideanFadeEnd = 0.7f;    // Euclidean fully faded
 
-    // Syncopation bell curve
-    constexpr float kSyncopationCenter = 0.5f;
-    constexpr float kSyncopationWidth = 0.3f;
+    // =======================================================================
+    // SYNCOPATION BELL CURVE
+    // Controls the middle "syncopated zone" peak
+    // =======================================================================
+    constexpr float kSyncopationCenter = 0.5f;   // Peak of syncopation
+    constexpr float kSyncopationWidth = 0.3f;    // Width of bell curve
 
-    // Random influence curve
-    constexpr float kRandomFadeStart = 0.5f;
-    constexpr float kRandomFadeEnd = 0.9f;
+    // =======================================================================
+    // RANDOM INFLUENCE CURVE
+    // Controls how quickly randomness takes over at high SHAPE
+    // =======================================================================
+    constexpr float kRandomFadeStart = 0.5f;     // Random starts appearing
+    constexpr float kRandomFadeEnd = 0.9f;       // Random fully dominant
 
-    // Per-channel euclidean k ranges
+    // =======================================================================
+    // PER-CHANNEL EUCLIDEAN K RANGES
+    // k = number of hits in euclidean(n, k) pattern
+    // =======================================================================
     constexpr int kAnchorKMin = 4;
     constexpr int kAnchorKMax = 12;
     constexpr int kShimmerKMin = 6;
     constexpr int kShimmerKMax = 16;
     constexpr int kAuxKMin = 2;
     constexpr int kAuxKMax = 8;
+
+    // =======================================================================
+    // BOOTSTRAP LEVER TABLE
+    // Manual heuristics for /iterate command until Task 63 runs
+    // Format: metric → {primary_lever, direction, confidence}
+    // =======================================================================
+    // See BootstrapLevers namespace documentation above
 }
 ```
 
@@ -239,4 +299,4 @@ Add weight breakdown to pattern output:
 
 ## Estimated Effort
 
-5-6 hours (refactoring core algorithm, adding new modules)
+4-5 hours (reduced from 5-6h after removing per-section variation)

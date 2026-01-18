@@ -12,8 +12,8 @@ on:
 
 jobs:
   claude:
-    # Only allow OWNER, MEMBER, or COLLABORATOR to trigger Claude
-    # This prevents unauthorized users from burning API credits
+    # Security: Only allow OWNER, MEMBER, or COLLABORATOR to trigger Claude
+    # This prevents unauthorized users from burning API credits or making changes
     if: |
       (
         (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
@@ -32,12 +32,28 @@ jobs:
         github.event.review.author_association == 'COLLABORATOR'
       )
     runs-on: ubuntu-latest
+
+    # Permissions rationale (updated 2026-01-18 for /iterate command support):
+    # - contents: write - Required for Claude to push code changes and create branches
+    # - pull-requests: write - Required for Claude to create and update PRs
+    # - issues: write - Required for Claude to update issue comments and labels
+    # - id-token: write - Required for OIDC authentication
+    # - actions: read - Required for Claude to read CI results on PRs
+    #
+    # Security model:
+    # - Only OWNER/MEMBER/COLLABORATOR can trigger (see `if` condition above)
+    # - Claude creates PRs for review, does not merge directly
+    # - No force push capability
+    # - Repository-scoped permissions only
+    #
+    # See: docs/tasks/active/64-claude-permissions.md for full rationale
     permissions:
-      contents: read
-      pull-requests: read
-      issues: read
+      contents: write
+      pull-requests: write
+      issues: write
       id-token: write
-      actions: read # Required for Claude to read CI results on PRs
+      actions: read
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -61,4 +77,3 @@ jobs:
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
           # or https://code.claude.com/docs/en/cli-reference for available options
           # claude_args: '--allowed-tools Bash(gh pr:*)'
-

@@ -8,13 +8,16 @@ updated_date: 2026-01-18
 branch: feature/iterate-command
 spec_refs:
   - "docs/SDD_WORKFLOW.md"
+depends_on:
+  - 63  # Sensitivity analysis (provides lever data)
+  - 61b # PR metrics comparison (CI infrastructure)
 ---
 
 # Task 55: Iteration Command System for Hill-Climbing
 
 ## Objective
 
-Create an `/iterate` command infrastructure that enables semi-autonomous algorithm improvement through weight adjustments, design iterations, and tracked changes. This is the core orchestration layer for hill-climbing optimization.
+Create an `/iterate` command that enables semi-autonomous algorithm improvement through weight adjustments. This is a **single-pass** iteration system - one Claude invocation proposes changes, runs evals, and creates a PR if metrics improve.
 
 ## Context
 
@@ -27,25 +30,31 @@ Create an `/iterate` command infrastructure that enables semi-autonomous algorit
 
 ### Target State
 
-- `/iterate` slash command triggers structured improvement cycle
-- Designer agent proposes weight/parameter changes
-- Critic agent evaluates proposals against Pentagon metrics
+- `/iterate` slash command triggers single-pass improvement cycle
+- Claude analyzes metrics, proposes weight changes, evaluates
 - All changes logged to iteration history with git refs
 - Automated PR creation with before/after metrics
 
-### Hill-Climbing Workflow
+### Simplified Workflow
+
+> **Note**: This task was simplified from the original design based on design review feedback.
+> The original multi-agent Designer/Critic split was removed because `claude-code-action@v1`
+> runs once per trigger with no mechanism for multi-step orchestration.
 
 ```
 1. User invokes `/iterate` with goal (e.g., "improve syncopation in wild zone")
-2. System runs current evals, captures baseline metrics
-3. Designer agent analyzes spec + metrics, proposes changes
-4. Changes applied to a feature branch
-5. Evals re-run, new metrics captured
-6. Critic agent compares before/after, approves or rejects
-7. If approved: PR created with metric diff
-8. If rejected: Designer tries alternative approach (max 3 attempts)
-9. Iteration logged to docs/design/iterations/
+2. Claude reads current baseline metrics from metrics/baseline.json
+3. Claude analyzes sensitivity data to identify high-impact levers
+4. Claude proposes and applies weight changes to algorithm_config.h
+5. Claude runs evals, captures new metrics
+6. Claude compares before/after metrics
+7. If improved (>= 5% on target, no regressions > 2%): Create PR
+8. If not improved: Report findings, suggest manual alternatives
+9. Log iteration to docs/design/iterations/
 ```
+
+**Key simplification**: No retry loop. If the first attempt doesn't improve metrics,
+the user can manually re-trigger with different parameters or goals.
 
 ## Subtasks
 
@@ -55,69 +64,74 @@ Create an `/iterate` command infrastructure that enables semi-autonomous algorit
 - [ ] Create iteration state tracking (in-progress, success, failed)
 - [ ] Add iteration ID generation (timestamp-based)
 
-### Designer Agent
-- [ ] Define designer role and capabilities
-- [ ] Create weight change proposal format
-- [ ] Implement spec-aware change suggestions
-- [ ] Add constraint validation (RT-safe, bounds checking)
+### Single-Pass Analysis & Proposal
+- [ ] Read baseline metrics from `metrics/baseline.json`
+- [ ] Read sensitivity matrix from Task 63 output
+- [ ] Use bootstrap lever table (Task 56) if sensitivity not yet run
+- [ ] Analyze goal to identify target metric(s)
+- [ ] Propose weight changes based on lever recommendations
+- [ ] Apply changes to `inc/algorithm_config.h`
 
-### Critic Agent
-- [ ] Define critic role and evaluation criteria
-- [ ] Implement metric comparison (before/after)
-- [ ] Define success thresholds (5% improvement, no regressions)
-- [ ] Add human-readable critique output
+### Evaluation
+- [ ] Run evals (`make evals` or equivalent)
+- [ ] Capture new metrics
+- [ ] Compare before/after metrics
+- [ ] Calculate deltas and percentage changes
+
+### Success Criteria Check
+- [ ] Target metric improved >= 5% (relative)
+- [ ] No other metric regressed > 2% (relative)
+- [ ] All tests pass
+- [ ] No new warnings
 
 ### Iteration Logging
 - [ ] Create `docs/design/iterations/` directory structure
 - [ ] Define iteration log format (YAML frontmatter + markdown)
-- [ ] Log all proposed changes, even rejected ones
-- [ ] Include git commit refs and version tags
+- [ ] Log all proposed changes, even failed ones
+- [ ] Include git commit refs
 - [ ] Track cumulative improvement over time
 
 ### PR Integration
 - [ ] Auto-create feature branch for iteration
 - [ ] Generate PR with iteration summary
 - [ ] Include metric diff table in PR description
-- [ ] Add iteration timeline to PR body
+- [ ] Add iteration ID and goal to PR title
 
-### GitHub Actions Integration
-- [ ] Update `claude.yml` to handle `/iterate` command
-- [ ] Add iteration-specific permissions
-- [ ] Ensure evals run in CI before PR merge
-
-### Auto-Suggest Mode (Metric-Driven Goal Selection)
+### Auto-Suggest Mode
 - [ ] Implement `/iterate auto` to auto-detect weakest Pentagon metric
 - [ ] Analyze current metrics to identify improvement opportunities
-- [ ] Suggest specific goals based on metric gaps
 - [ ] Prioritize metrics with largest delta from target
-- [ ] Allow user to confirm or override suggested goal
-
-### Listening Test Integration
-- [ ] Integrate with existing audio player (tools/evals/public/audio-engine.js)
-- [ ] Generate A/B comparison patterns (before/after weights)
-- [ ] Include subjective listening notes in iteration log
-- [ ] Optional: prompt user to rate patterns 1-5 before finalizing
+- [ ] Suggest specific goal based on metric gaps
 
 ### Tests
 - [ ] Test iteration command parsing
-- [ ] Test designer proposal format validation
-- [ ] Test critic evaluation logic
+- [ ] Test proposal format validation
+- [ ] Test metric comparison logic
 - [ ] Test auto-suggest goal detection
 - [ ] All tests pass
 
 ## Acceptance Criteria
 
-- [ ] `/iterate` command triggers structured workflow
+- [ ] `/iterate "goal"` triggers single-pass workflow
 - [ ] `/iterate auto` suggests goal based on weakest metric
-- [ ] Designer proposes valid weight changes
-- [ ] Critic evaluates proposals with metrics
-- [ ] Rejected proposals logged with reasons
+- [ ] Weight changes applied to `inc/algorithm_config.h`
+- [ ] Evals run and metrics compared
+- [ ] Failed iterations logged with reasons (no retry loop)
 - [ ] Successful iterations create PRs
 - [ ] Iteration history maintained in `docs/design/iterations/`
 - [ ] Git refs included in all iteration logs
-- [ ] Version tags (patch/rev) tracked
-- [ ] Claude responds to @mentions with iteration status
-- [ ] A/B audio comparison available for listening tests
+
+## What Was Removed (Compared to Original Design)
+
+The following features were removed from this task scope based on design review:
+
+1. **Designer/Critic Agent Split** - The original design had separate "Designer" and "Critic" agents. This is not implementable with current `claude-code-action@v1` which runs once per trigger.
+
+2. **Retry Loop** - The original "max 3 attempts" retry logic requires multi-step orchestration. Instead, users can manually re-trigger `/iterate` with refined goals.
+
+3. **Listening Test Integration** - Moved to future task. Requires human-in-the-loop timing that doesn't fit automated workflow.
+
+4. **Version Tags** - Deferred to Task 61 (regression detection) which handles baseline management.
 
 ## Implementation Notes
 
@@ -125,17 +139,13 @@ Create an `/iterate` command infrastructure that enables semi-autonomous algorit
 
 Command:
 - `.claude/prompts/iterate.md` - Main iterate command
-- `.claude/prompts/iterate-designer.md` - Designer agent prompt
-- `.claude/prompts/iterate-critic.md` - Critic agent prompt
 
 Logging:
 - `docs/design/iterations/README.md` - Iteration log index
 - `docs/design/iterations/TEMPLATE.md` - Iteration log template
 
-Scripts:
-- `scripts/iterate/capture-baseline.sh` - Capture current metrics
+Scripts (optional helpers):
 - `scripts/iterate/compare-metrics.sh` - Compare before/after
-- `scripts/iterate/create-iteration-pr.sh` - Generate PR
 
 ### Iteration Log Format
 
@@ -143,9 +153,9 @@ Scripts:
 ---
 iteration_id: 2026-01-18-001
 goal: "Improve syncopation in wild zone"
-status: success
+status: success | failed
 started_at: 2026-01-18T10:30:00Z
-completed_at: 2026-01-18T11:15:00Z
+completed_at: 2026-01-18T10:45:00Z
 branch: feature/iterate-2026-01-18-001
 commit: abc123def
 pr: "#123"
@@ -157,18 +167,18 @@ pr: "#123"
 Increase syncopation score for SHAPE > 0.7 patterns without regressing
 other metrics.
 
-## Baseline Metrics
+## Baseline Metrics (from metrics/baseline.json)
 | Metric | Stable | Syncopated | Wild |
 |--------|--------|------------|------|
 | Syncopation | 0.15 | 0.42 | 0.48 |
 | ...
 
 ## Proposed Changes
-1. Increase wild zone noise scale from 0.40 to 0.50
-2. Adjust syncopation weight boost at high SHAPE
+Based on sensitivity analysis, increasing syncopationCenter should improve
+syncopation scores in the wild zone.
 
-## Designer Rationale
-[Analysis of why these changes should work...]
+Changes to `inc/algorithm_config.h`:
+- `kSyncopationCenter`: 0.5 → 0.55
 
 ## Result Metrics
 | Metric | Stable | Syncopated | Wild | Delta |
@@ -176,40 +186,49 @@ other metrics.
 | Syncopation | 0.15 | 0.43 | 0.58 | +0.10 |
 | ...
 
-## Critic Evaluation
-[Evaluation of changes, any concerns, approval status...]
+## Evaluation
+- Target metric (syncopation/wild): +20.8% ✓
+- Max regression: density/stable -1.2% ✓
+- Tests: PASS ✓
 
 ## Decision
-APPROVED - 10% improvement in target metric, no regressions.
+SUCCESS - PR created.
 ```
 
 ### Command Invocation
 
-User can trigger via:
-- Comment: `@claude /iterate improve syncopation in wild zone`
-- Issue: Create issue with `@claude /iterate` in body
+User triggers via:
+- Issue comment: `@claude /iterate improve syncopation in wild zone`
+- Issue body: Create issue with `@claude /iterate` in body
 
-### Success Criteria
+### Success Criteria (Precise Definition)
 
-An iteration is successful if:
-1. Target metric improves by >= 5%
-2. No other metric regresses by > 2%
-3. All tests pass
-4. No new warnings
-5. Code review passes
+```
+SUCCESS if:
+  target_metric_delta >= 0.05 * baseline_value  (5% relative improvement)
+  AND max(other_metric_regressions) <= 0.02 * baseline_value  (2% tolerance)
+  AND all_tests_pass
+  WHERE baseline = metrics/baseline.json (main branch metrics)
+```
 
 ## Test Plan
 
 1. Create test iteration:
    ```bash
-   # Simulate /iterate command
-   ./scripts/iterate/test-iterate.sh "improve syncopation in wild zone"
+   # Manually test the iterate prompt
+   claude "/iterate improve syncopation in wild zone"
    ```
-2. Verify baseline capture works
-3. Verify designer proposal is valid
-4. Verify critic evaluation runs
+2. Verify baseline reading works
+3. Verify weight changes are valid syntax
+4. Verify evals run and metrics captured
 5. Verify PR creation with correct format
+
+## Dependencies
+
+- **Task 63** (Parameter Sensitivity): Provides lever recommendations
+- **Task 61b** (PR Metrics Comparison): CI infrastructure for PR evaluation
+- **Task 56** (Weight-Based Blending): Bootstrap lever table for initial iterations
 
 ## Estimated Effort
 
-6-8 hours (complex orchestration, multi-agent coordination)
+4-5 hours (simplified from original 6-8h estimate)

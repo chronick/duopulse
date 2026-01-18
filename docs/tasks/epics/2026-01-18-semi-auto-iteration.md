@@ -3,8 +3,9 @@ epic_id: 2026-01-18-semi-auto-iteration
 title: "Semi-Autonomous Hill-Climbing Iteration System"
 status: in_progress
 created_date: 2026-01-18
+updated_date: 2026-01-18
 branch: feature/hill-climbing-infrastructure
-tasks: [53, 54, 55, 56, 57, 58, 59, 61, 62, 63]
+tasks: [53, 54, 55, 56, 57, 58, 59, 61, 61a, 61b, 62, 63, 64, 65]
 completed_tasks: [60]
 ---
 
@@ -18,7 +19,7 @@ Create a feedback loop using git + GitHub + PRs/issues + Actions to automaticall
 
 1. **Make algorithm easily adjustable** - Weight-based blending with JSON config
 2. **Understand parameter impacts** - Sensitivity analysis reveals high-impact levers
-3. **Automate iteration cycle** - `/iterate` command orchestrates designer/critic agents
+3. **Automate iteration cycle** - `/iterate` command orchestrates single-pass improvements
 4. **Prevent regressions** - CI fails when Pentagon metrics regress
 5. **Enable parallel exploration** - Ensemble search with tournament selection
 6. **Track progress visually** - Timeline on website shows hill-climbing history
@@ -35,85 +36,105 @@ Create a feedback loop using git + GitHub + PRs/issues + Actions to automaticall
 
 ## Implementation Order
 
-### Phase 1: Foundation (Tasks 56, 59, 63)
+> **Note**: This order was revised 2026-01-18 based on design review feedback.
+> Key changes: Task 61 split into 61a/61b prerequisites, Task 63 moved before 55,
+> Task 55 simplified to single-pass, Task 56 reduced scope, Task 64 added for permissions.
 
-**Goal**: Make the algorithm adjustable and understand what to adjust.
+### Phase 1: Foundation + Baseline (Tasks 56, 59, 61a, 61b)
+
+**Goal**: Make the algorithm adjustable AND establish baseline metrics infrastructure.
 
 ```
-56 Weight-Based Blending ──► 59 Weight Config ──► 63 Sensitivity Analysis
+56 Weight-Based Blending ──► 59 Weight Config ──► 61a Baseline Infra
         │                           │                      │
         │                           │                      │
-   Explicit weights            JSON config            Know which
-   for euclidean/             without code           weights affect
-   syncopation/random         changes                which metrics
+   Explicit weights            JSON config            Create baseline.json
+   + bootstrap levers          without code           Run evals, save
+                               changes
+                                                           │
+                                                           ▼
+                                                    61b PR Metrics Compare
+                                                           │
+                                                      CI compares PR
+                                                      to baseline, fails
+                                                      if regression > 2%
 ```
 
-| Order | Task | Title | Est. |
-|-------|------|-------|------|
-| 1 | **56** | Weight-Based Algorithm Blending | 5-6h |
-| 2 | **59** | Algorithm Weight Configuration | 3-4h |
-| 3 | **63** | Parameter Sensitivity Analysis | 4-5h |
+| Order | Task | Title | Est. | Notes |
+|-------|------|-------|------|-------|
+| 1 | **56** | Weight-Based Algorithm Blending | 4-5h | Reduced scope: no per-section variation |
+| 2 | **59** | Algorithm Weight Configuration | 3-4h | No changes |
+| 3 | **61a** | Baseline Infrastructure | 1-2h | NEW: Create metrics/, baseline.json |
+| 4 | **61b** | PR Metrics Comparison | 2-3h | NEW: CI workflow for PR comparison |
 
 **Phase 1 Exit Criteria**:
 - [ ] `pattern_viz --debug-weights` shows algorithm blend percentages
 - [ ] Weights configurable via `inc/algorithm_config.h` or JSON
-- [ ] Sensitivity matrix generated showing weight→metric impacts
+- [ ] `metrics/baseline.json` exists with current main branch metrics
+- [ ] PRs show metric comparison in comments
 - [ ] All tests pass
 
 ---
 
-### Phase 2: Iteration Core (Tasks 55, 62)
+### Phase 2: Iteration Core (Tasks 63, 55, 64)
 
-**Goal**: Enable automated iteration with single and parallel search.
+**Goal**: Enable sensitivity-informed iteration with proper permissions.
 
 ```
-55 Iterate Command ────────────────► 62 Ensemble Search
-        │                                    │
-        │                                    │
-   /iterate "goal"                    /iterate ensemble
-   Designer proposes                  Parallel N candidates
-   Critic evaluates                   Tournament selection
-   PR if approved                     Faster convergence
+63 Sensitivity Analysis ──► 55 Iterate Command ──► 64 Claude Permissions
+        │                           │                      │
+        │                           │                      │
+   Know which weights          /iterate "goal"        contents: write
+   affect which metrics        Single-pass only       pull-requests: write
+   Bootstrap levers used       PR if improved         issues: write
 ```
 
-| Order | Task | Title | Est. |
-|-------|------|-------|------|
-| 4 | **55** | Iteration Command System | 6-8h |
-| 5 | **62** | Ensemble Weight Search | 5-6h |
+| Order | Task | Title | Est. | Notes |
+|-------|------|-------|------|-------|
+| 5 | **63** | Parameter Sensitivity Analysis | 4-5h | Moved earlier (was Phase 1 end) |
+| 6 | **55** | Iteration Command System | 4-5h | Simplified: no Designer/Critic split |
+| 7 | **64** | Claude Permissions Update | 1h | NEW: Update claude.yml |
 
 **Phase 2 Exit Criteria**:
-- [ ] `/iterate "improve X"` triggers full workflow
+- [ ] Sensitivity matrix shows weight→metric impacts
+- [ ] `/iterate "improve X"` triggers single-pass workflow
 - [ ] `/iterate auto` suggests goal from weakest metric
-- [ ] `/iterate ensemble` explores 4 candidates in parallel
-- [ ] Iteration logs in `docs/design/iterations/`
 - [ ] PRs created with before/after metrics
+- [ ] Claude can push branches and create PRs
 
 ---
 
-### Phase 3: Quality Gates (Tasks 54, 61)
+### Phase 3: Quality Gates + Expansion (Tasks 54, 61, 62)
 
-**Goal**: Extend evaluation surface and prevent regressions.
+**Goal**: Extend evaluation surface, add rollback, and enable parallel search.
 
 ```
-54 Fill Gates in Evals             61 Regression Detection
+54 Fill Gates in Evals             61 Full Regression Detection
         │                                    │
         │                                    │
-   Fill channel added              CI fails on regression
-   to Pentagon metrics             /rollback to last good
-   Display on website              Baseline management
+   Fill channel added              /rollback command
+   to Pentagon metrics             Last-known-good tagging
+   Display on website              Consecutive regression alerts
+                                             │
+                                             ▼
+                                      62 Ensemble Search
+                                             │
+                                       Parallel candidates
+                                       Tournament selection
 ```
 
-| Order | Task | Title | Est. |
-|-------|------|-------|------|
-| 6 | **54** | Fill Gates in Evals | 3-4h |
-| 7 | **61** | Regression Detection + Rollback | 3-4h |
+| Order | Task | Title | Est. | Notes |
+|-------|------|-------|------|-------|
+| 8 | **54** | Fill Gates in Evals | 3-4h | No changes |
+| 9 | **61** | Full Regression Detection | 2-3h | Rollback capability (61a/61b are prereqs) |
+| 10 | **62** | Ensemble Weight Search | 5-6h | No changes |
 
 **Phase 3 Exit Criteria**:
 - [ ] Fill gate patterns visible on evals dashboard
 - [ ] Fill metrics included in Pentagon scoring
-- [ ] `metrics/baseline.json` tracks main branch metrics
-- [ ] PRs with regressions > 2% fail CI
 - [ ] `/rollback` reverts to last known good baseline
+- [ ] Consecutive regressions trigger alerts
+- [ ] `/iterate ensemble` explores 4 candidates in parallel
 
 ---
 
@@ -126,32 +147,32 @@ Create a feedback loop using git + GitHub + PRs/issues + Actions to automaticall
         │                                    │
         │                                    │
    @claude mentions               Timeline page with
-   Task-only PRs                  git refs + version tags
-   Design iteration PRs           Score evolution graph
-   Feedback via comments          Narration per iteration
+   Feedback via comments          git refs + version tags
+   /status, /compare              Score evolution graph
 ```
 
-| Order | Task | Title | Est. |
-|-------|------|-------|------|
-| 8 | **57** | PR Workflow Integration | 4-5h |
-| 9 | **58** | Website Iteration Timeline | 4-5h |
+| Order | Task | Title | Est. | Notes |
+|-------|------|-------|------|-------|
+| 11 | **57** | PR Workflow Integration | 4-5h | No changes |
+| 12 | **58** | Website Iteration Timeline | 4-5h | No changes |
 
 **Phase 4 Exit Criteria**:
 - [ ] `@claude /iterate` in issue triggers workflow
 - [ ] PR comments update iteration with feedback
-- [ ] `/status`, `/retry`, `/compare` commands work
+- [ ] `/status`, `/compare` commands work
 - [ ] Timeline page shows all iterations with scores
 - [ ] Git commit refs and version tags displayed
 
 ---
 
-### Phase 5: Resolution Upgrade (Task 53)
+### Phase 5: Resolution + Future (Tasks 53, 65)
 
-**Goal**: Increase pattern resolution for flams and micro-timing.
+**Goal**: Increase pattern resolution and enable phrase-aware weights (future).
 
-| Order | Task | Title | Est. |
-|-------|------|-------|------|
-| 10 | **53** | Grid Expansion to 64 Steps | 4-6h |
+| Order | Task | Title | Est. | Notes |
+|-------|------|-------|------|-------|
+| 13 | **53** | Grid Expansion to 64 Steps | 4-6h | No changes |
+| 14 | **65** | Phrase-Aware Weight Modulation | TBD | FUTURE: Split from Task 56 |
 
 **Phase 5 Exit Criteria**:
 - [ ] `kMaxSteps = 64` with `uint64_t` masks
@@ -171,14 +192,23 @@ Create a feedback loop using git + GitHub + PRs/issues + Actions to automaticall
         ┌──────┴──────┐
         │             │
     ┌───▼───┐     ┌───▼───┐
-    │  59   │     │  63   │
-    │Config │     │Sensitv│
+    │  59   │     │ 61a   │
+    │Config │     │Baseln │
     └───┬───┘     └───┬───┘
+        │             │
+        │         ┌───▼───┐
+        │         │ 61b   │
+        │         │PR Cmp │
+        │         └───┬───┘
         │             │
         └──────┬──────┘
                │
             ┌──▼───┐
-            │  55  │ Iterate Command
+            │  63  │ Sensitivity Analysis
+            └──┬───┘
+               │
+            ┌──▼───┐
+            │  55  │ Iterate Command (simplified)
             └──┬───┘
                │
     ┌──────────┼──────────┐
@@ -193,10 +223,10 @@ Create a feedback loop using git + GitHub + PRs/issues + Actions to automaticall
             └──────┘
 
 Independent:
-┌───────┐  ┌───────┐
-│  54   │  │  53   │
-│Fill   │  │64-step│
-└───────┘  └───────┘
+┌───────┐  ┌───────┐  ┌───────┐
+│  54   │  │  53   │  │  64   │
+│Fill   │  │64-step│  │Perms  │
+└───────┘  └───────┘  └───────┘
 ```
 
 ---
@@ -214,8 +244,28 @@ Independent:
 | 59 | algorithm-weight-config | Algorithm Weight Configuration | pending | 1 |
 | 60 | audio-preview-player | Audio Preview Player | **completed** | - |
 | 61 | regression-detection | Regression Detection + Rollback | pending | 3 |
-| 62 | ensemble-weight-search | Ensemble Weight Search | pending | 2 |
-| 63 | parameter-sensitivity | Parameter Sensitivity Analysis | pending | 1 |
+| 61a | baseline-infrastructure | Baseline Infrastructure | pending | 1 |
+| 61b | pr-metrics-comparison | PR Metrics Comparison | pending | 1 |
+| 62 | ensemble-weight-search | Ensemble Weight Search | pending | 3 |
+| 63 | parameter-sensitivity | Parameter Sensitivity Analysis | pending | 2 |
+| 64 | claude-permissions | Claude Permissions Update | pending | 2 |
+| 65 | phrase-aware-weights | Phrase-Aware Weight Modulation | backlog | 5 |
+
+---
+
+## Design Review Changes (2026-01-18)
+
+This epic was revised based on design review feedback. Key issues addressed:
+
+| Issue | Resolution |
+|-------|------------|
+| Claude can't push/create PRs | New Task 64 updates permissions |
+| Designer/Critic can't communicate | Simplified to single-pass iteration |
+| Sensitivity runs after iterate | Reordered: 63 before 55 |
+| No baseline exists | New Task 61a creates infrastructure |
+| No CI comparison | New Task 61b adds workflow |
+| Task 56 over-scoped | Split per-section to future Task 65 |
+| Task 55 listening tests | Removed from scope (future work) |
 
 ---
 
