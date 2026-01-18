@@ -6,7 +6,7 @@ created_date: 2026-01-18
 updated_date: 2026-01-18
 branch: feature/hill-climbing-infrastructure
 tasks: [53, 54, 55, 56, 57, 58, 59, 61, 61a, 61b, 62, 63, 64, 65]
-completed_tasks: [56, 59, 60, 61a, 61b]
+completed_tasks: [56, 59, 60, 61a, 61b, 63]
 ---
 
 # Epic: Semi-Autonomous Hill-Climbing Iteration System
@@ -247,7 +247,7 @@ Independent:
 | 61a | baseline-infrastructure | Baseline Infrastructure | **completed** | 1 |
 | 61b | pr-metrics-comparison | PR Metrics Comparison | **completed** | 1 |
 | 62 | ensemble-weight-search | Ensemble Weight Search | pending | 3 |
-| 63 | parameter-sensitivity | Parameter Sensitivity Analysis | pending | 2 |
+| 63 | parameter-sensitivity | Parameter Sensitivity Analysis | **completed** | 2 |
 | 64 | claude-permissions | Claude Permissions Update | pending | 2 |
 | 65 | phrase-aware-weights | Phrase-Aware Weight Modulation | backlog | 5 |
 
@@ -328,3 +328,23 @@ Once the iteration system is built, use **tasks 46-50** (now in `backlog/`) to v
 - **Task 52 (CI Release Builds)** is independent infrastructure work
 - This epic focuses on the iteration feedback loop, not the algorithm improvements themselves
 - Algorithm improvements will come from _using_ this system once built
+
+---
+
+## Design Limitation Discovered (Task 63)
+
+During Task 63 implementation, a disconnect was discovered between the configuration system and pattern generation:
+
+**Problem**: Sensitivity analysis shows all zeros because:
+1. `AlgorithmConfig` weights (Task 56) define blend parameters, but
+2. `PatternField.cpp` uses separate hardcoded zone thresholds (`kShapeZone1End`, etc.)
+3. These zone constants aren't connected to `AlgorithmConfig`
+
+**Impact**: The sensitivity analysis infrastructure is complete and working, but produces no meaningful data until this architecture issue is resolved.
+
+**Approaches to fix** (requires new task):
+1. Wire `AlgorithmConfig` values into `PatternField.cpp` zone logic
+2. Replace `constexpr` zone constants with runtime-configurable values
+3. Use `make weights-header` to recompile for each sweep point (slow)
+
+This should be addressed before Task 55 (Iterate Command) can make use of lever recommendations.
