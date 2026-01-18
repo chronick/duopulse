@@ -4,7 +4,7 @@ title: "Semi-Autonomous Hill-Climbing Iteration System"
 status: in_progress
 created_date: 2026-01-18
 updated_date: 2026-01-18
-branch: feature/hill-climbing-infrastructure
+branch: feature/hill-climbing-iteration
 tasks: [53, 54, 55, 56, 57, 58, 59, 61, 61a, 61b, 62, 63, 64, 65, 66]
 completed_tasks: [55, 56, 59, 60, 61a, 61b, 63, 64, 66]
 ---
