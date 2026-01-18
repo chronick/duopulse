@@ -1,50 +1,50 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "version": "1.0.0",
-  "description": "Configuration for parameter sensitivity analysis sweeps",
+  "version": "1.1.0",
+  "description": "Configuration for parameter sensitivity analysis sweeps (PatternFieldConfig zones)",
 
   "parameters": {
-    "euclideanFadeStart": {
-      "path": "euclidean.fadeStart",
-      "min": 0.10,
+    "shapeZone1End": {
+      "path": "patternField.shapeZone1End",
+      "min": 0.18,
+      "max": 0.30,
+      "steps": 9,
+      "description": "SHAPE value where stable zone ends (default 0.28, must be < crossfade1End=0.32)"
+    },
+    "shapeCrossfade1End": {
+      "path": "patternField.shapeCrossfade1End",
+      "min": 0.30,
+      "max": 0.42,
+      "steps": 9,
+      "description": "SHAPE value where stable->syncopation crossfade ends (default 0.32, must be < zone2aEnd=0.48)"
+    },
+    "shapeZone2aEnd": {
+      "path": "patternField.shapeZone2aEnd",
+      "min": 0.40,
       "max": 0.50,
       "steps": 9,
-      "description": "SHAPE value where euclidean algorithm begins fading out"
+      "description": "SHAPE value where lower syncopation zone ends (default 0.48, must be < crossfade2End=0.52)"
     },
-    "euclideanFadeEnd": {
-      "path": "euclidean.fadeEnd",
+    "shapeCrossfade2End": {
+      "path": "patternField.shapeCrossfade2End",
       "min": 0.50,
-      "max": 0.90,
+      "max": 0.60,
       "steps": 9,
-      "description": "SHAPE value where euclidean algorithm fully fades out"
+      "description": "SHAPE value where mid syncopation crossfade ends (default 0.52, must be < zone2bEnd=0.68)"
     },
-    "syncopationCenter": {
-      "path": "syncopation.center",
-      "min": 0.30,
+    "shapeZone2bEnd": {
+      "path": "patternField.shapeZone2bEnd",
+      "min": 0.60,
       "max": 0.70,
       "steps": 9,
-      "description": "SHAPE value where syncopation algorithm peaks (bell curve center)"
+      "description": "SHAPE value where upper syncopation zone ends (default 0.68, must be < crossfade3End=0.72)"
     },
-    "syncopationWidth": {
-      "path": "syncopation.width",
-      "min": 0.10,
-      "max": 0.50,
-      "steps": 9,
-      "description": "Width of syncopation bell curve (higher = wider active range)"
-    },
-    "randomFadeStart": {
-      "path": "random.fadeStart",
-      "min": 0.30,
-      "max": 0.70,
-      "steps": 9,
-      "description": "SHAPE value where random algorithm begins fading in"
-    },
-    "randomFadeEnd": {
-      "path": "random.fadeEnd",
+    "shapeCrossfade3End": {
+      "path": "patternField.shapeCrossfade3End",
       "min": 0.70,
-      "max": 1.00,
+      "max": 0.82,
       "steps": 9,
-      "description": "SHAPE value where random algorithm fully fades in"
+      "description": "SHAPE value where syncopation->wild crossfade ends (default 0.72, must be <= 1.0)"
     }
   },
 

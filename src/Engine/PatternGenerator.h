@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include "DuoPulseTypes.h"
+#include "PatternField.h"  // For PatternFieldConfig
 
 namespace daisysp_idm_grids
 {
@@ -83,6 +84,10 @@ struct PatternParams
 
     /// Voice coupling for aux relationship
     VoiceCoupling voiceCoupling = VoiceCoupling::INDEPENDENT;
+
+    /// PatternField zone threshold configuration (for sensitivity analysis)
+    /// Default uses original compiled-in values for backward compatibility
+    PatternFieldConfig patternFieldConfig{};
 };
 
 // =============================================================================

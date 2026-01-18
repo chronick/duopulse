@@ -48,6 +48,32 @@ constexpr float kShapeZone2bEnd = 0.68f;       // End of upper syncopation zone
 constexpr float kShapeCrossfade3End = 0.72f;   // End of syncopation->wild crossfade
 
 /**
+ * Runtime-configurable zone thresholds for SHAPE parameter.
+ * Default values match the original constexpr constants for backward compatibility.
+ */
+struct PatternFieldConfig {
+    float shapeZone1End = 0.28f;        // End of pure stable zone
+    float shapeCrossfade1End = 0.32f;   // End of stable->syncopation crossfade
+    float shapeZone2aEnd = 0.48f;       // End of lower syncopation zone
+    float shapeCrossfade2End = 0.52f;   // End of mid syncopation crossfade
+    float shapeZone2bEnd = 0.68f;       // End of upper syncopation zone
+    float shapeCrossfade3End = 0.72f;   // End of syncopation->wild crossfade
+
+    /// Validate that thresholds are monotonically increasing
+    bool IsValid() const {
+        return shapeZone1End < shapeCrossfade1End &&
+               shapeCrossfade1End < shapeZone2aEnd &&
+               shapeZone2aEnd < shapeCrossfade2End &&
+               shapeCrossfade2End < shapeZone2bEnd &&
+               shapeZone2bEnd < shapeCrossfade3End &&
+               shapeCrossfade3End <= 1.0f;
+    }
+};
+
+/// Default config matching original constexpr values (zero overhead when used)
+static constexpr PatternFieldConfig kDefaultPatternFieldConfig{};
+
+/**
  * Generate stable (euclidean-based) pattern weights
  *
  * Produces techno-style, four-on-floor patterns with:
@@ -123,7 +149,8 @@ void GenerateWildPattern(float energy, uint32_t seed, int patternLength, float* 
  */
 void ComputeShapeBlendedWeights(float shape, float energy,
                                  uint32_t seed, int patternLength,
-                                 float* outWeights);
+                                 float* outWeights,
+                                 const PatternFieldConfig& config = kDefaultPatternFieldConfig);
 
 /**
  * Linear interpolation helper for crossfade zones

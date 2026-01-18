@@ -76,7 +76,8 @@ void GeneratePattern(const PatternParams& params, PatternResult& result)
     // Generate anchor weights
     float anchorWeights[kMaxSteps];
     ComputeShapeBlendedWeights(params.shape, params.energy, params.seed,
-                               params.patternLength, anchorWeights);
+                               params.patternLength, anchorWeights,
+                               params.patternFieldConfig);
     ApplyAxisBias(anchorWeights, params.axisX, params.axisY,
                   params.shape, params.seed, params.patternLength);
 
@@ -93,7 +94,8 @@ void GeneratePattern(const PatternParams& params, PatternResult& result)
     // Generate shimmer weights (different seed)
     float shimmerWeights[kMaxSteps];
     ComputeShapeBlendedWeights(params.shape, params.energy, params.seed + 1,
-                               params.patternLength, shimmerWeights);
+                               params.patternLength, shimmerWeights,
+                               params.patternFieldConfig);
 
     // Compute hit budget using all parameters
     BarBudget budget;

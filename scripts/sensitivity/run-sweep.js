@@ -25,13 +25,14 @@ const PATTERN_VIZ = process.env.PATTERN_VIZ || join(PROJECT_ROOT, 'build/pattern
 const SWEEP_CONFIG = join(PROJECT_ROOT, 'metrics/sweep-config.json');
 
 // Map sweep parameter names to pattern_viz CLI argument names
+// These match the PatternFieldConfig zone threshold names
 const PARAM_TO_CLI = {
-  euclideanFadeStart: '--euclidean-fade-start',
-  euclideanFadeEnd: '--euclidean-fade-end',
-  syncopationCenter: '--syncopation-center',
-  syncopationWidth: '--syncopation-width',
-  randomFadeStart: '--random-fade-start',
-  randomFadeEnd: '--random-fade-end',
+  shapeZone1End: '--shape-zone1-end',
+  shapeCrossfade1End: '--shape-crossfade1-end',
+  shapeZone2aEnd: '--shape-zone2a-end',
+  shapeCrossfade2End: '--shape-crossfade2-end',
+  shapeZone2bEnd: '--shape-zone2b-end',
+  shapeCrossfade3End: '--shape-crossfade3-end',
 };
 
 // Parse CLI args

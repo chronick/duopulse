@@ -151,7 +151,8 @@ void GenerateWildPattern(float energy, uint32_t seed, int patternLength, float* 
 
 void ComputeShapeBlendedWeights(float shape, float energy,
                                  uint32_t seed, int patternLength,
-                                 float* outWeights)
+                                 float* outWeights,
+                                 const PatternFieldConfig& config)
 {
     // Clamp inputs
     shape = std::max(0.0f, std::min(1.0f, shape));
@@ -166,14 +167,14 @@ void ComputeShapeBlendedWeights(float shape, float energy,
     // Determine which zone we're in and compute accordingly
     // This avoids generating all three patterns when not needed
 
-    if (shape < kShapeZone1End)
+    if (shape < config.shapeZone1End)
     {
         // Zone 1 pure: Stable with humanization
         GenerateStablePattern(energy, patternLength, outWeights);
 
         // Add humanization that decreases as shape approaches zone boundary
         // humanize = 0.05 * (1 - (shape / 0.28))
-        float humanize = 0.05f * (1.0f - (shape / kShapeZone1End));
+        float humanize = 0.05f * (1.0f - (shape / config.shapeZone1End));
 
         for (int step = 0; step < patternLength; ++step)
         {
@@ -182,26 +183,26 @@ void ComputeShapeBlendedWeights(float shape, float energy,
             outWeights[step] = ClampWeight(outWeights[step] + jitter);
         }
     }
-    else if (shape < kShapeCrossfade1End)
+    else if (shape < config.shapeCrossfade1End)
     {
         // Crossfade Zone 1->2: Blend stable to syncopation
         GenerateStablePattern(energy, patternLength, stableWeights);
         GenerateSyncopationPattern(energy, seed, patternLength, syncopationWeights);
 
         // Compute blend factor (0.0 at zone1End, 1.0 at crossfade1End)
-        float t = (shape - kShapeZone1End) / (kShapeCrossfade1End - kShapeZone1End);
+        float t = (shape - config.shapeZone1End) / (config.shapeCrossfade1End - config.shapeZone1End);
 
         for (int step = 0; step < patternLength; ++step)
         {
             outWeights[step] = ClampWeight(LerpWeight(stableWeights[step], syncopationWeights[step], t));
         }
     }
-    else if (shape < kShapeZone2aEnd)
+    else if (shape < config.shapeZone2aEnd)
     {
         // Zone 2a: Pure syncopation (lower)
         GenerateSyncopationPattern(energy, seed, patternLength, outWeights);
     }
-    else if (shape < kShapeCrossfade2End)
+    else if (shape < config.shapeCrossfade2End)
     {
         // Crossfade Zone 2a->2b: Mid syncopation transition
         // This is subtle - we vary the syncopation character slightly
@@ -210,25 +211,25 @@ void ComputeShapeBlendedWeights(float shape, float energy,
         // Use a slightly different seed variation for the "upper" syncopation
         GenerateSyncopationPattern(energy, seed + 0x12345678, patternLength, stableWeights);
 
-        float t = (shape - kShapeZone2aEnd) / (kShapeCrossfade2End - kShapeZone2aEnd);
+        float t = (shape - config.shapeZone2aEnd) / (config.shapeCrossfade2End - config.shapeZone2aEnd);
 
         for (int step = 0; step < patternLength; ++step)
         {
             outWeights[step] = ClampWeight(LerpWeight(syncopationWeights[step], stableWeights[step], t));
         }
     }
-    else if (shape < kShapeZone2bEnd)
+    else if (shape < config.shapeZone2bEnd)
     {
         // Zone 2b: Pure syncopation (upper) - uses offset seed
         GenerateSyncopationPattern(energy, seed + 0x12345678, patternLength, outWeights);
     }
-    else if (shape < kShapeCrossfade3End)
+    else if (shape < config.shapeCrossfade3End)
     {
         // Crossfade Zone 2->3: Blend syncopation to wild
         GenerateSyncopationPattern(energy, seed + 0x12345678, patternLength, syncopationWeights);
         GenerateWildPattern(energy, seed, patternLength, wildWeights);
 
-        float t = (shape - kShapeZone2bEnd) / (kShapeCrossfade3End - kShapeZone2bEnd);
+        float t = (shape - config.shapeZone2bEnd) / (config.shapeCrossfade3End - config.shapeZone2bEnd);
 
         for (int step = 0; step < patternLength; ++step)
         {
@@ -242,7 +243,7 @@ void ComputeShapeBlendedWeights(float shape, float energy,
 
         // Add chaos injection that increases as shape approaches 100%
         // Chaos factor: 0 at 0.72, up to 0.15 at 1.0
-        float chaosFactor = ((shape - kShapeCrossfade3End) / (1.0f - kShapeCrossfade3End)) * 0.15f;
+        float chaosFactor = ((shape - config.shapeCrossfade3End) / (1.0f - config.shapeCrossfade3End)) * 0.15f;
 
         for (int step = 0; step < patternLength; ++step)
         {

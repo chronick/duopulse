@@ -48,19 +48,9 @@ using namespace daisysp_idm_grids;
 // Runtime Weight Configuration Overrides
 // =============================================================================
 
-// When set, these override the compile-time AlgorithmConfig values
-struct WeightOverrides {
-    bool enabled = false;
-    float euclideanFadeStart = 0.30f;
-    float euclideanFadeEnd = 0.70f;
-    float syncopationCenter = 0.50f;
-    float syncopationWidth = 0.30f;
-    float randomFadeStart = 0.50f;
-    float randomFadeEnd = 0.90f;
-};
-
-// Global weight overrides (set via CLI args)
-static WeightOverrides g_weightOverrides;
+// Runtime PatternField zone configuration (for sensitivity analysis)
+static PatternFieldConfig g_patternFieldConfig;
+static bool g_patternFieldConfigModified = false;
 
 // =============================================================================
 // Output Formatters
@@ -180,50 +170,13 @@ static void PrintPatternMask(std::ostream& out, const PatternParams& params, con
 
 static void PrintDebugWeights(std::ostream& out, const PatternParams& params)
 {
-    AlgorithmWeightsDebug debug;
-    debug.shape = params.shape;
-    debug.energy = params.energy;
-
-    if (g_weightOverrides.enabled) {
-        // Use override values for configuration
-        debug.euclideanFadeStart = g_weightOverrides.euclideanFadeStart;
-        debug.euclideanFadeEnd = g_weightOverrides.euclideanFadeEnd;
-        debug.syncopationCenter = g_weightOverrides.syncopationCenter;
-        debug.syncopationWidth = g_weightOverrides.syncopationWidth;
-        debug.randomFadeStart = g_weightOverrides.randomFadeStart;
-        debug.randomFadeEnd = g_weightOverrides.randomFadeEnd;
-
-        // Compute raw weights with overrides
-        debug.rawEuclidean = 1.0f - Smoothstep(g_weightOverrides.euclideanFadeStart,
-                                                g_weightOverrides.euclideanFadeEnd, params.shape);
-        debug.rawSyncopation = BellCurve(params.shape, g_weightOverrides.syncopationCenter,
-                                          g_weightOverrides.syncopationWidth);
-        debug.rawRandom = Smoothstep(g_weightOverrides.randomFadeStart,
-                                      g_weightOverrides.randomFadeEnd, params.shape);
-
-        // Normalize
-        float total = debug.rawEuclidean + debug.rawSyncopation + debug.rawRandom;
-        if (total > 0.001f) {
-            debug.weights.euclidean = debug.rawEuclidean / total;
-            debug.weights.syncopation = debug.rawSyncopation / total;
-            debug.weights.random = debug.rawRandom / total;
-        } else {
-            debug.weights.euclidean = 0.0f;
-            debug.weights.syncopation = 1.0f;
-            debug.weights.random = 0.0f;
-        }
-
-        // Compute channel params (these don't have overrides yet)
-        debug.channelParams = ComputeChannelEuclidean(params.energy, params.seed, params.patternLength);
-    } else {
-        // Use compiled-in config values
-        debug = ComputeAlgorithmWeightsDebug(
-            params.shape, params.energy, params.seed, params.patternLength);
-    }
+    // Use compiled-in config values for AlgorithmWeights debug
+    AlgorithmWeightsDebug debug = ComputeAlgorithmWeightsDebug(
+        params.shape, params.energy, params.seed, params.patternLength);
 
     out << "\n=== Algorithm Weights Debug ===\n";
-    if (g_weightOverrides.enabled) {
-        out << "(Using command-line weight overrides)\n";
+    if (g_patternFieldConfigModified) {
+        out << "(PatternField zone thresholds overridden via CLI)\n";
     }
     out << "Input Parameters:\n";
     out << "  SHAPE:  " << std::fixed << std::setprecision(2) << debug.shape << "\n";
@@ -378,13 +331,13 @@ Configuration:
 
   --help           Show this help
 
-Weight Override Options (for sensitivity analysis):
-  --euclidean-fade-start=0.30  Override euclidean fade start
-  --euclidean-fade-end=0.70    Override euclidean fade end
-  --syncopation-center=0.50    Override syncopation bell center
-  --syncopation-width=0.30     Override syncopation bell width
-  --random-fade-start=0.50     Override random fade start
-  --random-fade-end=0.90       Override random fade end
+PatternField Zone Thresholds (for sensitivity analysis):
+  --shape-zone1-end=0.28       End of stable zone
+  --shape-crossfade1-end=0.32  End of stable->syncopation crossfade
+  --shape-zone2a-end=0.48      End of lower syncopation zone
+  --shape-crossfade2-end=0.52  End of mid syncopation crossfade
+  --shape-zone2b-end=0.68      End of upper syncopation zone
+  --shape-crossfade3-end=0.72  End of syncopation->wild crossfade
 
 Examples:
   ./build/pattern_viz --energy=0.7 --shape=0.5
@@ -476,30 +429,30 @@ int main(int argc, char* argv[])
         // Configuration
         else if (strncmp(arg, "--config=", 9) == 0)
             configFile = ParseString(arg);
-        // Weight overrides (for sensitivity analysis)
-        else if (strncmp(arg, "--euclidean-fade-start=", 23) == 0) {
-            g_weightOverrides.euclideanFadeStart = ParseFloat(arg);
-            g_weightOverrides.enabled = true;
+        // PatternField zone thresholds (for sensitivity analysis)
+        else if (strncmp(arg, "--shape-zone1-end=", 18) == 0) {
+            g_patternFieldConfig.shapeZone1End = ParseFloat(arg);
+            g_patternFieldConfigModified = true;
         }
-        else if (strncmp(arg, "--euclidean-fade-end=", 21) == 0) {
-            g_weightOverrides.euclideanFadeEnd = ParseFloat(arg);
-            g_weightOverrides.enabled = true;
+        else if (strncmp(arg, "--shape-crossfade1-end=", 23) == 0) {
+            g_patternFieldConfig.shapeCrossfade1End = ParseFloat(arg);
+            g_patternFieldConfigModified = true;
         }
-        else if (strncmp(arg, "--syncopation-center=", 21) == 0) {
-            g_weightOverrides.syncopationCenter = ParseFloat(arg);
-            g_weightOverrides.enabled = true;
+        else if (strncmp(arg, "--shape-zone2a-end=", 19) == 0) {
+            g_patternFieldConfig.shapeZone2aEnd = ParseFloat(arg);
+            g_patternFieldConfigModified = true;
         }
-        else if (strncmp(arg, "--syncopation-width=", 20) == 0) {
-            g_weightOverrides.syncopationWidth = ParseFloat(arg);
-            g_weightOverrides.enabled = true;
+        else if (strncmp(arg, "--shape-crossfade2-end=", 23) == 0) {
+            g_patternFieldConfig.shapeCrossfade2End = ParseFloat(arg);
+            g_patternFieldConfigModified = true;
         }
-        else if (strncmp(arg, "--random-fade-start=", 20) == 0) {
-            g_weightOverrides.randomFadeStart = ParseFloat(arg);
-            g_weightOverrides.enabled = true;
+        else if (strncmp(arg, "--shape-zone2b-end=", 19) == 0) {
+            g_patternFieldConfig.shapeZone2bEnd = ParseFloat(arg);
+            g_patternFieldConfigModified = true;
         }
-        else if (strncmp(arg, "--random-fade-end=", 18) == 0) {
-            g_weightOverrides.randomFadeEnd = ParseFloat(arg);
-            g_weightOverrides.enabled = true;
+        else if (strncmp(arg, "--shape-crossfade3-end=", 23) == 0) {
+            g_patternFieldConfig.shapeCrossfade3End = ParseFloat(arg);
+            g_patternFieldConfigModified = true;
         }
         else if (strcmp(arg, "--help") == 0 || strcmp(arg, "-h") == 0)
         {
@@ -535,6 +488,18 @@ int main(int argc, char* argv[])
         std::cout << "To use this config, run: make weights-header CONFIG=" << configFile << "\n\n";
     }
 
+    // Apply PatternFieldConfig to params if modified
+    if (g_patternFieldConfigModified)
+    {
+        if (!g_patternFieldConfig.IsValid())
+        {
+            std::cerr << "Error: Zone thresholds must be monotonically increasing\n";
+            std::cerr << "  zone1 < crossfade1 < zone2a < crossfade2 < zone2b < crossfade3 <= 1.0\n";
+            return 1;
+        }
+        params.patternFieldConfig = g_patternFieldConfig;
+    }
+
     // Compute auto-euclidean if requested (like firmware does)
     if (autoEuclidean)
     {
@@ -566,6 +531,8 @@ int main(int argc, char* argv[])
         for (float val = 0.0f; val <= 1.01f; val += 0.1f)
         {
             PatternParams sweepParams = params;
+            if (g_patternFieldConfigModified)
+                sweepParams.patternFieldConfig = g_patternFieldConfig;
             if (sweep == "shape")
                 sweepParams.shape = val;
             else if (sweep == "energy")
