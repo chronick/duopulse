@@ -6,7 +6,7 @@ created_date: 2026-01-18
 updated_date: 2026-01-18
 branch: feature/hill-climbing-infrastructure
 tasks: [53, 54, 55, 56, 57, 58, 59, 61, 61a, 61b, 62, 63, 64, 65]
-completed_tasks: [60]
+completed_tasks: [56, 59, 60, 61a, 61b]
 ---
 
 # Epic: Semi-Autonomous Hill-Climbing Iteration System
@@ -68,11 +68,11 @@ Create a feedback loop using git + GitHub + PRs/issues + Actions to automaticall
 | 4 | **61b** | PR Metrics Comparison | 2-3h | NEW: CI workflow for PR comparison |
 
 **Phase 1 Exit Criteria**:
-- [ ] `pattern_viz --debug-weights` shows algorithm blend percentages
-- [ ] Weights configurable via `inc/algorithm_config.h` or JSON
-- [ ] `metrics/baseline.json` exists with current main branch metrics
-- [ ] PRs show metric comparison in comments
-- [ ] All tests pass
+- [x] `pattern_viz --debug-weights` shows algorithm blend percentages
+- [x] Weights configurable via `inc/algorithm_config.h` or JSON
+- [x] `metrics/baseline.json` exists with current main branch metrics
+- [x] PRs show metric comparison in comments
+- [x] All tests pass (373 tests)
 
 ---
 
@@ -238,14 +238,14 @@ Independent:
 | 53 | grid-expansion-64 | Grid Expansion to 64 Steps | pending | 5 |
 | 54 | fill-gates-evals | Fill Gates in Evals | pending | 3 |
 | 55 | iterate-command | Iteration Command System | pending | 2 |
-| 56 | weight-based-blending | Weight-Based Algorithm Blending | pending | 1 |
+| 56 | weight-based-blending | Weight-Based Algorithm Blending | **completed** | 1 |
 | 57 | pr-workflow-integration | PR Workflow Integration | pending | 4 |
 | 58 | website-iteration-timeline | Website Iteration Timeline | pending | 4 |
-| 59 | algorithm-weight-config | Algorithm Weight Configuration | pending | 1 |
+| 59 | algorithm-weight-config | Algorithm Weight Configuration | **completed** | 1 |
 | 60 | audio-preview-player | Audio Preview Player | **completed** | - |
 | 61 | regression-detection | Regression Detection + Rollback | pending | 3 |
-| 61a | baseline-infrastructure | Baseline Infrastructure | pending | 1 |
-| 61b | pr-metrics-comparison | PR Metrics Comparison | pending | 1 |
+| 61a | baseline-infrastructure | Baseline Infrastructure | **completed** | 1 |
+| 61b | pr-metrics-comparison | PR Metrics Comparison | **completed** | 1 |
 | 62 | ensemble-weight-search | Ensemble Weight Search | pending | 3 |
 | 63 | parameter-sensitivity | Parameter Sensitivity Analysis | pending | 2 |
 | 64 | claude-permissions | Claude Permissions Update | pending | 2 |
