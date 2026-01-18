@@ -1,0 +1,121 @@
+{
+  "version": "1.0.0",
+  "generated_at": "2026-01-18T20:53:16Z",
+  "commit": "65d4532b3be77f96775f5e9329a40463562b9aba",
+  "metrics": {
+    "timestamp": "2026-01-10T05:40:20.041Z",
+    "pentagonStats": {
+      "total": {
+        "count": 33,
+        "syncopation": 0.3167914933766031,
+        "density": 0.5615530303030303,
+        "velocityRange": 0.3527272727272727,
+        "voiceSeparation": 0.8508254664014243,
+        "regularity": 0.5056817269826563,
+        "composite": 0.24034613757088938
+      },
+      "stable": {
+        "count": 2,
+        "syncopation": 0,
+        "density": 0.59375,
+        "velocityRange": 0.35,
+        "voiceSeparation": 0.8947368421052632,
+        "regularity": 0.5580582617584078,
+        "composite": 0.08165680473372783
+      },
+      "syncopated": {
+        "count": 28,
+        "syncopation": 0.28585260628604287,
+        "density": 0.5524553571428571,
+        "velocityRange": 0.35214285714285726,
+        "voiceSeparation": 0.8370630966798744,
+        "regularity": 0.4912283274572521,
+        "composite": 0.26420296053103337
+      },
+      "wild": {
+        "count": 3,
+        "syncopation": 0.8167487684729062,
+        "density": 0.625,
+        "velocityRange": 0.36000000000000004,
+        "voiceSeparation": 0.9499999999999998,
+        "regularity": 0.6056624327025936,
+        "composite": 0.12347534516765295
+      }
+    },
+    "overallAlignment": 0.3955691511625635,
+    "alignmentStatus": "POOR",
+    "totalPatterns": 33,
+    "seedVariation": {
+      "v1": {
+        "avgScore": 1,
+        "minScore": 1,
+        "maxScore": 1
+      },
+      "v2": {
+        "avgScore": 0.9961734693877551,
+        "minScore": 0.8571428571428571,
+        "maxScore": 1
+      },
+      "aux": {
+        "avgScore": 1,
+        "minScore": 1,
+        "maxScore": 1
+      },
+      "overall": 0.9987244897959183,
+      "pass": true
+    },
+    "metricDefinitions": {
+      "syncopation": {
+        "short": "Sync",
+        "name": "Syncopation",
+        "description": "Syncopation creates groove and forward motion. Too little feels mechanical; too much loses the pulse.",
+        "targetByZone": {
+          "stable": "0.00-0.22",
+          "syncopated": "0.22-0.48",
+          "wild": "0.42-0.75"
+        }
+      },
+      "density": {
+        "short": "Dens",
+        "name": "Density",
+        "description": "Density sets the energy level. Match it to ENERGY parameter for zone compliance.",
+        "targetByZone": {
+          "stable": "0.15-0.32",
+          "syncopated": "0.25-0.48",
+          "wild": "0.32-0.65"
+        }
+      },
+      "velocityRange": {
+        "short": "VelRng",
+        "name": "Velocity Range",
+        "description": "Velocity variation humanizes patterns. Ghost notes add texture without changing rhythm.",
+        "targetByZone": {
+          "stable": "0.12-0.38",
+          "syncopated": "0.32-0.58",
+          "wild": "0.25-0.72"
+        }
+      },
+      "voiceSeparation": {
+        "short": "VoiceSep",
+        "name": "Voice Separation",
+        "description": "Separation affects clarity vs. power. High DRIFT should increase separation.",
+        "targetByZone": {
+          "stable": "0.62-0.88",
+          "syncopated": "0.52-0.78",
+          "wild": "0.32-0.68"
+        }
+      },
+      "regularity": {
+        "short": "Reg",
+        "name": "Regularity",
+        "description": "Regularity = danceability. Stable patterns need high regularity; wild patterns break it.",
+        "targetByZone": {
+          "stable": "0.72-1.00",
+          "syncopated": "0.42-0.68",
+          "wild": "0.12-0.48"
+        }
+      }
+    },
+    "pass": false
+  }
+}

@@ -2,10 +2,11 @@
 id: 61a
 slug: baseline-infrastructure
 title: "Baseline Infrastructure"
-status: pending
+status: completed
 created_date: 2026-01-18
 updated_date: 2026-01-18
-branch: feature/baseline-infrastructure
+completed_date: 2026-01-18
+branch: feature/weight-based-blending
 spec_refs: []
 depends_on:
   - 56  # Weight-based blending (evals need this for weight debugging)
@@ -39,39 +40,39 @@ This task was split from Task 61 during design review (2026-01-18). The original
 ## Subtasks
 
 ### Directory Structure
-- [ ] Create `metrics/` directory
-- [ ] Add `metrics/.gitkeep` (directory tracked even if empty initially)
-- [ ] Add `metrics/README.md` explaining purpose
+- [x] Create `metrics/` directory
+- [x] Add `metrics/.gitkeep` (directory tracked even if empty initially)
+- [x] Add `metrics/README.md` explaining purpose
 
 ### Baseline Generation
-- [ ] Add `make baseline` target to Makefile
-- [ ] Target runs evals and copies result to `metrics/baseline.json`
-- [ ] Add current commit hash to baseline metadata
-- [ ] Add generation timestamp
+- [x] Add `make baseline` target to Makefile
+- [x] Target runs evals and copies result to `metrics/baseline.json`
+- [x] Add current commit hash to baseline metadata
+- [x] Add generation timestamp
 
 ### Baseline Format
-- [ ] Define JSON schema for baseline.json
-- [ ] Include Pentagon metrics (overall and by-zone)
-- [ ] Include generation metadata (commit, timestamp, version)
+- [x] Define JSON schema for baseline.json
+- [x] Include Pentagon metrics (overall and by-zone)
+- [x] Include generation metadata (commit, timestamp, version)
 
 ### Initial Baseline
-- [ ] Run `make baseline` to create initial baseline
-- [ ] Commit baseline.json to repository
-- [ ] Verify baseline matches current evals output
+- [x] Run `make baseline` to create initial baseline
+- [x] Commit baseline.json to repository
+- [x] Verify baseline matches current evals output
 
 ### Tests
-- [ ] Test `make baseline` generates valid JSON
-- [ ] Test baseline includes required fields
-- [ ] All tests pass
+- [x] Test `make baseline` generates valid JSON
+- [x] Test baseline includes required fields
+- [x] All tests pass (373 tests)
 
 ## Acceptance Criteria
 
-- [ ] `metrics/` directory exists
-- [ ] `metrics/baseline.json` contains Pentagon metrics
-- [ ] `make baseline` target works
-- [ ] Baseline includes commit hash and timestamp
-- [ ] Baseline matches current evals output
-- [ ] Baseline is committed to repository
+- [x] `metrics/` directory exists
+- [x] `metrics/baseline.json` contains Pentagon metrics
+- [x] `make baseline` target works
+- [x] Baseline includes commit hash and timestamp
+- [x] Baseline matches current evals output
+- [x] Baseline is committed to repository
 
 ## Implementation Notes
 

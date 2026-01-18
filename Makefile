@@ -174,7 +174,7 @@ LOGDIR ?= /tmp
 # Build Targets
 ###############################################################################
 
-.PHONY: all clean rebuild daisy-build daisy-update libdaisy-build libdaisy-update program build-debug program-debug test test-coverage listen ports help pattern-viz run-pattern-viz pattern-sweep pattern-html expressiveness-report expressiveness-quick evals evals-generate evals-serve evals-deploy weights-header
+.PHONY: all clean rebuild daisy-build daisy-update libdaisy-build libdaisy-update program build-debug program-debug test test-coverage listen ports help pattern-viz run-pattern-viz pattern-sweep pattern-html expressiveness-report expressiveness-quick evals evals-generate evals-serve evals-deploy weights-header baseline
 
 # Default target
 all: $(ELF) $(BIN) $(HEX)
@@ -517,6 +517,16 @@ evals-deploy: evals-generate
 	@cp -r $(EVALS_DIR)/public/* docs/evals/
 	@echo "Dashboard deployed to docs/evals/"
 	@echo "Commit and push to publish via GitHub Pages"
+
+###############################################################################
+# Baseline Metrics
+###############################################################################
+
+# Generate baseline metrics from current main branch
+baseline: evals-generate
+	@echo "Generating baseline metrics..."
+	@python3 scripts/generate-baseline.py
+	@echo "Baseline saved to metrics/baseline.json"
 
 ###############################################################################
 # Help Target
