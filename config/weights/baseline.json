@@ -1,0 +1,24 @@
+{
+  "$schema": "./schema.json",
+  "version": "1.0.0",
+  "name": "baseline-v5.2",
+  "description": "Baseline weights for v5.2 release - matches Task 56 defaults",
+
+  "euclidean": {
+    "fadeStart": 0.30,
+    "fadeEnd": 0.70,
+    "anchor": { "kMin": 4, "kMax": 12 },
+    "shimmer": { "kMin": 6, "kMax": 16 },
+    "aux": { "kMin": 2, "kMax": 8 }
+  },
+
+  "syncopation": {
+    "center": 0.50,
+    "width": 0.30
+  },
+
+  "random": {
+    "fadeStart": 0.50,
+    "fadeEnd": 0.90
+  }
+}

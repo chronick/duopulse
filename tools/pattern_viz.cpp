@@ -40,6 +40,7 @@
 #include "../src/Engine/EuclideanGen.h"       // GetGenreEuclideanRatio
 #include "../src/Engine/HitBudget.h"          // GetEnergyZone
 #include "../src/Engine/AlgorithmWeights.h"   // ComputeAlgorithmWeightsDebug
+#include "WeightConfigLoader.h"               // Runtime JSON config loading
 
 using namespace daisysp_idm_grids;
 
@@ -313,6 +314,9 @@ Debug options:
   --debug-weights  Show algorithm blend weight breakdown
   --debug-euclidean Show per-channel euclidean parameters
 
+Configuration:
+  --config=file    Load weight config from JSON (validates config, shows values)
+
   --help           Show this help
 
 Examples:
@@ -334,6 +338,7 @@ int main(int argc, char* argv[])
     std::string outputFile;
     std::string format = "grid";
     std::string sweep;
+    std::string configFile;      // JSON config file path
     bool autoEuclidean = false;  // Compute euclidean like firmware
     bool debugWeights = false;   // Show algorithm weight breakdown
     bool debugEuclidean = false; // Show per-channel euclidean params
@@ -401,6 +406,9 @@ int main(int argc, char* argv[])
             debugWeights = true;
         else if (strcmp(arg, "--debug-euclidean") == 0)
             debugEuclidean = true;
+        // Configuration
+        else if (strncmp(arg, "--config=", 9) == 0)
+            configFile = ParseString(arg);
         else if (strcmp(arg, "--help") == 0 || strcmp(arg, "-h") == 0)
         {
             PrintUsage();
@@ -412,6 +420,27 @@ int main(int argc, char* argv[])
             PrintUsage();
             return 1;
         }
+    }
+
+    // Load and display config file if specified
+    if (!configFile.empty())
+    {
+        LoadedWeightConfig loadedConfig = LoadWeightConfigFromJSON(configFile);
+        if (!loadedConfig.isLoaded)
+        {
+            std::cerr << "Error: Failed to load config file: " << configFile << "\n";
+            return 1;
+        }
+        PrintLoadedConfig(loadedConfig);
+
+        // Note: For full runtime config switching, AlgorithmWeights would need
+        // to accept runtime parameters. Currently pattern generation uses
+        // compile-time constexpr values from algorithm_config.h.
+        // The loaded config is displayed for verification but doesn't affect
+        // pattern generation. Use 'make weights-header CONFIG=...' to change
+        // firmware weights.
+        std::cout << "Note: Pattern generation uses compiled-in weights.\n";
+        std::cout << "To use this config, run: make weights-header CONFIG=" << configFile << "\n\n";
     }
 
     // Compute auto-euclidean if requested (like firmware does)

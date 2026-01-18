@@ -174,7 +174,7 @@ LOGDIR ?= /tmp
 # Build Targets
 ###############################################################################
 
-.PHONY: all clean rebuild daisy-build daisy-update libdaisy-build libdaisy-update program build-debug program-debug test test-coverage listen ports help pattern-viz run-pattern-viz pattern-sweep pattern-html expressiveness-report expressiveness-quick evals evals-generate evals-serve evals-deploy
+.PHONY: all clean rebuild daisy-build daisy-update libdaisy-build libdaisy-update program build-debug program-debug test test-coverage listen ports help pattern-viz run-pattern-viz pattern-sweep pattern-html expressiveness-report expressiveness-quick evals evals-generate evals-serve evals-deploy weights-header
 
 # Default target
 all: $(ELF) $(BIN) $(HEX)
@@ -294,6 +294,22 @@ clean:
 
 # Rebuild (clean + build)
 rebuild: clean all
+
+###############################################################################
+# Weight Configuration
+###############################################################################
+
+# Default config file for weights-header target
+CONFIG ?= config/weights/baseline.json
+GENERATED_HEADER := inc/generated/weights_config.h
+
+# Generate C++ header from JSON weight configuration
+weights-header: $(GENERATED_HEADER)
+	@echo "Weight configuration header up to date."
+
+$(GENERATED_HEADER): $(CONFIG) scripts/generate-weights-header.py
+	@echo "Generating weight configuration header from $(CONFIG)..."
+	@python3 scripts/generate-weights-header.py $(CONFIG) $(GENERATED_HEADER)
 
 ###############################################################################
 # Test Targets
