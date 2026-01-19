@@ -435,7 +435,18 @@ function renderSensitivityView() {
     document.head.appendChild(styleEl);
   }
 
-  container.innerHTML = renderSensitivityHeatmap(data.sensitivity);
+  // Render heatmap with clickable cells
+  const dummyCallback = () => {}; // Pass callback to make cells clickable
+  container.innerHTML = renderSensitivityHeatmap(data.sensitivity, dummyCallback);
+
+  // Attach click handlers via event delegation
+  container.querySelectorAll('.sensitivity-cell.clickable').forEach(cell => {
+    cell.addEventListener('click', (e) => {
+      const param = e.target.dataset.param;
+      const metric = e.target.dataset.metric;
+      alert(`Sweep curve for ${param} → ${metric}\n\n(Feature coming soon: Interactive sweep visualization)`);
+    });
+  });
 }
 
 // ============================================================================

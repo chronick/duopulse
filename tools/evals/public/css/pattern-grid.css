@@ -32,6 +32,40 @@
 .voice-label.v2 { color: var(--v2-color); }
 .voice-label.aux { color: var(--aux-color); }
 
+/* Fill state indicator row */
+.fill-state-row {
+  margin-bottom: 6px;
+  opacity: 0.7;
+  height: 12px !important;
+}
+
+.fill-state-label {
+  font-size: 9px;
+  color: var(--text-dim);
+  font-weight: 600;
+}
+
+.fill-state-steps {
+  display: flex;
+  gap: 1px;
+}
+
+.fill-state-indicator {
+  width: var(--step-width);
+  height: 4px;
+  border-radius: 1px;
+}
+
+.fill-state-indicator.active {
+  background: var(--warning);
+  box-shadow: 0 0 4px var(--warning);
+}
+
+.fill-state-indicator.inactive {
+  background: var(--grid-line);
+  opacity: 0.4;
+}
+
 .pattern-steps {
   display: flex;
   gap: 1px;
