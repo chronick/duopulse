@@ -572,28 +572,7 @@
   color: var(--warning);
 }
 
-/* Fill State Indicator Row */
-.fill-state-row {
-  margin-bottom: 8px;
-  border-bottom: 1px solid var(--grid-line);
-  padding-bottom: 4px;
-}
-
-.fill-state-indicator {
-  width: 20px;
-  height: 6px;
-  border-radius: 1px;
-  position: relative;
-}
-
-.fill-state-indicator.active {
-  background: var(--warning);
-  box-shadow: 0 0 4px var(--warning);
-}
-
-.fill-state-indicator.inactive {
-  background: var(--grid-line);
-}
+/* Fill State Indicator styles moved to pattern-grid.css */
 
 .no-data {
   color: var(--text-secondary);
