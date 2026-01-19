@@ -97,6 +97,24 @@ From dashboard review on 2026-01-19:
 - Added "Generate sensitivity matrix" step after evaluations
 - Runs `make sensitivity-matrix` before publishing site
 
+### 5. Additional Fixes (Post-Review)
+
+**Modified**: `tools/evals/public/app.js` (renderSensitivityView)
+- Pass callback to renderSensitivityHeatmap to enable clickable cells
+- Add event delegation for cell click handlers
+- Show placeholder alert when clicking sensitivity cells (future: sweep visualization)
+
+**Modified**: `tools/evals/public/js/pattern-grid.js`
+- Added `renderFillStateRow()` function
+- Added `showFillState` and `fillActive` options to `renderPatternGrid()`
+- Fill state indicator now shown on all patterns (presets, sweeps, seeds)
+- Default: inactive state (gray line) for normal patterns
+
+**Modified**: `tools/evals/public/css/pattern-grid.css`
+- Added `.fill-state-row`, `.fill-state-label`, `.fill-state-indicator` styles
+- Active state: orange with glow effect
+- Inactive state: gray, low opacity
+
 ## Files Changed
 
 ### Created
@@ -107,8 +125,10 @@ From dashboard review on 2026-01-19:
 ### Modified
 - `.github/workflows/pages.yml` - Add sensitivity and timeline to CI
 - `Makefile` - Add metrics-history target
-- `tools/evals/public/app.js` - Timeline, fill improvements
+- `tools/evals/public/app.js` - Timeline, fill improvements, sensitivity click handlers
 - `tools/evals/public/css/components.css` - Timeline and fill styles
+- `tools/evals/public/js/pattern-grid.js` - Add fill state indicator to all patterns
+- `tools/evals/public/css/pattern-grid.css` - Fill state indicator styles
 
 ## Testing
 
@@ -136,6 +156,9 @@ make evals-serve
 - [x] Fill patterns have fill state indicator row
 - [x] Fill state indicator visually distinct (active = orange, inactive = gray)
 - [x] Sensitivity matrix runs in CI workflow
+- [x] Sensitivity cells are clickable (shows alert for now)
+- [x] All pattern views show fill state indicator (presets, sweeps, seeds)
+- [x] Fill state shows inactive (gray) on normal patterns
 - [x] All existing dashboard functionality still works
 - [x] No console errors in browser dev tools
 
