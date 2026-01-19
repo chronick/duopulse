@@ -88,31 +88,55 @@ increment_patch_version() {
     fi
 }
 
-# Check if tag already exists
+# Fetch remote tags to check for conflicts
+echo "Fetching remote tags..."
+git fetch --tags origin 2>/dev/null || true
+
+# Check if tag already exists (local or remote)
 BASELINE_COMMIT=$(jq -r '.commit // empty' "$BASELINE_PATH")
 ORIGINAL_TAG="$TAG"
 
-while git rev-parse "$TAG" >/dev/null 2>&1; do
-    # Check if it points to the same commit
-    TAG_COMMIT=$(git rev-parse "$TAG^{}")
-
-    if [ "$TAG_COMMIT" = "$BASELINE_COMMIT" ]; then
-        echo "Tag '$TAG' already exists and points to the correct commit"
-        if [ "$PUSH_TAG" = true ]; then
-            echo "Pushing existing tag..."
-            git push origin "$TAG"
-        fi
-        exit 0
-    else
-        echo "Tag '$TAG' already exists (points to ${TAG_COMMIT:0:8})"
-        NEW_TAG=$(increment_patch_version "$TAG")
-        if [ "$NEW_TAG" = "$TAG" ]; then
-            echo "Error: Could not auto-increment version"
-            exit 1
-        fi
-        echo "Auto-incrementing to: $NEW_TAG"
-        TAG="$NEW_TAG"
+# Function to check if tag exists locally or remotely
+tag_exists() {
+    local tag=$1
+    # Check local
+    if git rev-parse "$tag" >/dev/null 2>&1; then
+        return 0
     fi
+    # Check remote
+    if git ls-remote --tags origin | grep -q "refs/tags/$tag$"; then
+        return 0
+    fi
+    return 1
+}
+
+while tag_exists "$TAG"; do
+    # Check if local tag exists and points to the same commit
+    if git rev-parse "$TAG" >/dev/null 2>&1; then
+        TAG_COMMIT=$(git rev-parse "$TAG^{}")
+
+        if [ "$TAG_COMMIT" = "$BASELINE_COMMIT" ]; then
+            echo "Tag '$TAG' already exists locally and points to the correct commit"
+            if [ "$PUSH_TAG" = true ]; then
+                echo "Pushing existing tag..."
+                git push origin "$TAG" 2>&1 || echo "Tag already exists on remote"
+            fi
+            exit 0
+        else
+            echo "Tag '$TAG' already exists locally (points to ${TAG_COMMIT:0:8})"
+        fi
+    else
+        echo "Tag '$TAG' already exists on remote"
+    fi
+
+    # Auto-increment
+    NEW_TAG=$(increment_patch_version "$TAG")
+    if [ "$NEW_TAG" = "$TAG" ]; then
+        echo "Error: Could not auto-increment version"
+        exit 1
+    fi
+    echo "Auto-incrementing to: $NEW_TAG"
+    TAG="$NEW_TAG"
 done
 
 if [ "$TAG" != "$ORIGINAL_TAG" ]; then
