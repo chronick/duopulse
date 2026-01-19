@@ -73,31 +73,50 @@ if [ -z "$TAG" ] || [ "$TAG" = "null" ]; then
     exit 1
 fi
 
-# Check if tag already exists
-if git rev-parse "$TAG" >/dev/null 2>&1; then
-    echo "Tag '$TAG' already exists"
+# Function to increment patch version
+increment_patch_version() {
+    local version=$1
+    # Extract version parts (assuming format: baseline-vMAJOR.MINOR.PATCH)
+    if [[ $version =~ baseline-v([0-9]+)\.([0-9]+)\.([0-9]+) ]]; then
+        local major="${BASH_REMATCH[1]}"
+        local minor="${BASH_REMATCH[2]}"
+        local patch="${BASH_REMATCH[3]}"
+        patch=$((patch + 1))
+        echo "baseline-v${major}.${minor}.${patch}"
+    else
+        echo "$version"
+    fi
+}
 
+# Check if tag already exists
+BASELINE_COMMIT=$(jq -r '.commit // empty' "$BASELINE_PATH")
+ORIGINAL_TAG="$TAG"
+
+while git rev-parse "$TAG" >/dev/null 2>&1; do
     # Check if it points to the same commit
     TAG_COMMIT=$(git rev-parse "$TAG^{}")
-    BASELINE_COMMIT=$(jq -r '.commit // empty' "$BASELINE_PATH")
 
     if [ "$TAG_COMMIT" = "$BASELINE_COMMIT" ]; then
-        echo "Tag already points to the correct commit"
+        echo "Tag '$TAG' already exists and points to the correct commit"
         if [ "$PUSH_TAG" = true ]; then
             echo "Pushing existing tag..."
             git push origin "$TAG"
         fi
         exit 0
     else
-        echo "Error: Tag exists but points to different commit"
-        echo "  Tag commit:      ${TAG_COMMIT:0:8}"
-        echo "  Baseline commit: ${BASELINE_COMMIT:0:8}"
-        echo ""
-        echo "To update the tag, first delete it:"
-        echo "  git tag -d $TAG"
-        echo "  git push origin :refs/tags/$TAG"
-        exit 1
+        echo "Tag '$TAG' already exists (points to ${TAG_COMMIT:0:8})"
+        NEW_TAG=$(increment_patch_version "$TAG")
+        if [ "$NEW_TAG" = "$TAG" ]; then
+            echo "Error: Could not auto-increment version"
+            exit 1
+        fi
+        echo "Auto-incrementing to: $NEW_TAG"
+        TAG="$NEW_TAG"
     fi
+done
+
+if [ "$TAG" != "$ORIGINAL_TAG" ]; then
+    echo "Using incremented tag: $TAG (was $ORIGINAL_TAG)"
 fi
 
 # Extract metadata for tag message
