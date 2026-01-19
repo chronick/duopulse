@@ -167,7 +167,22 @@ make evals-serve
 - Timeline data tracked via baseline tags (baseline-v1.0.0, v1.0.1, etc.)
 - Currently only 3 baseline versions exist, chart will be more useful with more history
 - Fill parameter sweeps could be expanded in future (multi-dimensional sweeps)
-- Fill state indicator currently only shown in fill section, could add to other views
+- Fill state indicator now shown on all pattern views (presets, sweeps, seeds, fills)
+
+### Pattern Length (32 vs 64 Steps)
+
+**Current State**: Evaluation data shows 32-step patterns because:
+- This branch (`feature/dashboard-improvements`) branched from `main` before Task 53 merge
+- Task 53 (Grid Expansion to 64 Steps) is on `feature/grid-expansion-64` branch
+- That branch merged to `feature/hill-climbing-iteration` but not yet to `main`
+
+**Action Required**: After Task 53 is merged to `main`:
+1. Rebuild `pattern_viz` with 64-step support
+2. Regenerate evaluation data: `make evals-generate`
+3. Patterns will automatically display at correct length (64 steps)
+4. Fill state indicators will scale to match new length
+
+The dashboard code is already compatible with variable pattern lengths and will automatically adapt when evaluation data is regenerated with 64-step patterns.
 
 ## Future Enhancements (Deferred)
 
