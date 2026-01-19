@@ -5,7 +5,7 @@
 **Status**: Complete
 **Last Updated**: 2026-01-06
 
-### Pending Changes (Active Tasks)
+### Pending Changes (Backlog)
 
 | Task | Spec Section | Change |
 |------|--------------|--------|
