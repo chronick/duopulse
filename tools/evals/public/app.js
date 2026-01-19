@@ -9,6 +9,7 @@ import { METRIC_KEYS, ZONES, VOICE_KEYS } from './js/constants.js';
 import { renderPatternGrid, getPatternFromClick } from './js/pattern-grid.js';
 import { renderPentagonRadarSVG } from './js/pentagon.js';
 import { renderSensitivityHeatmap, sensitivityStyles } from './js/sensitivity.js';
+import { renderTimelineChart, timelineStyles } from './js/timeline.js';
 
 // State
 let data = {
@@ -21,6 +22,7 @@ let data = {
   expressiveness: null,
   sensitivity: null,
   fills: null,
+  metricsHistory: null,
 };
 
 let currentView = 'overview';
@@ -83,6 +85,16 @@ async function loadData() {
       }
     } catch (e) {
       console.log('Fills data not available (run "make evals" to generate)');
+    }
+
+    // Try to load metrics history (optional - may not exist yet)
+    try {
+      const historyRes = await fetch('data/metrics-history.json');
+      if (historyRes.ok) {
+        data.metricsHistory = await historyRes.json();
+      }
+    } catch (e) {
+      console.log('Metrics history not available (run "make metrics-history" to generate)');
     }
 
     return true;
@@ -197,7 +209,22 @@ function renderOverviewView() {
   const alignmentColor = exp.alignmentStatus === 'GOOD' ? '#44ff44'
     : exp.alignmentStatus === 'FAIR' ? '#ffaa44' : '#ff4444';
 
+  // Inject timeline styles if not already present
+  if (!document.getElementById('timeline-styles')) {
+    const styleEl = document.createElement('style');
+    styleEl.id = 'timeline-styles';
+    styleEl.textContent = timelineStyles;
+    document.head.appendChild(styleEl);
+  }
+
+  // Render metrics timeline if available
+  const timelineHtml = data.metricsHistory
+    ? `<div class="metrics-timeline-section">${renderTimelineChart(data.metricsHistory, 1000, 300)}</div>`
+    : '';
+
   container.innerHTML = `
+    ${timelineHtml}
+
     <div class="pentagon-overview">
       <h3>Pentagon of Musicality -- Overview</h3>
 
@@ -315,15 +342,26 @@ function renderSweepsView() {
 
   container.innerHTML = patterns.map((pattern, i) => {
     const metric = metrics[i];
-    const paramValue = pattern.params[paramName];
+    const params = pattern.params;
     const patternId = `sweep-${paramName}-${i}`;
-    const name = `${paramName.toUpperCase()} ${formatPercent(paramValue)}`;
+    const name = `${paramName.toUpperCase()} ${formatPercent(params[paramName])}`;
     const zone = metric.pentagon.zone;
     const zoneColor = ZONES.find(z => z.key === zone)?.color || '#888';
 
+    // Display all parameters, highlight the swept one
+    const paramDisplay = Object.keys(params)
+      .filter(k => k !== 'seed' && k !== 'length') // Skip seed and length
+      .map(key => {
+        const value = params[key].toFixed(2);
+        const isSwept = key === paramName;
+        const style = isSwept ? 'color: var(--warning); font-weight: 700;' : 'color: var(--text-dim);';
+        return `<span style="${style}">${key.toUpperCase()}: ${value}</span>`;
+      })
+      .join(' · ');
+
     return `
       <div class="sweep-item">
-        <div class="sweep-value">${paramName.toUpperCase()} = ${paramValue.toFixed(2)}</div>
+        <div class="sweep-params" style="font-size: 11px; margin-bottom: 8px;">${paramDisplay}</div>
         ${renderPattern(pattern, { compact: true, patternId, name })}
         <div style="font-size: 11px; color: var(--text-secondary); margin-top: 8px;">
           Zone: <span style="color: ${zoneColor}">${zone}</span>
@@ -408,7 +446,18 @@ function renderSensitivityView() {
     document.head.appendChild(styleEl);
   }
 
-  container.innerHTML = renderSensitivityHeatmap(data.sensitivity);
+  // Render heatmap with clickable cells
+  const dummyCallback = () => {}; // Pass callback to make cells clickable
+  container.innerHTML = renderSensitivityHeatmap(data.sensitivity, dummyCallback);
+
+  // Attach click handlers via event delegation
+  container.querySelectorAll('.sensitivity-cell.clickable').forEach(cell => {
+    cell.addEventListener('click', (e) => {
+      const param = e.target.dataset.param;
+      const metric = e.target.dataset.metric;
+      alert(`Sweep curve for ${param} → ${metric}\n\n(Feature coming soon: Interactive sweep visualization)`);
+    });
+  });
 }
 
 // ============================================================================
@@ -478,6 +527,19 @@ function renderFillPatternGrid(fillPatterns, energy) {
   // Create a 32-step grid (fill patterns can be longer)
   const numSteps = 32;
 
+  // Build fill state indicator (shows fill is active across entire pattern)
+  const fillStateIndicator = `
+    <div class="fill-row fill-state-row">
+      <div class="fill-progress-label">Fill State</div>
+      <div class="fill-steps">
+        ${Array.from({ length: numSteps }, (_, i) =>
+          `<div class="fill-state-indicator active" title="Fill active"></div>`
+        ).join('')}
+      </div>
+      <div class="fill-hit-count"></div>
+    </div>
+  `;
+
   // Build rows for each progress point
   const rows = fillPatterns.map((fp, idx) => {
     const progress = progressLabels[idx] || fp.params.fillProgress;
@@ -530,6 +592,7 @@ function renderFillPatternGrid(fillPatterns, energy) {
       <div class="fill-grid-header">
         <span class="fill-energy-label">ENERGY = ${energy.toFixed(2)}</span>
       </div>
+      ${fillStateIndicator}
       ${rows}
       <div class="fill-step-numbers">
         <div class="fill-progress-label"></div>
@@ -608,6 +671,9 @@ function renderFillsView() {
   const selectedEntry = energySweep[selectedIdx];
   const fillPatterns = selectedEntry.fillPatterns;
 
+  // Extract params from first fill pattern (all have same base params except fillProgress)
+  const baseParams = fillPatterns[0]?.params || {};
+
   // Compute metrics for current energy level
   const metrics = computeFillMetrics(fillPatterns);
 
@@ -628,8 +694,42 @@ function renderFillsView() {
     </div>
   `;
 
+  // Render fill configuration and explanation
+  const fillConfigHtml = `
+    <div class="fill-config-section">
+      <h3>Fill Pattern Configuration</h3>
+      <p class="fill-description">
+        Fill patterns are transitional sequences that build tension before returning to the main groove.
+        The system generates 4 variations per energy level (25%, 50%, 75%, 100% progress),
+        progressively adding density, velocity, and accents as fillProgress increases.
+      </p>
+      <div class="fill-params">
+        <div class="param-row">
+          <span class="param-label">Base Parameters:</span>
+          <span class="param-values">
+            SHAPE: ${baseParams.shape?.toFixed(2) || '--'}
+            | AXIS-X: ${baseParams.axisX?.toFixed(2) || '--'}
+            | AXIS-Y: ${baseParams.axisY?.toFixed(2) || '--'}
+            | DRIFT: ${baseParams.drift?.toFixed(2) || '--'}
+            | ACCENT: ${baseParams.accent?.toFixed(2) || '--'}
+          </span>
+        </div>
+        <div class="param-row">
+          <span class="param-label">Energy Sweep:</span>
+          <span class="param-values">
+            Sweeping ENERGY from 0.0 to 1.0 (currently viewing: ${selectedEntry.energy.toFixed(2)})
+          </span>
+        </div>
+      </div>
+      <p class="fill-note">
+        <strong>Note:</strong> Fill state is indicated by a horizontal line above/below patterns in other views.
+        High line = fill active, low line = normal pattern.
+      </p>
+    </div>
+  `;
+
   // Render fill pattern grid for selected energy
-  gridContainer.innerHTML = renderFillPatternGrid(fillPatterns, selectedEntry.energy);
+  gridContainer.innerHTML = fillConfigHtml + renderFillPatternGrid(fillPatterns, selectedEntry.energy);
 }
 
 // ============================================================================
@@ -654,9 +754,33 @@ function showView(viewName) {
     }
   }
 
+  // Show player sidebar only on pages with clickable patterns
+  const playerSidebar = $('.player-sidebar');
+  const showPlayer = viewName === 'presets' || viewName === 'sweeps';
+  if (playerSidebar) {
+    playerSidebar.style.display = showPlayer ? '' : 'none';
+  }
+
   $$('.nav-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.view === viewName);
   });
+
+  // Update URL hash without triggering hashchange
+  const hash = viewName === 'overview' ? '' : `#${viewName}`;
+  if (window.location.hash !== hash) {
+    history.replaceState(null, '', hash || window.location.pathname);
+  }
+}
+
+function getViewFromHash() {
+  const hash = window.location.hash.slice(1); // Remove the '#'
+  const validViews = ['overview', 'presets', 'sweeps', 'seeds', 'fills', 'sensitivity'];
+  return validViews.includes(hash) ? hash : 'overview';
+}
+
+function handleRouteChange() {
+  const viewName = getViewFromHash();
+  showView(viewName);
 }
 
 // ============================================================================
@@ -707,9 +831,17 @@ async function initPlayer() {
 // ============================================================================
 
 async function init() {
+  // Navigation buttons update hash
   $$('.nav-btn').forEach(btn => {
-    btn.addEventListener('click', () => showView(btn.dataset.view));
+    btn.addEventListener('click', () => {
+      const viewName = btn.dataset.view;
+      const hash = viewName === 'overview' ? '' : `#${viewName}`;
+      window.location.hash = hash;
+    });
   });
+
+  // Listen for hash changes (back/forward navigation)
+  window.addEventListener('hashchange', handleRouteChange);
 
   $('#sweep-select').addEventListener('change', () => {
     if (currentView === 'sweeps') renderSweepsView();
@@ -733,7 +865,8 @@ async function init() {
   // Initialize player
   await initPlayer();
 
-  showView('overview');
+  // Route to initial view based on URL hash
+  handleRouteChange();
 }
 
 init();

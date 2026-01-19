@@ -507,6 +507,12 @@ evals-evaluate:
 	@cd $(EVALS_DIR) && npm install --silent
 	@cd $(EVALS_DIR) && node evaluate-expressiveness.js
 
+# Clean evaluation data
+evals-clean:
+	@echo "Cleaning evaluation data..."
+	@rm -f $(EVALS_DIR)/public/data/*.json
+	@echo "Evaluation data cleaned"
+
 # Serve evaluation dashboard locally
 evals-serve: $(EVALS_DIR)/public/data/metadata.json
 	@echo "Starting local server at http://localhost:3000"
@@ -556,6 +562,16 @@ sensitivity-matrix: $(PATTERN_VIZ)
 METRIC ?= syncopation
 sensitivity-levers:
 	@node scripts/sensitivity/identify-levers.js --target $(METRIC)
+
+###############################################################################
+# Metrics History
+###############################################################################
+
+# Extract metrics history from baseline tags for timeline chart
+metrics-history:
+	@echo "Extracting metrics history from baseline tags..."
+	@node scripts/extract-metrics-history.js
+	@echo "Metrics history saved to $(EVALS_DIR)/public/data/metrics-history.json"
 
 ###############################################################################
 # Help Target

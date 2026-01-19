@@ -33,7 +33,7 @@ function runPatternViz(params = {}) {
     drift: 0.0,
     accent: 0.5,
     seed: 0xDEADBEEF,
-    length: 32,
+    length: 64,
   };
 
   const p = { ...defaults, ...params };
@@ -75,7 +75,7 @@ function runPatternVizFill(params = {}) {
     drift: 0.0,
     accent: 0.5,
     seed: 0xDEADBEEF,
-    length: 32,
+    length: 64,
   };
 
   const p = { ...defaults, ...params };
@@ -350,7 +350,7 @@ const metadata = {
   generated: new Date().toISOString(),
   patternViz: PATTERN_VIZ,
   version: '1.0.0',
-  patternLength: 32,
+  patternLength: 64,
   numPresets: presets.length,
   numSeedTests: seedTests.length,
   sweepParams: Object.keys(sweeps),

@@ -62,6 +62,28 @@ function renderHitCounts(hits, length) {
 }
 
 /**
+ * Render fill state indicator row
+ * @param {number} length - Pattern length
+ * @param {boolean} fillActive - Whether fill is active
+ * @returns {string} HTML string
+ */
+function renderFillStateRow(length, fillActive = false) {
+  // Render same number of indicators as pattern steps
+  const indicators = Array.from({ length }, (_, i) => {
+    const stateClass = fillActive ? 'active' : 'inactive';
+    const isDownbeat = i % 4 === 0;
+    return `<div class="fill-state-indicator ${stateClass} ${isDownbeat ? 'downbeat' : ''}"></div>`;
+  }).join('');
+
+  return `
+    <div class="pattern-row fill-state-row">
+      <div class="voice-label fill-state-label">FILL</div>
+      <div class="pattern-steps fill-state-steps">${indicators}</div>
+    </div>
+  `;
+}
+
+/**
  * Render a complete pattern grid
  * @param {Object} pattern - Pattern data with steps, params, hits
  * @param {Object} options - Rendering options
@@ -69,13 +91,23 @@ function renderHitCounts(hits, length) {
  * @param {string} options.patternId - ID for selection
  * @param {string} options.name - Display name
  * @param {string} options.selectedId - Currently selected pattern ID
+ * @param {boolean} options.showFillState - Show fill state indicator (default: true)
+ * @param {boolean} options.fillActive - Whether fill is active (default: false)
  * @returns {string} HTML string
  */
 export function renderPatternGrid(pattern, options = {}) {
-  const { compact = false, patternId = null, name = '', selectedId = null } = options;
+  const {
+    compact = false,
+    patternId = null,
+    name = '',
+    selectedId = null,
+    showFillState = true,
+    fillActive = false,
+  } = options;
   const { steps, params, hits } = pattern;
   const length = params.length;
 
+  const fillStateHtml = showFillState ? renderFillStateRow(length, fillActive) : '';
   const rows = VOICES.map(voice => renderVoiceRow(voice, steps)).join('');
   const hitCountsHtml = compact ? '' : renderHitCounts(hits, length);
 
@@ -90,7 +122,7 @@ export function renderPatternGrid(pattern, options = {}) {
     ? `data-pattern-id="${patternId}" data-pattern-name="${name}"`
     : '';
 
-  return `<div class="${classes}" ${dataAttr}>${rows}</div>${hitCountsHtml}`;
+  return `<div class="${classes}" ${dataAttr}>${rows}${fillStateHtml}</div>${hitCountsHtml}`;
 }
 
 /**
