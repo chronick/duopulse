@@ -13,7 +13,7 @@ depends_on:
   - 56  # Weight-based blending
   - 59  # Algorithm weight config
 commits:
-  - pending
+  - 71d0ebc
 ---
 
 # Task 62: Ensemble Weight Search with Tournament Selection
