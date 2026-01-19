@@ -34,7 +34,7 @@
 
 /* Fill state indicator row */
 .fill-state-row {
-  margin-bottom: 6px;
+  margin-top: 6px;
   opacity: 0.7;
   height: 16px !important;
 }
@@ -51,7 +51,6 @@
 .fill-state-steps {
   display: flex;
   gap: 1px;
-  flex: 1;
 }
 
 .fill-state-indicator {

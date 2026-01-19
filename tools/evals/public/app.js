@@ -342,15 +342,26 @@ function renderSweepsView() {
 
   container.innerHTML = patterns.map((pattern, i) => {
     const metric = metrics[i];
-    const paramValue = pattern.params[paramName];
+    const params = pattern.params;
     const patternId = `sweep-${paramName}-${i}`;
-    const name = `${paramName.toUpperCase()} ${formatPercent(paramValue)}`;
+    const name = `${paramName.toUpperCase()} ${formatPercent(params[paramName])}`;
     const zone = metric.pentagon.zone;
     const zoneColor = ZONES.find(z => z.key === zone)?.color || '#888';
 
+    // Display all parameters, highlight the swept one
+    const paramDisplay = Object.keys(params)
+      .filter(k => k !== 'seed' && k !== 'length') // Skip seed and length
+      .map(key => {
+        const value = params[key].toFixed(2);
+        const isSwept = key === paramName;
+        const style = isSwept ? 'color: var(--warning); font-weight: 700;' : 'color: var(--text-dim);';
+        return `<span style="${style}">${key.toUpperCase()}: ${value}</span>`;
+      })
+      .join(' · ');
+
     return `
       <div class="sweep-item">
-        <div class="sweep-value">${paramName.toUpperCase()} = ${paramValue.toFixed(2)}</div>
+        <div class="sweep-params" style="font-size: 11px; margin-bottom: 8px;">${paramDisplay}</div>
         ${renderPattern(pattern, { compact: true, patternId, name })}
         <div style="font-size: 11px; color: var(--text-secondary); margin-top: 8px;">
           Zone: <span style="color: ${zoneColor}">${zone}</span>

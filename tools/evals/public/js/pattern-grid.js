@@ -122,7 +122,7 @@ export function renderPatternGrid(pattern, options = {}) {
     ? `data-pattern-id="${patternId}" data-pattern-name="${name}"`
     : '';
 
-  return `<div class="${classes}" ${dataAttr}>${fillStateHtml}${rows}</div>${hitCountsHtml}`;
+  return `<div class="${classes}" ${dataAttr}>${rows}${fillStateHtml}</div>${hitCountsHtml}`;
 }
 
 /**
