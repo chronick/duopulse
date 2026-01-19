@@ -1,12 +1,12 @@
 {
   "version": "1.0.0",
-  "generated_at": "2026-01-19T04:03:50.391Z",
-  "commit": "7682d328b58e25455596dc9a13132a4b053181d0",
-  "tag": "baseline-v1.0.0",
+  "generated_at": "2026-01-19T14:24:41.403Z",
+  "commit": "fefbf8a9549102c6b3fd1592116d7ea333010474",
+  "tag": "baseline-v1.0.2",
   "last_good": {
-    "commit": "65d4532b3be77f96775f5e9329a40463562b9aba",
-    "tag": null,
-    "timestamp": "2026-01-18T20:53:16Z"
+    "commit": "5240ebf8c0b87826761888e65694f4b345ec1fef",
+    "tag": "baseline-v1.0.1",
+    "timestamp": "2026-01-19T14:22:44.681Z"
   },
   "consecutive_regressions": 0,
   "metrics": {
