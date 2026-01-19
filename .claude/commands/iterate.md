@@ -4,7 +4,28 @@ description: Run a single-pass hill-climbing iteration to improve algorithm metr
 
 # Iterate: $ARGUMENTS
 
-You are running a **single-pass hill-climbing iteration** to improve DuoPulse pattern generation metrics.
+You are running a **hill-climbing iteration** to improve DuoPulse pattern generation metrics.
+
+**Usage**:
+- Single-pass: `/iterate "improve syncopation"`
+- Single-pass auto: `/iterate auto`
+- Ensemble search: `/iterate ensemble "improve syncopation"`
+- Ensemble auto: `/iterate ensemble auto`
+
+## Mode Detection
+
+Parse `$ARGUMENTS` to detect mode:
+
+**Single-pass (default)**:
+- Pattern: `/iterate "goal"` or `/iterate auto`
+- Behavior: Generate one proposal, evaluate, create PR if improved
+
+**Ensemble search**:
+- Pattern: `/iterate ensemble "goal"` or `/iterate ensemble auto`
+- Behavior: Parallel exploration of N candidates, tournament selection, multi-round search
+
+If "ensemble" keyword detected as the first word, delegate to ensemble workflow (Step 13+).
+Otherwise, continue with single-pass workflow (existing steps 1-12).
 
 ## Goal Parsing
 
@@ -277,3 +298,215 @@ ${RECOMMENDED_ACTIONS}
 3. **Always log**: Both successes and failures get logged for learning.
 4. **Git refs**: All logs include commit hashes and branch names.
 5. **Sensitivity first**: Prefer sensitivity data over bootstrap heuristics when available.
+
+---
+
+## Ensemble Search Workflow
+
+The following steps apply only when "ensemble" keyword is detected in `$ARGUMENTS`.
+
+### Step 13: Ensemble Search Initialization
+
+If ensemble mode detected, run parallel weight exploration:
+
+**13.1 Parse Ensemble Arguments**
+
+Extract the goal from remaining arguments after "ensemble":
+- `/iterate ensemble "improve syncopation"` -> goal = "improve syncopation"
+- `/iterate ensemble auto` -> goal = "auto" (uses auto-detect logic from Step 2)
+
+**13.2 Load Ensemble Config**
+
+```bash
+# Load ensemble config
+cat metrics/ensemble-config.json
+
+# Set parameters (defaults if config missing)
+CANDIDATES_PER_ROUND=4
+MAX_ROUNDS=5
+MUTATION_RATE=0.15
+CROSSOVER_RATE=0.3
+```
+
+### Step 14: Run Ensemble Search
+
+**14.1 Generate Initial Population**
+
+Create N candidate weight configurations:
+
+```bash
+# Generate candidates with diverse weight variations
+for i in $(seq 1 $CANDIDATES_PER_ROUND); do
+  # Each candidate varies 1-3 levers by 5-20%
+  # Store in config/weights/candidate-${i}.json
+done
+```
+
+**14.2 Parallel Evaluation**
+
+Evaluate all candidates:
+
+```bash
+# Execute multi-round search
+bash scripts/iterate/ensemble-search.sh \
+  --goal "$GOAL" \
+  --candidates $CANDIDATES_PER_ROUND \
+  --rounds $MAX_ROUNDS
+
+# Script outputs:
+# - docs/design/iterations/ensemble-{timestamp}.md (search log)
+# - config/weights/winner-{id}.json (best candidate)
+```
+
+**14.3 Tournament Selection**
+
+For each round:
+1. Evaluate all candidates against Pentagon metrics
+2. Rank by target metric improvement + regression penalty
+3. Select top 50% as parents
+4. Generate children via crossover + mutation
+5. Replace bottom 50% with children
+
+### Step 15: Review Ensemble Results
+
+The ensemble search will:
+1. Generate N candidates with weight variations
+2. Evaluate each in parallel
+3. Tournament select top performers
+4. Repeat for multiple rounds with crossover
+5. Output final winner
+
+Review the search log at `docs/design/iterations/ensemble-{timestamp}.md` to see:
+- All candidates explored
+- Tournament rankings per round
+- Convergence trajectory
+- Final winner selection
+
+**15.1 Search Log Format**
+
+```markdown
+---
+search_id: ensemble-{timestamp}
+goal: "${GOAL}"
+rounds: ${MAX_ROUNDS}
+candidates_per_round: ${CANDIDATES_PER_ROUND}
+total_evaluated: ${TOTAL}
+---
+
+# Ensemble Search: ${GOAL}
+
+## Round 1
+| Candidate | Levers Changed | Target Metric | Regression | Score |
+|-----------|---------------|---------------|------------|-------|
+| C1 | kSyncopationCenter +10% | +8.2% | -0.5% | 0.82 |
+| C2 | kEuclideanFadeStart +15% | +4.1% | -1.2% | 0.41 |
+...
+
+Winners: C1, C3
+
+## Round 2
+...
+
+## Final Winner
+Candidate: C7 (Round 4)
+Configuration: config/weights/winner-C7.json
+Target improvement: +12.4%
+Max regression: -0.8%
+```
+
+### Step 16: Create PR with Ensemble Winner
+
+If winner improves metrics beyond threshold:
+
+**16.1 Apply Winner Configuration**
+
+```bash
+# Winner config is in config/weights/winner-{id}.json
+# Convert to algorithm_config.h format
+node scripts/iterate/apply-weights.js config/weights/winner-${WINNER_ID}.json
+
+# Verify changes compile
+make pattern-viz
+```
+
+**16.2 Create Iteration Branch**
+
+```bash
+# Generate iteration ID
+ITER_ID=$(node scripts/iterate/generate-iteration-id.js)
+
+# Create branch
+git checkout -b feature/iterate-${ITER_ID}
+```
+
+**16.3 Commit and Create PR**
+
+```bash
+git add inc/algorithm_config.h docs/design/iterations/
+git commit -m "feat(iterate-${ITER_ID}): ${GOAL} [ensemble]
+
+- Search: ${MAX_ROUNDS} rounds, ${TOTAL} candidates evaluated
+- Winner: ${WINNER_ID}
+- ${LEVER_CHANGES}
+- Target metric improved ${DELTA}%
+- No regressions > 2%"
+```
+
+Include in PR description:
+- Number of rounds executed
+- Total candidates explored
+- Winning configuration details
+- Before/after metrics comparison
+- Link to ensemble search log
+
+### Step 17: Handle Ensemble Outcome
+
+**If SUCCESS**:
+1. Run all tests: `make test`
+2. Commit changes with ensemble metadata
+3. Create PR with full search summary
+4. Report success with PR link and search statistics
+
+**If FAILED** (no candidate improved metrics):
+1. Log all candidates evaluated in ensemble log
+2. Identify patterns in failures (all candidates regressed same metric, etc.)
+3. Suggest alternative approaches:
+   - Try different levers
+   - Adjust mutation/crossover rates
+   - Consider manual intervention for this metric
+4. Keep ensemble log for analysis
+
+## Ensemble Output Format
+
+For ensemble searches, end with expanded summary:
+
+```
+## Ensemble Search Summary
+
+**Search ID**: ensemble-${TIMESTAMP}
+**Goal**: ${GOAL}
+**Status**: ${SUCCESS | FAILED}
+**Branch**: feature/iterate-${ITER_ID}
+
+### Search Statistics
+- Rounds: ${MAX_ROUNDS}
+- Candidates/round: ${CANDIDATES_PER_ROUND}
+- Total evaluated: ${TOTAL}
+- Convergence: Round ${CONVERGE_ROUND}
+
+### Winner: ${WINNER_ID}
+| Lever | Before | After | Delta |
+|-------|--------|-------|-------|
+| ${LEVER} | ${OLD} | ${NEW} | ${DELTA} |
+
+### Metrics Impact
+| Metric | Before | After | Delta |
+|--------|--------|-------|-------|
+| target | X | Y | +Z% |
+
+### Search Log
+See: docs/design/iterations/ensemble-${TIMESTAMP}.md
+
+### Next Steps
+${RECOMMENDED_ACTIONS}
+```

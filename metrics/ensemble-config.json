@@ -1,0 +1,71 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "Configuration for ensemble search system - parallel weight exploration",
+  "version": "1.0.0",
+
+  "search": {
+    "candidates_per_round": 4,
+    "max_rounds": 5,
+    "convergence_threshold": 0.01,
+    "convergence_window": 3,
+    "variation_scale": 0.05,
+    "selection_top_k": 2,
+    "regression_tolerance": 0.02
+  },
+
+  "weight_bounds": {
+    "euclideanFadeStart": {
+      "min": 0.0,
+      "max": 0.5,
+      "description": "SHAPE value where euclidean starts fading"
+    },
+    "euclideanFadeEnd": {
+      "min": 0.3,
+      "max": 0.8,
+      "description": "SHAPE value where euclidean reaches zero"
+    },
+    "syncopationCenter": {
+      "min": 0.25,
+      "max": 0.65,
+      "description": "SHAPE value at peak syncopation"
+    },
+    "syncopationWidth": {
+      "min": 0.10,
+      "max": 0.40,
+      "description": "Standard deviation of syncopation bell curve"
+    },
+    "randomFadeStart": {
+      "min": 0.5,
+      "max": 0.9,
+      "description": "SHAPE value where random starts appearing"
+    },
+    "randomFadeEnd": {
+      "min": 0.6,
+      "max": 1.0,
+      "description": "SHAPE value where random reaches full strength"
+    }
+  },
+
+  "constraints": {
+    "euclidean": {
+      "fadeStart_lt_fadeEnd": true,
+      "min_fade_range": 0.2
+    },
+    "random": {
+      "fadeStart_lt_fadeEnd": true,
+      "min_fade_range": 0.1
+    }
+  },
+
+  "metrics": {
+    "primary": ["syncopation", "density", "regularity"],
+    "secondary": ["velocityRange", "voiceSeparation"],
+    "composite_weights": {
+      "syncopation": 0.25,
+      "density": 0.15,
+      "velocityRange": 0.20,
+      "voiceSeparation": 0.20,
+      "regularity": 0.20
+    }
+  }
+}
