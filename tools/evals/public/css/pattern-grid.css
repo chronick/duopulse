@@ -26,6 +26,7 @@
   font-weight: 500;
   text-align: right;
   padding-right: 8px;
+  flex-shrink: 0;
 }
 
 .voice-label.v1 { color: var(--v1-color); }
@@ -43,27 +44,25 @@
   font-size: 9px;
   color: var(--text-dim);
   font-weight: 600;
-  width: var(--label-width);
-  text-align: right;
-  padding-right: 8px;
+  flex-shrink: 0;
 }
 
 .fill-state-steps {
   display: flex;
   gap: 1px;
+  flex: 1;
 }
 
 .fill-state-indicator {
   width: var(--step-width);
   height: 4px;
   border-radius: 1px;
+  flex-shrink: 0;
 }
 
 .fill-state-indicator.downbeat {
-  /* Add left border on downbeats like regular steps */
+  /* Add left border on downbeats - same as regular steps */
   border-left: 2px solid var(--grid-line-strong);
-  width: calc(var(--step-width) - 2px); /* Compensate for border */
-  margin-left: 2px;
 }
 
 .fill-state-indicator.active {
@@ -79,12 +78,14 @@
 .pattern-steps {
   display: flex;
   gap: 1px;
+  flex: 1;
 }
 
 .step {
   width: var(--step-width);
   height: calc(var(--step-height) - 4px);
   border-radius: 3px;
+  flex-shrink: 0;
 }
 
 .step.hit {
