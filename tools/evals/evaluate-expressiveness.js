@@ -9,6 +9,7 @@
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
+import { computePresetConformance } from './preset-references.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = join(__dirname, 'public/data');
@@ -462,13 +463,18 @@ console.log('  Written sweep-metrics.json');
 // Compute metrics for presets
 console.log('Computing Pentagon metrics for presets...');
 
-const presetMetrics = presets.map(preset => ({
-  name: preset.name,
-  description: preset.description,
-  params: preset.pattern.params,
-  hits: preset.pattern.hits,
-  pentagon: computePentagonMetrics(preset.pattern),
-}));
+const presetMetrics = presets.map(preset => {
+  const pentagon = computePentagonMetrics(preset.pattern);
+  const conformance = computePresetConformance(preset.name, preset.pattern, pentagon);
+  return {
+    name: preset.name,
+    description: preset.description,
+    params: preset.pattern.params,
+    hits: preset.pattern.hits,
+    pentagon,
+    conformance,
+  };
+});
 
 writeFileSync(join(DATA_DIR, 'preset-metrics.json'), JSON.stringify(presetMetrics, null, 2));
 console.log('  Written preset-metrics.json');
@@ -521,9 +527,19 @@ for (const zone of ['stable', 'syncopated', 'wild']) {
   }
 }
 
-const overallAlignment = allAlignmentScores.length > 0
+const pentagonScore = allAlignmentScores.length > 0
   ? allAlignmentScores.reduce((a, b) => a + b, 0) / allAlignmentScores.length
   : 0;
+
+// Compute overall conformance score from presets
+const conformanceScores = presetMetrics.map(p => p.conformance.score);
+const conformanceScore = conformanceScores.length > 0
+  ? conformanceScores.reduce((a, b) => a + b, 0) / conformanceScores.length
+  : 0;
+const conformancePassCount = presetMetrics.filter(p => p.conformance.pass).length;
+
+// Combined alignment: pentagon (60%) + conformance (40%)
+const overallAlignment = (pentagonScore * 0.6) + (conformanceScore * 0.4);
 
 // Load seed variation if exists
 let seedSummary = null;
@@ -582,6 +598,19 @@ if (existsSync(fillsPath)) {
 const expressiveness = {
   timestamp: new Date().toISOString(),
   pentagonStats,
+  pentagonScore,
+  conformance: {
+    score: conformanceScore,
+    passCount: conformancePassCount,
+    totalPresets: presetMetrics.length,
+    presetBreakdown: presetMetrics.map(p => ({
+      name: p.name,
+      score: p.conformance.score,
+      status: p.conformance.status,
+      pass: p.conformance.pass,
+      tolerance: p.conformance.tolerance,
+    })),
+  },
   overallAlignment,
   alignmentStatus: overallAlignment >= 0.7 ? 'GOOD' : overallAlignment >= 0.5 ? 'FAIR' : 'POOR',
   totalPatterns: allMetrics.length,
@@ -619,8 +648,17 @@ for (const zone of ['stable', 'syncopated', 'wild']) {
   }
 }
 
-console.log(`\nOVERALL ALIGNMENT SCORE: ${(overallAlignment * 100).toFixed(1)}% [${expressiveness.alignmentStatus}]`);
+console.log(`\nPENTAGON SCORE: ${(pentagonScore * 100).toFixed(1)}%`);
+console.log(`CONFORMANCE SCORE: ${(conformanceScore * 100).toFixed(1)}% (${conformancePassCount}/${presetMetrics.length} presets pass)`);
+console.log(`OVERALL ALIGNMENT: ${(overallAlignment * 100).toFixed(1)}% [${expressiveness.alignmentStatus}] (pentagon 60% + conformance 40%)`);
 console.log(`Total patterns analyzed: ${allMetrics.length}`);
+
+console.log('\nPRESET CONFORMANCE:');
+for (const preset of presetMetrics) {
+  const c = preset.conformance;
+  const passStr = c.pass ? 'PASS' : 'FAIL';
+  console.log(`  ${preset.name.padEnd(18)} ${(c.score * 100).toFixed(0).padStart(3)}% [${c.status.padEnd(9)}] ${passStr}`);
+}
 
 if (seedSummary) {
   console.log('\nSEED VARIATION:');

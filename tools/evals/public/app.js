@@ -261,7 +261,7 @@ function renderOverviewView() {
       <div class="alignment-section">
         <div class="alignment-label">
           <div class="label-title">OVERALL ALIGNMENT SCORE</div>
-          <div class="label-desc">Hill-climbing metric (1.0 = all metrics in target ranges)</div>
+          <div class="label-desc">Combined metric (60% pentagon + 40% conformance)</div>
         </div>
         <div class="alignment-value">
           <span style="color: ${alignmentColor}; font-size: 48px; font-weight: 700;">${(exp.overallAlignment * 100).toFixed(1)}%</span>
@@ -269,7 +269,52 @@ function renderOverviewView() {
         </div>
         <div class="alignment-count">${exp.totalPatterns} patterns analyzed</div>
       </div>
+
+      ${exp.pentagonScore !== undefined && exp.conformance ? `
+      <div class="alignment-breakdown">
+        <div class="breakdown-item">
+          <span class="breakdown-label">Pentagon Score</span>
+          <span class="breakdown-value" style="color: ${exp.pentagonScore >= 0.7 ? 'var(--success)' : exp.pentagonScore >= 0.4 ? 'var(--warning)' : 'var(--error)'};">${(exp.pentagonScore * 100).toFixed(1)}%</span>
+          <span class="breakdown-weight">(60%)</span>
+        </div>
+        <div class="breakdown-item">
+          <span class="breakdown-label">Conformance Score</span>
+          <span class="breakdown-value" style="color: ${exp.conformance.score >= 0.7 ? 'var(--success)' : exp.conformance.score >= 0.4 ? 'var(--warning)' : 'var(--error)'};">${(exp.conformance.score * 100).toFixed(1)}%</span>
+          <span class="breakdown-weight">(40%)</span>
+        </div>
+      </div>
+      ` : ''}
     </div>
+
+    ${exp.conformance && exp.conformance.presetBreakdown ? `
+    <div class="conformance-section">
+      <h3>Preset Conformance</h3>
+      <div class="conformance-overview">
+        Overall: <span style="color: ${exp.conformance.score >= 0.7 ? 'var(--success)' : exp.conformance.score >= 0.4 ? 'var(--warning)' : 'var(--error)'}; font-weight: 700;">${(exp.conformance.score * 100).toFixed(1)}%</span>
+        <span style="color: var(--text-dim); margin-left: 12px;">(${exp.conformance.passCount}/${exp.conformance.presetBreakdown.length} presets pass)</span>
+      </div>
+      <div class="conformance-bars">
+        ${exp.conformance.presetBreakdown.map(p => {
+          const barColor = p.pass ? 'var(--success)' : p.score >= 0.5 ? 'var(--warning)' : 'var(--error)';
+          const statusText = p.pass ? 'PASS' : p.score >= 0.5 ? 'CLOSE' : 'FAIL';
+          const statusClass = p.pass ? 'pass' : p.score >= 0.5 ? 'warn' : 'fail';
+          return `
+            <div class="conformance-bar-item">
+              <span class="conformance-preset-label">${p.name}</span>
+              <div class="conformance-bar-track">
+                <div class="conformance-bar-fill" style="width: ${(p.score * 100).toFixed(0)}%; background: ${barColor};"></div>
+              </div>
+              <span class="conformance-score">${(p.score * 100).toFixed(0)}%</span>
+              <span class="conformance-status ${statusClass}">${statusText}</span>
+            </div>
+          `;
+        }).join('')}
+      </div>
+      <div class="conformance-rating ${exp.conformance.score >= 0.8 ? 'excellent' : exp.conformance.score >= 0.6 ? 'good' : exp.conformance.score >= 0.4 ? 'fair' : 'poor'}">
+        ${exp.conformance.score >= 0.8 ? 'EXCELLENT' : exp.conformance.score >= 0.6 ? 'GOOD' : exp.conformance.score >= 0.4 ? 'FAIR' : 'POOR'} - ${exp.conformance.score >= 0.8 ? 'All presets performing well' : exp.conformance.score >= 0.6 ? 'Most presets performing adequately' : exp.conformance.score >= 0.4 ? 'Some presets need attention' : 'Significant conformance issues'}
+      </div>
+    </div>
+    ` : ''}
 
     ${data.seedVariation ? `
     <div class="seed-summary-section">

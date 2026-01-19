@@ -574,6 +574,154 @@
 
 /* Fill State Indicator styles moved to pattern-grid.css */
 
+/* Alignment Breakdown */
+.alignment-breakdown {
+  display: flex;
+  justify-content: center;
+  gap: 40px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #333;
+}
+
+.breakdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.breakdown-label {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.breakdown-value {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.breakdown-weight {
+  color: var(--text-dim);
+  font-size: 10px;
+}
+
+/* Conformance Section */
+.conformance-section {
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  padding: 20px;
+  margin-top: 20px;
+}
+
+.conformance-section h3 {
+  font-size: 16px;
+  margin-bottom: 16px;
+  color: var(--text-primary);
+}
+
+.conformance-overview {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+}
+
+.conformance-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.conformance-bar-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.conformance-preset-label {
+  width: 120px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--v1-color);
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.conformance-bar-track {
+  flex: 1;
+  height: 8px;
+  background: var(--bg-tertiary);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.conformance-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.conformance-score {
+  width: 40px;
+  text-align: right;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.conformance-status {
+  width: 50px;
+  font-size: 10px;
+  font-weight: 600;
+  text-align: center;
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+.conformance-status.pass {
+  background: rgba(68, 255, 68, 0.15);
+  color: var(--success);
+}
+
+.conformance-status.warn {
+  background: rgba(255, 170, 68, 0.15);
+  color: var(--warning);
+}
+
+.conformance-status.fail {
+  background: rgba(255, 68, 68, 0.15);
+  color: var(--error);
+}
+
+.conformance-rating {
+  text-align: center;
+  padding: 10px;
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.conformance-rating.excellent {
+  background: rgba(68, 255, 68, 0.1);
+  color: var(--success);
+}
+
+.conformance-rating.good {
+  background: rgba(78, 205, 196, 0.1);
+  color: var(--v2-color);
+}
+
+.conformance-rating.fair {
+  background: rgba(255, 170, 68, 0.1);
+  color: var(--warning);
+}
+
+.conformance-rating.poor {
+  background: rgba(255, 68, 68, 0.1);
+  color: var(--error);
+}
+
 .no-data {
   color: var(--text-secondary);
   padding: 20px;

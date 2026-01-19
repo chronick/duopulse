@@ -70,3 +70,5 @@
 | 64 | claude-permissions | Claude Permissions Update | completed | 2026-01-18 | 2026-01-18 | completed/64-claude-permissions.md |
 | 65 | phrase-aware-weights | Phrase-Aware Weight Modulation | backlog | 2026-01-18 | 2026-01-18 | backlog/65-phrase-aware-weights.md |
 | 66 | config-patternfield-wiring | Wire Zone Thresholds into PatternField | completed | 2026-01-18 | 2026-01-18 | completed/66-config-patternfield-wiring.md |
+| 67 | dashboard-improvements | Dashboard UX Improvements | completed | 2026-01-19 | 2026-01-19 | completed/67-dashboard-improvements.md |
+| 68 | preset-conformance-metrics | Preset Conformance Metrics | pending | 2026-01-19 | 2026-01-19 | active/68-preset-conformance-metrics.md |

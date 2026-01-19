@@ -222,17 +222,17 @@ Add to dashboard:
 
 ## Subtasks
 
-- [ ] Define reference patterns for all 8 presets in `preset-references.js`
-- [ ] Implement `computePatternMatch()` function with tolerance levels
-- [ ] Implement `checkRequiredHits()` function
-- [ ] Implement `computeMetricConformance()` function
-- [ ] Implement `computePresetConformance()` composite function
-- [ ] Integrate into `evaluate-expressiveness.js`
-- [ ] **Add conformance to overall alignment calculation** (weighted 40% conformance, 60% pentagon)
-- [ ] Add conformance data to output files (preset-metrics.json, expressiveness.json)
-- [ ] Update dashboard to display conformance metrics
-- [ ] Add unit tests for conformance functions
-- [ ] All tests pass
+- [x] Define reference patterns for all 8 presets in `preset-references.js`
+- [x] Implement `computePatternMatch()` function with tolerance levels
+- [x] Implement `checkRequiredHits()` function
+- [x] Implement `computeMetricConformance()` function
+- [x] Implement `computePresetConformance()` composite function
+- [x] Integrate into `evaluate-expressiveness.js`
+- [x] **Add conformance to overall alignment calculation** (weighted 40% conformance, 60% pentagon)
+- [x] Add conformance data to output files (preset-metrics.json, expressiveness.json)
+- [x] Update dashboard to display conformance metrics
+- [x] Add unit tests for conformance functions
+- [x] All tests pass
 
 ## Acceptance Criteria
 
