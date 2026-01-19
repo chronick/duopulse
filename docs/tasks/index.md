@@ -62,7 +62,7 @@
 | 58 | website-iteration-timeline | Website Iteration Timeline and Progress Tracking | pending | 2026-01-18 | 2026-01-18 | active/58-website-iteration-timeline.md |
 | 59 | algorithm-weight-config | Algorithm Weight Configuration System | pending | 2026-01-18 | 2026-01-18 | active/59-algorithm-weight-config.md |
 | 60 | audio-preview-player | Audio Preview Player for Pattern Evaluation | completed | 2026-01-18 | 2026-01-18 | active/60-audio-preview-player.md |
-| 61 | regression-detection | Full Regression Detection + Rollback | pending | 2026-01-18 | 2026-01-18 | active/61-regression-detection.md |
+| 61 | regression-detection | Full Regression Detection + Rollback | completed | 2026-01-18 | 2026-01-18 | completed/61-regression-detection.md |
 | 61a | baseline-infrastructure | Baseline Infrastructure | pending | 2026-01-18 | 2026-01-18 | active/61a-baseline-infrastructure.md |
 | 61b | pr-metrics-comparison | PR Metrics Comparison | pending | 2026-01-18 | 2026-01-18 | active/61b-pr-metrics-comparison.md |
 | 62 | ensemble-weight-search | Ensemble Weight Search with Tournament Selection | pending | 2026-01-18 | 2026-01-18 | active/62-ensemble-weight-search.md |

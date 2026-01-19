@@ -6,7 +6,7 @@ created_date: 2026-01-18
 updated_date: 2026-01-18
 branch: feature/hill-climbing-iteration
 tasks: [53, 54, 55, 56, 57, 58, 59, 61, 61a, 61b, 62, 63, 64, 65, 66]
-completed_tasks: [54, 55, 56, 59, 60, 61a, 61b, 63, 64, 66]
+completed_tasks: [54, 55, 56, 59, 60, 61, 61a, 61b, 63, 64, 66]
 ---
 
 # Epic: Semi-Autonomous Hill-Climbing Iteration System
@@ -138,8 +138,8 @@ Create a feedback loop using git + GitHub + PRs/issues + Actions to automaticall
 **Phase 3 Exit Criteria**:
 - [x] Fill gate patterns visible on evals dashboard
 - [x] Fill metrics included in Pentagon scoring
-- [ ] `/rollback` reverts to last known good baseline
-- [ ] Consecutive regressions trigger alerts
+- [x] `/rollback` reverts to last known good baseline
+- [x] Consecutive regressions trigger alerts
 - [ ] `/iterate ensemble` explores 4 candidates in parallel
 
 ---
@@ -253,7 +253,7 @@ Independent:
 | 58 | website-iteration-timeline | Website Iteration Timeline | pending | 4 |
 | 59 | algorithm-weight-config | Algorithm Weight Configuration | **completed** | 1 |
 | 60 | audio-preview-player | Audio Preview Player | **completed** | - |
-| 61 | regression-detection | Regression Detection + Rollback | pending | 3 |
+| 61 | regression-detection | Regression Detection + Rollback | **completed** | 3 |
 | 61a | baseline-infrastructure | Baseline Infrastructure | **completed** | 1 |
 | 61b | pr-metrics-comparison | PR Metrics Comparison | **completed** | 1 |
 | 62 | ensemble-weight-search | Ensemble Weight Search | pending | 3 |

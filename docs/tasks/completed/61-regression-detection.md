@@ -13,7 +13,7 @@ depends_on:
   - 61b  # PR metrics comparison
   - 55   # Iteration command system
 commits:
-  - pending
+  - 12e5c47
 ---
 
 # Task 61: Full Regression Detection + Rollback
