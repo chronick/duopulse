@@ -78,6 +78,12 @@ jobs:
       - name: Run evaluations
         run: make evals-evaluate
 
+      - name: Generate sensitivity matrix
+        run: make sensitivity-matrix
+
+      - name: Extract metrics history
+        run: make metrics-history
+
       - name: Update baseline
         if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
         run: |

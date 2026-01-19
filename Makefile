@@ -558,6 +558,16 @@ sensitivity-levers:
 	@node scripts/sensitivity/identify-levers.js --target $(METRIC)
 
 ###############################################################################
+# Metrics History
+###############################################################################
+
+# Extract metrics history from baseline tags for timeline chart
+metrics-history:
+	@echo "Extracting metrics history from baseline tags..."
+	@node scripts/extract-metrics-history.js
+	@echo "Metrics history saved to $(EVALS_DIR)/public/data/metrics-history.json"
+
+###############################################################################
 # Help Target
 ###############################################################################
 
