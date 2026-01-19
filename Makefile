@@ -507,6 +507,12 @@ evals-evaluate:
 	@cd $(EVALS_DIR) && npm install --silent
 	@cd $(EVALS_DIR) && node evaluate-expressiveness.js
 
+# Clean evaluation data
+evals-clean:
+	@echo "Cleaning evaluation data..."
+	@rm -f $(EVALS_DIR)/public/data/*.json
+	@echo "Evaluation data cleaned"
+
 # Serve evaluation dashboard locally
 evals-serve: $(EVALS_DIR)/public/data/metadata.json
 	@echo "Starting local server at http://localhost:3000"
