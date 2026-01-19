@@ -83,6 +83,12 @@ jobs:
         run: |
           node scripts/update-baseline.js --metrics=tools/evals/public/data/expressiveness.json
 
+      - name: Configure git for tagging
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
       - name: Tag baseline
         if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
         run: |
