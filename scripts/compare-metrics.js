@@ -156,16 +156,35 @@ function main() {
     const baseline = loadJSON(BASELINE_PATH);
     const prMetrics = loadJSON(PR_METRICS_PATH);
 
+    // Extract baseline tracking info
+    const consecutiveRegressions = baseline.consecutive_regressions || 0;
+    const lastGood = baseline.last_good || null;
+    const baselineTag = baseline.tag || null;
+
     // Compare
     const { results, hasRegression } = compareMetrics(baseline, prMetrics);
+
+    // Determine consecutive regression status
+    // If we have a regression AND there was already at least 1 consecutive regression,
+    // this would be 2+ in a row
+    const wouldBeConsecutive = hasRegression && consecutiveRegressions >= 1;
+    const consecutiveCount = hasRegression ? consecutiveRegressions + 1 : 0;
+    const suggestRollback = consecutiveCount >= 2;
 
     // Build output
     const comparison = {
         baseline_commit: baseline.commit || 'unknown',
         baseline_date: baseline.generated_at || 'unknown',
+        baseline_info: {
+            tag: baselineTag,
+            consecutive_regressions: consecutiveRegressions
+        },
         pr_commit: process.env.GITHUB_SHA || 'local',
         threshold: REGRESSION_THRESHOLD,
         has_regression: hasRegression,
+        regression_detected: hasRegression,
+        consecutive_regression_warning: wouldBeConsecutive,
+        suggest_rollback: suggestRollback,
         metrics: results
     };
 
@@ -182,6 +201,8 @@ function main() {
     // Set GitHub outputs if available
     if (GITHUB_OUTPUT) {
         fs.appendFileSync(GITHUB_OUTPUT, `has_regression=${hasRegression}\n`);
+        fs.appendFileSync(GITHUB_OUTPUT, `consecutive_count=${consecutiveCount}\n`);
+        fs.appendFileSync(GITHUB_OUTPUT, `suggest_rollback=${suggestRollback}\n`);
         // Escape markdown for multiline output
         const escapedMarkdown = comparison.markdown
             .replace(/%/g, '%25')
@@ -192,12 +213,45 @@ function main() {
 
     // Exit with error if regression detected
     if (hasRegression) {
-        console.log('\n⚠️  Regression detected!');
+        console.log('\n' + '='.repeat(60));
+        console.log('  REGRESSION DETECTED');
+        console.log('='.repeat(60));
+
+        if (wouldBeConsecutive) {
+            console.log('');
+            console.log('WARNING: CONSECUTIVE REGRESSION DETECTED (' + consecutiveCount + ' in a row)');
+            console.log('This is the ' + consecutiveCount + getOrdinalSuffix(consecutiveCount) + ' consecutive regression.');
+        }
+
+        if (suggestRollback) {
+            console.log('');
+            console.log('RECOMMENDATION: Consider using /rollback to revert to last known good baseline.');
+            if (lastGood) {
+                console.log('');
+                console.log('Last good baseline:');
+                console.log('  Tag: ' + (lastGood.tag || 'none'));
+                console.log('  Commit: ' + (lastGood.commit ? lastGood.commit.substring(0, 8) : 'unknown'));
+                console.log('  Timestamp: ' + (lastGood.timestamp || 'unknown'));
+            }
+        }
+
+        console.log('');
         process.exit(1);
     } else {
-        console.log('\n✅ No regressions detected');
+        console.log('\n' + '='.repeat(60));
+        console.log('  No regressions detected');
+        console.log('='.repeat(60) + '\n');
         process.exit(0);
     }
+}
+
+/**
+ * Get ordinal suffix for a number (1st, 2nd, 3rd, etc.)
+ */
+function getOrdinalSuffix(n) {
+    const s = ['th', 'st', 'nd', 'rd'];
+    const v = n % 100;
+    return s[(v - 20) % 10] || s[v] || s[0];
 }
 
 main();

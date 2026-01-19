@@ -2,6 +2,9 @@
   "version": "1.0.0",
   "generated_at": "2026-01-18T20:53:16Z",
   "commit": "65d4532b3be77f96775f5e9329a40463562b9aba",
+  "tag": null,
+  "last_good": null,
+  "consecutive_regressions": 0,
   "metrics": {
     "timestamp": "2026-01-10T05:40:20.041Z",
     "pentagonStats": {

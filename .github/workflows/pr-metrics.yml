@@ -102,7 +102,26 @@ jobs:
               c.body.includes('Pentagon Metrics Comparison')
             );
 
-            const body = comparison.markdown;
+            // Build body with optional warning header
+            let body = comparison.markdown;
+
+            if (comparison.consecutive_regression_warning) {
+              const consecutiveCount = (comparison.baseline_info?.consecutive_regressions || 0) + 1;
+              let warningHeader = `## :warning: **CONSECUTIVE REGRESSION DETECTED**\n\n`;
+              warningHeader += `This is the **${consecutiveCount}${getOrdinalSuffix(consecutiveCount)}** consecutive regression.\n\n`;
+
+              if (comparison.suggest_rollback) {
+                warningHeader += `> :rotating_light: **Recommendation:** Consider running \`/rollback\` to revert to last known good baseline.\n\n`;
+              }
+
+              body = warningHeader + body;
+            }
+
+            function getOrdinalSuffix(n) {
+              const s = ['th', 'st', 'nd', 'rd'];
+              const v = n % 100;
+              return s[(v - 20) % 10] || s[v] || s[0];
+            }
 
             if (botComment) {
               await github.rest.issues.updateComment({
