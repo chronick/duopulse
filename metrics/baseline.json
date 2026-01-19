@@ -1,12 +1,16 @@
 {
   "version": "1.0.0",
-  "generated_at": "2026-01-18T20:53:16Z",
-  "commit": "65d4532b3be77f96775f5e9329a40463562b9aba",
-  "tag": null,
-  "last_good": null,
+  "generated_at": "2026-01-19T04:03:50.391Z",
+  "commit": "7682d328b58e25455596dc9a13132a4b053181d0",
+  "tag": "baseline-v1.0.0",
+  "last_good": {
+    "commit": "65d4532b3be77f96775f5e9329a40463562b9aba",
+    "tag": null,
+    "timestamp": "2026-01-18T20:53:16Z"
+  },
   "consecutive_regressions": 0,
   "metrics": {
-    "timestamp": "2026-01-10T05:40:20.041Z",
+    "timestamp": "2026-01-19T03:57:52.881Z",
     "pentagonStats": {
       "total": {
         "count": 33,
@@ -67,6 +71,22 @@
       "overall": 0.9987244897959183,
       "pass": true
     },
+    "fillMetrics": {
+      "fillDensityRamp": {
+        "raw": 0.7471590909090909,
+        "score": 0.4886363636363637
+      },
+      "fillVelocityBuild": {
+        "raw": 0.6418484482908492,
+        "score": 0.6472289446785487
+      },
+      "fillAccentPlacement": {
+        "raw": 0.2175994382849353,
+        "score": 0
+      },
+      "composite": 0.3786217694383041,
+      "pass": false
+    },
     "metricDefinitions": {
       "syncopation": {
         "short": "Sync",
@@ -116,6 +136,38 @@
           "stable": "0.72-1.00",
           "syncopated": "0.42-0.68",
           "wild": "0.12-0.48"
+        }
+      }
+    },
+    "fillMetricDefinitions": {
+      "fillDensityRamp": {
+        "short": "DensRamp",
+        "name": "Fill Density Ramp",
+        "description": "Fills should build from sparse to dense",
+        "targetByZone": {
+          "stable": "0.60-0.85",
+          "syncopated": "0.70-0.95",
+          "wild": "0.80-1.00"
+        }
+      },
+      "fillVelocityBuild": {
+        "short": "VelBuild",
+        "name": "Fill Velocity Build",
+        "description": "Velocity should crescendo through fill",
+        "targetByZone": {
+          "stable": "0.50-0.75",
+          "syncopated": "0.60-0.85",
+          "wild": "0.70-0.95"
+        }
+      },
+      "fillAccentPlacement": {
+        "short": "AccPlace",
+        "name": "Fill Accent Placement",
+        "description": "Accents should land on strong beats, especially near end",
+        "targetByZone": {
+          "stable": "0.70-0.95",
+          "syncopated": "0.55-0.80",
+          "wild": "0.40-0.70"
         }
       }
     },
