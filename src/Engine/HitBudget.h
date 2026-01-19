@@ -16,29 +16,29 @@ namespace daisysp_idm_grids
  */
 
 // =============================================================================
-// Eligibility Mask Constants (for 32-step patterns)
+// Eligibility Mask Constants (for 64-step patterns)
 // =============================================================================
 
 /// Downbeats: steps 0, 16 (bar starts)
-constexpr uint32_t kDownbeatMask = 0x00010001;
+constexpr uint64_t kDownbeatMask = 0x0001000100010001ULL;
 
 /// Quarter notes: steps 0, 4, 8, 12, 16, 20, 24, 28
-constexpr uint32_t kQuarterNoteMask = 0x11111111;
+constexpr uint64_t kQuarterNoteMask = 0x1111111111111111ULL;
 
 /// 8th notes: all even steps
-constexpr uint32_t kEighthNoteMask = 0x55555555;
+constexpr uint64_t kEighthNoteMask = 0x5555555555555555ULL;
 
 /// 16th notes: all steps
-constexpr uint32_t kSixteenthNoteMask = 0xFFFFFFFF;
+constexpr uint64_t kSixteenthNoteMask = 0xFFFFFFFFFFFFFFFFULL;
 
 /// Backbeats: steps 8, 24 (snare positions in 4/4)
-constexpr uint32_t kBackbeatMask = 0x01000100;
+constexpr uint64_t kBackbeatMask = 0x0100010001000100ULL;
 
 /// Off-beats: odd 8th notes (steps 2, 6, 10, 14, 18, 22, 26, 30)
-constexpr uint32_t kOffbeatMask = 0x44444444;
+constexpr uint64_t kOffbeatMask = 0x4444444444444444ULL;
 
 /// Syncopated positions: "e" and "a" of beat (steps 1,3,5,7,9,11,13,15,17,19,21,23,25,27,29,31)
-constexpr uint32_t kSyncopationMask = 0xAAAAAAAA;
+constexpr uint64_t kSyncopationMask = 0xAAAAAAAAAAAAAAAAULL;
 
 // =============================================================================
 // BarBudget Structure
@@ -62,13 +62,13 @@ struct BarBudget
     int auxHits;
 
     /// Which steps are eligible for anchor hits (bitmask)
-    uint32_t anchorEligibility;
+    uint64_t anchorEligibility;
 
     /// Which steps are eligible for shimmer hits (bitmask)
-    uint32_t shimmerEligibility;
+    uint64_t shimmerEligibility;
 
     /// Which steps are eligible for aux hits (bitmask)
-    uint32_t auxEligibility;
+    uint64_t auxEligibility;
 
     /**
      * Initialize with default values (minimal pattern)
@@ -159,7 +159,7 @@ void ComputeBarBudget(float energy,
  * @param patternLength Steps per bar
  * @return Bitmask of eligible steps
  */
-uint32_t ComputeAnchorEligibility(float energy, float flavor, EnergyZone zone, int patternLength);
+uint64_t ComputeAnchorEligibility(float energy, float flavor, EnergyZone zone, int patternLength);
 
 /**
  * Compute eligibility mask for shimmer voice
@@ -170,7 +170,7 @@ uint32_t ComputeAnchorEligibility(float energy, float flavor, EnergyZone zone, i
  * @param patternLength Steps per bar
  * @return Bitmask of eligible steps
  */
-uint32_t ComputeShimmerEligibility(float energy, float flavor, EnergyZone zone, int patternLength);
+uint64_t ComputeShimmerEligibility(float energy, float flavor, EnergyZone zone, int patternLength);
 
 /**
  * Compute eligibility mask for aux voice
@@ -181,7 +181,7 @@ uint32_t ComputeShimmerEligibility(float energy, float flavor, EnergyZone zone, 
  * @param patternLength Steps per bar
  * @return Bitmask of eligible steps
  */
-uint32_t ComputeAuxEligibility(float energy, float flavor, EnergyZone zone, int patternLength);
+uint64_t ComputeAuxEligibility(float energy, float flavor, EnergyZone zone, int patternLength);
 
 /**
  * Apply fill boost to a budget (increases hits during fill zones)
@@ -206,7 +206,7 @@ void ApplyFillBoost(BarBudget& budget,
  * @param mask Bitmask
  * @return Number of set bits
  */
-int CountBits(uint32_t mask);
+int CountBits(uint64_t mask);
 
 /**
  * Limit pattern length to 32 bits for mask operations

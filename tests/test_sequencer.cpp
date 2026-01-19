@@ -683,9 +683,9 @@ TEST_CASE("Sequencer handles edge cases", "[sequencer][edge-cases]")
         uint64_t auxMask = seq.GetAuxMask();
 
         // First half (steps 0-31)
-        uint32_t anchorFirstHalf = static_cast<uint32_t>(anchorMask & 0xFFFFFFFF);
-        uint32_t shimmerFirstHalf = static_cast<uint32_t>(shimmerMask & 0xFFFFFFFF);
-        uint32_t auxFirstHalf = static_cast<uint32_t>(auxMask & 0xFFFFFFFF);
+        uint32_t anchorFirstHalf = static_cast<uint32_t>(anchorMask & 0xFFFFFFFFFFFFFFFFULL);
+        uint32_t shimmerFirstHalf = static_cast<uint32_t>(shimmerMask & 0xFFFFFFFFFFFFFFFFULL);
+        uint32_t auxFirstHalf = static_cast<uint32_t>(auxMask & 0xFFFFFFFFFFFFFFFFULL);
 
         // Second half (steps 32-63)
         uint32_t anchorSecondHalf = static_cast<uint32_t>(anchorMask >> 32);

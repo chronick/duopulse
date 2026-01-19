@@ -23,11 +23,14 @@ namespace daisysp_idm_grids
 // Constants
 // =============================================================================
 
-/// Maximum steps in a pattern (32 = 2 bars at 16th notes)
-constexpr int kMaxSteps = 32;
+/// Maximum steps in a pattern (64 = 4 bars at 16th notes, or 2 bars at 32nd notes)
+constexpr int kMaxSteps = 64;
 
-/// Maximum steps in a phrase (8 bars × 32 steps)
-constexpr int kMaxPhraseSteps = 256;
+/// Maximum steps in a phrase (8 bars × 64 steps)
+constexpr int kMaxPhraseSteps = 512;
+
+/// Maximum sub-steps for flam positioning (64 steps × 4 substeps each)
+constexpr int kMaxSubSteps = 256;
 
 // =============================================================================
 // Core Enumerations

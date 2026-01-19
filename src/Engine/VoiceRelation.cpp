@@ -8,57 +8,57 @@ namespace daisysp_idm_grids
 // Utility Functions
 // =============================================================================
 
-uint32_t ShiftMaskLeft(uint32_t mask, int shift, int patternLength)
+uint64_t ShiftMaskLeft(uint64_t mask, int shift, int patternLength)
 {
     if (shift <= 0 || patternLength <= 0)
     {
         return mask;
     }
 
-    int clampedLength = std::min(patternLength, 32);
+    int clampedLength = std::min(patternLength, 64);
 
     // Avoid undefined behavior: (1U << 32) is UB
-    uint32_t lengthMask = (clampedLength >= 32) ? 0xFFFFFFFF : ((1U << clampedLength) - 1);
+    uint64_t lengthMask = (clampedLength >= 64) ? 0xFFFFFFFFFFFFFFFFULL : ((1ULL << clampedLength) - 1);
 
     // Shift reduces to modulo pattern length
     shift = shift % clampedLength;
 
     // Left shift (delay in time = higher step numbers)
-    uint32_t shifted = (mask << shift) & lengthMask;
-    uint32_t wrapped = (mask >> (clampedLength - shift)) & lengthMask;
+    uint64_t shifted = (mask << shift) & lengthMask;
+    uint64_t wrapped = (mask >> (clampedLength - shift)) & lengthMask;
 
     return (shifted | wrapped) & lengthMask;
 }
 
-uint32_t ShiftMaskRight(uint32_t mask, int shift, int patternLength)
+uint64_t ShiftMaskRight(uint64_t mask, int shift, int patternLength)
 {
     if (shift <= 0 || patternLength <= 0)
     {
         return mask;
     }
 
-    int clampedLength = std::min(patternLength, 32);
+    int clampedLength = std::min(patternLength, 64);
 
     // Avoid undefined behavior: (1U << 32) is UB
-    uint32_t lengthMask = (clampedLength >= 32) ? 0xFFFFFFFF : ((1U << clampedLength) - 1);
+    uint64_t lengthMask = (clampedLength >= 64) ? 0xFFFFFFFFFFFFFFFFULL : ((1ULL << clampedLength) - 1);
 
     shift = shift % clampedLength;
 
     // Right shift (advance in time = lower step numbers)
-    uint32_t shifted = (mask >> shift) & lengthMask;
-    uint32_t wrapped = (mask << (clampedLength - shift)) & lengthMask;
+    uint64_t shifted = (mask >> shift) & lengthMask;
+    uint64_t wrapped = (mask << (clampedLength - shift)) & lengthMask;
 
     return (shifted | wrapped) & lengthMask;
 }
 
-int FindLargestGap(uint32_t mask, int patternLength)
+int FindLargestGap(uint64_t mask, int patternLength)
 {
     if (mask == 0)
     {
         return patternLength;  // All gap
     }
 
-    int clampedLength = std::min(patternLength, 32);
+    int clampedLength = std::min(patternLength, 64);
     int maxGap = 0;
     int currentGap = 0;
 
@@ -67,7 +67,7 @@ int FindLargestGap(uint32_t mask, int patternLength)
     {
         int step = i % clampedLength;
 
-        if ((mask & (1U << step)) != 0)
+        if ((mask & (1ULL << step)) != 0)
         {
             // Hit found, check if current gap is largest
             if (currentGap > maxGap)
@@ -92,14 +92,14 @@ int FindLargestGap(uint32_t mask, int patternLength)
     return std::min(maxGap, clampedLength);
 }
 
-int FindGapStart(uint32_t mask, int minGapSize, int patternLength)
+int FindGapStart(uint64_t mask, int minGapSize, int patternLength)
 {
     if (mask == 0)
     {
         return 0;  // Entire pattern is a gap
     }
 
-    int clampedLength = std::min(patternLength, 32);
+    int clampedLength = std::min(patternLength, 64);
 
     for (int start = 0; start < clampedLength; ++start)
     {
@@ -108,7 +108,7 @@ int FindGapStart(uint32_t mask, int minGapSize, int patternLength)
         for (int offset = 0; offset < minGapSize; ++offset)
         {
             int step = (start + offset) % clampedLength;
-            if ((mask & (1U << step)) != 0)
+            if ((mask & (1ULL << step)) != 0)
             {
                 gapFound = false;
                 break;
@@ -128,14 +128,14 @@ int FindGapStart(uint32_t mask, int minGapSize, int patternLength)
 // V5 COMPLEMENT Relationship (Task 30)
 // =============================================================================
 
-int FindGaps(uint32_t anchorMask, int patternLength, Gap* gaps)
+int FindGaps(uint64_t anchorMask, int patternLength, Gap* gaps)
 {
     if (patternLength <= 0 || gaps == nullptr)
     {
         return 0;
     }
 
-    int clampedLength = std::min(patternLength, 32);
+    int clampedLength = std::min(patternLength, 64);
     int gapCount = 0;
 
     // Handle empty anchor mask (entire pattern is one gap)
@@ -241,7 +241,7 @@ int PlaceEvenlySpacedWithSeed(const Gap& gap, int hitIndex, int totalHits,
 
 // Place hit at position with highest weight within gap
 int PlaceWeightedBest(const Gap& gap, const float* shimmerWeights, int patternLength,
-                      uint32_t usedMask)
+                      uint64_t usedMask)
 {
     // Validate patternLength doesn't exceed array bounds
     if (patternLength > static_cast<int>(kMaxSteps)) {
@@ -252,7 +252,7 @@ int PlaceWeightedBest(const Gap& gap, const float* shimmerWeights, int patternLe
     if (!shimmerWeights) {
         for (int offset = 0; offset < gap.length; ++offset) {
             int step = (gap.start + offset) % patternLength;
-            if ((usedMask & (1U << step)) == 0) {
+            if ((usedMask & (1ULL << step)) == 0) {
                 return step;
             }
         }
@@ -267,7 +267,7 @@ int PlaceWeightedBest(const Gap& gap, const float* shimmerWeights, int patternLe
         int step = (gap.start + offset) % patternLength;
 
         // Skip already-used positions
-        if ((usedMask & (1U << step)) != 0)
+        if ((usedMask & (1ULL << step)) != 0)
         {
             continue;
         }
@@ -284,14 +284,14 @@ int PlaceWeightedBest(const Gap& gap, const float* shimmerWeights, int patternLe
 }
 
 // Place hit with seed-varied randomness within gap
-int PlaceSeedVaried(const Gap& gap, uint32_t& rngState, int patternLength, uint32_t usedMask)
+int PlaceSeedVaried(const Gap& gap, uint32_t& rngState, int patternLength, uint64_t usedMask)
 {
     // Count available positions
     int available = 0;
     for (int offset = 0; offset < gap.length; ++offset)
     {
         int step = (gap.start + offset) % patternLength;
-        if ((usedMask & (1U << step)) == 0)
+        if ((usedMask & (1ULL << step)) == 0)
         {
             available++;
         }
@@ -310,7 +310,7 @@ int PlaceSeedVaried(const Gap& gap, uint32_t& rngState, int patternLength, uint3
     for (int offset = 0; offset < gap.length; ++offset)
     {
         int step = (gap.start + offset) % patternLength;
-        if ((usedMask & (1U << step)) == 0)
+        if ((usedMask & (1ULL << step)) == 0)
         {
             if (count == targetIdx)
             {
@@ -325,7 +325,7 @@ int PlaceSeedVaried(const Gap& gap, uint32_t& rngState, int patternLength, uint3
 
 }  // anonymous namespace
 
-uint32_t ApplyComplementRelationship(uint32_t anchorMask,
+uint64_t ApplyComplementRelationship(uint64_t anchorMask,
                                      const float* shimmerWeights,
                                      float drift, uint32_t seed,
                                      int patternLength, int targetHits)
@@ -336,7 +336,7 @@ uint32_t ApplyComplementRelationship(uint32_t anchorMask,
         return 0;
     }
 
-    int clampedLength = std::min(patternLength, 32);
+    int clampedLength = std::min(patternLength, 64);
 
     // Find gaps in anchor pattern
     Gap gaps[kMaxGaps];
@@ -366,7 +366,7 @@ uint32_t ApplyComplementRelationship(uint32_t anchorMask,
     if (rngState == 0) rngState = 1;  // Avoid zero state
 
     // Build shimmer mask by distributing hits proportionally to gaps
-    uint32_t shimmerMask = 0;
+    uint64_t shimmerMask = 0;
     int remainingHits = targetHits;
 
     for (int g = 0; g < gapCount && remainingHits > 0; ++g)
@@ -408,7 +408,7 @@ uint32_t ApplyComplementRelationship(uint32_t anchorMask,
                 position = PlaceSeedVaried(gaps[g], rngState, clampedLength, shimmerMask);
             }
 
-            shimmerMask |= (1U << position);
+            shimmerMask |= (1ULL << position);
             remainingHits--;
         }
     }
@@ -419,9 +419,9 @@ uint32_t ApplyComplementRelationship(uint32_t anchorMask,
         for (int offset = 0; offset < gaps[g].length && remainingHits > 0; ++offset)
         {
             int step = (gaps[g].start + offset) % clampedLength;
-            if ((shimmerMask & (1U << step)) == 0)
+            if ((shimmerMask & (1ULL << step)) == 0)
             {
-                shimmerMask |= (1U << step);
+                shimmerMask |= (1ULL << step);
                 remainingHits--;
             }
         }
@@ -435,7 +435,7 @@ uint32_t ApplyComplementRelationship(uint32_t anchorMask,
         int rotation = static_cast<int>((hashVal >> (28 - attempt * 4)) & 0xF) % clampedLength;
         if (rotation > 0)
         {
-            uint32_t rotated = ShiftMaskRight(shimmerMask, rotation, clampedLength);
+            uint64_t rotated = ShiftMaskRight(shimmerMask, rotation, clampedLength);
             // Only apply if no collisions with anchor
             if ((rotated & anchorMask) == 0)
             {
@@ -452,9 +452,9 @@ uint32_t ApplyComplementRelationship(uint32_t anchorMask,
 // Aux Voice Relationship
 // =============================================================================
 
-void ApplyAuxRelationship(uint32_t anchorMask,
-                          uint32_t shimmerMask,
-                          uint32_t& auxMask,
+void ApplyAuxRelationship(uint64_t anchorMask,
+                          uint64_t shimmerMask,
+                          uint64_t& auxMask,
                           VoiceCoupling coupling,
                           int patternLength)
 {

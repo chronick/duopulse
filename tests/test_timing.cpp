@@ -479,7 +479,7 @@ TEST_CASE("ShouldAccent respects accent mask", "[velocity][accent]")
     const uint32_t seed = 0x12345678;
 
     // Mask with only step 0 eligible
-    uint32_t mask = 0x00000001;
+    uint64_t mask = 0x00000001;
 
     // Task 21 Phase D: Create BuildModifiers with forceAccents=false
     BuildModifiers buildMods;
@@ -495,9 +495,9 @@ TEST_CASE("ShouldAccent respects accent mask", "[velocity][accent]")
 
 TEST_CASE("GetDefaultAccentMask returns valid masks", "[velocity][accent]")
 {
-    uint32_t anchorMask = GetDefaultAccentMask(Voice::ANCHOR);
-    uint32_t shimmerMask = GetDefaultAccentMask(Voice::SHIMMER);
-    uint32_t auxMask = GetDefaultAccentMask(Voice::AUX);
+    uint64_t anchorMask = GetDefaultAccentMask(Voice::ANCHOR);
+    uint64_t shimmerMask = GetDefaultAccentMask(Voice::SHIMMER);
+    uint64_t auxMask = GetDefaultAccentMask(Voice::AUX);
 
     // All masks should have some bits set
     REQUIRE(anchorMask != 0);

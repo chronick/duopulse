@@ -284,21 +284,21 @@ TEST_CASE("Gumbel selection respects target count", "[gumbel]")
 
     SECTION("Selects exact target count when possible")
     {
-        uint32_t mask = SelectHitsGumbelTopK(weights, 0xFFFFFFFF, 4, 12345, 32, 0);
+        uint64_t mask = SelectHitsGumbelTopK(weights, 0xFFFFFFFFFFFFFFFFULL, 4, 12345, 32, 0);
         REQUIRE(CountBits(mask) == 4);
     }
 
     SECTION("Selects fewer if eligibility limits")
     {
         // Only 3 eligible steps
-        uint32_t eligibility = 0x00000007;  // Steps 0, 1, 2
-        uint32_t mask = SelectHitsGumbelTopK(weights, eligibility, 5, 12345, 32, 0);
+        uint64_t eligibility = 0x00000007;  // Steps 0, 1, 2
+        uint64_t mask = SelectHitsGumbelTopK(weights, eligibility, 5, 12345, 32, 0);
         REQUIRE(CountBits(mask) <= 3);
     }
 
     SECTION("Zero target gives empty mask")
     {
-        uint32_t mask = SelectHitsGumbelTopK(weights, 0xFFFFFFFF, 0, 12345, 32, 0);
+        uint64_t mask = SelectHitsGumbelTopK(weights, 0xFFFFFFFFFFFFFFFFULL, 0, 12345, 32, 0);
         REQUIRE(mask == 0);
     }
 }
@@ -313,15 +313,15 @@ TEST_CASE("Gumbel selection is deterministic", "[gumbel]")
 
     SECTION("Same seed gives same pattern")
     {
-        uint32_t mask1 = SelectHitsGumbelTopK(weights, 0xFFFFFFFF, 4, 99999, 32, 0);
-        uint32_t mask2 = SelectHitsGumbelTopK(weights, 0xFFFFFFFF, 4, 99999, 32, 0);
+        uint64_t mask1 = SelectHitsGumbelTopK(weights, 0xFFFFFFFFFFFFFFFFULL, 4, 99999, 32, 0);
+        uint64_t mask2 = SelectHitsGumbelTopK(weights, 0xFFFFFFFFFFFFFFFFULL, 4, 99999, 32, 0);
         REQUIRE(mask1 == mask2);
     }
 
     SECTION("Different seeds give different patterns")
     {
-        uint32_t mask1 = SelectHitsGumbelTopK(weights, 0xFFFFFFFF, 4, 11111, 32, 0);
-        uint32_t mask2 = SelectHitsGumbelTopK(weights, 0xFFFFFFFF, 4, 22222, 32, 0);
+        uint64_t mask1 = SelectHitsGumbelTopK(weights, 0xFFFFFFFFFFFFFFFFULL, 4, 11111, 32, 0);
+        uint64_t mask2 = SelectHitsGumbelTopK(weights, 0xFFFFFFFFFFFFFFFFULL, 4, 22222, 32, 0);
         // Very unlikely to be equal with different seeds
         REQUIRE(mask1 != mask2);
     }
@@ -337,13 +337,13 @@ TEST_CASE("Spacing rules prevent clumping", "[gumbel]")
 
     SECTION("Minimum spacing of 2 prevents adjacent hits")
     {
-        uint32_t mask = SelectHitsGumbelTopK(weights, 0xFFFFFFFF, 8, 12345, 32, 2);
+        uint64_t mask = SelectHitsGumbelTopK(weights, 0xFFFFFFFFFFFFFFFFULL, 8, 12345, 32, 2);
 
         // Check that no two adjacent bits are set
         for (int i = 0; i < 31; ++i)
         {
-            bool a = (mask & (1U << i)) != 0;
-            bool b = (mask & (1U << (i + 1))) != 0;
+            bool a = (mask & (1ULL << i)) != 0;
+            bool b = (mask & (1ULL << (i + 1))) != 0;
             REQUIRE(!(a && b));  // No adjacent hits
         }
     }
@@ -351,7 +351,7 @@ TEST_CASE("Spacing rules prevent clumping", "[gumbel]")
     SECTION("Spacing is relaxed to meet target count")
     {
         // High target with high spacing - should relax to meet target
-        uint32_t mask = SelectHitsGumbelTopK(weights, 0xFFFFFFFF, 12, 12345, 32, 4);
+        uint64_t mask = SelectHitsGumbelTopK(weights, 0xFFFFFFFFFFFFFFFFULL, 12, 12345, 32, 4);
 
         // Should get close to target even if spacing can't be maintained
         REQUIRE(CountBits(mask) >= 8);
@@ -374,14 +374,14 @@ TEST_CASE("Weighted selection favors high weights", "[gumbel]")
 
     SECTION("High weight steps are selected first")
     {
-        uint32_t mask = SelectHitsGumbelTopK(weights, 0xFFFFFFFF, 4, 12345, 32, 0);
+        uint64_t mask = SelectHitsGumbelTopK(weights, 0xFFFFFFFFFFFFFFFFULL, 4, 12345, 32, 0);
 
         // With 1000x weight ratio, all four high-weight steps should be selected
         // log(1.0) - log(0.001) = 0 - (-6.9) = 6.9 >> Gumbel noise range
-        REQUIRE((mask & (1U << 0)) != 0);
-        REQUIRE((mask & (1U << 8)) != 0);
-        REQUIRE((mask & (1U << 16)) != 0);
-        REQUIRE((mask & (1U << 24)) != 0);
+        REQUIRE((mask & (1ULL << 0)) != 0);
+        REQUIRE((mask & (1ULL << 8)) != 0);
+        REQUIRE((mask & (1ULL << 16)) != 0);
+        REQUIRE((mask & (1ULL << 24)) != 0);
     }
 }
 
@@ -396,21 +396,21 @@ TEST_CASE("ShiftMaskLeft works correctly", "[voice-relation]")
 {
     SECTION("Simple shift")
     {
-        uint32_t mask = 0x00000001;  // Step 0
+        uint64_t mask = 0x00000001;  // Step 0
         uint32_t shifted = ShiftMaskLeft(mask, 1, 32);
         REQUIRE(shifted == 0x00000002);  // Step 1
     }
 
     SECTION("Wrap around")
     {
-        uint32_t mask = 0x80000000;  // Step 31
+        uint64_t mask = 0x80000000;  // Step 31
         uint32_t shifted = ShiftMaskLeft(mask, 1, 32);
         REQUIRE(shifted == 0x00000001);  // Wraps to step 0
     }
 
     SECTION("Larger shift")
     {
-        uint32_t mask = 0x00000001;
+        uint64_t mask = 0x00000001;
         uint32_t shifted = ShiftMaskLeft(mask, 8, 32);
         REQUIRE(shifted == 0x00000100);  // Step 8
     }
@@ -422,21 +422,21 @@ TEST_CASE("FindLargestGap measures gaps correctly", "[voice-relation]")
 {
     SECTION("All hits - no gap")
     {
-        uint32_t mask = 0xFFFFFFFF;
+        uint64_t mask = 0xFFFFFFFFFFFFFFFFULL;
         int gap = FindLargestGap(mask, 32);
         REQUIRE(gap == 0);
     }
 
     SECTION("Sparse pattern has large gap")
     {
-        uint32_t mask = 0x00010001;  // Steps 0 and 16
+        uint64_t mask = 0x00010001;  // Steps 0 and 16
         int gap = FindLargestGap(mask, 32);
         REQUIRE(gap == 15);  // 15 empty steps between hits (1-15 or 17-31)
     }
 
     SECTION("Empty mask - full gap")
     {
-        uint32_t mask = 0;
+        uint64_t mask = 0;
         int gap = FindLargestGap(mask, 32);
         REQUIRE(gap == 32);
     }
@@ -450,7 +450,7 @@ TEST_CASE("Downbeat is forced in GROOVE+ zones", "[guard-rails]")
 {
     SECTION("GROOVE zone forces downbeat")
     {
-        uint32_t anchor = 0x00000100;  // Step 8 only, no downbeat
+        uint64_t anchor = 0x00000100;  // Step 8 only, no downbeat
 
         bool forced = EnforceDownbeat(anchor, EnergyZone::GROOVE, 32);
 
@@ -460,7 +460,7 @@ TEST_CASE("Downbeat is forced in GROOVE+ zones", "[guard-rails]")
 
     SECTION("MINIMAL zone doesn't force")
     {
-        uint32_t anchor = 0x00000100;
+        uint64_t anchor = 0x00000100;
 
         bool forced = EnforceDownbeat(anchor, EnergyZone::MINIMAL, 32);
 
@@ -470,7 +470,7 @@ TEST_CASE("Downbeat is forced in GROOVE+ zones", "[guard-rails]")
 
     SECTION("Already has downbeat - no change")
     {
-        uint32_t anchor = 0x00000101;  // Has step 0
+        uint64_t anchor = 0x00000101;  // Has step 0
 
         bool forced = EnforceDownbeat(anchor, EnergyZone::GROOVE, 32);
 
@@ -482,7 +482,7 @@ TEST_CASE("Max gap is enforced", "[guard-rails]")
 {
     SECTION("Large gap gets filled")
     {
-        uint32_t anchor = 0x00000001;  // Only step 0
+        uint64_t anchor = 0x00000001;  // Only step 0
 
         int added = EnforceMaxGap(anchor, EnergyZone::GROOVE, 32);
 
@@ -493,7 +493,7 @@ TEST_CASE("Max gap is enforced", "[guard-rails]")
 
     SECTION("Dense pattern unchanged")
     {
-        uint32_t anchor = 0x11111111;  // Every 4 steps
+        uint64_t anchor = 0x11111111;  // Every 4 steps
 
         int added = EnforceMaxGap(anchor, EnergyZone::GROOVE, 32);
 
@@ -502,7 +502,7 @@ TEST_CASE("Max gap is enforced", "[guard-rails]")
 
     SECTION("MINIMAL zone allows large gaps")
     {
-        uint32_t anchor = 0x00000001;
+        uint64_t anchor = 0x00000001;
 
         int added = EnforceMaxGap(anchor, EnergyZone::MINIMAL, 32);
 
@@ -514,8 +514,8 @@ TEST_CASE("Consecutive shimmer is limited", "[guard-rails]")
 {
     SECTION("Long shimmer run is shortened")
     {
-        uint32_t anchor = 0x00000001;  // Only step 0
-        uint32_t shimmer = 0xFFFFFFFF; // All steps
+        uint64_t anchor = 0x00000001;  // Only step 0
+        uint64_t shimmer = 0xFFFFFFFFFFFFFFFFULL; // All steps
 
         int removed = EnforceConsecutiveShimmer(anchor, shimmer, EnergyZone::GROOVE, 32);
 
@@ -528,8 +528,8 @@ TEST_CASE("Consecutive shimmer is limited", "[guard-rails]")
 
     SECTION("Short run is unchanged")
     {
-        uint32_t anchor = 0x11111111;  // Every 4 steps
-        uint32_t shimmer = 0x22222222; // Offset from anchor
+        uint64_t anchor = 0x11111111;  // Every 4 steps
+        uint64_t shimmer = 0x22222222; // Offset from anchor
         uint32_t originalShimmer = shimmer;
 
         int removed = EnforceConsecutiveShimmer(anchor, shimmer, EnergyZone::GROOVE, 32);
@@ -543,8 +543,8 @@ TEST_CASE("CountMaxConsecutiveShimmer is accurate", "[guard-rails]")
 {
     SECTION("No shimmer returns 0")
     {
-        uint32_t anchor = 0x11111111;
-        uint32_t shimmer = 0;
+        uint64_t anchor = 0x11111111;
+        uint64_t shimmer = 0;
 
         int count = CountMaxConsecutiveShimmer(anchor, shimmer, 32);
         REQUIRE(count == 0);
@@ -552,8 +552,8 @@ TEST_CASE("CountMaxConsecutiveShimmer is accurate", "[guard-rails]")
 
     SECTION("Shimmer on anchor steps don't count")
     {
-        uint32_t anchor = 0x11111111;
-        uint32_t shimmer = 0x11111111;  // Same as anchor
+        uint64_t anchor = 0x11111111;
+        uint64_t shimmer = 0x11111111;  // Same as anchor
 
         int count = CountMaxConsecutiveShimmer(anchor, shimmer, 32);
         REQUIRE(count == 0);
@@ -561,8 +561,8 @@ TEST_CASE("CountMaxConsecutiveShimmer is accurate", "[guard-rails]")
 
     SECTION("Consecutive shimmer without anchor is counted")
     {
-        uint32_t anchor = 0x00000001;  // Only step 0
-        uint32_t shimmer = 0x0000000E; // Steps 1, 2, 3
+        uint64_t anchor = 0x00000001;  // Only step 0
+        uint64_t shimmer = 0x0000000E; // Steps 1, 2, 3
 
         int count = CountMaxConsecutiveShimmer(anchor, shimmer, 32);
         REQUIRE(count == 3);
@@ -573,8 +573,8 @@ TEST_CASE("ApplyHardGuardRails applies all rules", "[guard-rails]")
 {
     SECTION("Multiple violations are corrected")
     {
-        uint32_t anchor = 0x00000100;  // Step 8 only (no downbeat, gaps)
-        uint32_t shimmer = 0xFFFFFF00; // Steps 8-31 (long consecutive)
+        uint64_t anchor = 0x00000100;  // Step 8 only (no downbeat, gaps)
+        uint64_t shimmer = 0xFFFFFF00; // Steps 8-31 (long consecutive)
 
         int corrections = ApplyHardGuardRails(anchor, shimmer,
                                                EnergyZone::GROOVE, Genre::TECHNO, 32);
@@ -619,10 +619,10 @@ TEST_CASE("Soft repair swaps weak hit for rescue", "[guard-rails]")
     SECTION("Repair moves hit to fill gap")
     {
         // Pattern with a large gap in the middle
-        uint32_t anchor = 0x80000001;  // Steps 0 and 31
-        anchor |= (1U << 16);          // Add weak step 16
+        uint64_t anchor = 0x80000001;  // Steps 0 and 31
+        anchor |= (1ULL << 16);          // Add weak step 16
 
-        uint32_t shimmer = 0;
+        uint64_t shimmer = 0;
 
         int repairs = SoftRepairPass(anchor, shimmer, anchorWeights, shimmerWeights,
                                      EnergyZone::GROOVE, 32);
@@ -642,7 +642,7 @@ TEST_CASE("FindWeakestHit finds minimum weight", "[guard-rails]")
     }
     weights[8] = 0.1f;  // Weakest
 
-    uint32_t mask = 0x11111111;  // Steps 0, 4, 8, 12, 16, 20, 24, 28
+    uint64_t mask = 0x11111111;  // Steps 0, 4, 8, 12, 16, 20, 24, 28
 
     int weakest = FindWeakestHit(mask, weights, 32);
     REQUIRE(weakest == 8);
@@ -657,7 +657,7 @@ TEST_CASE("FindRescueCandidate finds best option", "[guard-rails]")
     }
     weights[5] = 0.9f;  // Best rescue candidate
 
-    uint32_t mask = 0x00000001;        // Already have step 0
+    uint64_t mask = 0x00000001;        // Already have step 0
     uint32_t rescue = 0x00000030;      // Steps 4 and 5 are rescue options
 
     int best = FindRescueCandidate(mask, rescue, weights, 32);
@@ -700,14 +700,14 @@ TEST_CASE("Full generation flow produces valid pattern", "[integration]")
     SECTION("Generate anchor then shimmer with voice relation")
     {
         // Generate anchor pattern
-        uint32_t eligibility = ComputeAnchorEligibility(0.5f, 0.3f, EnergyZone::GROOVE, 32);
+        uint64_t eligibility = ComputeAnchorEligibility(0.5f, 0.3f, EnergyZone::GROOVE, 32);
         int budget = ComputeAnchorBudget(0.5f, EnergyZone::GROOVE, 32);
-        uint32_t anchor = SelectHitsGumbelTopK(weights, eligibility, budget, 12345, 32, 2);
+        uint64_t anchor = SelectHitsGumbelTopK(weights, eligibility, budget, 12345, 32, 2);
 
         // Generate shimmer pattern
         eligibility = ComputeShimmerEligibility(0.5f, 0.3f, EnergyZone::GROOVE, 32);
         budget = ComputeShimmerBudget(0.5f, 0.5f, EnergyZone::GROOVE, 32);
-        uint32_t shimmer = SelectHitsGumbelTopK(weights, eligibility, budget, 67890, 32, 1);
+        uint64_t shimmer = SelectHitsGumbelTopK(weights, eligibility, budget, 67890, 32, 1);
 
         // V5: ApplyVoiceRelationship removed - use ApplyComplementRelationship instead
         // For this test, shimmer is used directly without voice relationship
@@ -758,7 +758,7 @@ TEST_CASE("Empty eligibility returns empty mask", "[edge-cases]")
 {
     float weights[32] = {0};
 
-    uint32_t mask = SelectHitsGumbelTopK(weights, 0, 4, 12345, 32, 0);
+    uint64_t mask = SelectHitsGumbelTopK(weights, 0, 4, 12345, 32, 0);
     REQUIRE(mask == 0);
 }
 
@@ -770,8 +770,8 @@ TEST_CASE("Very short patterns work", "[edge-cases]")
         weights[i] = 0.5f;
     }
 
-    uint32_t eligibility = 0x0000FFFF;
-    uint32_t mask = SelectHitsGumbelTopK(weights, eligibility, 4, 12345, 16, 0);
+    uint64_t eligibility = 0x0000FFFF;
+    uint64_t mask = SelectHitsGumbelTopK(weights, eligibility, 4, 12345, 16, 0);
 
     REQUIRE(CountBits(mask) == 4);
     REQUIRE((mask & 0xFFFF0000) == 0);  // No hits beyond pattern length
@@ -782,7 +782,7 @@ TEST_CASE("All weights zero still selects if eligible", "[edge-cases]")
     float weights[32] = {0};  // All zero weights
 
     // With zero weights, selection is based purely on Gumbel noise
-    uint32_t mask = SelectHitsGumbelTopK(weights, 0xFFFFFFFF, 2, 12345, 32, 0);
+    uint64_t mask = SelectHitsGumbelTopK(weights, 0xFFFFFFFFFFFFFFFFULL, 2, 12345, 32, 0);
 
     // Should still select something (Gumbel breaks ties)
     // Actually, log(0) = -inf, so need epsilon protection
@@ -792,9 +792,9 @@ TEST_CASE("All weights zero still selects if eligible", "[edge-cases]")
 
 TEST_CASE("Pattern length clamping works", "[edge-cases]")
 {
-    // Test with pattern length > 32 (should be clamped)
-    int clamped = ClampPatternLength(64);
-    REQUIRE(clamped == 32);
+    // Test with pattern length > 64 (should be clamped)
+    int clamped = ClampPatternLength(128);
+    REQUIRE(clamped == 64);
 
     clamped = ClampPatternLength(32);
     REQUIRE(clamped == 32);
@@ -839,13 +839,13 @@ TEST_CASE("Hit histogram by archetype for Techno genre", "[musicality][histogram
         // Generate multiple patterns with different seeds
         for (int trial = 0; trial < kNumTrials; ++trial)
         {
-            uint32_t mask = SelectHitsGumbelTopK(minimalWeights, 0xFFFFFFFF,
+            uint64_t mask = SelectHitsGumbelTopK(minimalWeights, 0xFFFFFFFFFFFFFFFFULL,
                                                   4, 12345 + trial, kPatternLength, 0);
 
             // Count hits at each position
             for (int step = 0; step < kPatternLength; ++step)
             {
-                if (mask & (1U << step))
+                if (mask & (1ULL << step))
                 {
                     minimalHits[step]++;
                 }
@@ -899,12 +899,12 @@ TEST_CASE("Hit histogram by archetype for Techno genre", "[musicality][histogram
         // Generate multiple patterns
         for (int trial = 0; trial < kNumTrials; ++trial)
         {
-            uint32_t mask = SelectHitsGumbelTopK(groovyWeights, 0xFFFFFFFF,
+            uint64_t mask = SelectHitsGumbelTopK(groovyWeights, 0xFFFFFFFFFFFFFFFFULL,
                                                   5, 22222 + trial, kPatternLength, 0);
 
             for (int step = 0; step < kPatternLength; ++step)
             {
-                if (mask & (1U << step))
+                if (mask & (1ULL << step))
                 {
                     groovyHits[step]++;
                 }
@@ -949,12 +949,12 @@ TEST_CASE("Hit histogram by archetype for Techno genre", "[musicality][histogram
         // Generate multiple patterns
         for (int trial = 0; trial < kNumTrials; ++trial)
         {
-            uint32_t mask = SelectHitsGumbelTopK(chaosWeights, 0xFFFFFFFF,
+            uint64_t mask = SelectHitsGumbelTopK(chaosWeights, 0xFFFFFFFFFFFFFFFFULL,
                                                   6, 33333 + trial, kPatternLength, 0);
 
             for (int step = 0; step < kPatternLength; ++step)
             {
-                if (mask & (1U << step))
+                if (mask & (1ULL << step))
                 {
                     chaosHits[step]++;
                 }

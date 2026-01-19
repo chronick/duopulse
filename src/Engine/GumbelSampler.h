@@ -76,8 +76,8 @@ float UniformToGumbel(float uniform);
  * @param minSpacing Minimum steps between selected hits (0 = no constraint)
  * @return Bitmask of selected steps
  */
-uint32_t SelectHitsGumbelTopK(const float* weights,
-                               uint32_t eligibilityMask,
+uint64_t SelectHitsGumbelTopK(const float* weights,
+                               uint64_t eligibilityMask,
                                int targetCount,
                                uint32_t seed,
                                int patternLength,
@@ -93,8 +93,8 @@ uint32_t SelectHitsGumbelTopK(const float* weights,
  * @param patternLength Pattern length
  * @return Selected step mask
  */
-uint32_t SelectHitsGumbelSimple(const float* weights,
-                                 uint32_t eligibilityMask,
+uint64_t SelectHitsGumbelSimple(const float* weights,
+                                 uint64_t eligibilityMask,
                                  int targetCount,
                                  uint32_t seed,
                                  int patternLength);
@@ -129,7 +129,7 @@ void ComputeGumbelScores(const float* weights,
  * @return Best step index, or -1 if none available
  */
 int FindBestStep(const float* scores,
-                 uint32_t eligibilityMask,
+                 uint64_t eligibilityMask,
                  uint32_t selectedMask,
                  int patternLength,
                  int minSpacing);
@@ -146,7 +146,7 @@ int FindBestStep(const float* scores,
  * @param patternLength Pattern length
  * @return Mask of steps within minSpacing of the reference
  */
-uint32_t GetSpacingExclusionMask(int step, int minSpacing, int patternLength);
+uint64_t GetSpacingExclusionMask(int step, int minSpacing, int patternLength);
 
 /**
  * Check if a step selection satisfies spacing constraints
@@ -157,7 +157,7 @@ uint32_t GetSpacingExclusionMask(int step, int minSpacing, int patternLength);
  * @param patternLength Pattern length
  * @return true if candidate respects spacing from all selected steps
  */
-bool CheckSpacingValid(uint32_t selectedMask, int candidateStep, int minSpacing, int patternLength);
+bool CheckSpacingValid(uint64_t selectedMask, int candidateStep, int minSpacing, int patternLength);
 
 /**
  * Get minimum spacing based on energy zone

@@ -78,7 +78,7 @@ float GetStepStability(int step, int patternLength);
  * @param stabilityThreshold Only include steps with stability >= this
  * @return Bitmask of stable steps
  */
-uint32_t GetStabilityMask(int patternLength, float stabilityThreshold);
+uint64_t GetStabilityMask(int patternLength, float stabilityThreshold);
 
 // =============================================================================
 // Seed Selection Functions

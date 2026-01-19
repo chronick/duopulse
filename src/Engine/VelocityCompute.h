@@ -122,7 +122,7 @@ float ComputeVelocity(const AccentParams& accentParams,
  * @return true if step should be accented
  */
 bool ShouldAccent(int step,
-                  uint32_t accentMask,
+                  uint64_t accentMask,
                   float accentProbability,
                   const ShapeModifiers& shapeMods,
                   uint32_t seed);
@@ -137,7 +137,7 @@ bool ShouldAccent(int step,
  * @param voice Voice type (ANCHOR, SHIMMER, AUX)
  * @return Accent eligibility bitmask
  */
-uint32_t GetDefaultAccentMask(Voice voice);
+uint64_t GetDefaultAccentMask(Voice voice);
 
 /**
  * Compute velocity for anchor voice with all parameters.
@@ -160,7 +160,7 @@ float ComputeAnchorVelocity(float accent,
                             int step,
                             int patternLength = 16,
                             uint32_t seed = 0,
-                            uint32_t accentMask = 0);
+                            uint64_t accentMask = 0);
 
 /**
  * Compute velocity for shimmer voice with all parameters.
@@ -183,7 +183,7 @@ float ComputeShimmerVelocity(float accent,
                              int step,
                              int patternLength = 16,
                              uint32_t seed = 0,
-                             uint32_t accentMask = 0);
+                             uint64_t accentMask = 0);
 
 // =============================================================================
 // Legacy Function Aliases (for backward compatibility)

@@ -8,7 +8,7 @@ namespace daisysp_idm_grids
 // Utility Functions
 // =============================================================================
 
-int CountBits(uint32_t mask)
+int CountBits(uint64_t mask)
 {
     // Brian Kernighan's algorithm
     int count = 0;
@@ -24,7 +24,7 @@ int ClampPatternLength(int patternLength)
 {
     // For bitmask operations, we work with at most 32 steps
     // Longer patterns use two bars
-    return std::min(patternLength, 32);
+    return std::min(patternLength, 64);
 }
 
 float GetAnchorBudgetMultiplier(float shape)
@@ -265,7 +265,7 @@ void ComputeBarBudget(float energy,
 
     // Initialize eligibility to full pattern (will be refined by caller)
     // Avoid UB: (1U << 32) is undefined behavior
-    uint32_t fullMask = (clampedLength >= 32) ? 0xFFFFFFFF : ((1U << clampedLength) - 1);
+    uint64_t fullMask = (clampedLength >= 64) ? 0xFFFFFFFFFFFFFFFFULL : ((1ULL << clampedLength) - 1);
     outBudget.anchorEligibility  = fullMask;
     outBudget.shimmerEligibility = fullMask;
     outBudget.auxEligibility     = fullMask;
@@ -275,7 +275,7 @@ void ComputeBarBudget(float energy,
 // Eligibility Mask Computation
 // =============================================================================
 
-uint32_t ComputeAnchorEligibility(float energy, float flavor, EnergyZone zone, int patternLength)
+uint64_t ComputeAnchorEligibility(float energy, float flavor, EnergyZone zone, int patternLength)
 {
     // Clamp inputs
     energy = std::max(0.0f, std::min(1.0f, energy));
@@ -283,8 +283,8 @@ uint32_t ComputeAnchorEligibility(float energy, float flavor, EnergyZone zone, i
     int clampedLength = ClampPatternLength(patternLength);
 
     // Avoid UB: (1U << 32) is undefined behavior
-    uint32_t lengthMask = (clampedLength >= 32) ? 0xFFFFFFFF : ((1U << clampedLength) - 1);
-    uint32_t eligibility = 0;
+    uint64_t lengthMask = (clampedLength >= 64) ? 0xFFFFFFFFFFFFFFFFULL : ((1ULL << clampedLength) - 1);
+    uint64_t eligibility = 0;
 
     // Base eligibility based on zone
     switch (zone)
@@ -335,7 +335,7 @@ uint32_t ComputeAnchorEligibility(float energy, float flavor, EnergyZone zone, i
     return eligibility & lengthMask;
 }
 
-uint32_t ComputeShimmerEligibility(float energy, float flavor, EnergyZone zone, int patternLength)
+uint64_t ComputeShimmerEligibility(float energy, float flavor, EnergyZone zone, int patternLength)
 {
     // Clamp inputs
     energy = std::max(0.0f, std::min(1.0f, energy));
@@ -343,8 +343,8 @@ uint32_t ComputeShimmerEligibility(float energy, float flavor, EnergyZone zone, 
     int clampedLength = ClampPatternLength(patternLength);
 
     // Avoid UB: (1U << 32) is undefined behavior
-    uint32_t lengthMask = (clampedLength >= 32) ? 0xFFFFFFFF : ((1U << clampedLength) - 1);
-    uint32_t eligibility = 0;
+    uint64_t lengthMask = (clampedLength >= 64) ? 0xFFFFFFFFFFFFFFFFULL : ((1ULL << clampedLength) - 1);
+    uint64_t eligibility = 0;
 
     // Base eligibility based on zone
     switch (zone)
@@ -387,7 +387,7 @@ uint32_t ComputeShimmerEligibility(float energy, float flavor, EnergyZone zone, 
     return eligibility & lengthMask;
 }
 
-uint32_t ComputeAuxEligibility(float energy, float flavor, EnergyZone zone, int patternLength)
+uint64_t ComputeAuxEligibility(float energy, float flavor, EnergyZone zone, int patternLength)
 {
     // Clamp inputs
     energy = std::max(0.0f, std::min(1.0f, energy));
@@ -395,8 +395,8 @@ uint32_t ComputeAuxEligibility(float energy, float flavor, EnergyZone zone, int 
     int clampedLength = ClampPatternLength(patternLength);
 
     // Avoid UB: (1U << 32) is undefined behavior
-    uint32_t lengthMask = (clampedLength >= 32) ? 0xFFFFFFFF : ((1U << clampedLength) - 1);
-    uint32_t eligibility = 0;
+    uint64_t lengthMask = (clampedLength >= 64) ? 0xFFFFFFFFFFFFFFFFULL : ((1ULL << clampedLength) - 1);
+    uint64_t eligibility = 0;
 
     // Aux (hi-hat) is more permissive
     switch (zone)

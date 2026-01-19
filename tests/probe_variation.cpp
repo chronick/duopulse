@@ -23,6 +23,6 @@ TEST_CASE("Sequencer generates non-empty patterns at high energy", "[probe][gene
     // V5: Check pattern mask directly (procedural generation doesn't expose weights)
     // Anchor mask should have multiple hits at peak energy
     uint64_t anchorMask = seq.GetAnchorMask();
-    int anchorHits = CountBits(static_cast<uint32_t>(anchorMask & 0xFFFFFFFF));
+    int anchorHits = CountBits(static_cast<uint32_t>(anchorMask & 0xFFFFFFFFFFFFFFFFULL));
     REQUIRE(anchorHits >= 3);
 }
