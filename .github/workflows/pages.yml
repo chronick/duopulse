@@ -27,7 +27,7 @@ on:
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -74,6 +74,29 @@ jobs:
 
       - name: Generate evaluation data
         run: make evals-generate
+
+      - name: Run evaluations
+        run: make evals-evaluate
+
+      - name: Update baseline
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        run: |
+          node scripts/update-baseline.js --metrics=tools/evals/public/data/expressiveness.json
+
+      - name: Tag baseline
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        run: |
+          bash scripts/tag-baseline.sh --push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Commit baseline changes
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore(metrics): update baseline [skip ci]"
+          file_pattern: metrics/baseline.json
+          branch: main
 
       - name: Assemble site
         run: |

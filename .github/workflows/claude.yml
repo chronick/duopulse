@@ -46,7 +46,7 @@ jobs:
     # - No force push capability
     # - Repository-scoped permissions only
     #
-    # See: docs/tasks/active/64-claude-permissions.md for full rationale
+    # See: docs/tasks/completed/64-claude-permissions.md for full rationale
     permissions:
       contents: write
       pull-requests: write

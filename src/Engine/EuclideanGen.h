@@ -40,7 +40,7 @@ namespace daisysp_idm_grids
  * - GenerateEuclidean(3, 8)  = 0x25       (son clave: 100100100)
  * - GenerateEuclidean(5, 8)  = 0xAA       (10101010)
  */
-uint32_t GenerateEuclidean(int hits, int steps);
+uint64_t GenerateEuclidean(int hits, int steps);
 
 /**
  * Rotate a pattern by offset steps (deterministic rotation).
@@ -53,7 +53,7 @@ uint32_t GenerateEuclidean(int hits, int steps);
  * Example:
  * - RotatePattern(0x11, 1, 8) = 0x88  (00010001 -> 10001000)
  */
-uint32_t RotatePattern(uint32_t pattern, int offset, int steps);
+uint64_t RotatePattern(uint64_t pattern, int offset, int steps);
 
 // =============================================================================
 // Euclidean + Probabilistic Weight Blending
@@ -81,11 +81,11 @@ uint32_t RotatePattern(uint32_t pattern, int offset, int steps);
  * @param seed RNG seed for Gumbel noise and rotation
  * @return Bitmask of selected hit steps
  */
-uint32_t BlendEuclideanWithWeights(
+uint64_t BlendEuclideanWithWeights(
     int budget,
     int steps,
     const float* weights,
-    uint32_t eligibility,
+    uint64_t eligibility,
     float euclideanRatio,
     uint32_t seed);
 

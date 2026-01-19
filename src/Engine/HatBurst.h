@@ -105,7 +105,7 @@ struct HatBurst
  * - Returns -1 only if all steps are used
  * - Bounded to fillDuration iterations (no infinite loops)
  */
-int FindNearestEmpty(int step, int fillDuration, uint32_t usedSteps);
+int FindNearestEmpty(int step, int fillDuration, uint64_t usedSteps);
 
 // =============================================================================
 // Proximity Detection
@@ -119,12 +119,12 @@ int FindNearestEmpty(int step, int fillDuration, uint32_t usedSteps);
  *
  * @param step Step position to check (within fill zone, 0 to fillDuration-1)
  * @param fillStart Start of fill zone in main pattern
- * @param mainPattern 32-bit pattern where bit N = hit on step N
+ * @param mainPattern 64-bit pattern where bit N = hit on step N
  * @param proximityWindow Number of steps to check on each side (typically 1)
- * @param patternLength Length of pattern in steps (1-32, clamped to kMaxSteps)
+ * @param patternLength Length of pattern in steps (1-64, clamped to kMaxSteps)
  * @return true if a main pattern hit is within proximityWindow of step
  */
-bool CheckProximity(int step, int fillStart, uint32_t mainPattern, int proximityWindow, int patternLength);
+bool CheckProximity(int step, int fillStart, uint64_t mainPattern, int proximityWindow, int patternLength);
 
 // =============================================================================
 // Timing Distribution
@@ -171,10 +171,10 @@ int EuclideanWithJitter(int triggerIndex, int triggerCount,
  *
  * @param energy ENERGY parameter (0.0-1.0), controls density
  * @param shape SHAPE parameter (0.0-1.0), controls regularity
- * @param mainPattern 32-bit bitmask of main pattern hits
- * @param fillStart Start step of fill zone (0-31)
- * @param fillDuration Length of fill zone in steps (1-32)
- * @param patternLength Length of pattern in steps (1-32, clamped to kMaxSteps)
+ * @param mainPattern 64-bit bitmask of main pattern hits
+ * @param fillStart Start step of fill zone (0-63)
+ * @param fillDuration Length of fill zone in steps (1-64)
+ * @param patternLength Length of pattern in steps (1-64, clamped to kMaxSteps)
  * @param seed Pattern seed for deterministic randomness
  * @param burst Output HatBurst struct (will be initialized)
  *
@@ -186,7 +186,7 @@ int EuclideanWithJitter(int triggerIndex, int triggerCount,
  * - No heap allocations (RT audio safe)
  */
 void GenerateHatBurst(float energy, float shape,
-                      uint32_t mainPattern, int fillStart,
+                      uint64_t mainPattern, int fillStart,
                       int fillDuration, int patternLength, uint32_t seed,
                       HatBurst& burst);
 

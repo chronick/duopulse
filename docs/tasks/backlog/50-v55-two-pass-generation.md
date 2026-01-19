@@ -181,3 +181,58 @@ Recommended: Option A for consistency, but make it a compile-time flag during te
 
 4-5 hours (if implemented)
 0 hours (if dropped due to targets already met)
+
+---
+
+## 64-Step Grid Compatibility (Added 2026-01-19)
+
+**Impact**: Major - Skeleton concept needs bar awareness
+
+### Current Implementation Assumption
+
+The task assumes "beats 1 and 3" means steps 0 and `patternLength / 2`. At 32 steps:
+- Step 0 = beat 1
+- Step 16 = beat 3
+
+This works for 2-bar patterns at 16th-note resolution.
+
+### 64-Step Implications
+
+At 64 steps, the pattern can represent:
+- **4 bars of 16ths**: Steps 0, 16, 32, 48 are downbeats (beats 1 of each bar)
+- **2 bars of 32nds**: Steps 0, 32 are beats 1 and 3
+- **1 bar of 64ths**: Only step 0 is beat 1
+
+### Required Updates
+
+1. **Multi-bar skeleton**: For 64-step 4-bar patterns, skeleton should include all downbeats:
+   ```cpp
+   std::vector<int> skeletonSteps;
+   int stepsPerBar = patternLength / 4;  // Assume 4 bars
+   for (int bar = 0; bar < 4; bar++) {
+       skeletonSteps.push_back(bar * stepsPerBar);  // Beat 1 of each bar
+   }
+   ```
+
+2. **Add pattern structure parameter**: Consider adding `barsPerPattern` or `resolution` to `PatternParams`:
+   ```cpp
+   struct PatternParams {
+       // ...
+       int patternLength;      // 16, 32, or 64
+       int barsPerPattern;     // Derived: patternLength / 16
+       PatternResolution res;  // SIXTEENTHS, THIRTY_SECONDS, etc.
+   };
+   ```
+
+3. **Update acceptance criteria**: Test skeleton at all pattern lengths:
+   - 16 steps: beats 1, 3 (steps 0, 8)
+   - 32 steps: beats 1, 3 (steps 0, 16)
+   - 64 steps: beats 1, 5, 9, 13 (steps 0, 16, 32, 48) for 4-bar pattern
+
+### Opportunities
+
+With 64-step support, two-pass generation can create more complex phrase structures:
+- Pass 1: Downbeats (4 hits in 64 steps)
+- Pass 2: Fill based on ENERGY and SHAPE
+
+This creates true multi-bar skeleton patterns instead of just 2-beat.

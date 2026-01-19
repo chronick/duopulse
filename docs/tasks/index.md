@@ -15,7 +15,7 @@
 | 10 | duopulse-v2 | DuoPulse v2: 2-Voice Percussive Sequencer with genre-aware swing, phrase structure, voice relationships | completed | 2025-12-01 | 2025-12-02 | completed/10-duopulse-v2.md |
 | 11 | control-layout-fixes | Control Layout Fixes: mode persistence bug, FLUX/FUSE investigation, control reorganization | completed | 2025-12-03 | 2025-12-16 | completed/11-control-layout-fixes.md |
 | 12 | aux-output-modes | Auxiliary Output Modes (CV Out 1) — superseded by task 15 (v4) | archived | 2025-12-16 | 2025-12-19 | archived/12-aux-output-modes.md |
-| 13 | pulse-field-v3 | DuoPulse v3: Algorithmic Pulse Field — BROKEN/DRIFT controls, weighted pulse field, COUPLE interlock | done | 2025-12-16 | 2025-12-17T22:00:00Z | completed/13-pulse-field-v3.md |
+| 13 | pulse-field-v3 | DuoPulse v3: Algorithmic Pulse Field — BROKEN/DRIFT controls, weighted pulse field, COUPLE interlock | completed | 2025-12-16 | 2025-12-17T22:00:00Z | completed/13-pulse-field-v3.md |
 | 14 | v3-ratchet-fixes | v3 Fixes: RATCHET parameter, DENSITY=0/DRIFT=0 bug fixes, header/cpp code quality | completed | 2025-12-17 | 2025-12-19 | completed/14-v3-ratchet-fixes.md |
 | 15 | duopulse-v4 | DuoPulse v4: Complete architecture overhaul — 2D pattern field, hit budgets, Gumbel sampling, PUNCH/BUILD/BALANCE controls | completed | 2025-12-19 | 2025-12-29 | completed/15-duopulse-v4.md |
 | 16 | v4-hardware-validation | DuoPulse v4 Hardware Validation & Debug — progressive feature testing, debug flags, hardware validation guide | completed | 2025-12-26 | 2025-12-29 | completed/16-v4-hardware-validation.md |
@@ -25,7 +25,7 @@
 | 20 | level1-archetype-debug | Level 1 Archetype Pattern Debug — diagnose why Field X/Y knobs don't affect pattern at DEBUG_FEATURE_LEVEL 1 | completed | 2025-12-28 | 2025-12-28 | completed/20-level1-archetype-debug.md |
 | 21 | musicality-improvements | Musicality Improvements — archetype weight retuning, velocity contrast, BUILD phases, Euclidean blend | completed | 2025-12-28 | 2025-12-31 | completed/21-musicality/21-04-implementation.md |
 | 22 | control-simplification | Control Simplification — remove reset mode, auto-derive phrase, extend balance range, simplify coupling | completed | 2025-12-29 | 2026-01-01 | completed/22-control-simplification.md |
-| 23 | immediate-field-updates | Immediate Field Updates — Field X/Y changes should update pattern immediately without waiting for reset | done | 2025-12-29 | 2026-01-01 | completed/23-immediate-field-updates.md |
+| 23 | immediate-field-updates | Immediate Field Updates — Field X/Y changes should update pattern immediately without waiting for reset | completed | 2025-12-29 | 2026-01-01 | completed/23-immediate-field-updates.md |
 | 24 | power-on-behavior | Power-On Behavior — define boot defaults, reset to musical defaults on power cycle, read performance knobs on startup | completed | 2025-12-29 | 2026-01-03 | completed/24-power-on-behavior.md |
 | 25 | voice-control-redesign | VOICE Control Redesign — superseded by V5 COMPLEMENT design (Task 30) | archived | 2025-12-30 | 2026-01-04 | archived/25-voice-control-redesign.md |
 | 26 | fix-tasks-22-24-bugs | Fix Tasks 22-24 Implementation Bugs — phrase length auto-derivation, freed controls still in main loop, inconsistent defaults | completed | 2026-01-03 | 2026-01-03 | completed/26-fix-tasks-22-24-bugs.md |
@@ -55,17 +55,18 @@
 | 51 | github-pages | GitHub Pages Site with Evals Integration | completed | 2026-01-13 | 2026-01-13 | misc/51-github-pages.md |
 | 52 | release-builds | CI Release Builds on Version Tags | pending | 2026-01-13 | 2026-01-13 | misc/52-release-builds.md |
 | 53 | grid-expansion-64 | Grid Expansion to 64 Steps with Flam Resolution | pending | 2026-01-18 | 2026-01-18 | active/53-grid-expansion-64.md |
-| 54 | fill-gates-evals | Fill Gate Evaluation in Pentagon Metrics | pending | 2026-01-18 | 2026-01-18 | active/54-fill-gates-evals.md |
-| 55 | iterate-command | Iteration Command System for Hill-Climbing | pending | 2026-01-18 | 2026-01-18 | active/55-iterate-command.md |
-| 56 | weight-based-blending | Weight-Based Algorithm Blending System | pending | 2026-01-18 | 2026-01-18 | active/56-weight-based-blending.md |
+| 54 | fill-gates-evals | Fill Gate Evaluation in Pentagon Metrics | completed | 2026-01-18 | 2026-01-18 | completed/54-fill-gates-evals.md |
+| 55 | iterate-command | Iteration Command System for Hill-Climbing | completed | 2026-01-18 | 2026-01-18 | completed/55-iterate-command.md |
+| 56 | weight-based-blending | Weight-Based Algorithm Blending System | completed | 2026-01-18 | 2026-01-18 | completed/56-weight-based-blending.md |
 | 57 | pr-workflow-integration | PR Workflow Integration for Claude Feedback | pending | 2026-01-18 | 2026-01-18 | active/57-pr-workflow-integration.md |
 | 58 | website-iteration-timeline | Website Iteration Timeline and Progress Tracking | pending | 2026-01-18 | 2026-01-18 | active/58-website-iteration-timeline.md |
-| 59 | algorithm-weight-config | Algorithm Weight Configuration System | pending | 2026-01-18 | 2026-01-18 | active/59-algorithm-weight-config.md |
-| 60 | audio-preview-player | Audio Preview Player for Pattern Evaluation | completed | 2026-01-18 | 2026-01-18 | active/60-audio-preview-player.md |
-| 61 | regression-detection | Full Regression Detection + Rollback | pending | 2026-01-18 | 2026-01-18 | active/61-regression-detection.md |
-| 61a | baseline-infrastructure | Baseline Infrastructure | pending | 2026-01-18 | 2026-01-18 | active/61a-baseline-infrastructure.md |
-| 61b | pr-metrics-comparison | PR Metrics Comparison | pending | 2026-01-18 | 2026-01-18 | active/61b-pr-metrics-comparison.md |
-| 62 | ensemble-weight-search | Ensemble Weight Search with Tournament Selection | pending | 2026-01-18 | 2026-01-18 | active/62-ensemble-weight-search.md |
-| 63 | parameter-sensitivity | Parameter Sensitivity Analysis | pending | 2026-01-18 | 2026-01-18 | active/63-parameter-sensitivity.md |
-| 64 | claude-permissions | Claude Permissions Update | pending | 2026-01-18 | 2026-01-18 | active/64-claude-permissions.md |
+| 59 | algorithm-weight-config | Algorithm Weight Configuration System | completed | 2026-01-18 | 2026-01-18 | completed/59-algorithm-weight-config.md |
+| 60 | audio-preview-player | Audio Preview Player for Pattern Evaluation | completed | 2026-01-18 | 2026-01-18 | completed/60-audio-preview-player.md |
+| 61 | regression-detection | Full Regression Detection + Rollback | completed | 2026-01-18 | 2026-01-18 | completed/61-regression-detection.md |
+| 61a | baseline-infrastructure | Baseline Infrastructure | completed | 2026-01-18 | 2026-01-18 | completed/61a-baseline-infrastructure.md |
+| 61b | pr-metrics-comparison | PR Metrics Comparison | completed | 2026-01-18 | 2026-01-18 | completed/61b-pr-metrics-comparison.md |
+| 62 | ensemble-weight-search | Ensemble Weight Search with Tournament Selection | completed | 2026-01-18 | 2026-01-18 | completed/62-ensemble-weight-search.md |
+| 63 | parameter-sensitivity | Parameter Sensitivity Analysis | completed | 2026-01-18 | 2026-01-18 | completed/63-parameter-sensitivity.md |
+| 64 | claude-permissions | Claude Permissions Update | completed | 2026-01-18 | 2026-01-18 | completed/64-claude-permissions.md |
 | 65 | phrase-aware-weights | Phrase-Aware Weight Modulation | backlog | 2026-01-18 | 2026-01-18 | backlog/65-phrase-aware-weights.md |
+| 66 | config-patternfield-wiring | Wire Zone Thresholds into PatternField | completed | 2026-01-18 | 2026-01-18 | completed/66-config-patternfield-wiring.md |

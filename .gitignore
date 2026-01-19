@@ -38,6 +38,7 @@ cmake_install.cmake
 
 # Generated files
 compile_commands.json
+inc/generated/
 
 # OS files
 .DS_Store

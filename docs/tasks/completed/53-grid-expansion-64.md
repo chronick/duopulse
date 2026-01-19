@@ -2,7 +2,7 @@
 id: 53
 slug: grid-expansion-64
 title: "Grid Expansion to 64 Steps with Flam Resolution"
-status: pending
+status: completed
 created_date: 2026-01-18
 updated_date: 2026-01-18
 branch: feature/grid-expansion-64

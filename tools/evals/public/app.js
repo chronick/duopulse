@@ -8,6 +8,7 @@ import { parseTargetRange, checkInRange, computeAlignmentScore, getStatusColor, 
 import { METRIC_KEYS, ZONES, VOICE_KEYS } from './js/constants.js';
 import { renderPatternGrid, getPatternFromClick } from './js/pattern-grid.js';
 import { renderPentagonRadarSVG } from './js/pentagon.js';
+import { renderSensitivityHeatmap, sensitivityStyles } from './js/sensitivity.js';
 
 // State
 let data = {
@@ -18,6 +19,8 @@ let data = {
   sweepMetrics: null,
   seedVariation: null,
   expressiveness: null,
+  sensitivity: null,
+  fills: null,
 };
 
 let currentView = 'overview';
@@ -61,6 +64,26 @@ async function loadData() {
       data.seedVariation,
       data.expressiveness,
     ] = results;
+
+    // Try to load sensitivity data (optional - may not exist yet)
+    try {
+      const sensitivityRes = await fetch('data/sensitivity.json');
+      if (sensitivityRes.ok) {
+        data.sensitivity = await sensitivityRes.json();
+      }
+    } catch (e) {
+      console.log('Sensitivity data not available (run "make sensitivity-matrix" to generate)');
+    }
+
+    // Try to load fills data (optional - may not exist yet)
+    try {
+      const fillsRes = await fetch('data/fills.json');
+      if (fillsRes.ok) {
+        data.fills = await fillsRes.json();
+      }
+    } catch (e) {
+      console.log('Fills data not available (run "make evals" to generate)');
+    }
 
     return true;
   } catch (err) {
@@ -371,6 +394,245 @@ function renderSeedsView() {
 }
 
 // ============================================================================
+// Sensitivity View
+// ============================================================================
+
+function renderSensitivityView() {
+  const container = $('#sensitivity-container');
+
+  // Inject styles if not already present
+  if (!document.getElementById('sensitivity-styles')) {
+    const styleEl = document.createElement('style');
+    styleEl.id = 'sensitivity-styles';
+    styleEl.textContent = sensitivityStyles;
+    document.head.appendChild(styleEl);
+  }
+
+  container.innerHTML = renderSensitivityHeatmap(data.sensitivity);
+}
+
+// ============================================================================
+// Fills View
+// ============================================================================
+
+/**
+ * Compute fill metrics from fill patterns
+ * @param {Array} fillPatterns - Array of fill patterns at different progress points
+ * @returns {Object} Computed metrics
+ */
+function computeFillMetrics(fillPatterns) {
+  if (!fillPatterns || fillPatterns.length < 2) {
+    return { densityRamp: 0, velocityBuild: 0, accentPlacement: 0, composite: 0 };
+  }
+
+  // Density Ramp: Check if density increases with progress
+  const densities = fillPatterns.map(fp => fp.hitCounts.total);
+  let densityIncreases = 0;
+  for (let i = 1; i < densities.length; i++) {
+    if (densities[i] >= densities[i - 1]) densityIncreases++;
+  }
+  const densityRamp = densityIncreases / (densities.length - 1);
+
+  // Velocity Build: Check if average velocity increases with progress
+  const avgVelocities = fillPatterns.map(fp => {
+    let totalVel = 0;
+    let count = 0;
+    for (const step of fp.fillSteps) {
+      if (step.anchorVel) { totalVel += step.anchorVel; count++; }
+      if (step.shimmerVel) { totalVel += step.shimmerVel; count++; }
+      if (step.auxVel) { totalVel += step.auxVel; count++; }
+    }
+    return count > 0 ? totalVel / count : 0;
+  });
+
+  let velocityIncreases = 0;
+  for (let i = 1; i < avgVelocities.length; i++) {
+    if (avgVelocities[i] >= avgVelocities[i - 1]) velocityIncreases++;
+  }
+  const velocityBuild = velocityIncreases / (avgVelocities.length - 1);
+
+  // Accent Placement: Check if final progress has highest velocities
+  const lastPattern = fillPatterns[fillPatterns.length - 1];
+  const hasHighVelocity = lastPattern.fillSteps.some(s =>
+    (s.anchorVel && s.anchorVel > 0.9) ||
+    (s.shimmerVel && s.shimmerVel > 0.9) ||
+    (s.auxVel && s.auxVel > 0.9)
+  );
+  const accentPlacement = hasHighVelocity ? 1.0 : 0.5;
+
+  // Composite score
+  const composite = (densityRamp + velocityBuild + accentPlacement) / 3;
+
+  return { densityRamp, velocityBuild, accentPlacement, composite };
+}
+
+/**
+ * Render a fill pattern grid (32 steps with progress labels)
+ * @param {Array} fillPatterns - Array of fill patterns at different progress points
+ * @param {number} energy - Energy level for display
+ * @returns {string} HTML string
+ */
+function renderFillPatternGrid(fillPatterns, energy) {
+  const progressLabels = [0.25, 0.5, 0.75, 1.0];
+
+  // Create a 32-step grid (fill patterns can be longer)
+  const numSteps = 32;
+
+  // Build rows for each progress point
+  const rows = fillPatterns.map((fp, idx) => {
+    const progress = progressLabels[idx] || fp.params.fillProgress;
+
+    // Create step cells
+    const stepCells = [];
+    for (let s = 0; s < numSteps; s++) {
+      const stepData = fp.fillSteps.find(fs => fs.step === s);
+      const isDownbeat = s % 4 === 0;
+
+      if (stepData) {
+        // Determine which voices hit on this step
+        const voices = [];
+        if (stepData.anchor) voices.push({ key: 'anchor', vel: stepData.anchorVel, color: 'var(--v1-color)' });
+        if (stepData.shimmer) voices.push({ key: 'shimmer', vel: stepData.shimmerVel, color: 'var(--v2-color)' });
+        if (stepData.aux) voices.push({ key: 'aux', vel: stepData.auxVel, color: 'var(--aux-color)' });
+
+        // Use primary voice color, or multi-voice indicator
+        const primaryVoice = voices[0];
+        const opacity = primaryVoice ? (0.4 + primaryVoice.vel * 0.6).toFixed(2) : 1;
+        const bgColor = voices.length > 1 ? '#fff' : (primaryVoice?.color || '#888');
+        const tooltip = voices.map(v => `${v.key}: ${(v.vel * 100).toFixed(0)}%`).join(', ');
+
+        stepCells.push(`
+          <div class="fill-step hit ${isDownbeat ? 'downbeat' : ''}"
+               style="background: ${bgColor}; opacity: ${opacity};"
+               title="${tooltip}">
+            ${voices.length > 1 ? '<span class="multi-hit"></span>' : ''}
+          </div>
+        `);
+      } else {
+        stepCells.push(`
+          <div class="fill-step empty ${isDownbeat ? 'downbeat' : ''}" style="background: #333;"></div>
+        `);
+      }
+    }
+
+    const hitCount = fp.hitCounts.total;
+    return `
+      <div class="fill-row">
+        <div class="fill-progress-label">${(progress * 100).toFixed(0)}%</div>
+        <div class="fill-steps">${stepCells.join('')}</div>
+        <div class="fill-hit-count">${hitCount} hits</div>
+      </div>
+    `;
+  }).join('');
+
+  return `
+    <div class="fill-pattern-grid">
+      <div class="fill-grid-header">
+        <span class="fill-energy-label">ENERGY = ${energy.toFixed(2)}</span>
+      </div>
+      ${rows}
+      <div class="fill-step-numbers">
+        <div class="fill-progress-label"></div>
+        <div class="fill-steps">
+          ${Array.from({ length: numSteps }, (_, i) =>
+            i % 4 === 0 ? `<div class="fill-step-num">${i}</div>` : '<div class="fill-step-num"></div>'
+          ).join('')}
+        </div>
+        <div class="fill-hit-count"></div>
+      </div>
+    </div>
+  `;
+}
+
+/**
+ * Render fill metrics as bar graphs
+ * @param {Object} metrics - Fill metrics object
+ * @returns {string} HTML string
+ */
+function renderFillMetricsDisplay(metrics) {
+  const items = [
+    { key: 'densityRamp', label: 'Density Ramp', desc: 'Hits increase with progress' },
+    { key: 'velocityBuild', label: 'Velocity Build', desc: 'Velocity increases with progress' },
+    { key: 'accentPlacement', label: 'Accent Placement', desc: 'Strong accents at climax' },
+    { key: 'composite', label: 'Composite Score', desc: 'Overall fill quality' },
+  ];
+
+  const bars = items.map(item => {
+    const value = metrics[item.key];
+    const percent = (value * 100).toFixed(0);
+    const barColor = value >= 0.7 ? 'var(--success)' : value >= 0.4 ? 'var(--warning)' : 'var(--error)';
+
+    return `
+      <div class="fill-metric-item">
+        <div class="fill-metric-header">
+          <span class="fill-metric-label">${item.label}</span>
+          <span class="fill-metric-value" style="color: ${barColor}">${percent}%</span>
+        </div>
+        <div class="fill-metric-desc">${item.desc}</div>
+        <div class="fill-metric-bar">
+          <div class="fill-metric-bar-fill" style="width: ${percent}%; background: ${barColor};"></div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  return `<div class="fill-metrics">${bars}</div>`;
+}
+
+function renderFillsView() {
+  const metricsContainer = $('#fill-metrics-container');
+  const gridContainer = $('#fill-grid-container');
+  const select = $('#fill-energy-select');
+
+  if (!data.fills || !data.fills.energySweep) {
+    metricsContainer.innerHTML = '<p class="no-data">Fill data not available. Run <code>make evals</code> to generate.</p>';
+    gridContainer.innerHTML = '';
+    return;
+  }
+
+  const energySweep = data.fills.energySweep;
+
+  // Populate energy select if empty
+  if (select.options.length === 0) {
+    energySweep.forEach((entry, i) => {
+      const opt = document.createElement('option');
+      opt.value = i;
+      opt.textContent = `ENERGY = ${entry.energy.toFixed(2)}`;
+      select.appendChild(opt);
+    });
+
+    select.addEventListener('change', () => renderFillsView());
+  }
+
+  const selectedIdx = parseInt(select.value, 10) || 0;
+  const selectedEntry = energySweep[selectedIdx];
+  const fillPatterns = selectedEntry.fillPatterns;
+
+  // Compute metrics for current energy level
+  const metrics = computeFillMetrics(fillPatterns);
+
+  // Compute aggregate metrics across all energy levels
+  const allMetrics = energySweep.map(e => computeFillMetrics(e.fillPatterns));
+  const avgMetrics = {
+    densityRamp: allMetrics.reduce((s, m) => s + m.densityRamp, 0) / allMetrics.length,
+    velocityBuild: allMetrics.reduce((s, m) => s + m.velocityBuild, 0) / allMetrics.length,
+    accentPlacement: allMetrics.reduce((s, m) => s + m.accentPlacement, 0) / allMetrics.length,
+    composite: allMetrics.reduce((s, m) => s + m.composite, 0) / allMetrics.length,
+  };
+
+  // Render aggregate metrics
+  metricsContainer.innerHTML = `
+    <div class="fill-metrics-section">
+      <h3>Fill System Metrics (All Energy Levels)</h3>
+      ${renderFillMetricsDisplay(avgMetrics)}
+    </div>
+  `;
+
+  // Render fill pattern grid for selected energy
+  gridContainer.innerHTML = renderFillPatternGrid(fillPatterns, selectedEntry.energy);
+}
+
+// ============================================================================
 // Navigation
 // ============================================================================
 
@@ -387,6 +649,8 @@ function showView(viewName) {
       case 'presets': renderPresetsView(); break;
       case 'sweeps': renderSweepsView(); break;
       case 'seeds': renderSeedsView(); break;
+      case 'fills': renderFillsView(); break;
+      case 'sensitivity': renderSensitivityView(); break;
     }
   }
 

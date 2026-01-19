@@ -13,7 +13,7 @@
 using namespace daisysp_idm_grids;
 
 // Helper function to count bits in a mask
-static int CountBits(uint32_t mask)
+static int CountBits(uint64_t mask)
 {
     int count = 0;
     while (mask)
@@ -247,7 +247,7 @@ TEST_CASE("Edge case parameters", "[PatternGenerator]")
 
     SECTION("Seed = MAX")
     {
-        params.seed = 0xFFFFFFFF;
+        params.seed = 0xFFFFFFFFFFFFFFFFULL;
         REQUIRE_NOTHROW(GeneratePattern(params, result));
         REQUIRE(result.anchorMask != 0);
     }
@@ -264,17 +264,17 @@ TEST_CASE("Velocities are in valid range", "[PatternGenerator]")
 
     for (int i = 0; i < params.patternLength; ++i)
     {
-        if ((result.anchorMask & (1U << i)) != 0)
+        if ((result.anchorMask & (1ULL << i)) != 0)
         {
             REQUIRE(result.anchorVelocity[i] >= 0.0f);
             REQUIRE(result.anchorVelocity[i] <= 1.0f);
         }
-        if ((result.shimmerMask & (1U << i)) != 0)
+        if ((result.shimmerMask & (1ULL << i)) != 0)
         {
             REQUIRE(result.shimmerVelocity[i] >= 0.0f);
             REQUIRE(result.shimmerVelocity[i] <= 1.0f);
         }
-        if ((result.auxMask & (1U << i)) != 0)
+        if ((result.auxMask & (1ULL << i)) != 0)
         {
             REQUIRE(result.auxVelocity[i] >= 0.3f);  // Aux has minimum velocity
             REQUIRE(result.auxVelocity[i] <= 1.0f);
@@ -298,8 +298,8 @@ TEST_CASE("Accent parameter affects velocity dynamics", "[PatternGenerator]")
     bool velocitiesDiffer = false;
     for (int i = 0; i < paramsLow.patternLength; ++i)
     {
-        if ((resultLow.anchorMask & (1U << i)) != 0 &&
-            (resultHigh.anchorMask & (1U << i)) != 0)
+        if ((resultLow.anchorMask & (1ULL << i)) != 0 &&
+            (resultHigh.anchorMask & (1ULL << i)) != 0)
         {
             if (resultLow.anchorVelocity[i] != resultHigh.anchorVelocity[i])
             {
@@ -337,8 +337,8 @@ TEST_CASE("RotateWithPreserve basic functionality", "[PatternGenerator]")
 {
     SECTION("No rotation")
     {
-        uint32_t mask = 0b1010;
-        uint32_t result = RotateWithPreserve(mask, 0, 4, 0);
+        uint64_t mask = 0b1010;
+        uint64_t result = RotateWithPreserve(mask, 0, 4, 0);
         REQUIRE(result == mask);
     }
 
@@ -346,8 +346,8 @@ TEST_CASE("RotateWithPreserve basic functionality", "[PatternGenerator]")
     {
         // Bits: 0101 (positions 0 and 2 set)
         // Rotate left by 1: 1010 (positions 1 and 3 set)
-        uint32_t mask = 0b0101;
-        uint32_t result = RotateWithPreserve(mask, 1, 4, 4);  // preserveStep outside range
+        uint64_t mask = 0b0101;
+        uint64_t result = RotateWithPreserve(mask, 1, 4, 4);  // preserveStep outside range
         REQUIRE(result == 0b1010);
     }
 
@@ -356,8 +356,8 @@ TEST_CASE("RotateWithPreserve basic functionality", "[PatternGenerator]")
         // Bits: 0111 (positions 0, 1, 2 set)
         // Rotate left by 1, preserve 0
         // Step 0 was set, should remain set
-        uint32_t mask = 0b0111;
-        uint32_t result = RotateWithPreserve(mask, 1, 4, 0);
+        uint64_t mask = 0b0111;
+        uint64_t result = RotateWithPreserve(mask, 1, 4, 0);
         REQUIRE((result & 1) == 1);
     }
 
@@ -366,22 +366,22 @@ TEST_CASE("RotateWithPreserve basic functionality", "[PatternGenerator]")
         // Bits: 0110 (positions 1, 2 set, step 0 not set)
         // Rotate left by 1, preserve 0
         // Step 0 was not set, should remain not set
-        uint32_t mask = 0b0110;
-        uint32_t result = RotateWithPreserve(mask, 1, 4, 0);
+        uint64_t mask = 0b0110;
+        uint64_t result = RotateWithPreserve(mask, 1, 4, 0);
         REQUIRE((result & 1) == 0);
     }
 
     SECTION("Length 1 returns unchanged")
     {
-        uint32_t mask = 0b1;
-        uint32_t result = RotateWithPreserve(mask, 5, 1, 0);
+        uint64_t mask = 0b1;
+        uint64_t result = RotateWithPreserve(mask, 5, 1, 0);
         REQUIRE(result == mask);
     }
 
     SECTION("Length 0 rotation returns unchanged")
     {
-        uint32_t mask = 0b10101010;
-        uint32_t result = RotateWithPreserve(mask, 0, 8, 0);
+        uint64_t mask = 0b10101010;
+        uint64_t result = RotateWithPreserve(mask, 0, 8, 0);
         REQUIRE(result == mask);
     }
 }
@@ -393,8 +393,8 @@ TEST_CASE("RotateWithPreserve wrap-around behavior", "[PatternGenerator]")
         // 8-bit pattern: 10000001 (steps 0 and 7 set)
         // Rotate by 3, preserve step 4 (not set)
         // Without preserve, result should wrap correctly
-        uint32_t mask = 0b10000001;
-        uint32_t result = RotateWithPreserve(mask, 3, 8, 4);
+        uint64_t mask = 0b10000001;
+        uint64_t result = RotateWithPreserve(mask, 3, 8, 4);
 
         // Step 0 rotates to step 3: 0b00001000
         // Step 7 rotates to step (7+3)%8 = step 2: 0b00000100
@@ -404,8 +404,8 @@ TEST_CASE("RotateWithPreserve wrap-around behavior", "[PatternGenerator]")
 
     SECTION("Rotation equals length returns original")
     {
-        uint32_t mask = 0b11001011;  // Note: bit 0 is SET
-        uint32_t result = RotateWithPreserve(mask, 8, 8, 0);
+        uint64_t mask = 0b11001011;  // Note: bit 0 is SET
+        uint64_t result = RotateWithPreserve(mask, 8, 8, 0);
         // Step 0 is set and preserved
         REQUIRE((result & 1) == 1);
     }
@@ -418,7 +418,7 @@ TEST_CASE("RotateWithPreserve preserves beat 1 (Techno kick stability)", "[Patte
 
     for (int rot = 0; rot < 8; ++rot)
     {
-        uint32_t result = RotateWithPreserve(kickPattern, rot, 32, 0);
+        uint64_t result = RotateWithPreserve(kickPattern, rot, 32, 0);
         // Step 0 should always remain set
         REQUIRE((result & 1) == 1);
     }
@@ -428,20 +428,20 @@ TEST_CASE("RotateWithPreserve with different preserve steps", "[PatternGenerator
 {
     SECTION("Preserve step 4")
     {
-        uint32_t mask = 0b00010001;  // Steps 0 and 4 set
-        uint32_t result = RotateWithPreserve(mask, 2, 8, 4);
+        uint64_t mask = 0b00010001;  // Steps 0 and 4 set
+        uint64_t result = RotateWithPreserve(mask, 2, 8, 4);
 
         // Step 4 should remain in place
-        REQUIRE((result & (1U << 4)) != 0);
+        REQUIRE((result & (1ULL << 4)) != 0);
     }
 
     SECTION("Preserve step at end of pattern")
     {
-        uint32_t mask = 0b10000001;  // Steps 0 and 7 set
-        uint32_t result = RotateWithPreserve(mask, 3, 8, 7);
+        uint64_t mask = 0b10000001;  // Steps 0 and 7 set
+        uint64_t result = RotateWithPreserve(mask, 3, 8, 7);
 
         // Step 7 should remain in place
-        REQUIRE((result & (1U << 7)) != 0);
+        REQUIRE((result & (1ULL << 7)) != 0);
     }
 }
 

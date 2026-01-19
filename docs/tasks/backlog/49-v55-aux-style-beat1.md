@@ -221,3 +221,51 @@ From critique-2.md: The skip logic uses `>= skipProb` to keep beat 1 (higher has
 ## Estimated Effort
 
 3 hours
+
+---
+
+## 64-Step Grid Compatibility (Added 2026-01-19)
+
+**Impact**: Major - AUX style modulo operations need resolution awareness
+
+### Current Implementation Assumption
+
+The AUX style formulas use modulo operations that assume a 16th-note grid:
+- `OFFBEAT_8THS`: `step % 2 == 1` (8th notes = every 2nd 16th)
+- `SYNCOPATED_16THS`: `step % 4 in {1, 3}` (specific 16th note positions)
+- `SEED_VARIED`: `step % 3 == 0` (polyrhythmic against 16ths)
+
+### 64-Step Behavior
+
+At 64 steps, the musical meaning changes:
+- If 64 steps = 4 bars of 16ths: formulas work as intended
+- If 64 steps = 2 bars of 32nds: `% 2` becomes every 32nd note (too dense)
+- If 64 steps = 1 bar of 64ths: patterns become very high-resolution
+
+### Recommended Updates
+
+1. **Add resolution awareness**: Derive `stepsPerBeat` from pattern length
+   ```cpp
+   int stepsPerBeat = patternLength / 16;  // Assumes 4/4 time
+   ```
+
+2. **Scale modulo operations**:
+   ```cpp
+   // OFFBEAT_8THS: every other beat (8th notes)
+   bool isOffbeat = (step % (stepsPerBeat * 2)) == stepsPerBeat;
+
+   // SYNCOPATED_16THS: 16th note syncopation
+   int sixteenthPos = (step % (stepsPerBeat * 4)) / stepsPerBeat;
+   bool isSyncopated = (sixteenthPos == 1) || (sixteenthPos == 3);
+   ```
+
+3. **Update acceptance criteria**: Test at 16, 32, and 64 steps to verify musical correctness
+
+### Alternative Approach
+
+Keep current implementation as "step-based" patterns and document that:
+- At 32 steps: patterns are 16th-note based
+- At 64 steps: patterns become 32nd-note based (denser, more micro-timing)
+- This is a feature, not a bug - higher resolution = more detail
+
+Choose based on musical intent: resolution-aware (maintains feel) vs step-based (adds detail).

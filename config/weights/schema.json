@@ -1,0 +1,108 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://duopulse.dev/schemas/weights.json",
+  "title": "DuoPulse Algorithm Weight Configuration",
+  "description": "Configures weight-based blending of euclidean, syncopation, and random algorithms",
+  "type": "object",
+  "required": ["version", "name", "euclidean", "syncopation", "random"],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Schema reference"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Semantic version of this configuration"
+    },
+    "name": {
+      "type": "string",
+      "description": "Human-readable name for this configuration"
+    },
+    "description": {
+      "type": "string",
+      "description": "Description of this configuration's purpose or changes"
+    },
+    "euclidean": {
+      "type": "object",
+      "description": "Euclidean algorithm influence parameters",
+      "required": ["fadeStart", "fadeEnd", "anchor", "shimmer", "aux"],
+      "properties": {
+        "fadeStart": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "SHAPE value where euclidean starts fading (0.0-1.0)"
+        },
+        "fadeEnd": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "SHAPE value where euclidean reaches zero (0.0-1.0)"
+        },
+        "anchor": {
+          "type": "object",
+          "required": ["kMin", "kMax"],
+          "properties": {
+            "kMin": { "type": "integer", "minimum": 1, "maximum": 32 },
+            "kMax": { "type": "integer", "minimum": 1, "maximum": 32 }
+          }
+        },
+        "shimmer": {
+          "type": "object",
+          "required": ["kMin", "kMax"],
+          "properties": {
+            "kMin": { "type": "integer", "minimum": 1, "maximum": 32 },
+            "kMax": { "type": "integer", "minimum": 1, "maximum": 32 }
+          }
+        },
+        "aux": {
+          "type": "object",
+          "required": ["kMin", "kMax"],
+          "properties": {
+            "kMin": { "type": "integer", "minimum": 1, "maximum": 32 },
+            "kMax": { "type": "integer", "minimum": 1, "maximum": 32 }
+          }
+        }
+      }
+    },
+    "syncopation": {
+      "type": "object",
+      "description": "Syncopation bell curve parameters",
+      "required": ["center", "width"],
+      "properties": {
+        "center": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "SHAPE value at peak of syncopation (0.0-1.0)"
+        },
+        "width": {
+          "type": "number",
+          "minimum": 0.01,
+          "maximum": 1,
+          "description": "Standard deviation of syncopation bell curve (0.0-1.0)"
+        }
+      }
+    },
+    "random": {
+      "type": "object",
+      "description": "Random algorithm influence parameters",
+      "required": ["fadeStart", "fadeEnd"],
+      "properties": {
+        "fadeStart": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "SHAPE value where random starts appearing (0.0-1.0)"
+        },
+        "fadeEnd": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "SHAPE value where random reaches full strength (0.0-1.0)"
+        }
+      }
+    }
+  }
+}

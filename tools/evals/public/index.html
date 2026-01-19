@@ -23,6 +23,8 @@
         <button class="nav-btn" data-view="presets">Presets</button>
         <button class="nav-btn" data-view="sweeps">Parameter Sweeps</button>
         <button class="nav-btn" data-view="seeds">Seed Variation</button>
+        <button class="nav-btn" data-view="fills">Fills</button>
+        <button class="nav-btn" data-view="sensitivity">Sensitivity</button>
       </nav>
     </header>
 
@@ -80,6 +82,27 @@
           <p class="description">Pattern uniqueness across different random seeds.</p>
           <div id="seeds-summary"></div>
           <div id="seeds-container"></div>
+        </section>
+
+        <!-- Fills -->
+        <section id="view-fills" class="view" hidden>
+          <h2>Fill System Evaluation</h2>
+          <p class="description">Fill pattern generation across energy levels and progress points.</p>
+          <div id="fill-metrics-container"></div>
+          <div class="fill-controls">
+            <label>
+              Energy Level:
+              <select id="fill-energy-select"></select>
+            </label>
+          </div>
+          <div id="fill-grid-container"></div>
+        </section>
+
+        <!-- Sensitivity Analysis -->
+        <section id="view-sensitivity" class="view" hidden>
+          <h2>Parameter Sensitivity Analysis</h2>
+          <p class="description">How algorithm weights affect Pentagon metrics. Click a cell to see the sweep curve.</p>
+          <div id="sensitivity-container"></div>
         </section>
       </main>
 

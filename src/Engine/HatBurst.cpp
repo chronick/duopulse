@@ -23,20 +23,20 @@ constexpr uint32_t kHatVelocityMagic = 0x48415433;  // "HAT3"
 // Collision Detection Implementation
 // =============================================================================
 
-int FindNearestEmpty(int step, int fillDuration, uint32_t usedSteps)
+int FindNearestEmpty(int step, int fillDuration, uint64_t usedSteps)
 {
     // Clamp fillDuration to valid range
     if (fillDuration <= 0)
         return -1;
-    if (fillDuration > 32)
-        fillDuration = 32;
+    if (fillDuration > 64)
+        fillDuration = 64;
 
     // Check if the target step itself is empty
     step = step % fillDuration;  // Wrap to valid range
     if (step < 0)
         step += fillDuration;
 
-    if (!(usedSteps & (1U << step)))
+    if (!(usedSteps & (1ULL << step)))
         return step;
 
     // Search alternately left and right for nearest empty
@@ -46,11 +46,11 @@ int FindNearestEmpty(int step, int fillDuration, uint32_t usedSteps)
         int right = (step + offset) % fillDuration;
 
         // Check left first
-        if (!(usedSteps & (1U << left)))
+        if (!(usedSteps & (1ULL << left)))
             return left;
 
         // Then check right
-        if (!(usedSteps & (1U << right)))
+        if (!(usedSteps & (1ULL << right)))
             return right;
     }
 
@@ -62,7 +62,7 @@ int FindNearestEmpty(int step, int fillDuration, uint32_t usedSteps)
 // Proximity Detection Implementation
 // =============================================================================
 
-bool CheckProximity(int step, int fillStart, uint32_t mainPattern, int proximityWindow, int patternLength)
+bool CheckProximity(int step, int fillStart, uint64_t mainPattern, int proximityWindow, int patternLength)
 {
     // Clamp patternLength to valid range
     patternLength = std::max(1, std::min(static_cast<int>(kMaxSteps), patternLength));
@@ -74,7 +74,7 @@ bool CheckProximity(int step, int fillStart, uint32_t mainPattern, int proximity
     for (int offset = -proximityWindow; offset <= proximityWindow; ++offset)
     {
         int checkStep = (patternStep + offset + patternLength) % patternLength;
-        if (mainPattern & (1U << checkStep))
+        if (mainPattern & (1ULL << checkStep))
             return true;
     }
 
@@ -126,7 +126,7 @@ int EuclideanWithJitter(int triggerIndex, int triggerCount,
 // =============================================================================
 
 void GenerateHatBurst(float energy, float shape,
-                      uint32_t mainPattern, int fillStart,
+                      uint64_t mainPattern, int fillStart,
                       int fillDuration, int patternLength, uint32_t seed,
                       HatBurst& burst)
 {
@@ -136,7 +136,7 @@ void GenerateHatBurst(float energy, float shape,
     // Clamp parameters first, before storing
     energy = std::max(0.0f, std::min(1.0f, energy));
     shape = std::max(0.0f, std::min(1.0f, shape));
-    fillDuration = std::max(1, std::min(32, fillDuration));
+    fillDuration = std::max(1, std::min(64, fillDuration));
     patternLength = std::max(1, std::min(static_cast<int>(kMaxSteps), patternLength));
 
     burst.fillStart = static_cast<uint8_t>(fillStart);
@@ -148,7 +148,7 @@ void GenerateHatBurst(float energy, float shape,
     triggerCount = std::min(triggerCount, fillDuration);  // Can't have more triggers than steps
 
     // Track used steps to avoid collisions
-    uint32_t usedSteps = 0;
+    uint64_t usedSteps = 0;
 
     // Calculate base velocity: 0.65 + 0.35 * energy
     float baseVelocity = kBaseVelocityMin + kBaseVelocityBonus * energy;
@@ -185,7 +185,7 @@ void GenerateHatBurst(float energy, float shape,
             continue;
 
         // Mark step as used
-        usedSteps |= (1U << finalStep);
+        usedSteps |= (1ULL << finalStep);
 
         // Calculate velocity with ducking
         float velocity = baseVelocity;
@@ -217,9 +217,9 @@ void GenerateHatBurst(float energy, float shape,
         {
             int step = (i * fillDuration) / kMinHatBurstTriggers;
             step = step % fillDuration;
-            if (!(usedSteps & (1U << step)))
+            if (!(usedSteps & (1ULL << step)))
             {
-                usedSteps |= (1U << step);
+                usedSteps |= (1ULL << step);
                 burst.triggers[burst.count].step = static_cast<uint8_t>(step);
                 burst.triggers[burst.count].velocity = baseVelocity * 0.8f;
                 burst.count++;

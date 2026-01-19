@@ -1,0 +1,150 @@
+name: PR Metrics Comparison
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'inc/**'
+      - 'tools/pattern_viz.cpp'
+      - 'tools/evals/**'
+      - 'config/weights/**'
+      - 'metrics/**'
+
+jobs:
+  compare-metrics:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: tools/evals/package-lock.json
+
+      - name: Install host build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential g++
+
+      - name: Build pattern_viz
+        run: make pattern-viz
+
+      - name: Install evals dependencies
+        working-directory: tools/evals
+        run: npm ci
+
+      - name: Generate PR patterns
+        working-directory: tools/evals
+        run: PATTERN_VIZ=${{ github.workspace }}/build/pattern_viz node generate-patterns.js
+
+      - name: Run evaluations
+        working-directory: tools/evals
+        run: node evaluate-expressiveness.js
+
+      - name: Compare to baseline
+        id: compare
+        run: |
+          node scripts/compare-metrics.js
+        env:
+          BASELINE_PATH: metrics/baseline.json
+          PR_METRICS_PATH: tools/evals/public/data/expressiveness.json
+          REGRESSION_THRESHOLD: '0.02'
+        continue-on-error: true
+
+      - name: Find existing comment
+        uses: peter-evans/find-comment@v2
+        id: find-comment
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-author: 'github-actions[bot]'
+          body-includes: Pentagon Metrics Comparison
+
+      - name: Create or update PR comment
+        uses: peter-evans/create-or-update-comment@v3
+        with:
+          comment-id: ${{ steps.find-comment.outputs.comment-id }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body-path: metrics-comparison.json
+          edit-mode: replace
+        if: always()
+
+      - name: Post comparison as PR comment
+        uses: actions/github-script@v7
+        if: always()
+        with:
+          script: |
+            const fs = require('fs');
+            let comparison;
+            try {
+              comparison = JSON.parse(fs.readFileSync('metrics-comparison.json', 'utf-8'));
+            } catch (e) {
+              console.log('No comparison file found');
+              return;
+            }
+
+            // Find existing comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number
+            });
+
+            const botComment = comments.find(c =>
+              c.user.type === 'Bot' &&
+              c.body.includes('Pentagon Metrics Comparison')
+            );
+
+            // Build body with optional warning header
+            let body = comparison.markdown;
+
+            if (comparison.consecutive_regression_warning) {
+              const consecutiveCount = (comparison.baseline_info?.consecutive_regressions || 0) + 1;
+              let warningHeader = `## :warning: **CONSECUTIVE REGRESSION DETECTED**\n\n`;
+              warningHeader += `This is the **${consecutiveCount}${getOrdinalSuffix(consecutiveCount)}** consecutive regression.\n\n`;
+
+              if (comparison.suggest_rollback) {
+                warningHeader += `> :rotating_light: **Recommendation:** Consider running \`/rollback\` to revert to last known good baseline.\n\n`;
+              }
+
+              body = warningHeader + body;
+            }
+
+            function getOrdinalSuffix(n) {
+              const s = ['th', 'st', 'nd', 'rd'];
+              const v = n % 100;
+              return s[(v - 20) % 10] || s[v] || s[0];
+            }
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: body
+              });
+            }
+
+      - name: Check for regressions
+        if: steps.compare.outcome == 'failure'
+        run: |
+          if [[ "${{ contains(github.event.pull_request.labels.*.name, 'allow-regression') }}" == "true" ]]; then
+            echo "⚠️ Regression detected but allowed by label"
+          else
+            echo "❌ Metric regression detected. Add 'allow-regression' label to bypass."
+            exit 1
+          fi

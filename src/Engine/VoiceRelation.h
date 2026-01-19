@@ -49,7 +49,7 @@ struct Gap
  * @param gaps Output array of gaps (must have space for kMaxGaps)
  * @return Number of gaps found
  */
-int FindGaps(uint32_t anchorMask, int patternLength, Gap* gaps);
+int FindGaps(uint64_t anchorMask, int patternLength, Gap* gaps);
 
 /**
  * Apply V5 COMPLEMENT voice relationship
@@ -66,7 +66,7 @@ int FindGaps(uint32_t anchorMask, int patternLength, Gap* gaps);
  * @param targetHits Desired number of shimmer hits
  * @return Shimmer hit mask with hits placed in gaps
  */
-uint32_t ApplyComplementRelationship(uint32_t anchorMask,
+uint64_t ApplyComplementRelationship(uint64_t anchorMask,
                                      const float* shimmerWeights,
                                      float drift, uint32_t seed,
                                      int patternLength, int targetHits);
@@ -83,9 +83,9 @@ uint32_t ApplyComplementRelationship(uint32_t anchorMask,
  * @param coupling Voice coupling mode (V5: ignored, always INDEPENDENT)
  * @param patternLength Pattern length
  */
-void ApplyAuxRelationship(uint32_t anchorMask,
-                          uint32_t shimmerMask,
-                          uint32_t& auxMask,
+void ApplyAuxRelationship(uint64_t anchorMask,
+                          uint64_t shimmerMask,
+                          uint64_t& auxMask,
                           VoiceCoupling coupling,
                           int patternLength);
 
@@ -101,7 +101,7 @@ void ApplyAuxRelationship(uint32_t anchorMask,
  * @param patternLength Pattern length for wrap
  * @return Shifted mask
  */
-uint32_t ShiftMaskLeft(uint32_t mask, int shift, int patternLength);
+uint64_t ShiftMaskLeft(uint64_t mask, int shift, int patternLength);
 
 /**
  * Shift a mask right (advance) with wrap-around
@@ -111,7 +111,7 @@ uint32_t ShiftMaskLeft(uint32_t mask, int shift, int patternLength);
  * @param patternLength Pattern length for wrap
  * @return Shifted mask
  */
-uint32_t ShiftMaskRight(uint32_t mask, int shift, int patternLength);
+uint64_t ShiftMaskRight(uint64_t mask, int shift, int patternLength);
 
 /**
  * Find largest gap in a combined mask
@@ -120,7 +120,7 @@ uint32_t ShiftMaskRight(uint32_t mask, int shift, int patternLength);
  * @param patternLength Pattern length
  * @return Size of largest gap (in steps)
  */
-int FindLargestGap(uint32_t mask, int patternLength);
+int FindLargestGap(uint64_t mask, int patternLength);
 
 /**
  * Find the first step in a gap of a given size
@@ -130,6 +130,6 @@ int FindLargestGap(uint32_t mask, int patternLength);
  * @param patternLength Pattern length
  * @return First step of the gap, or -1 if none found
  */
-int FindGapStart(uint32_t mask, int minGapSize, int patternLength);
+int FindGapStart(uint64_t mask, int minGapSize, int patternLength);
 
 } // namespace daisysp_idm_grids

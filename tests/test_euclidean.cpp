@@ -48,29 +48,29 @@ TEST_CASE("GenerateEuclidean handles edge cases", "[euclidean][generation]")
     REQUIRE(GenerateEuclidean(0, 16) == 0);
 
     // Hits >= steps = all steps
-    uint32_t allSteps = GenerateEuclidean(8, 8);
+    uint64_t allSteps = GenerateEuclidean(8, 8);
     REQUIRE(allSteps == 0xFF);  // 11111111
 
     // Invalid steps returns 0
     REQUIRE(GenerateEuclidean(4, 0) == 0);
-    REQUIRE(GenerateEuclidean(4, 33) == 0);
+    REQUIRE(GenerateEuclidean(4, 65) == 0);  // Now > 64 is invalid
 }
 
 TEST_CASE("RotatePattern shifts bits correctly", "[euclidean][rotation]")
 {
     // Pattern: 00010001 (bits 0 and 4 set)
-    uint32_t pattern = 0x11;
+    uint64_t pattern = 0x11;
 
     // Rotate right by 1: 10001000 (bits 3 and 7 set)
-    uint32_t rotated1 = RotatePattern(pattern, 1, 8);
+    uint64_t rotated1 = RotatePattern(pattern, 1, 8);
     REQUIRE(rotated1 == 0x88);
 
     // Rotate right by 4: should return to original
-    uint32_t rotated4 = RotatePattern(pattern, 4, 8);
+    uint64_t rotated4 = RotatePattern(pattern, 4, 8);
     REQUIRE((rotated4 & 0xFF) == (pattern & 0xFF));
 
     // Negative offset rotates left
-    uint32_t rotatedLeft = RotatePattern(pattern, -1, 8);
+    uint64_t rotatedLeft = RotatePattern(pattern, -1, 8);
     REQUIRE(rotatedLeft == 0x22);  // 00100010
 }
 
@@ -146,7 +146,7 @@ TEST_CASE("BlendEuclideanWithWeights respects budget", "[euclidean][blending]")
     // At ratio = 1.0 (pure Euclidean), should get exactly budget hits
     for (int budget = 0; budget <= 8; ++budget)
     {
-        uint32_t pattern = BlendEuclideanWithWeights(budget, steps, weights, eligibility, 1.0f, seed);
+        uint64_t pattern = BlendEuclideanWithWeights(budget, steps, weights, eligibility, 1.0f, seed);
 
         int hitCount = 0;
         for (int i = 0; i < steps; ++i)
@@ -170,7 +170,7 @@ TEST_CASE("BlendEuclideanWithWeights respects eligibility mask", "[euclidean][bl
     uint32_t eligibility = 0x5555;  // 0101010101010101
     uint32_t seed = 12345;
 
-    uint32_t pattern = BlendEuclideanWithWeights(4, steps, weights, eligibility, 1.0f, seed);
+    uint64_t pattern = BlendEuclideanWithWeights(4, steps, weights, eligibility, 1.0f, seed);
 
     // All hits must be on eligible steps
     REQUIRE((pattern & ~eligibility) == 0);
@@ -218,8 +218,8 @@ TEST_CASE("BlendEuclideanWithWeights rotation is seed-dependent", "[euclidean][b
     int budget = 4;
 
     // Different seeds should produce different rotations
-    uint32_t pattern1 = BlendEuclideanWithWeights(budget, steps, weights, eligibility, 1.0f, 12345);
-    uint32_t pattern2 = BlendEuclideanWithWeights(budget, steps, weights, eligibility, 1.0f, 67890);
+    uint64_t pattern1 = BlendEuclideanWithWeights(budget, steps, weights, eligibility, 1.0f, 12345);
+    uint64_t pattern2 = BlendEuclideanWithWeights(budget, steps, weights, eligibility, 1.0f, 67890);
 
     // Hit counts should be the same
     int hits1 = 0, hits2 = 0;

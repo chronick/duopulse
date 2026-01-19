@@ -1,0 +1,139 @@
+#!/bin/bash
+#
+# Tag the current baseline in git
+#
+# Reads the tag from baseline.json and creates an annotated git tag.
+#
+# Usage:
+#   ./scripts/tag-baseline.sh          # Create tag locally
+#   ./scripts/tag-baseline.sh --push   # Create and push tag to remote
+#
+# Environment variables:
+#   BASELINE_PATH: Path to baseline.json (default: metrics/baseline.json)
+#
+
+# Exit on error
+set -e
+
+# Get the directory where the script is located
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PROJECT_ROOT="$( dirname "$SCRIPT_DIR" )"
+
+# Configuration
+BASELINE_PATH="${BASELINE_PATH:-$PROJECT_ROOT/metrics/baseline.json}"
+PUSH_TAG=false
+
+# Parse arguments
+for arg in "$@"; do
+    case $arg in
+        --push)
+            PUSH_TAG=true
+            shift
+            ;;
+        --help|-h)
+            echo "Usage: $0 [--push]"
+            echo ""
+            echo "Create an annotated git tag from baseline.json"
+            echo ""
+            echo "Options:"
+            echo "  --push    Push the tag to remote after creating"
+            echo "  --help    Show this help message"
+            echo ""
+            echo "Environment variables:"
+            echo "  BASELINE_PATH    Path to baseline.json (default: metrics/baseline.json)"
+            exit 0
+            ;;
+        *)
+            echo "Unknown option: $arg"
+            echo "Use --help for usage information"
+            exit 1
+            ;;
+    esac
+done
+
+# Check if baseline.json exists
+if [ ! -f "$BASELINE_PATH" ]; then
+    echo "Error: Baseline file not found: $BASELINE_PATH"
+    exit 1
+fi
+
+# Check for jq
+if ! command -v jq &> /dev/null; then
+    echo "Error: jq is required but not installed."
+    echo "Install with: brew install jq (macOS) or apt-get install jq (Linux)"
+    exit 1
+fi
+
+# Extract tag from baseline.json
+TAG=$(jq -r '.tag // empty' "$BASELINE_PATH")
+
+if [ -z "$TAG" ] || [ "$TAG" = "null" ]; then
+    echo "Error: No tag found in baseline.json"
+    echo "Run 'node scripts/update-baseline.js' first to generate a tag"
+    exit 1
+fi
+
+# Check if tag already exists
+if git rev-parse "$TAG" >/dev/null 2>&1; then
+    echo "Tag '$TAG' already exists"
+
+    # Check if it points to the same commit
+    TAG_COMMIT=$(git rev-parse "$TAG^{}")
+    BASELINE_COMMIT=$(jq -r '.commit // empty' "$BASELINE_PATH")
+
+    if [ "$TAG_COMMIT" = "$BASELINE_COMMIT" ]; then
+        echo "Tag already points to the correct commit"
+        if [ "$PUSH_TAG" = true ]; then
+            echo "Pushing existing tag..."
+            git push origin "$TAG"
+        fi
+        exit 0
+    else
+        echo "Error: Tag exists but points to different commit"
+        echo "  Tag commit:      ${TAG_COMMIT:0:8}"
+        echo "  Baseline commit: ${BASELINE_COMMIT:0:8}"
+        echo ""
+        echo "To update the tag, first delete it:"
+        echo "  git tag -d $TAG"
+        echo "  git push origin :refs/tags/$TAG"
+        exit 1
+    fi
+fi
+
+# Extract metadata for tag message
+COMMIT=$(jq -r '.commit // "unknown"' "$BASELINE_PATH")
+TIMESTAMP=$(jq -r '.generated_at // "unknown"' "$BASELINE_PATH")
+OVERALL_SCORE=$(jq -r '.metrics.overallAlignment // 0' "$BASELINE_PATH")
+CONSECUTIVE=$(jq -r '.consecutive_regressions // 0' "$BASELINE_PATH")
+
+# Format overall score as percentage
+SCORE_PCT=$(echo "$OVERALL_SCORE * 100" | bc -l 2>/dev/null | xargs printf "%.1f" 2>/dev/null || echo "?")
+
+# Build tag message
+TAG_MESSAGE="Baseline $TAG
+
+Overall Alignment: ${SCORE_PCT}%
+Timestamp: $TIMESTAMP
+Commit: $COMMIT
+Consecutive Regressions: $CONSECUTIVE"
+
+echo "Creating tag: $TAG"
+echo "---"
+echo "$TAG_MESSAGE"
+echo "---"
+
+# Create annotated tag
+git tag -a "$TAG" -m "$TAG_MESSAGE"
+
+echo ""
+echo "Tag '$TAG' created successfully"
+
+# Push if requested
+if [ "$PUSH_TAG" = true ]; then
+    echo "Pushing tag to remote..."
+    git push origin "$TAG"
+    echo "Tag pushed to origin"
+fi
+
+echo ""
+echo "Done!"

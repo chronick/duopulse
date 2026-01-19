@@ -77,14 +77,14 @@ void ComputeGumbelScores(const float* weights,
 // Spacing Helpers
 // =============================================================================
 
-uint32_t GetSpacingExclusionMask(int step, int minSpacing, int patternLength)
+uint64_t GetSpacingExclusionMask(int step, int minSpacing, int patternLength)
 {
     if (minSpacing <= 0)
     {
         return 0;
     }
 
-    uint32_t mask = 0;
+    uint64_t mask = 0;
 
     // Exclude steps within minSpacing of the reference step
     for (int offset = -minSpacing; offset <= minSpacing; ++offset)
@@ -103,16 +103,16 @@ uint32_t GetSpacingExclusionMask(int step, int minSpacing, int patternLength)
             excludeStep -= patternLength;
         }
 
-        if (excludeStep >= 0 && excludeStep < 32)
+        if (excludeStep >= 0 && excludeStep < 64)
         {
-            mask |= (1U << excludeStep);
+            mask |= (1ULL << excludeStep);
         }
     }
 
     return mask;
 }
 
-bool CheckSpacingValid(uint32_t selectedMask, int candidateStep, int minSpacing, int patternLength)
+bool CheckSpacingValid(uint64_t selectedMask, int candidateStep, int minSpacing, int patternLength)
 {
     if (minSpacing <= 0 || selectedMask == 0)
     {
@@ -122,7 +122,7 @@ bool CheckSpacingValid(uint32_t selectedMask, int candidateStep, int minSpacing,
     // Check distance to each selected step
     for (int step = 0; step < patternLength; ++step)
     {
-        if ((selectedMask & (1U << step)) == 0)
+        if ((selectedMask & (1ULL << step)) == 0)
         {
             continue;
         }
@@ -167,24 +167,24 @@ int GetMinSpacingForZone(EnergyZone zone)
 // =============================================================================
 
 int FindBestStep(const float* scores,
-                 uint32_t eligibilityMask,
-                 uint32_t selectedMask,
+                 uint64_t eligibilityMask,
+                 uint64_t selectedMask,
                  int patternLength,
                  int minSpacing)
 {
     float bestScore = kMinScore;
     int bestStep = -1;
 
-    for (int step = 0; step < patternLength && step < 32; ++step)
+    for (int step = 0; step < patternLength && step < 64; ++step)
     {
         // Check eligibility
-        if ((eligibilityMask & (1U << step)) == 0)
+        if ((eligibilityMask & (1ULL << step)) == 0)
         {
             continue;
         }
 
         // Check already selected
-        if ((selectedMask & (1U << step)) != 0)
+        if ((selectedMask & (1ULL << step)) != 0)
         {
             continue;
         }
@@ -206,8 +206,8 @@ int FindBestStep(const float* scores,
     return bestStep;
 }
 
-uint32_t SelectHitsGumbelSimple(const float* weights,
-                                 uint32_t eligibilityMask,
+uint64_t SelectHitsGumbelSimple(const float* weights,
+                                 uint64_t eligibilityMask,
                                  int targetCount,
                                  uint32_t seed,
                                  int patternLength)
@@ -216,15 +216,15 @@ uint32_t SelectHitsGumbelSimple(const float* weights,
                                  seed, patternLength, 0);
 }
 
-uint32_t SelectHitsGumbelTopK(const float* weights,
-                               uint32_t eligibilityMask,
+uint64_t SelectHitsGumbelTopK(const float* weights,
+                               uint64_t eligibilityMask,
                                int targetCount,
                                uint32_t seed,
                                int patternLength,
                                int minSpacing)
 {
     // Clamp pattern length for bitmask operations
-    patternLength = std::min(patternLength, 32);
+    patternLength = std::min(patternLength, 64);
 
     // Handle edge cases
     if (targetCount <= 0 || eligibilityMask == 0)
@@ -240,7 +240,7 @@ uint32_t SelectHitsGumbelTopK(const float* weights,
     ComputeGumbelScores(weights, seed, patternLength, scores);
 
     // Greedily select top-K steps respecting spacing
-    uint32_t selectedMask = 0;
+    uint64_t selectedMask = 0;
     int selectedCount = 0;
 
     // First pass: try to hit target with spacing constraints
@@ -255,7 +255,7 @@ uint32_t SelectHitsGumbelTopK(const float* weights,
             break;
         }
 
-        selectedMask |= (1U << bestStep);
+        selectedMask |= (1ULL << bestStep);
         selectedCount++;
     }
 
@@ -275,7 +275,7 @@ uint32_t SelectHitsGumbelTopK(const float* weights,
                 break;
             }
 
-            selectedMask |= (1U << bestStep);
+            selectedMask |= (1ULL << bestStep);
             selectedCount++;
         }
     }
@@ -293,7 +293,7 @@ uint32_t SelectHitsGumbelTopK(const float* weights,
                 break;  // No more eligible steps at all
             }
 
-            selectedMask |= (1U << bestStep);
+            selectedMask |= (1ULL << bestStep);
             selectedCount++;
         }
     }

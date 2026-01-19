@@ -124,8 +124,8 @@ TEST_CASE("DuoPulseTypes helper functions", "[types]")
 
 TEST_CASE("Constants are defined correctly", "[types]")
 {
-    REQUIRE(kMaxSteps == 32);
-    REQUIRE(kMaxPhraseSteps == 256);
+    REQUIRE(kMaxSteps == 64);
+    REQUIRE(kMaxPhraseSteps == 512);
     // V5: Archetype constants removed (kArchetypesPerGenre, kNumGenres)
 }
 

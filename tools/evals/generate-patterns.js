@@ -3,7 +3,7 @@
  * Pattern Generation Script
  *
  * Runs the C++ pattern_viz binary and generates JSON output for the frontend.
- * Produces sweep data, presets, and seed variation tests.
+ * Produces sweep data, presets, seed variation tests, and fill patterns.
  */
 
 import { execSync, spawnSync } from 'child_process';
@@ -61,6 +61,62 @@ function runPatternViz(params = {}) {
   }
 
   return parseCSV(result.stdout, p);
+}
+
+/**
+ * Run pattern_viz with --fill flag and parse JSON output
+ */
+function runPatternVizFill(params = {}) {
+  const defaults = {
+    energy: 0.5,
+    shape: 0.3,
+    axisX: 0.5,
+    axisY: 0.5,
+    drift: 0.0,
+    accent: 0.5,
+    seed: 0xDEADBEEF,
+    length: 32,
+  };
+
+  const p = { ...defaults, ...params };
+
+  const args = [
+    `--energy=${p.energy.toFixed(2)}`,
+    `--shape=${p.shape.toFixed(2)}`,
+    `--axis-x=${p.axisX.toFixed(2)}`,
+    `--axis-y=${p.axisY.toFixed(2)}`,
+    `--drift=${p.drift.toFixed(2)}`,
+    `--accent=${p.accent.toFixed(2)}`,
+    `--seed=${p.seed}`,
+    `--length=${p.length}`,
+    '--fill',
+    '--firmware',
+  ];
+
+  const result = spawnSync(PATTERN_VIZ, args, { encoding: 'utf-8' });
+
+  if (result.error) {
+    throw new Error(`Failed to run pattern_viz: ${result.error.message}`);
+  }
+
+  if (result.status !== 0) {
+    throw new Error(`pattern_viz exited with code ${result.status}: ${result.stderr}`);
+  }
+
+  // Parse JSON output from --fill mode
+  const fillPatterns = JSON.parse(result.stdout);
+
+  return {
+    energy: p.energy,
+    shape: p.shape,
+    axisX: p.axisX,
+    axisY: p.axisY,
+    drift: p.drift,
+    accent: p.accent,
+    seed: p.seed,
+    length: p.length,
+    fillPatterns,
+  };
 }
 
 /**
@@ -163,6 +219,26 @@ function generateSeedVariation(baseParams, numSeeds = 8) {
 }
 
 /**
+ * Generate fill pattern sweep across energy values
+ */
+function generateFillSweep() {
+  console.log('  Generating fill pattern sweep...');
+
+  const energyValues = [];
+  for (let e = 0.0; e <= 1.0; e += 0.1) {
+    energyValues.push(Math.round(e * 10) / 10); // Avoid floating point issues
+  }
+
+  return energyValues.map(energy => {
+    const result = runPatternVizFill({ energy, shape: 0.3 });
+    return {
+      energy: result.energy,
+      fillPatterns: result.fillPatterns,
+    };
+  });
+}
+
+/**
  * Define presets for demonstration
  */
 const PRESETS = [
@@ -257,7 +333,17 @@ const seedVariation = {
 writeFileSync(join(OUTPUT_DIR, 'seed-variation.json'), JSON.stringify(seedVariation, null, 2));
 console.log('  Written seed-variation.json');
 
-// 4. Generate metadata
+// 4. Generate fill patterns
+console.log('Generating fill patterns...');
+
+const fills = {
+  energySweep: generateFillSweep(),
+};
+
+writeFileSync(join(OUTPUT_DIR, 'fills.json'), JSON.stringify(fills, null, 2));
+console.log('  Written fills.json');
+
+// 5. Generate metadata
 console.log('Generating metadata...');
 
 const metadata = {

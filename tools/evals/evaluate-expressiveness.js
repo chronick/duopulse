@@ -55,6 +55,40 @@ const PENTAGON_METRICS = {
   },
 };
 
+// Fill metric definitions for evaluating fill pattern quality
+const FILL_METRICS = {
+  fillDensityRamp: {
+    short: 'DensRamp',
+    name: 'Fill Density Ramp',
+    description: 'Fills should build from sparse to dense',
+    targetByZone: {
+      stable: '0.60-0.85',
+      syncopated: '0.70-0.95',
+      wild: '0.80-1.00',
+    },
+  },
+  fillVelocityBuild: {
+    short: 'VelBuild',
+    name: 'Fill Velocity Build',
+    description: 'Velocity should crescendo through fill',
+    targetByZone: {
+      stable: '0.50-0.75',
+      syncopated: '0.60-0.85',
+      wild: '0.70-0.95',
+    },
+  },
+  fillAccentPlacement: {
+    short: 'AccPlace',
+    name: 'Fill Accent Placement',
+    description: 'Accents should land on strong beats, especially near end',
+    targetByZone: {
+      stable: '0.70-0.95',
+      syncopated: '0.55-0.80',
+      wild: '0.40-0.70',
+    },
+  },
+};
+
 /**
  * Parse target range string like '0.00-0.22' into [min, max]
  */
@@ -262,6 +296,135 @@ function computePentagonMetrics(pattern) {
 }
 
 // ============================================================================
+// Fill Metric Computation Functions
+// ============================================================================
+
+/**
+ * Get fill pattern at specific progress value
+ */
+function getFillAtProgress(fillPatterns, targetProgress) {
+  return fillPatterns.find(p => Math.abs(p.params.fillProgress - targetProgress) < 0.01);
+}
+
+/**
+ * Compute fill density ramp metric
+ * Compare hit density between fillProgress 0.25 and 1.0
+ * Returns 0-1 value where higher = better ramp
+ */
+function computeFillDensityRamp(fillPatterns, patternLength = 32) {
+  const early = getFillAtProgress(fillPatterns, 0.25);
+  const late = getFillAtProgress(fillPatterns, 1.0);
+
+  if (!early || !late) return 0.5;
+
+  const earlyDensity = early.hitCounts.total / patternLength;
+  const lateDensity = late.hitCounts.total / patternLength;
+
+  // Compute ramp as increase in density
+  // Normalize: 0 density change = 0.5, max expected increase (~0.5) = 1.0
+  const ramp = lateDensity - earlyDensity;
+
+  // Normalize to 0-1 range. Expect ramps from 0 to ~0.5 for good fills
+  return Math.max(0, Math.min(1.0, 0.5 + ramp));
+}
+
+/**
+ * Compute fill velocity build metric
+ * Compare average velocity between fillProgress 0.25 and 1.0
+ * Returns 0-1 value where higher = better velocity crescendo
+ */
+function computeFillVelocityBuild(fillPatterns) {
+  const early = getFillAtProgress(fillPatterns, 0.25);
+  const late = getFillAtProgress(fillPatterns, 1.0);
+
+  if (!early || !late) return 0.5;
+
+  // Compute average velocity for each fill stage
+  const avgVel = (fillSteps) => {
+    if (!fillSteps || fillSteps.length === 0) return 0;
+    const vels = fillSteps.map(s =>
+      s.anchorVel || s.shimmerVel || s.auxVel || 0
+    );
+    return vels.reduce((a, b) => a + b, 0) / vels.length;
+  };
+
+  const earlyVel = avgVel(early.fillSteps);
+  const lateVel = avgVel(late.fillSteps);
+
+  // Velocity build: difference in average velocity
+  // Normalize: expect ~0.1-0.3 increase for good fills
+  const build = lateVel - earlyVel;
+
+  // Map to 0-1 range: 0 build = 0.5, 0.3 build = 1.0
+  return Math.max(0, Math.min(1.0, 0.5 + build * 1.67));
+}
+
+/**
+ * Compute fill accent placement metric
+ * Check if high-velocity hits (>0.8) land on downbeats in late fill
+ * Downbeats are steps 0, 4, 8, 12, 16, 20, 24, 28 (every 4th step)
+ * Returns 0-1 value where higher = better accent placement
+ */
+function computeFillAccentPlacement(fillPatterns) {
+  const DOWNBEATS = new Set([0, 4, 8, 12, 16, 20, 24, 28]);
+  const ACCENT_THRESHOLD = 0.8;
+
+  // Check late fill (progress 0.75 and 1.0)
+  const late75 = getFillAtProgress(fillPatterns, 0.75);
+  const late100 = getFillAtProgress(fillPatterns, 1.0);
+
+  const latePatterns = [late75, late100].filter(Boolean);
+  if (latePatterns.length === 0) return 0.5;
+
+  let accentedDownbeats = 0;
+  let totalAccents = 0;
+
+  for (const pattern of latePatterns) {
+    for (const step of (pattern.fillSteps || [])) {
+      const vel = step.anchorVel || step.shimmerVel || step.auxVel || 0;
+      if (vel >= ACCENT_THRESHOLD) {
+        totalAccents++;
+        if (DOWNBEATS.has(step.step)) {
+          accentedDownbeats++;
+        }
+      }
+    }
+  }
+
+  if (totalAccents === 0) return 0.5;
+
+  // Return ratio of accents on downbeats
+  return accentedDownbeats / totalAccents;
+}
+
+/**
+ * Evaluate a fill pattern set and return fill metrics
+ */
+function evaluateFillPattern(fillPatterns, shape = 0.3) {
+  const zone = getShapeZone(shape);
+
+  const raw = {
+    fillDensityRamp: computeFillDensityRamp(fillPatterns),
+    fillVelocityBuild: computeFillVelocityBuild(fillPatterns),
+    fillAccentPlacement: computeFillAccentPlacement(fillPatterns),
+  };
+
+  // Compute alignment scores for each metric
+  const scores = {};
+  const fillMetricKeys = Object.keys(FILL_METRICS);
+
+  for (const key of fillMetricKeys) {
+    const targetStr = FILL_METRICS[key].targetByZone[zone];
+    scores[key] = computeAlignmentScore(raw[key], targetStr);
+  }
+
+  // Composite score (equal weighting)
+  const composite = (scores.fillDensityRamp + scores.fillVelocityBuild + scores.fillAccentPlacement) / 3;
+
+  return { raw, scores, composite, zone };
+}
+
+// ============================================================================
 // Main
 // ============================================================================
 
@@ -370,6 +533,52 @@ if (existsSync(seedPath)) {
   seedSummary = seedData.summary;
 }
 
+// Load and evaluate fill patterns if exists
+let fillMetrics = null;
+const fillsPath = join(DATA_DIR, 'fills.json');
+if (existsSync(fillsPath)) {
+  console.log('Computing fill metrics...');
+  const fills = JSON.parse(readFileSync(fillsPath, 'utf-8'));
+
+  // Evaluate each energy sweep entry
+  const fillEvaluations = fills.energySweep.map(entry => {
+    const shape = entry.fillPatterns[0]?.params?.shape ?? 0.3;
+    const metrics = evaluateFillPattern(entry.fillPatterns, shape);
+    return {
+      energy: entry.energy,
+      shape,
+      metrics,
+    };
+  });
+
+  // Compute aggregate fill statistics
+  const avgFillMetric = (key) => {
+    const values = fillEvaluations.map(e => e.metrics.raw[key]);
+    return values.reduce((a, b) => a + b, 0) / values.length;
+  };
+
+  const avgFillScore = (key) => {
+    const values = fillEvaluations.map(e => e.metrics.scores[key]);
+    return values.reduce((a, b) => a + b, 0) / values.length;
+  };
+
+  const fillComposite = fillEvaluations.reduce((a, e) => a + e.metrics.composite, 0) / fillEvaluations.length;
+
+  fillMetrics = {
+    evaluations: fillEvaluations,
+    summary: {
+      fillDensityRamp: { raw: avgFillMetric('fillDensityRamp'), score: avgFillScore('fillDensityRamp') },
+      fillVelocityBuild: { raw: avgFillMetric('fillVelocityBuild'), score: avgFillScore('fillVelocityBuild') },
+      fillAccentPlacement: { raw: avgFillMetric('fillAccentPlacement'), score: avgFillScore('fillAccentPlacement') },
+      composite: fillComposite,
+      pass: fillComposite >= 0.5,
+    },
+  };
+
+  writeFileSync(join(DATA_DIR, 'fill-metrics.json'), JSON.stringify(fillMetrics, null, 2));
+  console.log('  Written fill-metrics.json');
+}
+
 const expressiveness = {
   timestamp: new Date().toISOString(),
   pentagonStats,
@@ -377,8 +586,10 @@ const expressiveness = {
   alignmentStatus: overallAlignment >= 0.7 ? 'GOOD' : overallAlignment >= 0.5 ? 'FAIR' : 'POOR',
   totalPatterns: allMetrics.length,
   seedVariation: seedSummary,
+  fillMetrics: fillMetrics?.summary ?? null,
   metricDefinitions: PENTAGON_METRICS,
-  pass: overallAlignment >= 0.5 && (!seedSummary || seedSummary.pass),
+  fillMetricDefinitions: FILL_METRICS,
+  pass: overallAlignment >= 0.5 && (!seedSummary || seedSummary.pass) && (!fillMetrics || fillMetrics.summary.pass),
 };
 
 writeFileSync(join(DATA_DIR, 'expressiveness.json'), JSON.stringify(expressiveness, null, 2));
@@ -416,6 +627,15 @@ if (seedSummary) {
   console.log(`  V1: ${(seedSummary.v1.avgScore * 100).toFixed(1)}%`);
   console.log(`  V2: ${(seedSummary.v2.avgScore * 100).toFixed(1)}%`);
   console.log(`  AUX: ${(seedSummary.aux.avgScore * 100).toFixed(1)}%`);
+}
+
+if (fillMetrics) {
+  console.log('\nFILL METRICS:');
+  const fm = fillMetrics.summary;
+  console.log(`  Density Ramp:     ${fm.fillDensityRamp.raw.toFixed(2)} (score: ${(fm.fillDensityRamp.score * 100).toFixed(0)}%)`);
+  console.log(`  Velocity Build:   ${fm.fillVelocityBuild.raw.toFixed(2)} (score: ${(fm.fillVelocityBuild.score * 100).toFixed(0)}%)`);
+  console.log(`  Accent Placement: ${fm.fillAccentPlacement.raw.toFixed(2)} (score: ${(fm.fillAccentPlacement.score * 100).toFixed(0)}%)`);
+  console.log(`  Composite:        ${(fm.composite * 100).toFixed(1)}% [${fm.pass ? 'PASS' : 'FAIL'}]`);
 }
 
 console.log();
