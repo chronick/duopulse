@@ -77,7 +77,7 @@ function renderFillStateRow(length, fillActive = false) {
 
   return `
     <div class="pattern-row fill-state-row">
-      <div class="voice-label fill-state-label">${fillActive ? 'FILL' : ''}</div>
+      <div class="voice-label fill-state-label">FILL</div>
       <div class="pattern-steps fill-state-steps">${indicators}</div>
     </div>
   `;
