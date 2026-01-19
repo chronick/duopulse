@@ -58,7 +58,13 @@
   width: var(--step-width);
   height: 4px;
   border-radius: 1px;
-  flex-shrink: 0;
+}
+
+.fill-state-indicator.downbeat {
+  /* Add left border on downbeats like regular steps */
+  border-left: 2px solid var(--grid-line-strong);
+  width: calc(var(--step-width) - 2px); /* Compensate for border */
+  margin-left: 2px;
 }
 
 .fill-state-indicator.active {

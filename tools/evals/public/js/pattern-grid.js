@@ -68,9 +68,11 @@ function renderHitCounts(hits, length) {
  * @returns {string} HTML string
  */
 function renderFillStateRow(length, fillActive = false) {
-  const indicators = Array.from({ length }, () => {
+  // Render same number of indicators as pattern steps
+  const indicators = Array.from({ length }, (_, i) => {
     const stateClass = fillActive ? 'active' : 'inactive';
-    return `<div class="fill-state-indicator ${stateClass}"></div>`;
+    const isDownbeat = i % 4 === 0;
+    return `<div class="fill-state-indicator ${stateClass} ${isDownbeat ? 'downbeat' : ''}"></div>`;
   }).join('');
 
   return `

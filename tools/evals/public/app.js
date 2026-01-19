@@ -743,6 +743,13 @@ function showView(viewName) {
     }
   }
 
+  // Show player sidebar only on pages with clickable patterns
+  const playerSidebar = $('.player-sidebar');
+  const showPlayer = viewName === 'presets' || viewName === 'sweeps';
+  if (playerSidebar) {
+    playerSidebar.style.display = showPlayer ? '' : 'none';
+  }
+
   $$('.nav-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.view === viewName);
   });
