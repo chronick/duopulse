@@ -764,6 +764,23 @@ function showView(viewName) {
   $$('.nav-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.view === viewName);
   });
+
+  // Update URL hash without triggering hashchange
+  const hash = viewName === 'overview' ? '' : `#${viewName}`;
+  if (window.location.hash !== hash) {
+    history.replaceState(null, '', hash || window.location.pathname);
+  }
+}
+
+function getViewFromHash() {
+  const hash = window.location.hash.slice(1); // Remove the '#'
+  const validViews = ['overview', 'presets', 'sweeps', 'seeds', 'fills', 'sensitivity'];
+  return validViews.includes(hash) ? hash : 'overview';
+}
+
+function handleRouteChange() {
+  const viewName = getViewFromHash();
+  showView(viewName);
 }
 
 // ============================================================================
@@ -814,9 +831,17 @@ async function initPlayer() {
 // ============================================================================
 
 async function init() {
+  // Navigation buttons update hash
   $$('.nav-btn').forEach(btn => {
-    btn.addEventListener('click', () => showView(btn.dataset.view));
+    btn.addEventListener('click', () => {
+      const viewName = btn.dataset.view;
+      const hash = viewName === 'overview' ? '' : `#${viewName}`;
+      window.location.hash = hash;
+    });
   });
+
+  // Listen for hash changes (back/forward navigation)
+  window.addEventListener('hashchange', handleRouteChange);
 
   $('#sweep-select').addEventListener('change', () => {
     if (currentView === 'sweeps') renderSweepsView();
@@ -840,7 +865,8 @@ async function init() {
   // Initialize player
   await initPlayer();
 
-  showView('overview');
+  // Route to initial view based on URL hash
+  handleRouteChange();
 }
 
 init();
