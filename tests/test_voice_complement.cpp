@@ -11,7 +11,7 @@ using namespace daisysp_idm_grids;
 // =============================================================================
 
 // Count bits set in mask
-static int CountHits(uint32_t mask)
+static int CountHits(uint64_t mask)
 {
     int count = 0;
     while (mask)
@@ -56,7 +56,7 @@ TEST_CASE("FindGaps with empty anchor", "[voice-complement]")
 
     SECTION("Empty anchor returns single gap covering entire pattern")
     {
-        uint32_t anchor = 0x00000000;
+        uint64_t anchor = 0x00000000;
         int count = FindGaps(anchor, 16, gaps);
 
         REQUIRE(count == 1);
@@ -66,7 +66,7 @@ TEST_CASE("FindGaps with empty anchor", "[voice-complement]")
 
     SECTION("Works with different pattern lengths")
     {
-        uint32_t anchor = 0x00000000;
+        uint64_t anchor = 0x00000000;
 
         int count8 = FindGaps(anchor, 8, gaps);
         REQUIRE(count8 == 1);
@@ -84,7 +84,7 @@ TEST_CASE("FindGaps with full anchor", "[voice-complement]")
 
     SECTION("Full 16-step pattern has no gaps")
     {
-        uint32_t anchor = 0x0000FFFF;  // All 16 bits set
+        uint64_t anchor = 0x0000FFFF;  // All 16 bits set
         int count = FindGaps(anchor, 16, gaps);
 
         REQUIRE(count == 0);
@@ -92,7 +92,7 @@ TEST_CASE("FindGaps with full anchor", "[voice-complement]")
 
     SECTION("Full 8-step pattern has no gaps")
     {
-        uint32_t anchor = 0x000000FF;
+        uint64_t anchor = 0x000000FF;
         int count = FindGaps(anchor, 8, gaps);
 
         REQUIRE(count == 0);
@@ -106,7 +106,7 @@ TEST_CASE("FindGaps with single gap", "[voice-complement]")
     SECTION("Gap in middle")
     {
         // Pattern: 1..1 (hits at 0 and 3, gap at 1-2)
-        uint32_t anchor = 0b1001;
+        uint64_t anchor = 0b1001;
         int count = FindGaps(anchor, 4, gaps);
 
         REQUIRE(count == 1);
@@ -117,7 +117,7 @@ TEST_CASE("FindGaps with single gap", "[voice-complement]")
     SECTION("Gap at start")
     {
         // Pattern: ..11 (gap at 0-1, hits at 2-3)
-        uint32_t anchor = 0b1100;
+        uint64_t anchor = 0b1100;
         int count = FindGaps(anchor, 4, gaps);
 
         REQUIRE(count == 1);
@@ -128,7 +128,7 @@ TEST_CASE("FindGaps with single gap", "[voice-complement]")
     SECTION("Gap at end")
     {
         // Pattern: 11.. (hits at 0-1, gap at 2-3)
-        uint32_t anchor = 0b0011;
+        uint64_t anchor = 0b0011;
         int count = FindGaps(anchor, 4, gaps);
 
         REQUIRE(count == 1);
@@ -144,7 +144,7 @@ TEST_CASE("FindGaps with multiple gaps", "[voice-complement]")
     SECTION("Two gaps separated by hits")
     {
         // Pattern: .1.1 (gaps at 0 and 2, hits at 1 and 3)
-        uint32_t anchor = 0b1010;
+        uint64_t anchor = 0b1010;
         int count = FindGaps(anchor, 4, gaps);
 
         REQUIRE(count == 2);
@@ -159,7 +159,7 @@ TEST_CASE("FindGaps with multiple gaps", "[voice-complement]")
     SECTION("Four-on-floor pattern has gaps between hits")
     {
         // Pattern: 1...1...1...1... (kicks on 0, 4, 8, 12 of 16 steps)
-        uint32_t anchor = 0b0001000100010001;
+        uint64_t anchor = 0b0001000100010001;
         int count = FindGaps(anchor, 16, gaps);
 
         // Should have 4 gaps of length 3 each
@@ -180,7 +180,7 @@ TEST_CASE("FindGaps wrap-around handling", "[voice-complement]")
         // Pattern: ..1..1.. (8 steps: hits at 2 and 5, gaps wrap around)
         // Steps:   01234567
         // Mask:    ..1..1..
-        uint32_t anchor = 0b00100100;
+        uint64_t anchor = 0b00100100;
         int count = FindGaps(anchor, 8, gaps);
 
         // Should have 2 gaps:
@@ -205,7 +205,7 @@ TEST_CASE("FindGaps wrap-around handling", "[voice-complement]")
     SECTION("Pattern starting and ending with hits has no wrap-around")
     {
         // Pattern: 1..1 (hits at 0 and 3, no wrap)
-        uint32_t anchor = 0b1001;
+        uint64_t anchor = 0b1001;
         int count = FindGaps(anchor, 4, gaps);
 
         REQUIRE(count == 1);
@@ -225,24 +225,24 @@ TEST_CASE("ApplyComplementRelationship edge cases", "[voice-complement]")
 
     SECTION("Zero target hits returns empty mask")
     {
-        uint32_t anchor = 0b1001;
-        uint32_t result = ApplyComplementRelationship(anchor, weights, 0.5f, 12345, 16, 0);
+        uint64_t anchor = 0b1001;
+        uint64_t result = ApplyComplementRelationship(anchor, weights, 0.5f, 12345, 16, 0);
 
         REQUIRE(result == 0);
     }
 
     SECTION("Zero pattern length returns empty mask")
     {
-        uint32_t anchor = 0b1001;
-        uint32_t result = ApplyComplementRelationship(anchor, weights, 0.5f, 12345, 0, 4);
+        uint64_t anchor = 0b1001;
+        uint64_t result = ApplyComplementRelationship(anchor, weights, 0.5f, 12345, 0, 4);
 
         REQUIRE(result == 0);
     }
 
     SECTION("Full anchor returns empty mask (no room for shimmer)")
     {
-        uint32_t anchor = 0x0000FFFF;  // All 16 bits set
-        uint32_t result = ApplyComplementRelationship(anchor, weights, 0.5f, 12345, 16, 4);
+        uint64_t anchor = 0x0000FFFF;  // All 16 bits set
+        uint64_t result = ApplyComplementRelationship(anchor, weights, 0.5f, 12345, 16, 4);
 
         REQUIRE(result == 0);
     }
@@ -256,8 +256,8 @@ TEST_CASE("ApplyComplementRelationship basic gap filling", "[voice-complement]")
     SECTION("Shimmer fills gap, not on anchor hits")
     {
         // Four-on-floor: hits at 0, 4, 8, 12
-        uint32_t anchor = 0b0001000100010001;
-        uint32_t result = ApplyComplementRelationship(anchor, weights, 0.0f, 12345, 16, 4);
+        uint64_t anchor = 0b0001000100010001;
+        uint64_t result = ApplyComplementRelationship(anchor, weights, 0.0f, 12345, 16, 4);
 
         // Should place 4 hits
         REQUIRE(CountHits(result) == 4);
@@ -269,8 +269,8 @@ TEST_CASE("ApplyComplementRelationship basic gap filling", "[voice-complement]")
     SECTION("Requested hits exceeds gap space - fills all available")
     {
         // Sparse anchor with only 2 gaps
-        uint32_t anchor = 0b0111;  // Hits at 0,1,2 - gap only at 3
-        uint32_t result = ApplyComplementRelationship(anchor, weights, 0.0f, 12345, 4, 10);
+        uint64_t anchor = 0b0111;  // Hits at 0,1,2 - gap only at 3
+        uint64_t result = ApplyComplementRelationship(anchor, weights, 0.0f, 12345, 4, 10);
 
         // Can only place 1 hit (only step 3 available)
         REQUIRE(CountHits(result) == 1);
@@ -279,8 +279,8 @@ TEST_CASE("ApplyComplementRelationship basic gap filling", "[voice-complement]")
 
     SECTION("Empty anchor allows all positions")
     {
-        uint32_t anchor = 0;
-        uint32_t result = ApplyComplementRelationship(anchor, weights, 0.0f, 12345, 8, 4);
+        uint64_t anchor = 0;
+        uint64_t result = ApplyComplementRelationship(anchor, weights, 0.0f, 12345, 8, 4);
 
         REQUIRE(CountHits(result) == 4);
     }
@@ -297,10 +297,10 @@ TEST_CASE("ApplyComplementRelationship low drift - evenly spaced", "[voice-compl
 
     SECTION("Low drift produces evenly distributed hits")
     {
-        uint32_t anchor = 0b1000000010000000;  // Hits at 7 and 15 (16 steps)
+        uint64_t anchor = 0b1000000010000000;  // Hits at 7 and 15 (16 steps)
         float lowDrift = 0.1f;
 
-        uint32_t result = ApplyComplementRelationship(anchor, weights, lowDrift, 12345, 16, 4);
+        uint64_t result = ApplyComplementRelationship(anchor, weights, lowDrift, 12345, 16, 4);
 
         REQUIRE(CountHits(result) == 4);
         REQUIRE(NoOverlap(anchor, result));
@@ -310,11 +310,11 @@ TEST_CASE("ApplyComplementRelationship low drift - evenly spaced", "[voice-compl
 
     SECTION("Consistent results with same parameters")
     {
-        uint32_t anchor = 0b10001;  // Hits at 0 and 4
+        uint64_t anchor = 0b10001;  // Hits at 0 and 4
         float drift = 0.1f;
 
-        uint32_t result1 = ApplyComplementRelationship(anchor, weights, drift, 100, 8, 2);
-        uint32_t result2 = ApplyComplementRelationship(anchor, weights, drift, 100, 8, 2);
+        uint64_t result1 = ApplyComplementRelationship(anchor, weights, drift, 100, 8, 2);
+        uint64_t result2 = ApplyComplementRelationship(anchor, weights, drift, 100, 8, 2);
 
         // Low drift should be deterministic
         REQUIRE(result1 == result2);
@@ -329,10 +329,10 @@ TEST_CASE("ApplyComplementRelationship mid drift - weighted placement", "[voice-
     SECTION("Mid drift favors higher-weighted positions")
     {
         // Gap from 1-6 (weights ascending)
-        uint32_t anchor = 0b10000001;  // Hits at 0 and 7
+        uint64_t anchor = 0b10000001;  // Hits at 0 and 7
         float midDrift = 0.5f;
 
-        uint32_t result = ApplyComplementRelationship(anchor, weights, midDrift, 12345, 8, 2);
+        uint64_t result = ApplyComplementRelationship(anchor, weights, midDrift, 12345, 8, 2);
 
         REQUIRE(CountHits(result) == 2);
         REQUIRE(NoOverlap(anchor, result));
@@ -351,11 +351,11 @@ TEST_CASE("ApplyComplementRelationship high drift - seed-varied random", "[voice
 
     SECTION("Different seeds produce different results")
     {
-        uint32_t anchor = 0b10000001;  // Big gap in middle
+        uint64_t anchor = 0b10000001;  // Big gap in middle
         float highDrift = 0.9f;
 
-        uint32_t result1 = ApplyComplementRelationship(anchor, weights, highDrift, 12345, 8, 3);
-        uint32_t result2 = ApplyComplementRelationship(anchor, weights, highDrift, 67890, 8, 3);
+        uint64_t result1 = ApplyComplementRelationship(anchor, weights, highDrift, 12345, 8, 3);
+        uint64_t result2 = ApplyComplementRelationship(anchor, weights, highDrift, 67890, 8, 3);
 
         // Both should have correct count and no overlap
         REQUIRE(CountHits(result1) == 3);
@@ -370,11 +370,11 @@ TEST_CASE("ApplyComplementRelationship high drift - seed-varied random", "[voice
 
     SECTION("Same seed produces same result")
     {
-        uint32_t anchor = 0b10000001;
+        uint64_t anchor = 0b10000001;
         float highDrift = 0.9f;
 
-        uint32_t result1 = ApplyComplementRelationship(anchor, weights, highDrift, 42, 8, 3);
-        uint32_t result2 = ApplyComplementRelationship(anchor, weights, highDrift, 42, 8, 3);
+        uint64_t result1 = ApplyComplementRelationship(anchor, weights, highDrift, 42, 8, 3);
+        uint64_t result2 = ApplyComplementRelationship(anchor, weights, highDrift, 42, 8, 3);
 
         REQUIRE(result1 == result2);
     }
@@ -395,11 +395,11 @@ TEST_CASE("ApplyComplementRelationship proportional gap distribution", "[voice-c
         // Big gap (6 steps): positions 1-6
         // Small gap (1 step): position 8
         // Anchor at: 0, 7, 9, 10, 11, 12, 13, 14, 15
-        uint32_t anchor = 0b1111111010000001;
+        uint64_t anchor = 0b1111111010000001;
         float drift = 0.0f;
 
         // Request 3 hits - should go mostly to big gap
-        uint32_t result = ApplyComplementRelationship(anchor, weights, drift, 12345, 16, 3);
+        uint64_t result = ApplyComplementRelationship(anchor, weights, drift, 12345, 16, 3);
 
         REQUIRE(CountHits(result) == 3);
         REQUIRE(NoOverlap(anchor, result));
@@ -408,7 +408,7 @@ TEST_CASE("ApplyComplementRelationship proportional gap distribution", "[voice-c
         int bigGapHits = 0;
         for (int i = 1; i <= 6; ++i)
         {
-            if ((result & (1U << i)) != 0) bigGapHits++;
+            if ((result & (1ULL << i)) != 0) bigGapHits++;
         }
 
         // Big gap should get most hits due to proportional distribution
@@ -427,9 +427,9 @@ TEST_CASE("Legacy ApplyAuxRelationship is now no-op", "[voice-complement]")
 {
     SECTION("All coupling modes leave aux unchanged")
     {
-        uint32_t anchor = 0b1111;
-        uint32_t shimmer = 0b0101;
-        uint32_t aux = 0b1010;
+        uint64_t anchor = 0b1111;
+        uint64_t shimmer = 0b0101;
+        uint64_t aux = 0b1010;
         uint32_t original = aux;
 
         ApplyAuxRelationship(anchor, shimmer, aux, VoiceCoupling::INDEPENDENT, 16);
@@ -451,7 +451,7 @@ TEST_CASE("ShiftMaskLeft utility", "[voice-complement]")
 {
     SECTION("Shifts bits left with wrap")
     {
-        uint32_t mask = 0b0001;  // Bit at position 0
+        uint64_t mask = 0b0001;  // Bit at position 0
         uint32_t shifted = ShiftMaskLeft(mask, 1, 4);
 
         REQUIRE(shifted == 0b0010);  // Now at position 1
@@ -459,7 +459,7 @@ TEST_CASE("ShiftMaskLeft utility", "[voice-complement]")
 
     SECTION("Wraps around at pattern length")
     {
-        uint32_t mask = 0b1000;  // Bit at position 3
+        uint64_t mask = 0b1000;  // Bit at position 3
         uint32_t shifted = ShiftMaskLeft(mask, 1, 4);
 
         REQUIRE(shifted == 0b0001);  // Wrapped to position 0

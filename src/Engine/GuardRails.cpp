@@ -48,15 +48,15 @@ int GetMaxConsecutiveShimmerForZone(EnergyZone zone)
     }
 }
 
-uint32_t FindGapMidpoints(uint32_t mask, int minGapSize, int patternLength)
+uint64_t FindGapMidpoints(uint64_t mask, int minGapSize, int patternLength)
 {
     if (mask == 0 || minGapSize <= 1)
     {
         return 0;
     }
 
-    int clampedLength = std::min(patternLength, 32);
-    uint32_t midpoints = 0;
+    int clampedLength = std::min(patternLength, 64);
+    uint64_t midpoints = 0;
 
     // Find each gap and its midpoint
     int gapStart = -1;
@@ -65,7 +65,7 @@ uint32_t FindGapMidpoints(uint32_t mask, int minGapSize, int patternLength)
     for (int i = 0; i < clampedLength * 2; ++i)
     {
         int step = i % clampedLength;
-        bool isHit = (mask & (1U << step)) != 0;
+        bool isHit = (mask & (1ULL << step)) != 0;
 
         if (!isHit)
         {
@@ -86,7 +86,7 @@ uint32_t FindGapMidpoints(uint32_t mask, int minGapSize, int patternLength)
             {
                 // Add midpoint of this gap
                 int midpoint = (gapStart + gapLength / 2) % clampedLength;
-                midpoints |= (1U << midpoint);
+                midpoints |= (1ULL << midpoint);
             }
             gapStart = -1;
             gapLength = 0;
@@ -102,11 +102,11 @@ uint32_t FindGapMidpoints(uint32_t mask, int minGapSize, int patternLength)
     return midpoints;
 }
 
-int CountMaxConsecutiveShimmer(uint32_t anchorMask,
-                               uint32_t shimmerMask,
+int CountMaxConsecutiveShimmer(uint64_t anchorMask,
+                               uint64_t shimmerMask,
                                int patternLength)
 {
-    int clampedLength = std::min(patternLength, 32);
+    int clampedLength = std::min(patternLength, 64);
     int maxRun = 0;
     int currentRun = 0;
 
@@ -114,8 +114,8 @@ int CountMaxConsecutiveShimmer(uint32_t anchorMask,
     for (int i = 0; i < clampedLength * 2; ++i)
     {
         int step = i % clampedLength;
-        bool hasAnchor = (anchorMask & (1U << step)) != 0;
-        bool hasShimmer = (shimmerMask & (1U << step)) != 0;
+        bool hasAnchor = (anchorMask & (1ULL << step)) != 0;
+        bool hasShimmer = (shimmerMask & (1ULL << step)) != 0;
 
         if (hasShimmer && !hasAnchor)
         {
@@ -145,20 +145,20 @@ int CountMaxConsecutiveShimmer(uint32_t anchorMask,
 // Soft Repair Functions
 // =============================================================================
 
-int FindWeakestHit(uint32_t mask, const float* weights, int patternLength)
+int FindWeakestHit(uint64_t mask, const float* weights, int patternLength)
 {
     if (mask == 0)
     {
         return -1;
     }
 
-    int clampedLength = std::min(patternLength, 32);
+    int clampedLength = std::min(patternLength, 64);
     int weakestStep = -1;
     float weakestWeight = 2.0f;  // Higher than any valid weight
 
     for (int step = 0; step < clampedLength; ++step)
     {
-        if ((mask & (1U << step)) == 0)
+        if ((mask & (1ULL << step)) == 0)
         {
             continue;
         }
@@ -173,26 +173,26 @@ int FindWeakestHit(uint32_t mask, const float* weights, int patternLength)
     return weakestStep;
 }
 
-int FindRescueCandidate(uint32_t mask,
-                        uint32_t rescueMask,
+int FindRescueCandidate(uint64_t mask,
+                        uint64_t rescueMask,
                         const float* weights,
                         int patternLength)
 {
     // Find the step in rescueMask that isn't in mask and has highest weight
-    uint32_t candidates = rescueMask & ~mask;
+    uint64_t candidates = rescueMask & ~mask;
 
     if (candidates == 0)
     {
         return -1;
     }
 
-    int clampedLength = std::min(patternLength, 32);
+    int clampedLength = std::min(patternLength, 64);
     int bestStep = -1;
     float bestWeight = -1.0f;
 
     for (int step = 0; step < clampedLength; ++step)
     {
-        if ((candidates & (1U << step)) == 0)
+        if ((candidates & (1ULL << step)) == 0)
         {
             continue;
         }
@@ -207,20 +207,20 @@ int FindRescueCandidate(uint32_t mask,
     return bestStep;
 }
 
-int SoftRepairPass(uint32_t& anchorMask,
-                   uint32_t& shimmerMask,
+int SoftRepairPass(uint64_t& anchorMask,
+                   uint64_t& shimmerMask,
                    const float* anchorWeights,
                    const float* shimmerWeights,
                    EnergyZone zone,
                    int patternLength)
 {
     int repairs = 0;
-    int clampedLength = std::min(patternLength, 32);
+    int clampedLength = std::min(patternLength, 64);
     int maxGap = GetMaxGapForZone(zone);
 
     // Check for near-violation of gap rule
     // A "near violation" is when gap is within 2 of max
-    uint32_t gapMidpoints = FindGapMidpoints(anchorMask, maxGap - 2, clampedLength);
+    uint64_t gapMidpoints = FindGapMidpoints(anchorMask, maxGap - 2, clampedLength);
 
     if (gapMidpoints != 0)
     {
@@ -231,8 +231,8 @@ int SoftRepairPass(uint32_t& anchorMask,
         if (weakest >= 0 && rescue >= 0 && rescue != weakest)
         {
             // Swap weakest hit for rescue position
-            anchorMask &= ~(1U << weakest);
-            anchorMask |= (1U << rescue);
+            anchorMask &= ~(1ULL << weakest);
+            anchorMask |= (1ULL << rescue);
             repairs++;
         }
     }
@@ -250,8 +250,8 @@ int SoftRepairPass(uint32_t& anchorMask,
 
         for (int step = 0; step < clampedLength; ++step)
         {
-            bool hasAnchor = (anchorMask & (1U << step)) != 0;
-            bool hasShimmer = (shimmerMask & (1U << step)) != 0;
+            bool hasAnchor = (anchorMask & (1ULL << step)) != 0;
+            bool hasShimmer = (shimmerMask & (1ULL << step)) != 0;
 
             if (hasShimmer && !hasAnchor)
             {
@@ -279,13 +279,13 @@ int SoftRepairPass(uint32_t& anchorMask,
         if (burstStart >= 0 && burstLength >= maxConsec - 1)
         {
             // Create mask of burst shimmer hits
-            uint32_t burstMask = 0;
+            uint64_t burstMask = 0;
             for (int i = 0; i < burstLength; ++i)
             {
                 int step = (burstStart + i) % clampedLength;
-                if ((shimmerMask & (1U << step)) != 0)
+                if ((shimmerMask & (1ULL << step)) != 0)
                 {
-                    burstMask |= (1U << step);
+                    burstMask |= (1ULL << step);
                 }
             }
 
@@ -293,7 +293,7 @@ int SoftRepairPass(uint32_t& anchorMask,
             int weakest = FindWeakestHit(burstMask, shimmerWeights, clampedLength);
             if (weakest >= 0)
             {
-                shimmerMask &= ~(1U << weakest);
+                shimmerMask &= ~(1ULL << weakest);
                 repairs++;
             }
         }
@@ -306,7 +306,7 @@ int SoftRepairPass(uint32_t& anchorMask,
 // Hard Guard Rails
 // =============================================================================
 
-bool EnforceDownbeat(uint32_t& anchorMask, EnergyZone zone, int patternLength)
+bool EnforceDownbeat(uint64_t& anchorMask, EnergyZone zone, int patternLength)
 {
     (void)patternLength;  // Not needed for step 0
 
@@ -327,7 +327,7 @@ bool EnforceDownbeat(uint32_t& anchorMask, EnergyZone zone, int patternLength)
     return true;
 }
 
-int EnforceMaxGap(uint32_t& anchorMask, EnergyZone zone, int patternLength)
+int EnforceMaxGap(uint64_t& anchorMask, EnergyZone zone, int patternLength)
 {
     int maxGap = GetMaxGapForZone(zone);
 
@@ -336,13 +336,13 @@ int EnforceMaxGap(uint32_t& anchorMask, EnergyZone zone, int patternLength)
         return 0;  // No gap limit for this zone
     }
 
-    int clampedLength = std::min(patternLength, 32);
+    int clampedLength = std::min(patternLength, 64);
     int corrections = 0;
 
     // Find gaps and add hits to break them
     while (true)
     {
-        uint32_t gapMidpoints = FindGapMidpoints(anchorMask, maxGap + 1, clampedLength);
+        uint64_t gapMidpoints = FindGapMidpoints(anchorMask, maxGap + 1, clampedLength);
 
         if (gapMidpoints == 0)
         {
@@ -352,9 +352,9 @@ int EnforceMaxGap(uint32_t& anchorMask, EnergyZone zone, int patternLength)
         // Add hit at first midpoint
         for (int step = 0; step < clampedLength; ++step)
         {
-            if ((gapMidpoints & (1U << step)) != 0)
+            if ((gapMidpoints & (1ULL << step)) != 0)
             {
-                anchorMask |= (1U << step);
+                anchorMask |= (1ULL << step);
                 corrections++;
                 break;
             }
@@ -370,13 +370,13 @@ int EnforceMaxGap(uint32_t& anchorMask, EnergyZone zone, int patternLength)
     return corrections;
 }
 
-int EnforceConsecutiveShimmer(uint32_t anchorMask,
-                               uint32_t& shimmerMask,
+int EnforceConsecutiveShimmer(uint64_t anchorMask,
+                               uint64_t& shimmerMask,
                                EnergyZone zone,
                                int patternLength)
 {
     int maxConsec = GetMaxConsecutiveShimmerForZone(zone);
-    int clampedLength = std::min(patternLength, 32);
+    int clampedLength = std::min(patternLength, 64);
     int removals = 0;
 
     // Remove shimmer hits to break up long runs
@@ -390,8 +390,8 @@ int EnforceConsecutiveShimmer(uint32_t anchorMask,
 
         for (int step = 0; step < clampedLength; ++step)
         {
-            bool hasAnchor = (anchorMask & (1U << step)) != 0;
-            bool hasShimmer = (shimmerMask & (1U << step)) != 0;
+            bool hasAnchor = (anchorMask & (1ULL << step)) != 0;
+            bool hasShimmer = (shimmerMask & (1ULL << step)) != 0;
 
             if (hasShimmer && !hasAnchor)
             {
@@ -418,7 +418,7 @@ int EnforceConsecutiveShimmer(uint32_t anchorMask,
 
         if (removeAt >= 0)
         {
-            shimmerMask &= ~(1U << removeAt);
+            shimmerMask &= ~(1ULL << removeAt);
             removals++;
         }
         else
@@ -436,8 +436,8 @@ int EnforceConsecutiveShimmer(uint32_t anchorMask,
     return removals;
 }
 
-int EnforceGenreRules(uint32_t anchorMask,
-                       uint32_t& shimmerMask,
+int EnforceGenreRules(uint64_t anchorMask,
+                       uint64_t& shimmerMask,
                        Genre genre,
                        EnergyZone zone,
                        int patternLength)
@@ -458,15 +458,15 @@ int EnforceGenreRules(uint32_t anchorMask,
             if (patternLength >= 16)
             {
                 // Avoid UB: (1U << 32) is undefined behavior
-                uint32_t lengthMask = (patternLength >= 32) ? 0xFFFFFFFF : ((1U << patternLength) - 1);
-                uint32_t backbeatMask = kBackbeatMask & lengthMask;
+                uint64_t lengthMask = (patternLength >= 64) ? 0xFFFFFFFFFFFFFFFFULL : ((1ULL << patternLength) - 1);
+                uint64_t backbeatMask = kBackbeatMask & lengthMask;
 
                 // Check if shimmer has any backbeats
                 if ((shimmerMask & backbeatMask) == 0 && CountBits(shimmerMask) > 0)
                 {
                     // No backbeats - add step 8 (or nearest equivalent)
                     int backbeat = (patternLength >= 16) ? 8 : patternLength / 2;
-                    shimmerMask |= (1U << backbeat);
+                    shimmerMask |= (1ULL << backbeat);
                     modifications++;
                 }
             }
@@ -489,8 +489,8 @@ int EnforceGenreRules(uint32_t anchorMask,
     return modifications;
 }
 
-int ApplyHardGuardRails(uint32_t& anchorMask,
-                        uint32_t& shimmerMask,
+int ApplyHardGuardRails(uint64_t& anchorMask,
+                        uint64_t& shimmerMask,
                         EnergyZone zone,
                         Genre genre,
                         int patternLength)

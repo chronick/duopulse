@@ -67,9 +67,9 @@ float GetStepStability(int step, int patternLength)
     return kStabilityOffbeat;
 }
 
-uint32_t GetStabilityMask(int patternLength, float stabilityThreshold)
+uint64_t GetStabilityMask(int patternLength, float stabilityThreshold)
 {
-    uint32_t mask = 0;
+    uint64_t mask = 0;
 
     int maxSteps = std::min(patternLength, static_cast<int>(kMaxSteps));
 
@@ -78,7 +78,7 @@ uint32_t GetStabilityMask(int patternLength, float stabilityThreshold)
         float stability = GetStepStability(step, patternLength);
         if (stability >= stabilityThreshold)
         {
-            mask |= (1U << step);
+            mask |= (1ULL << step);
         }
     }
 

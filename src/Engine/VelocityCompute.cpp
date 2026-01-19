@@ -11,13 +11,13 @@ constexpr uint32_t kVelVariationHashMagic = 0x56415249;  // "VARI"
 
 // Default accent masks (kept for legacy ShouldAccent function)
 // Anchor: Emphasize downbeats and quarter notes
-constexpr uint32_t kAnchorAccentMask = 0x11111111;  // Steps 0, 4, 8, 12, 16, 20, 24, 28
+constexpr uint64_t kAnchorAccentMask = 0x1111111111111111ULL;  // Steps 0, 4, 8, 12, 16, 20, 24, 28
 
 // Shimmer: Emphasize backbeats and some syncopated positions
-constexpr uint32_t kShimmerAccentMask = 0x01010101;  // Steps 0, 8, 16, 24 (backbeats)
+constexpr uint64_t kShimmerAccentMask = 0x0101010101010101ULL;  // Steps 0, 8, 16, 24 (backbeats)
 
 // AUX: Offbeat 8ths for hi-hat character
-constexpr uint32_t kAuxAccentMask = 0x44444444;  // Steps 2, 6, 10, 14, 18, 22, 26, 30
+constexpr uint64_t kAuxAccentMask = 0x4444444444444444ULL;  // Steps 2, 6, 10, 14, 18, 22, 26, 30
 
 // =============================================================================
 // ACCENT Parameter Computation (V5: was PUNCH)
@@ -118,7 +118,7 @@ void ComputeShapeModifiers(float shape, float phraseProgress, ShapeModifiers& mo
 // =============================================================================
 
 bool ShouldAccent(int step,
-                  uint32_t accentMask,
+                  uint64_t accentMask,
                   float accentProbability,
                   const ShapeModifiers& shapeMods,
                   uint32_t seed)
@@ -128,7 +128,7 @@ bool ShouldAccent(int step,
         return true;
 
     // Check if step is accent-eligible
-    bool eligible = (accentMask & (1u << (step & 31))) != 0;
+    bool eligible = (accentMask & (1ULL << step)) != 0;
 
     if (!eligible)
         return false;
@@ -178,7 +178,7 @@ float ComputeVelocity(const AccentParams& accentParams,
     return Clamp(velocity, 0.30f, 1.0f);
 }
 
-uint32_t GetDefaultAccentMask(Voice voice)
+uint64_t GetDefaultAccentMask(Voice voice)
 {
     switch (voice)
     {
@@ -199,7 +199,7 @@ float ComputeAnchorVelocity(float accent,
                             int step,
                             int patternLength,
                             uint32_t seed,
-                            uint32_t accentMask)
+                            uint64_t accentMask)
 {
     // V5 (Task 35): Use metric weight-based velocity
     // Get base velocity from accent and metric weight
@@ -228,7 +228,7 @@ float ComputeShimmerVelocity(float accent,
                              int step,
                              int patternLength,
                              uint32_t seed,
-                             uint32_t accentMask)
+                             uint64_t accentMask)
 {
     // V5 (Task 35): Use metric weight-based velocity
     // Get base velocity from accent and metric weight

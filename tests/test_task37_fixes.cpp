@@ -15,7 +15,7 @@ using Catch::Approx;
 // =============================================================================
 
 // Count bits set in mask
-static int CountHits(uint32_t mask)
+static int CountHits(uint64_t mask)
 {
     int count = 0;
     while (mask)
@@ -35,10 +35,10 @@ TEST_CASE("ApplyComplementRelationship handles null shimmerWeights", "[task37][v
     SECTION("Null weights with low drift returns valid mask")
     {
         // Low drift uses evenly spaced placement, doesn't use weights
-        uint32_t anchor = 0b10001000;  // Hits at 3 and 7
+        uint64_t anchor = 0b10001000;  // Hits at 3 and 7
         float lowDrift = 0.1f;
 
-        uint32_t result = ApplyComplementRelationship(anchor, nullptr, lowDrift, 12345, 8, 3);
+        uint64_t result = ApplyComplementRelationship(anchor, nullptr, lowDrift, 12345, 8, 3);
 
         // Should not crash and return valid hits
         REQUIRE(CountHits(result) == 3);
@@ -48,10 +48,10 @@ TEST_CASE("ApplyComplementRelationship handles null shimmerWeights", "[task37][v
     SECTION("Null weights with mid drift returns valid mask")
     {
         // Mid drift uses weighted placement, which now falls back to gap start
-        uint32_t anchor = 0b10000001;  // Hits at 0 and 7
+        uint64_t anchor = 0b10000001;  // Hits at 0 and 7
         float midDrift = 0.5f;
 
-        uint32_t result = ApplyComplementRelationship(anchor, nullptr, midDrift, 12345, 8, 3);
+        uint64_t result = ApplyComplementRelationship(anchor, nullptr, midDrift, 12345, 8, 3);
 
         // Should not crash and return valid hits
         REQUIRE(CountHits(result) == 3);
@@ -61,10 +61,10 @@ TEST_CASE("ApplyComplementRelationship handles null shimmerWeights", "[task37][v
     SECTION("Null weights with high drift returns valid mask")
     {
         // High drift uses seed-varied random, doesn't use weights
-        uint32_t anchor = 0b10000001;  // Hits at 0 and 7
+        uint64_t anchor = 0b10000001;  // Hits at 0 and 7
         float highDrift = 0.9f;
 
-        uint32_t result = ApplyComplementRelationship(anchor, nullptr, highDrift, 12345, 8, 3);
+        uint64_t result = ApplyComplementRelationship(anchor, nullptr, highDrift, 12345, 8, 3);
 
         // Should not crash and return valid hits
         REQUIRE(CountHits(result) == 3);
@@ -86,21 +86,21 @@ TEST_CASE("ApplyComplementRelationship clamps patternLength", "[task37][voicerel
 
     SECTION("patternLength > kMaxSteps is clamped to 32")
     {
-        uint32_t anchor = 0b10001000;
+        uint64_t anchor = 0b10001000;
         float midDrift = 0.5f;
 
         // Should not crash or read out of bounds
-        uint32_t result = ApplyComplementRelationship(anchor, weights, midDrift, 12345, 64, 4);
+        uint64_t result = ApplyComplementRelationship(anchor, weights, midDrift, 12345, 64, 4);
 
-        // Should return valid result (clamped to 32 steps)
-        REQUIRE(CountHits(result) <= 32);
+        // Should return valid result for 64 steps
+        REQUIRE(CountHits(result) <= 64);
         REQUIRE(CountHits(result) == 4);
     }
 
     SECTION("Negative patternLength returns empty mask")
     {
-        uint32_t anchor = 0b10001000;
-        uint32_t result = ApplyComplementRelationship(anchor, weights, 0.5f, 12345, -5, 4);
+        uint64_t anchor = 0b10001000;
+        uint64_t result = ApplyComplementRelationship(anchor, weights, 0.5f, 12345, -5, 4);
 
         REQUIRE(result == 0);
     }
@@ -122,7 +122,7 @@ TEST_CASE("ApplyComplementRelationship seeds produce different patterns", "[task
     {
         // This was a bug: previously XOR with 0xDEADBEEF meant seed 0 and 0xDEADBEEF
         // would produce identical results. Now using multiplicative mixing.
-        uint32_t anchor = 0b10000001;  // Large gap for random placement
+        uint64_t anchor = 0b10000001;  // Large gap for random placement
         float highDrift = 0.9f;        // High drift activates seed-varied random
 
         uint32_t result0 = ApplyComplementRelationship(anchor, weights, highDrift, 0, 8, 3);
@@ -138,7 +138,7 @@ TEST_CASE("ApplyComplementRelationship seeds produce different patterns", "[task
 
     SECTION("Different seeds produce different patterns at high drift")
     {
-        uint32_t anchor = 0b10000001;
+        uint64_t anchor = 0b10000001;
         float highDrift = 0.9f;
 
         // Collect results for multiple seed pairs
@@ -161,10 +161,10 @@ TEST_CASE("ApplyComplementRelationship seeds produce different patterns", "[task
     SECTION("Seed 0 produces valid non-trivial pattern")
     {
         // Previously seed 0 could cause degenerate behavior
-        uint32_t anchor = 0b10000001;
+        uint64_t anchor = 0b10000001;
         float highDrift = 0.9f;
 
-        uint32_t result = ApplyComplementRelationship(anchor, weights, highDrift, 0, 8, 3);
+        uint64_t result = ApplyComplementRelationship(anchor, weights, highDrift, 0, 8, 3);
 
         REQUIRE(CountHits(result) == 3);
         REQUIRE((result & anchor) == 0);  // No overlap
@@ -187,22 +187,22 @@ TEST_CASE("ApplyComplementRelationship does not exceed targetHits", "[task37][vo
     {
         // Pattern with alternating hits creates many 1-step gaps
         // 1.1.1.1. = gaps at 1, 3, 5, 7 (8 steps total)
-        uint32_t anchor = 0b01010101;  // Hits at 0, 2, 4, 6
+        uint64_t anchor = 0b01010101;  // Hits at 0, 2, 4, 6
         float drift = 0.0f;
 
         // Request only 2 hits - should not exceed this despite 4 gaps
-        uint32_t result = ApplyComplementRelationship(anchor, weights, drift, 12345, 8, 2);
+        uint64_t result = ApplyComplementRelationship(anchor, weights, drift, 12345, 8, 2);
 
         REQUIRE(CountHits(result) == 2);
     }
 
     SECTION("Many gaps with very low targetHits")
     {
-        uint32_t anchor = 0b10101010;  // Hits at 1, 3, 5, 7
+        uint64_t anchor = 0b10101010;  // Hits at 1, 3, 5, 7
         float drift = 0.0f;
 
         // Request only 1 hit
-        uint32_t result = ApplyComplementRelationship(anchor, weights, drift, 12345, 8, 1);
+        uint64_t result = ApplyComplementRelationship(anchor, weights, drift, 12345, 8, 1);
 
         REQUIRE(CountHits(result) == 1);
     }
@@ -210,11 +210,11 @@ TEST_CASE("ApplyComplementRelationship does not exceed targetHits", "[task37][vo
     SECTION("Four-on-floor with limited targetHits")
     {
         // 4-on-floor: hits at 0, 4, 8, 12 = 4 gaps of 3 steps each
-        uint32_t anchor = 0b0001000100010001;
+        uint64_t anchor = 0b0001000100010001;
         float drift = 0.0f;
 
         // Request 3 hits with 4 gaps - proportional distribution
-        uint32_t result = ApplyComplementRelationship(anchor, weights, drift, 12345, 16, 3);
+        uint64_t result = ApplyComplementRelationship(anchor, weights, drift, 12345, 16, 3);
 
         REQUIRE(CountHits(result) == 3);
     }
@@ -447,8 +447,8 @@ TEST_CASE("Task 37 edge case regressions", "[task37][regression]")
 {
     SECTION("Empty anchor with null weights")
     {
-        uint32_t anchor = 0;
-        uint32_t result = ApplyComplementRelationship(anchor, nullptr, 0.5f, 12345, 8, 4);
+        uint64_t anchor = 0;
+        uint64_t result = ApplyComplementRelationship(anchor, nullptr, 0.5f, 12345, 8, 4);
 
         // Should place 4 hits in completely empty pattern
         REQUIRE(CountHits(result) == 4);
@@ -462,8 +462,8 @@ TEST_CASE("Task 37 edge case regressions", "[task37][regression]")
             weights[i] = 1.0f;  // High weights
         }
 
-        uint32_t anchor = 0xFFFF;  // All 16 bits set
-        uint32_t result = ApplyComplementRelationship(anchor, weights, 0.5f, 12345, 16, 8);
+        uint64_t anchor = 0xFFFF;  // All 16 bits set
+        uint64_t result = ApplyComplementRelationship(anchor, weights, 0.5f, 12345, 16, 8);
 
         // No room for shimmer hits
         REQUIRE(result == 0);

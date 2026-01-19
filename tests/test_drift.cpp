@@ -109,13 +109,13 @@ TEST_CASE("GetStabilityMask produces correct masks", "[drift]")
 {
     SECTION("Threshold 1.0 only includes downbeat")
     {
-        uint32_t mask = GetStabilityMask(32, 1.0f);
+        uint64_t mask = GetStabilityMask(32, 1.0f);
         REQUIRE(mask == 0x00000001);
     }
 
     SECTION("Threshold 0.9 includes downbeat and half-bar")
     {
-        uint32_t mask = GetStabilityMask(32, 0.9f);
+        uint64_t mask = GetStabilityMask(32, 0.9f);
         // Step 0 (1.0) and step 16 (0.9)
         REQUIRE((mask & 0x00000001) != 0);  // Step 0
         REQUIRE((mask & 0x00010000) != 0);  // Step 16
@@ -123,13 +123,13 @@ TEST_CASE("GetStabilityMask produces correct masks", "[drift]")
 
     SECTION("Threshold 0.0 includes all steps")
     {
-        uint32_t mask = GetStabilityMask(32, 0.0f);
-        REQUIRE(mask == 0xFFFFFFFF);
+        uint64_t mask = GetStabilityMask(32, 0.0f);
+        REQUIRE(mask == 0xFFFFFFFFULL);  // 32 steps = 32 bits
     }
 
     SECTION("Threshold 0.5 includes downbeat through eighth notes")
     {
-        uint32_t mask = GetStabilityMask(32, 0.5f);
+        uint64_t mask = GetStabilityMask(32, 0.5f);
 
         // Should include: 0, 4, 8, 12, 16, 20, 24, 28
         REQUIRE((mask & 0x00000001) != 0);  // Step 0
@@ -613,7 +613,7 @@ TEST_CASE("Drift handles edge cases gracefully", "[drift]")
 
     SECTION("Pattern length > 32 is clamped for mask")
     {
-        uint32_t mask = GetStabilityMask(64, 0.5f);
+        uint64_t mask = GetStabilityMask(64, 0.5f);
         // Should only set bits in valid range (0-31)
         // No bits should be set beyond what a 32-bit mask can hold
         REQUIRE(mask != 0);

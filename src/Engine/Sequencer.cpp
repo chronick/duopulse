@@ -405,7 +405,8 @@ void Sequencer::ProcessStep()
         // V5: Procedural accent mask - downbeats (steps 0,8,16,24,32,40,48,56)
         float velocity = ComputeAnchorVelocity(
             state_.controls.accent, state_.controls.shape,
-            phraseProgress, step, seed,
+            phraseProgress, step,
+            state_.controls.patternLength, seed,
             0x0101010101010101ULL  // V5: Anchor accent on downbeats
         );
 
@@ -439,7 +440,8 @@ void Sequencer::ProcessStep()
         // V5: Procedural accent mask - backbeats (steps 4,12,20,28,36,44,52,60)
         float velocity = ComputeShimmerVelocity(
             state_.controls.accent, state_.controls.shape,
-            phraseProgress, step, seed,
+            phraseProgress, step,
+            state_.controls.patternLength, seed,
             0x1010101010101010ULL  // V5: Shimmer accent on backbeats
         );
 

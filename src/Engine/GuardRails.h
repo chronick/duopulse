@@ -58,8 +58,8 @@ constexpr int kMaxConsecutiveShimmerPeak = 6;
  * @param patternLength Pattern length in steps
  * @return Number of repairs made
  */
-int SoftRepairPass(uint32_t& anchorMask,
-                   uint32_t& shimmerMask,
+int SoftRepairPass(uint64_t& anchorMask,
+                   uint64_t& shimmerMask,
                    const float* anchorWeights,
                    const float* shimmerWeights,
                    EnergyZone zone,
@@ -73,7 +73,7 @@ int SoftRepairPass(uint32_t& anchorMask,
  * @param patternLength Pattern length
  * @return Step index of weakest hit, or -1 if no hits
  */
-int FindWeakestHit(uint32_t mask, const float* weights, int patternLength);
+int FindWeakestHit(uint64_t mask, const float* weights, int patternLength);
 
 /**
  * Find best rescue candidate for a constraint violation
@@ -84,8 +84,8 @@ int FindWeakestHit(uint32_t mask, const float* weights, int patternLength);
  * @param patternLength Pattern length
  * @return Step index of best rescue, or -1 if none found
  */
-int FindRescueCandidate(uint32_t mask,
-                        uint32_t rescueMask,
+int FindRescueCandidate(uint64_t mask,
+                        uint64_t rescueMask,
                         const float* weights,
                         int patternLength);
 
@@ -109,8 +109,8 @@ int FindRescueCandidate(uint32_t mask,
  * @param patternLength Pattern length
  * @return Number of corrections made
  */
-int ApplyHardGuardRails(uint32_t& anchorMask,
-                        uint32_t& shimmerMask,
+int ApplyHardGuardRails(uint64_t& anchorMask,
+                        uint64_t& shimmerMask,
                         EnergyZone zone,
                         Genre genre,
                         int patternLength);
@@ -125,7 +125,7 @@ int ApplyHardGuardRails(uint32_t& anchorMask,
  * @param patternLength Pattern length
  * @return true if downbeat was forced
  */
-bool EnforceDownbeat(uint32_t& anchorMask, EnergyZone zone, int patternLength);
+bool EnforceDownbeat(uint64_t& anchorMask, EnergyZone zone, int patternLength);
 
 /**
  * Enforce maximum gap rule
@@ -137,7 +137,7 @@ bool EnforceDownbeat(uint32_t& anchorMask, EnergyZone zone, int patternLength);
  * @param patternLength Pattern length
  * @return Number of hits added
  */
-int EnforceMaxGap(uint32_t& anchorMask, EnergyZone zone, int patternLength);
+int EnforceMaxGap(uint64_t& anchorMask, EnergyZone zone, int patternLength);
 
 /**
  * Enforce consecutive shimmer limit
@@ -150,8 +150,8 @@ int EnforceMaxGap(uint32_t& anchorMask, EnergyZone zone, int patternLength);
  * @param patternLength Pattern length
  * @return Number of shimmer hits removed
  */
-int EnforceConsecutiveShimmer(uint32_t anchorMask,
-                               uint32_t& shimmerMask,
+int EnforceConsecutiveShimmer(uint64_t anchorMask,
+                               uint64_t& shimmerMask,
                                EnergyZone zone,
                                int patternLength);
 
@@ -167,8 +167,8 @@ int EnforceConsecutiveShimmer(uint32_t anchorMask,
  * @param patternLength Pattern length
  * @return Number of modifications made
  */
-int EnforceGenreRules(uint32_t anchorMask,
-                       uint32_t& shimmerMask,
+int EnforceGenreRules(uint64_t anchorMask,
+                       uint64_t& shimmerMask,
                        Genre genre,
                        EnergyZone zone,
                        int patternLength);
@@ -203,7 +203,7 @@ int GetMaxConsecutiveShimmerForZone(EnergyZone zone);
  * @param patternLength Pattern length
  * @return Mask of gap midpoints
  */
-uint32_t FindGapMidpoints(uint32_t mask, int minGapSize, int patternLength);
+uint64_t FindGapMidpoints(uint64_t mask, int minGapSize, int patternLength);
 
 /**
  * Count consecutive shimmer hits without anchor
@@ -213,8 +213,8 @@ uint32_t FindGapMidpoints(uint32_t mask, int minGapSize, int patternLength);
  * @param patternLength Pattern length
  * @return Maximum consecutive shimmer run length
  */
-int CountMaxConsecutiveShimmer(uint32_t anchorMask,
-                               uint32_t shimmerMask,
+int CountMaxConsecutiveShimmer(uint64_t anchorMask,
+                               uint64_t shimmerMask,
                                int patternLength);
 
 } // namespace daisysp_idm_grids
