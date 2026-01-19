@@ -128,7 +128,7 @@ bool ShouldAccent(int step,
         return true;
 
     // Check if step is accent-eligible
-    bool eligible = (accentMask & (1u << (step & 31))) != 0;
+    bool eligible = (accentMask & (1ULL << step)) != 0;
 
     if (!eligible)
         return false;

@@ -151,7 +151,7 @@ int FindGaps(uint64_t anchorMask, int patternLength, Gap* gaps)
 
     for (int i = 0; i < clampedLength; ++i)
     {
-        bool isHit = (anchorMask & (1U << i)) != 0;
+        bool isHit = (anchorMask & (1ULL << i)) != 0;
 
         if (!isHit && gapStart < 0)
         {

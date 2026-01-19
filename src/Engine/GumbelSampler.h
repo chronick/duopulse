@@ -130,7 +130,7 @@ void ComputeGumbelScores(const float* weights,
  */
 int FindBestStep(const float* scores,
                  uint64_t eligibilityMask,
-                 uint32_t selectedMask,
+                 uint64_t selectedMask,
                  int patternLength,
                  int minSpacing);
 
