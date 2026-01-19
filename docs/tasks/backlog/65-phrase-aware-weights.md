@@ -119,3 +119,40 @@ Use phrase position inference by default, but allow CV override when connected.
 ## Notes
 
 This is a "nice to have" enhancement. The core algorithm works well without phrase awareness. Consider implementing only after the hill-climbing iteration system is proven and stable.
+
+---
+
+## 64-Step Grid Synergy (Added 2026-01-19)
+
+**Impact**: Synergistic - 64-step support makes this task more valuable
+
+### New Opportunities with 64 Steps
+
+With Task 53 complete (64-step grid), phrase-aware weights become significantly more useful:
+
+1. **Intra-pattern phrases**: 64 steps = 4 bars = natural phrase boundary
+   - Bars 1-2 could use "intro" weights
+   - Bars 3-4 could use "chorus" weights
+   - All within a single pattern generation call
+
+2. **Simplified implementation**: Could detect section from position within 64-step pattern:
+   ```cpp
+   Section GetAutoSection(int step, int patternLength) {
+       if (patternLength == 64) {
+           // 4-bar pattern: bars 1-2 = verse, bars 3-4 = chorus
+           if (step < 32) return Section::VERSE;
+           else return Section::CHORUS;
+       }
+       // Fallback to external phrase tracking for 16/32-step patterns
+       return Section::VERSE;
+   }
+   ```
+
+3. **Reduced external dependencies**: Less need for phrase counter if sections can be inferred from pattern position
+
+### Priority Reconsideration
+
+Before Task 53: Low priority (nice-to-have)
+After Task 53: **Medium priority** (enables natural phrase structure)
+
+**Recommendation**: Consider moving this task earlier in backlog. The 64-step grid creates a compelling use case for section-aware weight modulation that wasn't as strong at 32 steps.
