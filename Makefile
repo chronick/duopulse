@@ -174,7 +174,7 @@ LOGDIR ?= /tmp
 # Build Targets
 ###############################################################################
 
-.PHONY: all clean rebuild daisy-build daisy-update libdaisy-build libdaisy-update program build-debug program-debug test test-coverage listen ports help pattern-viz run-pattern-viz pattern-sweep pattern-html expressiveness-report expressiveness-quick evals evals-generate evals-serve evals-deploy weights-header baseline sensitivity-sweep sensitivity-matrix sensitivity-levers
+.PHONY: all clean rebuild daisy-build daisy-update libdaisy-build libdaisy-update program build-debug program-debug test test-coverage listen ports help pattern-viz run-pattern-viz pattern-sweep pattern-html expressiveness-report expressiveness-quick evals evals-generate evals-evaluate evals-serve evals-deploy weights-header baseline sensitivity-sweep sensitivity-matrix sensitivity-levers
 
 # Default target
 all: $(ELF) $(BIN) $(HEX)
@@ -502,6 +502,11 @@ evals-generate: $(PATTERN_VIZ)
 	@cd $(EVALS_DIR) && PATTERN_VIZ=$(CURDIR)/$(PATTERN_VIZ) node generate-patterns.js
 	@cd $(EVALS_DIR) && node evaluate-expressiveness.js
 
+# Evaluate expressiveness only (assumes patterns already generated)
+evals-evaluate:
+	@cd $(EVALS_DIR) && npm install --silent
+	@cd $(EVALS_DIR) && node evaluate-expressiveness.js
+
 # Serve evaluation dashboard locally
 evals-serve: $(EVALS_DIR)/public/data/metadata.json
 	@echo "Starting local server at http://localhost:3000"
@@ -582,6 +587,7 @@ help:
 	@echo "  expressiveness-quick  - Run quick expressiveness evaluation"
 	@echo "  evals            - Build pattern evaluation dashboard (tools/evals/)"
 	@echo "  evals-generate   - Generate evaluation data only"
+	@echo "  evals-evaluate   - Evaluate expressiveness only (assumes patterns exist)"
 	@echo "  evals-serve      - Serve evaluation dashboard locally (port 3000)"
 	@echo "  evals-deploy     - Deploy dashboard to docs/evals/ for GitHub Pages"
 	@echo "  sensitivity-sweep  - Run parameter sweep for sensitivity analysis"
