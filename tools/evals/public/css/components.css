@@ -722,6 +722,114 @@
   color: var(--error);
 }
 
+/* Preset Conformance Display */
+.preset-conformance {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--bg-tertiary);
+}
+
+.conformance-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.conformance-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.conformance-header .conformance-score {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.conformance-header .conformance-score.pass {
+  color: var(--success);
+}
+
+.conformance-header .conformance-score.fail {
+  color: var(--error);
+}
+
+.conformance-status-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 3px;
+  text-transform: uppercase;
+}
+
+.conformance-status-badge.excellent {
+  background: rgba(68, 255, 68, 0.15);
+  color: var(--success);
+}
+
+.conformance-status-badge.good {
+  background: rgba(78, 205, 196, 0.15);
+  color: var(--v2-color);
+}
+
+.conformance-status-badge.fair {
+  background: rgba(255, 170, 68, 0.15);
+  color: var(--warning);
+}
+
+.conformance-status-badge.poor {
+  background: rgba(255, 68, 68, 0.15);
+  color: var(--error);
+}
+
+.conformance-status-badge.unknown {
+  background: rgba(136, 136, 136, 0.15);
+  color: var(--text-secondary);
+}
+
+.conformance-tolerance {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+.conformance-breakdown {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.conformance-breakdown-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--bg-tertiary);
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 11px;
+}
+
+.conformance-metric-name {
+  color: var(--text-secondary);
+}
+
+.conformance-metric-score {
+  font-weight: 500;
+}
+
+.conformance-metric-score.pass {
+  color: var(--success);
+}
+
+.conformance-metric-score.warn {
+  color: var(--warning);
+}
+
+.conformance-metric-score.fail {
+  color: var(--error);
+}
+
 .no-data {
   color: var(--text-secondary);
   padding: 20px;

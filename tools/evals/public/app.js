@@ -358,6 +358,44 @@ function renderPresetsView() {
       .map(([k, v]) => `<span class="param"><span class="param-name">${k.toUpperCase()}:</span> <span class="param-value">${v.toFixed(2)}</span></span>`)
       .join('');
 
+    // Build conformance section
+    const conformance = preset.conformance || {};
+    const score = conformance.score !== undefined ? conformance.score : 0.5;
+    const scorePercent = Math.round(score * 100);
+    const status = conformance.status || 'unknown';
+    const tolerance = conformance.tolerance || 'moderate';
+    const pass = conformance.pass;
+    const breakdown = conformance.breakdown || {};
+
+    const passClass = pass ? 'pass' : 'fail';
+    const statusClass = status;
+
+    // Build breakdown items
+    const breakdownHtml = Object.entries(breakdown)
+      .map(([metric, metricScore]) => {
+        const metricPercent = Math.round(metricScore * 100);
+        const metricClass = metricScore >= 0.7 ? 'pass' : metricScore >= 0.4 ? 'warn' : 'fail';
+        return `
+          <div class="conformance-breakdown-item">
+            <span class="conformance-metric-name">${metric}</span>
+            <span class="conformance-metric-score ${metricClass}">${metricPercent}%</span>
+          </div>
+        `;
+      })
+      .join('');
+
+    const conformanceHtml = `
+      <div class="preset-conformance">
+        <div class="conformance-header">
+          <span class="conformance-label">Conformance:</span>
+          <span class="conformance-score ${passClass}">${scorePercent}%</span>
+          <span class="conformance-status-badge ${statusClass}">${status}</span>
+          <span class="conformance-tolerance">(${tolerance})</span>
+        </div>
+        ${breakdownHtml ? `<div class="conformance-breakdown">${breakdownHtml}</div>` : ''}
+      </div>
+    `;
+
     const card = document.createElement('div');
     card.className = 'preset-card';
     card.innerHTML = `
@@ -365,6 +403,7 @@ function renderPresetsView() {
       <p class="preset-desc">${preset.description}</p>
       <div class="preset-params">${paramsHtml}</div>
       ${renderPattern(patternData, { patternId, name: preset.name })}
+      ${conformanceHtml}
     `;
 
     container.appendChild(card);
