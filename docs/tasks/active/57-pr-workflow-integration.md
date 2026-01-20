@@ -16,7 +16,7 @@ depends_on:
 
 ## Objective
 
-Enable full PR workflow integration where Claude can receive feedback via PR comments, respond to @mentions, and iterate on PRs based on user guidance. Support both task-only PRs and design-iteration PRs.
+Enable full PR workflow integration where Claude can receive feedback via PR comments, respond to @mentions, and iterate on PRs based on user guidance. Support both task-only PRs and design-iteration PRs. Create CI/CD loop where PR merge triggers next iteration suggestion for continuous improvement.
 
 ## Context
 
@@ -51,6 +51,16 @@ Enable full PR workflow integration where Claude can receive feedback via PR com
 
 ## Subtasks
 
+### Iteration Command Integration (2026-01-19)
+- [x] Update `/iterate` command to ALWAYS create PRs (success/tradeoff/failure)
+- [x] Add git hygiene documentation (feature branches, structured commits)
+- [x] Add regression tradeoff policy (acceptable vs unacceptable)
+- [x] Integrate design-critic agent at strategic points
+- [x] Add PR commands table (@claude /status, /critique, /retry, etc.)
+- [x] Document continuous improvement loop (PR merge → suggest next iteration)
+- [ ] Create GitHub Action for iteration suggestion on PR merge
+- [ ] Add PR label-based workflow (improvement/tradeoff/retry)
+
 ### PR Type Detection
 - [ ] Add PR template for task PRs (`.github/PULL_REQUEST_TEMPLATE/task.md`)
 - [ ] Add PR template for iteration PRs (`.github/PULL_REQUEST_TEMPLATE/iteration.md`)
@@ -70,22 +80,34 @@ Enable full PR workflow integration where Claude can receive feedback via PR com
 - [ ] Update PR description with task checklist progress
 
 ### Iteration PR Workflow
-- [ ] Include metric diff table in PR description
-- [ ] Respond to metric-related questions
-- [ ] Propose alternative approaches when metrics regress
-- [ ] Track iteration attempts in PR body
+- [x] Include metric diff table in PR description
+- [x] Respond to metric-related questions
+- [x] Propose alternative approaches when metrics regress
+- [x] Track iteration attempts in PR body
+- [x] Create PRs even for failed iterations (with "retry" label)
+- [x] Support "tradeoff" PRs for acceptable regressions
+- [x] Invoke design-critic for failed iterations
+- [ ] Implement PR command handlers (/status, /critique, /retry, etc.)
+- [ ] Auto-close failed iteration PRs with analysis
+- [ ] Track prediction accuracy across iterations
 
 ### @Mention Handling
 - [ ] Respond to `@claude` mentions in PR comments
-- [ ] Support commands: `/status`, `/retry`, `/explain`, `/compare`
+- [x] Support commands: `/status`, `/retry`, `/explain`, `/compare`, `/critique`, `/tradeoff`
 - [ ] Provide context-aware responses based on PR type
 - [ ] Link to relevant tasks/iterations
+- [x] Invoke design-critic agent on `/critique` command
 
 ### GitHub Actions Updates
 - [ ] Update `claude.yml` for enhanced PR interaction
 - [ ] Add PR-specific permissions (write access for comments)
 - [ ] Handle PR review events (approve, request changes)
 - [ ] Trigger evals on PR updates for iteration PRs
+- [ ] Create `iterate-suggest.yml` workflow:
+  - Triggers on PR merge to main (with "iteration" label)
+  - Updates metrics/baseline.json
+  - Posts issue suggesting next iteration goal
+  - Optional: Auto-trigger `/iterate auto`
 
 ### Tests
 - [ ] Test PR type detection
@@ -238,3 +260,50 @@ Claude: Creating commit with option A changes...
 ## Estimated Effort
 
 4-5 hours (GitHub Actions + prompt engineering)
+
+## Progress Log (2026-01-19)
+
+### Completed
+- ✅ Updated `/iterate` command with full CI/CD loop workflow
+- ✅ Added git hygiene confirmation (feature branches, structured commits)
+- ✅ Implemented ALWAYS-CREATE-PR policy (success/tradeoff/failure)
+- ✅ Added regression tradeoff policy with acceptable scenarios
+- ✅ Integrated design-critic agent at strategic points:
+  - After estimate phase (optional, recommended for low confidence)
+  - After failed iterations (mandatory for post-mortem)
+- ✅ Documented PR commands (@claude /status, /critique, /retry, etc.)
+- ✅ Added continuous improvement loop vision (PR merge → suggest next)
+- ✅ Updated Task 57 with iteration enhancements
+
+### Remaining
+- ⏳ Implement GitHub Action for iteration suggestion on PR merge
+- ⏳ Implement PR command handlers in claude.yml
+- ⏳ Create PR templates (iteration.md, task.md)
+- ⏳ Add PR label-based automation (improvement/tradeoff/retry)
+- ⏳ Test full workflow end-to-end
+
+### Key Design Decisions
+
+**Always Create PR**:
+- Even failed iterations create PR (closed immediately with "retry" label)
+- Transparency: All attempts logged and visible
+- Learning: Failed iterations teach us what doesn't work
+
+**Regression Tradeoff Policy**:
+- Acceptable: Planned tradeoffs, zone-specific improvements, multi-step strategies
+- Unacceptable: Unplanned regressions, critical metric failures, excessive drops
+- Requires explicit justification in estimate phase
+
+**Critic Agent Integration**:
+- Step 5.2: Optional pre-flight check on estimates (recommended for LOW confidence)
+- Step 13C: Mandatory post-mortem on failures
+- PR command: User can request critique via `@claude /critique`
+
+**Continuous Loop**:
+```
+[main] → /iterate → [branch] → [commit] → [PR]
+   ↑                                        ↓
+   └──────── [merge] ←────── [review] ──── [label: improvement/tradeoff]
+                                        ↓
+                              [label: retry] → [close, log, suggest retry]
+```

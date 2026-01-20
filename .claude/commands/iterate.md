@@ -12,6 +12,34 @@ You are running a **hill-climbing iteration** to improve DuoPulse pattern genera
 - Ensemble search: `/iterate ensemble "improve syncopation"`
 - Ensemble auto: `/iterate ensemble auto`
 
+## Git Hygiene & Branch Management
+
+**YES**, `/iterate` follows strict git hygiene:
+- Creates feature branch: `feature/iterate-${ITER_ID}`
+- Commits all changes with structured messages
+- **ALWAYS creates PR** (success or failure - for learning)
+- PR description includes metrics, predictions, and rationale
+- PR merge to main triggers next iteration (Task 57 CI/CD loop)
+- Failed iterations close PR with `retry` label for future reference
+
+## Automated CI/CD Loop (Task 57 Integration)
+
+Each iteration participates in a continuous improvement loop:
+
+```
+[main] → /iterate → [feature branch] → [commit] → [PR created]
+   ↑                                                      ↓
+   └─────────── [PR merged] ←────────── [Review & Approve]
+                                                ↓
+                                         [Regression?] → [Close with "retry" label]
+```
+
+**Key behaviors**:
+- PR created WHETHER OR NOT metrics improve (track all attempts)
+- PR merge to main automatically triggers next iteration suggestion
+- Regression PRs closed with `retry` label, logged for learning
+- Successful PRs merged, baseline updated, process repeats
+
 ## Workflow Overview
 
 Each iteration follows a **4-phase cycle** for systematic learning:
@@ -43,6 +71,39 @@ Document results with **prediction accuracy**:
 - Narrate findings in human-readable form
 
 **Why this matters**: By tracking prediction accuracy over time, we learn which types of changes reliably improve which metrics, making future iterations more precise.
+
+## Critic Agent Integration
+
+The **design-critic** agent provides critical feedback at strategic points to catch issues early:
+
+**Invocation Points**:
+1. **After Step 5 (Estimate)**: Critique predictions before implementing
+   - Are estimates realistic given sensitivity data?
+   - Are we missing secondary effects?
+   - Risk assessment complete?
+
+2. **After Step 10 (Compare Metrics)**: Critique results before PR creation
+   - Do metric changes make sense?
+   - Are there hidden regressions?
+   - Is the narrative coherent?
+
+3. **On PR Feedback**: Respond to user-requested design critique
+   - User comments: `@claude /critique` on PR
+   - Provides alternative approaches if current path isn't working
+
+**Usage**:
+```bash
+# In iterate workflow, before committing:
+Task(subagent_type="design-critic",
+     prompt="Critique these weight changes and predicted impacts: [paste estimate]",
+     description="Critique iteration estimates")
+```
+
+**Benefits**:
+- Catches overconfident predictions
+- Identifies unintended consequences
+- Suggests alternative approaches
+- Validates reasoning before expensive eval runs
 
 ## Mode Detection
 
@@ -130,6 +191,8 @@ Select 1-2 levers to adjust based on:
 
 **BEFORE making any changes, document predictions for learning:**
 
+**5.1 Create Prediction Record**
+
 Create prediction record in `docs/design/iterations/estimate-${ITER_ID}.md`:
 
 ```markdown
@@ -180,6 +243,40 @@ What will this iteration teach us about:
 - Explain mechanism: WHY will this change improve the metric?
 - Predict secondary effects: What else might change?
 - Document assumptions: What are you assuming about the system?
+
+**5.2 Invoke Critic Agent (Optional but Recommended)**
+
+Before proceeding, get critical feedback on predictions:
+
+```bash
+Task(subagent_type="design-critic",
+     description="Critique iteration estimates",
+     prompt="Review these iteration estimates for iteration ${ITER_ID}:
+
+     [Paste estimate-${ITER_ID}.md content]
+
+     Evaluate:
+     - Are predictions realistic given sensitivity data?
+     - Are secondary effects adequately considered?
+     - Is the risk assessment complete?
+     - Are there alternative approaches that might work better?
+     - What could go wrong that wasn't predicted?
+
+     Provide critical analysis and recommendations.")
+```
+
+**When to use critic**:
+- ✅ LOW confidence predictions (< 60%)
+- ✅ Complex multi-lever changes
+- ✅ High-risk changes to critical metrics
+- ✅ After previous iteration failed
+- ⚠️ Skip for HIGH confidence bug fixes (e.g., Task 46 noise formula)
+
+**Incorporate feedback**:
+- Update estimates based on critic insights
+- Adjust lever selections if critic identifies issues
+- Add missed risks to risk assessment
+- Document critic feedback in estimate file
 
 ### Step 6: Propose Weight Changes
 
@@ -262,6 +359,62 @@ SUCCESS if:
   target_metric_delta >= 0.05 * baseline_value  (5% relative improvement)
   AND max(other_metric_regressions) <= 0.02 * baseline_value  (2% tolerance)
   AND all_tests_pass
+```
+
+**Important**: Regression tolerance is NOT absolute. Context matters:
+
+### Acceptable Regressions (Tradeoff Policy)
+
+Some regressions may be acceptable as intentional tradeoffs:
+
+**✅ Acceptable Regression Scenarios**:
+
+1. **Planned Tradeoff**: Explicitly trading one metric for another
+   - Example: Decrease regularity to improve syncopation
+   - Document in estimate phase: "Willing to accept -5% regularity for +15% syncopation"
+   - Justify with musical rationale
+
+2. **Zone-Specific Improvement**: Regression in one zone, improvement in target zone
+   - Example: Wild zone syncopation +20%, stable zone syncopation -3%
+   - Net positive: Target zone gains outweigh collateral loss
+   - Document zone priorities in estimate
+
+3. **Temporary Regression**: Part of multi-iteration strategy
+   - Example: Step 1 reduces density to improve voice separation
+   - Step 2 will restore density with better separation
+   - Document multi-step plan in iteration log
+
+4. **Negligible Impact**: Regression below perceptual threshold
+   - Example: Velocity range drops 1% (0.85 → 0.84)
+   - Musical impact minimal
+   - Focus on larger target improvement
+
+**❌ Unacceptable Regressions**:
+
+1. **Unplanned**: Not predicted or justified in estimate phase
+2. **Critical metrics**: Beat 1 presence, test pass rate, compilation
+3. **Excessive**: >5% regression without strong justification
+4. **Cascading**: Multiple metrics regressing simultaneously
+
+**PR Creation Policy**:
+- **Success**: Create PR with "improvement" label → request review
+- **Acceptable tradeoff**: Create PR with "tradeoff" label → explain justification → request review
+- **Unacceptable regression**: Create PR with "retry" label → close without merge → log for learning
+
+**Documentation Requirements**:
+If creating "tradeoff" PR, include in description:
+```markdown
+## Tradeoff Justification
+
+**Regression**: ${METRIC} decreased ${AMOUNT}%
+**Gain**: ${TARGET_METRIC} increased ${AMOUNT}%
+
+**Musical Rationale**:
+${WHY_THIS_TRADEOFF_IS_WORTHWHILE}
+
+**Plan**:
+- [ ] This iteration: Accept regression for target improvement
+- [ ] Next iteration: Address regression while preserving gains
 ```
 
 ### Step 12: Log Iteration with Estimate Accuracy
@@ -385,7 +538,10 @@ Make it accessible to someone reading this 6 months from now.
 
 ### Step 13: Handle Outcome
 
-**If SUCCESS**:
+**ALWAYS create PR regardless of outcome** (for learning and transparency).
+
+#### Outcome A: SUCCESS (Target improved, no regressions)
+
 1. Run all tests: `make test`
 2. Commit changes:
    ```bash
@@ -394,19 +550,97 @@ Make it accessible to someone reading this 6 months from now.
 
    - ${LEVER}: ${OLD} → ${NEW}
    - Target metric improved ${DELTA}%
-   - No regressions > 2%"
-   ```
-3. Create PR with metric comparison in description
-4. Report success with PR link
+   - No regressions > 2%
 
-**If FAILED**:
-1. Log failure reason in iteration file
-2. Revert algorithm changes: `git checkout inc/algorithm_config.h`
-3. Commit only the iteration log
-4. Report failure with analysis:
-   - What lever was tried
-   - Why it didn't work
-   - Suggestions for manual intervention
+   Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
+   ```
+3. Push branch: `git push -u origin feature/iterate-${ITER_ID}`
+4. Create PR with "improvement" label:
+   ```bash
+   gh pr create \
+     --title "Iteration ${ITER_ID}: ${GOAL}" \
+     --label "improvement,iteration" \
+     --body "$(cat docs/design/iterations/${ITER_ID}.md)"
+   ```
+5. Report success with PR link
+
+#### Outcome B: ACCEPTABLE TRADEOFF (Target improved, acceptable regression)
+
+1. Run all tests: `make test`
+2. Update iteration log with tradeoff justification
+3. Commit changes (same as success)
+4. Push branch
+5. Create PR with "tradeoff" label:
+   ```bash
+   gh pr create \
+     --title "Iteration ${ITER_ID}: ${GOAL} [tradeoff]" \
+     --label "tradeoff,iteration,needs-review" \
+     --body "$(cat docs/design/iterations/${ITER_ID}.md)
+
+     ## ⚠️ Tradeoff Alert
+
+     This iteration includes an acceptable regression:
+     - Regression: ${METRIC} ${DELTA}%
+     - Gain: ${TARGET_METRIC} ${DELTA}%
+     - Justification: ${REASON}
+
+     Requires explicit approval before merge."
+   ```
+6. Report tradeoff with explanation
+
+#### Outcome C: FAILED (No improvement OR unacceptable regression)
+
+1. **Invoke Critic Agent** for post-mortem:
+   ```bash
+   Task(subagent_type="design-critic",
+        description="Analyze iteration failure",
+        prompt="Iteration ${ITER_ID} failed to improve metrics:
+
+        [Paste results from Step 10]
+
+        Analyze:
+        - Why did predictions not match results?
+        - What mechanism failed?
+        - Alternative approaches to try?
+        - Should we abort this goal or retry with different levers?")
+   ```
+
+2. Update iteration log with failure analysis and critic feedback
+3. Revert algorithm changes: `git checkout inc/algorithm_config.h`
+4. Commit iteration log only:
+   ```bash
+   git add docs/design/iterations/${ITER_ID}.md
+   git commit -m "docs(iterate-${ITER_ID}): ${GOAL} [failed]
+
+   - Attempted: ${LEVER} ${OLD} → ${NEW}
+   - Result: ${WHAT_HAPPENED}
+   - Lessons: ${KEY_LEARNINGS}
+
+   Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
+   ```
+5. Push branch
+6. Create PR with "retry" label:
+   ```bash
+   gh pr create \
+     --title "Iteration ${ITER_ID}: ${GOAL} [FAILED]" \
+     --label "retry,iteration,needs-analysis" \
+     --body "$(cat docs/design/iterations/${ITER_ID}.md)
+
+     ## ❌ Iteration Failed
+
+     This iteration did not improve metrics and will not be merged.
+     Preserving for learning purposes.
+
+     **What was tried**: ${LEVER_CHANGES}
+     **What happened**: ${RESULTS}
+     **Critic analysis**: ${CRITIC_FEEDBACK}
+     **Next steps**: ${RECOMMENDATIONS}"
+   ```
+7. Close PR immediately (don't leave open):
+   ```bash
+   gh pr close ${PR_NUMBER} --comment "Closing failed iteration. See iteration log for analysis and retry suggestions."
+   ```
+8. Report failure with critic analysis and retry suggestions
 
 ## Auto-Suggest Mode
 
@@ -458,8 +692,41 @@ ${RECOMMENDED_ACTIONS}
 1. **Single-pass only**: No retry loops. If first attempt fails, user re-triggers manually.
 2. **Small changes**: 5-15% adjustments per lever to avoid overshooting.
 3. **Always log**: Both successes and failures get logged for learning.
-4. **Git refs**: All logs include commit hashes and branch names.
-5. **Sensitivity first**: Prefer sensitivity data over bootstrap heuristics when available.
+4. **Always PR**: Create PR whether success, tradeoff, or failure (learning transparency).
+5. **Git refs**: All logs include commit hashes and branch names.
+6. **Sensitivity first**: Prefer sensitivity data over bootstrap heuristics when available.
+7. **Critic integration**: Invoke design-critic for estimates (Step 5.2) and failures (Step 13C).
+8. **Regression policy**: Document acceptable tradeoffs explicitly in estimates.
+
+## PR Commands (Task 57 Integration)
+
+Once PR is created, users can interact via comments:
+
+| Command | Description | Triggers |
+|---------|-------------|----------|
+| `@claude /status` | Report current iteration status | Status summary |
+| `@claude /critique` | Request design critique | design-critic agent |
+| `@claude /explain ${METRIC}` | Explain metric change | Detailed analysis |
+| `@claude /retry` | Retry with different approach | New estimate + implementation |
+| `@claude /compare baseline` | Show before/after comparison | Metric diff table |
+| `@claude /tradeoff justify` | Explain regression tradeoff | Tradeoff rationale |
+
+## Continuous Improvement Loop
+
+When PR merges to main, the cycle continues:
+
+```
+PR Merged → Update baseline.json → GitHub Action triggers → Suggest next iteration
+
+GitHub Action (.github/workflows/iterate-suggest.yml):
+- Runs on PR merge to main
+- Checks if PR has "iteration" label
+- Updates metrics/baseline.json
+- Posts issue: "Iteration ${ITER_ID} merged! Suggested next goal: [auto-detected]"
+- Optional: Auto-trigger next /iterate auto if configured
+```
+
+This creates a self-improving system where each successful iteration automatically suggests the next improvement target.
 
 ---
 
