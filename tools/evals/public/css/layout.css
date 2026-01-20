@@ -87,6 +87,11 @@ nav {
   color: var(--bg-primary);
 }
 
+.nav-link-btn {
+  text-decoration: none;
+  display: inline-block;
+}
+
 /* Main layout with player sidebar */
 .app-layout {
   display: flex;
