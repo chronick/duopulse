@@ -324,11 +324,15 @@ uint64_t ComputeAnchorEligibility(float energy, float flavor, EnergyZone zone, i
     }
 
     // FLAVOR adds syncopation/offbeat positions
-    if (flavor > 0.3f)
+    // For syncopated zone (shape > 0.28), add offbeats (even positions)
+    if (flavor > 0.28f)
     {
         eligibility |= kOffbeatMask;
     }
-    if (flavor > 0.6f)
+    // For mid-syncopated zone (shape > 0.40), add odd positions
+    // This allows Gumbel sampling to select a mix based on weights
+    // Targeting ~30-40% odd positions for moderate syncopation (0.22-0.48)
+    if (flavor > 0.40f)
     {
         eligibility |= kSyncopationMask;
     }
@@ -379,8 +383,8 @@ uint64_t ComputeShimmerEligibility(float energy, float flavor, EnergyZone zone, 
             break;
     }
 
-    // FLAVOR allows more syncopation
-    if (flavor > 0.4f)
+    // FLAVOR allows more syncopation (threshold raised to reduce syncopation)
+    if (flavor > 0.60f)
     {
         eligibility |= kSyncopationMask;
     }

@@ -64,8 +64,8 @@ void GenerateSyncopationPattern(float energy, uint32_t seed, int patternLength, 
     // Base weight scaling by energy
     float baseScale = 0.4f + energy * 0.6f;
 
-    // Seed-based suppression factor for beat 1 (50-70% range per spec)
-    float downbeatSuppression = 0.5f + HashToFloat(seed, 0) * 0.2f;  // 0.5 to 0.7
+    // Seed-based suppression factor for beat 1 (90-100% range - almost no suppression)
+    float downbeatSuppression = 0.90f + HashToFloat(seed, 0) * 0.10f;  // 0.90 to 1.00
 
     for (int step = 0; step < patternLength; ++step)
     {
@@ -90,25 +90,26 @@ void GenerateSyncopationPattern(float energy, uint32_t seed, int patternLength, 
         }
         else if (isAnticipation)
         {
-            // Boost anticipation positions
-            float boost = 0.2f + HashToFloat(seed, step + 100) * 0.15f;
-            weight = 0.7f + boost;  // 0.7-0.85 range
+            // Moderate weight for anticipation - allows ~40% selection
+            // Targets syncopation metric 0.22-0.48
+            float boost = 0.05f + HashToFloat(seed, step + 100) * 0.15f;
+            weight = 0.40f + boost;  // 0.40-0.60 range
         }
         else if (isWeakOffbeat)
         {
-            // Boost weak offbeats for funk feel
-            float boost = 0.1f + HashToFloat(seed, step + 200) * 0.2f;
-            weight = 0.5f + boost;  // 0.5-0.7 range
+            // Moderate weight for weak offbeats - allows ~35% selection
+            float boost = 0.05f + HashToFloat(seed, step + 200) * 0.15f;
+            weight = 0.35f + boost;  // 0.35-0.55 range
         }
         else if (step % 4 == 0)
         {
-            // Non-bar-1 quarter notes: moderate
-            weight = 0.6f;
+            // Non-bar-1 quarter notes: strong preference
+            weight = 0.80f;
         }
         else
         {
-            // 8th note positions: light
-            weight = 0.4f;
+            // 8th note positions (even): moderately strong
+            weight = 0.70f;
         }
 
         // Scale by energy and clamp
