@@ -1,0 +1,274 @@
+{
+  "version": "1.0.0",
+  "generated_at": "2026-01-20T18:26:14.411Z",
+  "commit": "b2fe5e53e86fdb4c3e88d983f80654e012fed0d6",
+  "tag": "baseline-v1.0.0",
+  "last_good": null,
+  "consecutive_regressions": 0,
+  "metrics": {
+    "timestamp": "2026-01-20T18:26:10.441Z",
+    "pentagonStats": {
+      "total": {
+        "count": 33,
+        "syncopation": 0.27669024742195475,
+        "density": 0.5236742424242424,
+        "velocityRange": 0.35333333333333333,
+        "voiceSeparation": 0.8760758899761152,
+        "regularity": 0.6891812350464962,
+        "composite": 0.15842012836279254
+      },
+      "stable": {
+        "count": 2,
+        "syncopation": 0,
+        "density": 0.515625,
+        "velocityRange": 0.36,
+        "voiceSeparation": 0.8786764705882353,
+        "regularity": 0.7219068910760513,
+        "composite": 0.14995169665499344
+      },
+      "syncopated": {
+        "count": 28,
+        "syncopation": 0.21895636303301808,
+        "density": 0.53125,
+        "velocityRange": 0.3521428571428572,
+        "voiceSeparation": 0.884551326511466,
+        "regularity": 0.6752864486091301,
+        "composite": 0.14943204668425739
+      },
+      "wild": {
+        "count": 3,
+        "syncopation": 1,
+        "density": 0.4583333333333333,
+        "velocityRange": 0.36000000000000004,
+        "voiceSeparation": 0.7952380952380954,
+        "regularity": 0.7970488044422096,
+        "composite": 0.2479545118343196
+      }
+    },
+    "pentagonScore": 0.3956498271849078,
+    "conformance": {
+      "score": 0.8016616171783739,
+      "passCount": 7,
+      "totalPresets": 8,
+      "presetBreakdown": [
+        {
+          "name": "Minimal Techno",
+          "score": 0.7562882692912616,
+          "status": "good",
+          "pass": true,
+          "tolerance": "strict"
+        },
+        {
+          "name": "Four on Floor",
+          "score": 0.5871572875253811,
+          "status": "fair",
+          "pass": false,
+          "tolerance": "strict"
+        },
+        {
+          "name": "Driving Techno",
+          "score": 0.8450126265847083,
+          "status": "excellent",
+          "pass": true,
+          "tolerance": "strict"
+        },
+        {
+          "name": "Syncopated Groove",
+          "score": 1,
+          "status": "excellent",
+          "pass": true,
+          "tolerance": "moderate"
+        },
+        {
+          "name": "Broken Beat",
+          "score": 0.7540990257669733,
+          "status": "good",
+          "pass": true,
+          "tolerance": "moderate"
+        },
+        {
+          "name": "Chaotic IDM",
+          "score": 0.8231980515339463,
+          "status": "excellent",
+          "pass": true,
+          "tolerance": "lax"
+        },
+        {
+          "name": "Sparse Dub",
+          "score": 0.677125,
+          "status": "good",
+          "pass": true,
+          "tolerance": "moderate"
+        },
+        {
+          "name": "Dense Gabber",
+          "score": 0.97041267672472,
+          "status": "excellent",
+          "pass": true,
+          "tolerance": "moderate"
+        }
+      ]
+    },
+    "overallAlignment": 0.5580545431822943,
+    "alignmentStatus": "FAIR",
+    "totalPatterns": 33,
+    "seedVariation": {
+      "v1": {
+        "avgScore": 0.9591836734693879,
+        "minScore": 0.5714285714285714,
+        "maxScore": 1
+      },
+      "v2": {
+        "avgScore": 0.9821428571428571,
+        "minScore": 0.7142857142857143,
+        "maxScore": 1
+      },
+      "aux": {
+        "avgScore": 1,
+        "minScore": 1,
+        "maxScore": 1
+      },
+      "overall": 0.9804421768707483,
+      "pass": true
+    },
+    "fillMetrics": {
+      "fillDensityRamp": {
+        "raw": 0.7443181818181818,
+        "score": 0.5681818181818182
+      },
+      "fillVelocityBuild": {
+        "raw": 0.5508795547967719,
+        "score": 0.46973888573776196
+      },
+      "fillAccentPlacement": {
+        "raw": 0.28567449319138677,
+        "score": 0
+      },
+      "composite": 0.34597356797319345,
+      "pass": false
+    },
+    "energyZoneStats": {
+      "minimal": {
+        "count": 7,
+        "syncopation": 0.5714285714285714,
+        "density": 0.09821428571428571,
+        "velocityRange": 0.15428571428571422,
+        "voiceSeparation": 1,
+        "regularity": 0.5892857142857143,
+        "composite": 0.08653644257459339
+      },
+      "groove": {
+        "count": 7,
+        "syncopation": 0.5714285714285714,
+        "density": 0.40625,
+        "velocityRange": 0.4042857142857142,
+        "voiceSeparation": 0.8880167451596023,
+        "regularity": 0.6718881182872428,
+        "composite": 0.2851058220698399
+      },
+      "build": {
+        "count": 7,
+        "syncopation": 0.541871921182266,
+        "density": 0.5491071428571429,
+        "velocityRange": 0.33,
+        "voiceSeparation": 0.7794486215538846,
+        "regularity": 0.7134722282209293,
+        "composite": 0.1785684082652159
+      },
+      "peak": {
+        "count": 7,
+        "syncopation": 0.6660938059434302,
+        "density": 0.7366071428571429,
+        "velocityRange": 0.31285714285714283,
+        "voiceSeparation": 0.8964389233954453,
+        "regularity": 0.5549848097985911,
+        "composite": 0.17224121933956008
+      }
+    },
+    "metricDefinitions": {
+      "syncopation": {
+        "short": "Sync",
+        "name": "Syncopation",
+        "description": "Syncopation creates groove and forward motion. Too little feels mechanical; too much loses the pulse.",
+        "targetByZone": {
+          "stable": "0.00-0.22",
+          "syncopated": "0.22-0.48",
+          "wild": "0.42-0.75"
+        }
+      },
+      "density": {
+        "short": "Dens",
+        "name": "Density",
+        "description": "Density sets the energy level. Match it to ENERGY parameter for zone compliance.",
+        "targetByZone": {
+          "stable": "0.15-0.32",
+          "syncopated": "0.25-0.48",
+          "wild": "0.32-0.65"
+        }
+      },
+      "velocityRange": {
+        "short": "VelRng",
+        "name": "Velocity Range",
+        "description": "Velocity variation humanizes patterns. Ghost notes add texture without changing rhythm.",
+        "targetByZone": {
+          "stable": "0.12-0.38",
+          "syncopated": "0.32-0.58",
+          "wild": "0.25-0.72"
+        }
+      },
+      "voiceSeparation": {
+        "short": "VoiceSep",
+        "name": "Voice Separation",
+        "description": "Separation affects clarity vs. power. High DRIFT should increase separation.",
+        "targetByZone": {
+          "stable": "0.62-0.88",
+          "syncopated": "0.52-0.78",
+          "wild": "0.32-0.68"
+        }
+      },
+      "regularity": {
+        "short": "Reg",
+        "name": "Regularity",
+        "description": "Regularity = danceability. Stable patterns need high regularity; wild patterns break it.",
+        "targetByZone": {
+          "stable": "0.72-1.00",
+          "syncopated": "0.42-0.68",
+          "wild": "0.12-0.48"
+        }
+      }
+    },
+    "fillMetricDefinitions": {
+      "fillDensityRamp": {
+        "short": "DensRamp",
+        "name": "Fill Density Ramp",
+        "description": "Fills should build from sparse to dense",
+        "targetByZone": {
+          "stable": "0.60-0.85",
+          "syncopated": "0.70-0.95",
+          "wild": "0.80-1.00"
+        }
+      },
+      "fillVelocityBuild": {
+        "short": "VelBuild",
+        "name": "Fill Velocity Build",
+        "description": "Velocity should crescendo through fill",
+        "targetByZone": {
+          "stable": "0.50-0.75",
+          "syncopated": "0.60-0.85",
+          "wild": "0.70-0.95"
+        }
+      },
+      "fillAccentPlacement": {
+        "short": "AccPlace",
+        "name": "Fill Accent Placement",
+        "description": "Accents should land on strong beats, especially near end",
+        "targetByZone": {
+          "stable": "0.70-0.95",
+          "syncopated": "0.55-0.80",
+          "wild": "0.40-0.70"
+        }
+      }
+    },
+    "pass": false
+  }
+}
