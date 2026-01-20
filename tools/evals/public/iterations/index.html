@@ -4,28 +4,23 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>DuoPulse - Iteration History</title>
-  <link rel="stylesheet" href="../css/app.css">
-  <link rel="stylesheet" href="../css/components.css">
+  <link rel="stylesheet" href="../styles.css">
   <link rel="stylesheet" href="../css/iterations.css">
 </head>
 <body>
-  <nav class="main-nav">
-    <div class="nav-brand">
-      <h1><a href="../../">DuoPulse</a></h1>
-      <span class="nav-subtitle">Iteration History</span>
+  <header>
+    <div class="header-top">
+      <a href="../../" class="back-link">&larr; DuoPulse Home</a>
     </div>
-    <div class="nav-links">
-      <a href="../../">Home</a>
-      <a href="../index.html">Dashboard</a>
-      <a href="index.html" class="active">Iterations</a>
-    </div>
-  </nav>
+    <h1>DuoPulse v5 <span class="subtitle">Iteration History</span></h1>
+    <nav>
+      <a href="../index.html" class="nav-btn">Dashboard</a>
+      <a href="index.html" class="nav-btn active nav-link-btn">Iterations</a>
+    </nav>
+  </header>
 
-  <main class="iterations-page">
-    <header class="page-header">
-      <h1>Iteration History</h1>
-      <p class="subtitle">Hill-climbing iterations and algorithm improvements</p>
-    </header>
+  <div class="app-layout">
+    <main class="main-content iterations-page">
 
     <!-- Summary Statistics -->
     <section class="iteration-summary">
@@ -91,14 +86,8 @@
         </div>
       </div>
     </section>
-  </main>
-
-  <footer class="main-footer">
-    <p>
-      Generated with <a href="https://claude.ai/code" target="_blank">Claude Code</a>
-      | <a href="https://github.com/chronick/duopulse" target="_blank">GitHub</a>
-    </p>
-  </footer>
+    </main>
+  </div>
 
   <script type="module" src="../js/iterations.js"></script>
 </body>
