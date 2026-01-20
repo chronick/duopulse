@@ -1031,10 +1031,20 @@ kRandomFadeStart/End       // Random algorithm influence curve
 ```
 Use these for **SHAPE-based goals** (e.g., "make SHAPE=0.5 more syncopated").
 
-**Zone Definitions**:
-- **ENERGY zones**: stable (0.0-0.3), syncopated (0.3-0.7), wild (0.7-1.0)
-- Defined in code by ENERGY parameter mapping
-- To improve zone-specific metrics, use ENERGY-domain levers
+**Zone Definitions** (CRITICAL - two independent systems!):
+
+**ENERGY zones** (controls generation - HitBudget, eligibility):
+- MINIMAL (0.0-0.2): Sparse patterns, strong-beat eligibility only
+- GROOVE (0.2-0.5): Standard density
+- BUILD (0.5-0.75): Building energy
+- PEAK (0.75-1.0): Maximum density
+
+**SHAPE zones** (controls metric TARGETS in evals):
+- stable (0.0-0.3): Low syncopation targets
+- syncopated (0.3-0.7): Medium syncopation targets
+- wild (0.7-1.0): High syncopation targets
+
+**Key insight**: These are INDEPENDENT! A pattern at ENERGY=0.1 (MINIMAL) can have any SHAPE value. Metric targets come from SHAPE zones, but eligibility masks come from ENERGY zones.
 
 ### Common Pitfalls (from Failed Iterations)
 
@@ -1065,6 +1075,42 @@ Use these for **SHAPE-based goals** (e.g., "make SHAPE=0.5 more syncopated").
           e.g., sensitivity=0.008 → predict 0.8% change per 10% lever
 ```
 
+**4. Algorithm Weight vs Pattern Characteristic** (iteration 2026-01-19-005):
+```
+❌ BAD:  Change kSyncopationWidth to reduce syncopation metric
+          (Metric measures hit POSITIONS, not algorithm weights!)
+
+✅ GOOD: To reduce syncopation, investigate the full causal chain:
+          - Note: MINIMAL zone eligibility ALREADY constrains to strong beats!
+          - Check FLAVOR param (if > 0.6, adds syncopation mask back)
+          - Check multi-voice metric calculation (shimmer/aux may add syncopation)
+          - Increase hit budgets (more hits → better statistical coverage)
+```
+The syncopation METRIC measures tension from weak-beat hits, not the syncopation ALGORITHM's influence. A pattern can be 100% euclidean and still be highly syncopated if hits land on weak beats.
+
+**Open question**: WHY does syncopation = 1.0 when eligibility masks already constrain to strong beats? This needs root cause investigation, not more lever changes.
+
+**5. Regularity Misconception** (iteration 2026-01-19-003):
+```
+❌ BAD:  Assume fewer hits = more regular patterns
+          (Regularity = gap uniformity, not sparseness!)
+
+✅ GOOD: Regularity requires uniform gap spacing
+          euclidean(16,4) = gaps [4,4,4,4] = perfectly regular
+          euclidean(16,3) = gaps [5,5,6] = non-uniform = less regular
+```
+For euclidean(n,k), regularity is highest when n/k is an integer.
+
+**6. Euclidean k vs HitBudget Confusion** (iteration 2026-01-19-005):
+```
+❌ BAD:  Debug shows k=4, expect 4 hits in pattern
+          (k is algorithm parameter, NOT hit count!)
+
+✅ GOOD: Actual hit count = HitBudget.ComputeAnchorBudget()
+          At ENERGY=0.10 (MINIMAL zone): budget=2 hits, not k=4
+```
+The euclidean k value is just an algorithm parameter for generating evenly-spaced candidate positions. The actual number of hits comes from HitBudget, which scales with ENERGY zone.
+
 ### Pre-Flight Checklist
 
 Before proposing any change:
@@ -1073,6 +1119,9 @@ Before proposing any change:
 - [ ] Adjust bootstrap confidence for sensitivity R² < 0.5
 - [ ] Scale predictions using sensitivity slope (not linear assumption)
 - [ ] Check if similar goal failed recently - learn from mistakes!
+- [ ] Verify causal chain: lever → algorithm weight → hit positions → metric
+- [ ] Spot-check a single pattern BEFORE running full eval (catches issues early)
+- [ ] Distinguish: Does this lever change WHERE hits land, or just WHICH algorithm decides?
 
 ### When to Consult Lessons
 
