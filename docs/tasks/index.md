@@ -72,3 +72,4 @@
 | 66 | config-patternfield-wiring | Wire Zone Thresholds into PatternField | completed | 2026-01-18 | 2026-01-18 | completed/66-config-patternfield-wiring.md |
 | 67 | dashboard-improvements | Dashboard UX Improvements | completed | 2026-01-19 | 2026-01-19 | completed/67-dashboard-improvements.md |
 | 68 | preset-conformance-metrics | Preset Conformance Metrics | completed | 2026-01-19 | 2026-01-19 | completed/68-preset-conformance-metrics.md |
+| 69 | iteration-detail-page | Iteration Detail Page with Timeline and Logs | completed | 2026-01-19 | 2026-01-19 | completed/69-iteration-detail-page.md |
