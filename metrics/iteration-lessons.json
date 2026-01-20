@@ -3,6 +3,43 @@
   "generated_at": "2026-01-19T00:30:00.000Z",
   "lessons": [
     {
+      "iteration_id": "2026-01-19-005",
+      "date": "2026-01-20",
+      "goal": "Decrease syncopation (auto-detected)",
+      "lever_attempted": "kSyncopationWidth",
+      "change": "0.30 → 0.20 (-33%)",
+      "result": "FAILED",
+      "prediction_accuracy": 0,
+      "target_metric_delta": "0% (predicted -10% to -20%)",
+      "critical_error": "Algorithm weight ≠ pattern characteristic",
+      "what_went_wrong": "kSyncopationWidth controls algorithm blending, but syncopation METRIC measures pattern output. Changing algorithm weights doesn't directly change where hits land.",
+      "key_insight": "Syncopation metric depends on HIT POSITIONS, not algorithm weights. A pattern generated with 100% euclidean can still be syncopated if hits land on weak beats.",
+      "build_system_issue": {
+        "description": "Makefile doesn't track algorithm_config.h dependencies",
+        "symptom": "Changed header but binary wasn't rebuilt",
+        "workaround": "Manually delete AlgorithmWeights.o to force rebuild",
+        "fix_needed": "Add header dependencies to Makefile"
+      },
+      "deeper_bug_discovered": {
+        "description": "Hit count suppression - patterns have far fewer hits than euclidean k values",
+        "example": "At ENERGY=0.1, k=4 but only 2 anchor hits appear",
+        "impact": "Sparse patterns with hits on weak beats = high syncopation regardless of algorithm",
+        "investigation_needed": "Why does k=4 produce only 2 hits?"
+      },
+      "recommended_retry": {
+        "approach": "Don't retry syncopation tuning until hit count bug is fixed",
+        "investigation_tasks": [
+          "Trace pattern generation from k value to final output",
+          "Check hit budget constraints at low ENERGY",
+          "Verify euclidean algorithm is actually producing k hits"
+        ]
+      },
+      "docs": {
+        "estimate": "docs/design/iterations/estimate-2026-01-19-005.md",
+        "full_log": "docs/design/iterations/2026-01-19-005.md"
+      }
+    },
+    {
       "iteration_id": "2026-01-19-003",
       "date": "2026-01-20",
       "goal": "Improve regularity in stable zone",
@@ -131,6 +168,40 @@
       ],
       "prevention": "Downgrade confidence when sensitivity R²<0.5",
       "rule": "confidence = min(bootstrap_confidence, sensitivity_r_squared * 5)"
+    },
+    "algorithm_weight_vs_pattern_characteristic": {
+      "description": "Assuming algorithm weight changes directly affect pattern metrics",
+      "examples": [
+        "2026-01-19-005: kSyncopationWidth change had 0% effect on syncopation metric"
+      ],
+      "prevention": "Verify the causal chain: lever → algorithm weight → hit positions → metric",
+      "checklist": [
+        "Does this lever change WHERE hits land, or just WHICH algorithm decides?",
+        "Will the final pattern output actually change?",
+        "Spot-check a single pattern before running full eval"
+      ]
+    },
+    "hit_count_suppression": {
+      "description": "Patterns have fewer hits than euclidean k values suggest",
+      "examples": [
+        "2026-01-19-005: k=4 but only 2 anchor hits appeared"
+      ],
+      "status": "BUG - investigation needed",
+      "impact": "Blocks all metric improvements until fixed",
+      "investigation": [
+        "Trace GenerationPipeline hit output",
+        "Check HitBudget at low ENERGY",
+        "Verify PatternField isn't suppressing hits"
+      ]
+    }
+  },
+  "blockers": {
+    "hit_count_suppression": {
+      "severity": "HIGH",
+      "description": "Patterns have far fewer hits than expected at low ENERGY",
+      "affected_metrics": ["syncopation", "density", "regularity"],
+      "blocking_iterations": true,
+      "discovered_in": "2026-01-19-005"
     }
   }
 }

@@ -14,11 +14,24 @@ import { computePresetConformance } from './preset-references.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = join(__dirname, 'public/data');
 
-// LHL Metric weights for 32-step pattern (2 bars of 4/4 at 16th notes)
-const METRIC_WEIGHTS_32 = [
+// LHL Metric weights for 64-step pattern (4 bars of 4/4 at 16th notes)
+// Pattern repeats every 2 bars (32 steps)
+const METRIC_WEIGHTS_64 = [
+  // Bar 1
   1.00, 0.10, 0.40, 0.10, 0.80, 0.10, 0.40, 0.10,
+  // Bar 2
   0.90, 0.10, 0.40, 0.10, 0.80, 0.10, 0.40, 0.10,
+  // Bar 3 (repeat of bar 1 pattern, slightly less emphasis)
   0.95, 0.10, 0.40, 0.10, 0.80, 0.10, 0.40, 0.10,
+  // Bar 4 (repeat of bar 2 pattern)
+  0.90, 0.10, 0.40, 0.10, 0.80, 0.10, 0.40, 0.10,
+  // Bar 5 (repeat of bar 1 pattern)
+  1.00, 0.10, 0.40, 0.10, 0.80, 0.10, 0.40, 0.10,
+  // Bar 6 (repeat of bar 2 pattern)
+  0.90, 0.10, 0.40, 0.10, 0.80, 0.10, 0.40, 0.10,
+  // Bar 7 (repeat of bar 3 pattern)
+  0.95, 0.10, 0.40, 0.10, 0.80, 0.10, 0.40, 0.10,
+  // Bar 8 (repeat of bar 4 pattern)
   0.90, 0.10, 0.40, 0.10, 0.80, 0.10, 0.40, 0.10,
 ];
 
@@ -142,8 +155,8 @@ function getShapeZone(shape) {
   return 'wild';
 }
 
-function computeSyncopation(v1Hits, length = 32) {
-  const weights = METRIC_WEIGHTS_32.slice(0, length);
+function computeSyncopation(v1Hits, length = 64) {
+  const weights = METRIC_WEIGHTS_64.slice(0, length);
   let tension = 0;
   let maxTension = 0;
 
