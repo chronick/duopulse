@@ -182,6 +182,50 @@ Recommended: Option A for consistency, but make it a compile-time flag during te
 4-5 hours (if implemented)
 0 hours (if dropped due to targets already met)
 
+## Relevancy Assessment (2026-01-19)
+
+**Status**: CONDITIONAL - Implement only if needed
+
+**Current System Impact**:
+- Single-pass generation can miss groove fundamentals
+- No guaranteed skeleton hits (except beat 1 enforcement from task 49)
+- Embellishments and foundation not separated
+
+**Why This Is Conditional**:
+- Design critique recommends: "Skip Proposal C unless still below target after B"
+- Tasks 46-49 may be sufficient to meet variation targets
+- Two-pass adds complexity and CPU overhead
+- Should measure first, implement only if needed
+
+**Decision Criteria**:
+After tasks 46-49 complete, check metrics:
+- Pattern variation >= 50%? ✓ Drop this task
+- Groove quality >= 60%? ✓ Drop this task
+- Either metric below target? → Implement
+
+## Improvement Estimates (IF IMPLEMENTED)
+
+**Pattern Stability** (skeleton guarantee):
+- Current: Variable groove foundation
+- Expected: +15-20% improvement in groove quality
+
+**Groove Quality** (musical coherence):
+- Current: Patterns can lack structure
+- Expected: +10-15% improvement with guaranteed downbeats
+
+**Variation Quality** (embellishment diversity):
+- Current: Whole pattern varies
+- Expected: +5-10% improvement (skeleton stays, fills vary)
+
+**Overall Metric Impact** (IF NEEDED):
+- Groove quality: +10-15%
+- Pattern stability: +15-20%
+- Variation: +5-10%
+
+**Confidence**: 70% IF implemented - Adds structure but may reduce variation
+
+**Priority**: LOW - Measure first, implement last
+
 ---
 
 ## 64-Step Grid Compatibility (Added 2026-01-19)

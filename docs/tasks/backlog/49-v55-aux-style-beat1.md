@@ -269,3 +269,48 @@ Keep current implementation as "step-based" patterns and document that:
 - This is a feature, not a bug - higher resolution = more detail
 
 Choose based on musical intent: resolution-aware (maintains feel) vs step-based (adds detail).
+
+## Relevancy Assessment (2026-01-19)
+
+**Status**: HIGH RELEVANCE - Dual critical improvements
+
+**Current System Impact**:
+
+**AUX Variation Problem**:
+- Only 24 unique patterns from 116 tests (20% variation)
+- Users have NO control over AUX character
+- Fixed formula: `auxWeights[i] = 1.0f - metricW * 0.5f`
+
+**Beat 1 Problem**:
+- Beat 1 can be missing even at SHAPE=0.0
+- Breaks DJ mixing and live performance use
+- No enforcement in stable/syncopated zones
+
+**Why This Matters**:
+- AUX is currently the weakest voice (only 20% variation)
+- Beat 1 reliability is critical for musical usability
+- AXIS Y currently underutilized (AUX control adds expressiveness)
+- Two independent improvements in one task
+
+## Improvement Estimates
+
+**AUX Pattern Variation**:
+- Current: 20% unique patterns (24/116)
+- Target: 50% unique patterns
+- Expected: +30-35% improvement with style zones
+
+**Beat 1 Reliability** (SHAPE < 0.7):
+- Current: ~85% present (estimated, varies with seed)
+- Target: 100% present
+- Expected: +15-40% improvement depending on current rate
+
+**User Control** (AXIS Y expressiveness):
+- Current: AXIS Y barely affects AUX
+- Expected: +40% control range with 3 distinct style zones
+
+**Overall Metric Impact**:
+- AUX uniqueness: +30-35%
+- Beat 1 presence: +15-40%
+- Overall variation: +15-20% (AUX contributes to total)
+
+**Confidence**: 85% - AUX improvement highly likely, beat 1 is deterministic

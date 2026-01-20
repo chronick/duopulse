@@ -156,3 +156,49 @@ Before Task 53: Low priority (nice-to-have)
 After Task 53: **Medium priority** (enables natural phrase structure)
 
 **Recommendation**: Consider moving this task earlier in backlog. The 64-step grid creates a compelling use case for section-aware weight modulation that wasn't as strong at 32 steps.
+
+## Relevancy Assessment (2026-01-19)
+
+**Status**: MEDIUM-LOW RELEVANCE - Nice-to-have, requires infrastructure
+
+**Current System Impact**:
+- No phrase structure awareness
+- Patterns don't vary by musical context (intro/verse/chorus)
+- All bars generated with identical weights
+- Requires API changes to `PatternParams`
+
+**Why This Is Lower Priority**:
+- Depends on Task 56 (weight-based blending) being complete
+- Requires API changes affecting firmware, pattern_viz, and evals
+- Current algorithm produces good patterns without sections
+- Needs iteration system (Task 55) to tune section profiles
+- More valuable AFTER 64-step grid support (Task 53)
+
+**Potential Synergy**:
+- With 64-step grid: Can represent 4-bar phrases naturally
+- Bars 1-2 "verse" weights, bars 3-4 "chorus" weights
+- Makes intra-pattern phrase structure possible
+- Reduces need for external phrase counter
+
+## Improvement Estimates
+
+**Phrase Structure Quality** (if implemented with 64-step):
+- Current: No phrase awareness
+- Expected: +20-30% improvement in musical structure
+
+**Pattern Variety** (contextual variation):
+- Current: All bars identical weight profile
+- Expected: +15% improvement with section-aware weights
+
+**64-Step Synergy** (Task 53 prerequisite):
+- Without 64-step: +10% improvement (requires external tracking)
+- With 64-step: +25% improvement (natural 4-bar phrases)
+
+**Overall Metric Impact** (AFTER prerequisites):
+- Phrase quality: +20-30%
+- Pattern variety: +15%
+- User control: +10%
+
+**Confidence**: 60% - Depends on prerequisite tasks and API design
+
+**Priority**: LOW now, MEDIUM after Task 53 (64-step grid)
