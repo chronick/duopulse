@@ -285,6 +285,29 @@ const sweeps = {
 writeFileSync(join(OUTPUT_DIR, 'sweeps.json'), JSON.stringify(sweeps, null, 2));
 console.log('  Written sweeps.json');
 
+// 1b. Generate cross-product ENERGY×SHAPE sweeps for zone coverage
+console.log('Generating ENERGY zone sweeps...');
+
+// ENERGY zone centers: MINIMAL=0.10, GROOVE=0.35, BUILD=0.60, PEAK=0.85
+const ENERGY_ZONE_VALUES = [0.10, 0.35, 0.60, 0.85];
+const SHAPE_VALUES = [0.0, 0.15, 0.30, 0.50, 0.70, 0.85, 1.0];
+
+const energyZoneSweeps = {};
+const energyZoneNames = ['minimal', 'groove', 'build', 'peak'];
+
+for (let i = 0; i < ENERGY_ZONE_VALUES.length; i++) {
+  const energy = ENERGY_ZONE_VALUES[i];
+  const zoneName = energyZoneNames[i];
+  console.log(`  Generating ${zoneName} zone sweep (energy=${energy})...`);
+
+  energyZoneSweeps[zoneName] = SHAPE_VALUES.map(shape => {
+    return runPatternViz({ energy, shape });
+  });
+}
+
+writeFileSync(join(OUTPUT_DIR, 'energy-zone-sweeps.json'), JSON.stringify(energyZoneSweeps, null, 2));
+console.log('  Written energy-zone-sweeps.json');
+
 // 2. Generate presets
 console.log('Generating presets...');
 

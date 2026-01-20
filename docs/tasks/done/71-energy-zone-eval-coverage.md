@@ -2,9 +2,11 @@
 id: 71
 slug: energy-zone-eval-coverage
 title: "Add ENERGY Zone Coverage to Evaluations"
-status: backlog
+status: done
 created_date: 2026-01-20
 updated_date: 2026-01-20
+completed_date: 2026-01-20
+iteration: 2026-01-20-002
 spec_refs:
   - "docs/specs/main.md#3-energy-parameter"
 depends_on:

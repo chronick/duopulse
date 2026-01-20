@@ -166,7 +166,7 @@ static void GeneratePattern(const PatternParams& params, PatternData& outPattern
     // Step 5: Apply guard rails (ensures downbeat hit)
     // Use a dummy shimmer mask for guard rails - we'll regenerate shimmer after
     uint64_t dummyShimmer = 0;
-    ApplyHardGuardRails(outPattern.v1Mask, dummyShimmer, zone, Genre::TECHNO, params.patternLength);
+    ApplyHardGuardRails(outPattern.v1Mask, dummyShimmer, eligibility, zone, Genre::TECHNO, params.patternLength);
 
     // Step 6: Compute shimmer weights (slightly different seed)
     float shimmerWeights[kMaxSteps];

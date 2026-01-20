@@ -33,6 +33,7 @@ const GITHUB_OUTPUT = process.env.GITHUB_OUTPUT;
 // Pentagon metrics to compare
 const METRICS = ['syncopation', 'density', 'velocityRange', 'voiceSeparation', 'regularity'];
 const ZONES = ['total', 'stable', 'syncopated', 'wild'];
+const ENERGY_ZONES = ['minimal', 'groove', 'build', 'peak'];
 
 function loadJSON(filepath) {
     try {
@@ -44,9 +45,17 @@ function loadJSON(filepath) {
     }
 }
 
-function getMetricValue(data, zone, metric) {
+function getMetricValue(data, zone, metric, isEnergyZone = false) {
     // Handle both baseline format (wrapped in metrics) and raw evals format
     const metrics = data.metrics || data;
+
+    // For ENERGY zones, look in energyZoneStats
+    if (isEnergyZone) {
+        if (metrics.energyZoneStats && metrics.energyZoneStats[zone]) {
+            return metrics.energyZoneStats[zone][metric];
+        }
+        return null;
+    }
 
     if (metrics.pentagonStats && metrics.pentagonStats[zone]) {
         return metrics.pentagonStats[zone][metric];
@@ -64,10 +73,11 @@ function compareMetrics(baseline, prMetrics) {
     const results = [];
     let hasRegression = false;
 
+    // Compare SHAPE zones (standard Pentagon metrics)
     for (const zone of ZONES) {
         for (const metric of METRICS) {
-            const baselineValue = getMetricValue(baseline, zone, metric);
-            const prValue = getMetricValue(prMetrics, zone, metric);
+            const baselineValue = getMetricValue(baseline, zone, metric, false);
+            const prValue = getMetricValue(prMetrics, zone, metric, false);
 
             if (baselineValue === null || prValue === null) {
                 console.warn(`Warning: Missing ${metric} for zone ${zone}`);
@@ -92,12 +102,52 @@ function compareMetrics(baseline, prMetrics) {
             results.push({
                 name: metric,
                 zone: zone,
+                zoneType: 'shape',
                 baseline: baselineValue,
                 pr: prValue,
                 delta: delta,
                 delta_pct: deltaPct,
                 status: status
             });
+        }
+    }
+
+    // Compare ENERGY zones (if available)
+    const hasEnergyZones = (baseline.metrics || baseline).energyZoneStats || (prMetrics.metrics || prMetrics).energyZoneStats;
+
+    if (hasEnergyZones) {
+        for (const zone of ENERGY_ZONES) {
+            for (const metric of METRICS) {
+                const baselineValue = getMetricValue(baseline, zone, metric, true);
+                const prValue = getMetricValue(prMetrics, zone, metric, true);
+
+                if (baselineValue === null || prValue === null) {
+                    // Silently skip - energy zones may not be in older baselines
+                    continue;
+                }
+
+                const delta = prValue - baselineValue;
+                const deltaPct = baselineValue !== 0 ? (delta / baselineValue) * 100 : 0;
+
+                let status = 'unchanged';
+                if (deltaPct > 1) {
+                    status = 'improved';
+                } else if (deltaPct < -REGRESSION_THRESHOLD * 100) {
+                    status = 'regression';
+                    hasRegression = true;
+                }
+
+                results.push({
+                    name: metric,
+                    zone: `energy:${zone}`,
+                    zoneType: 'energy',
+                    baseline: baselineValue,
+                    pr: prValue,
+                    delta: delta,
+                    delta_pct: deltaPct,
+                    status: status
+                });
+            }
         }
     }
 

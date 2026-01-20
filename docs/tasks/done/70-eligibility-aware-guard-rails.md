@@ -2,9 +2,11 @@
 id: 70
 slug: eligibility-aware-guard-rails
 title: "Make Guard Rails Eligibility-Aware"
-status: backlog
+status: done
 created_date: 2026-01-20
 updated_date: 2026-01-20
+completed_date: 2026-01-20
+iteration: 2026-01-20-002
 spec_refs:
   - "docs/specs/main.md#6-pattern-generation"
 depends_on:

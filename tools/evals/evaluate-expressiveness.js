@@ -473,6 +473,28 @@ for (const [paramName, patterns] of Object.entries(sweeps)) {
 writeFileSync(join(DATA_DIR, 'sweep-metrics.json'), JSON.stringify(sweepMetrics, null, 2));
 console.log('  Written sweep-metrics.json');
 
+// Compute metrics for ENERGY zone sweeps
+console.log('Computing Pentagon metrics for ENERGY zones...');
+
+const energyZoneSweepsPath = join(DATA_DIR, 'energy-zone-sweeps.json');
+let energyZoneMetrics = null;
+
+if (existsSync(energyZoneSweepsPath)) {
+  const energyZoneSweeps = JSON.parse(readFileSync(energyZoneSweepsPath, 'utf-8'));
+
+  energyZoneMetrics = {};
+  for (const [zoneName, patterns] of Object.entries(energyZoneSweeps)) {
+    energyZoneMetrics[zoneName] = patterns.map(pattern => ({
+      params: pattern.params,
+      hits: pattern.hits,
+      pentagon: computePentagonMetrics(pattern),
+    }));
+  }
+
+  writeFileSync(join(DATA_DIR, 'energy-zone-metrics.json'), JSON.stringify(energyZoneMetrics, null, 2));
+  console.log('  Written energy-zone-metrics.json');
+}
+
 // Compute metrics for presets
 console.log('Computing Pentagon metrics for presets...');
 
@@ -608,6 +630,21 @@ if (existsSync(fillsPath)) {
   console.log('  Written fill-metrics.json');
 }
 
+// Compute ENERGY zone aggregate statistics
+let energyZoneStats = null;
+if (energyZoneMetrics) {
+  console.log('Computing ENERGY zone aggregate statistics...');
+
+  energyZoneStats = {};
+  for (const [zoneName, metrics] of Object.entries(energyZoneMetrics)) {
+    const zoneMetrics = metrics.map(m => m.pentagon);
+    energyZoneStats[zoneName] = avgMetrics(zoneMetrics);
+  }
+
+  writeFileSync(join(DATA_DIR, 'energy-zone-stats.json'), JSON.stringify(energyZoneStats, null, 2));
+  console.log('  Written energy-zone-stats.json');
+}
+
 const expressiveness = {
   timestamp: new Date().toISOString(),
   pentagonStats,
@@ -629,6 +666,7 @@ const expressiveness = {
   totalPatterns: allMetrics.length,
   seedVariation: seedSummary,
   fillMetrics: fillMetrics?.summary ?? null,
+  energyZoneStats,
   metricDefinitions: PENTAGON_METRICS,
   fillMetricDefinitions: FILL_METRICS,
   pass: overallAlignment >= 0.5 && (!seedSummary || seedSummary.pass) && (!fillMetrics || fillMetrics.summary.pass),
@@ -687,6 +725,19 @@ if (fillMetrics) {
   console.log(`  Velocity Build:   ${fm.fillVelocityBuild.raw.toFixed(2)} (score: ${(fm.fillVelocityBuild.score * 100).toFixed(0)}%)`);
   console.log(`  Accent Placement: ${fm.fillAccentPlacement.raw.toFixed(2)} (score: ${(fm.fillAccentPlacement.score * 100).toFixed(0)}%)`);
   console.log(`  Composite:        ${(fm.composite * 100).toFixed(1)}% [${fm.pass ? 'PASS' : 'FAIL'}]`);
+}
+
+if (energyZoneStats) {
+  console.log('\nPENTAGON BY ENERGY ZONE:');
+  console.log('           MINIMAL   GROOVE    BUILD     PEAK');
+  for (const key of metricKeys) {
+    const m = energyZoneStats.minimal?.[key] ?? '-';
+    const g = energyZoneStats.groove?.[key] ?? '-';
+    const b = energyZoneStats.build?.[key] ?? '-';
+    const p = energyZoneStats.peak?.[key] ?? '-';
+    const label = PENTAGON_METRICS[key].short.padEnd(10);
+    console.log(`  ${label} ${typeof m === 'number' ? m.toFixed(2).padStart(6) : '  -   '}    ${typeof g === 'number' ? g.toFixed(2).padStart(6) : '  -   '}    ${typeof b === 'number' ? b.toFixed(2).padStart(6) : '  -   '}    ${typeof p === 'number' ? p.toFixed(2).padStart(6) : '  -   '}`);
+  }
 }
 
 console.log();
