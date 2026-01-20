@@ -12,6 +12,38 @@ You are running a **hill-climbing iteration** to improve DuoPulse pattern genera
 - Ensemble search: `/iterate ensemble "improve syncopation"`
 - Ensemble auto: `/iterate ensemble auto`
 
+## Workflow Overview
+
+Each iteration follows a **4-phase cycle** for systematic learning:
+
+### 1. ESTIMATE Phase (NEW)
+**Before changing anything**, document predictions:
+- Which metrics will improve, by how much?
+- What secondary effects will occur?
+- What risks might prevent success?
+- Confidence level in predictions
+
+### 2. IMPLEMENT Phase
+Apply proposed weight changes:
+- Select high-impact levers from sensitivity analysis
+- Make small adjustments (5-15% per lever)
+- Verify code compiles
+
+### 3. MEASURE Phase
+Run evaluation and compare metrics:
+- Generate new metrics via evals
+- Compare before/after for all Pentagon metrics
+- Check success criteria (target improvement + no regressions)
+
+### 4. LOG Phase (Enhanced)
+Document results with **prediction accuracy**:
+- Compare predictions vs actual results
+- Calculate estimate accuracy score
+- Extract lessons learned for future iterations
+- Narrate findings in human-readable form
+
+**Why this matters**: By tracking prediction accuracy over time, we learn which types of changes reliably improve which metrics, making future iterations more precise.
+
 ## Mode Detection
 
 Parse `$ARGUMENTS` to detect mode:
@@ -94,9 +126,64 @@ Select 1-2 levers to adjust based on:
 - R-squared value (higher = more predictable effect)
 - Direction of sensitivity (match to improvement goal)
 
-### Step 5: Propose Weight Changes
+### Step 5: Estimate Improvement (NEW)
 
-Based on lever analysis, propose specific changes to `inc/algorithm_config.h`:
+**BEFORE making any changes, document predictions for learning:**
+
+Create prediction record in `docs/design/iterations/estimate-${ITER_ID}.md`:
+
+```markdown
+## Improvement Estimates
+
+**Goal**: ${GOAL}
+**Target Metric**: ${TARGET_METRIC}
+
+### Predicted Changes
+
+**Levers to adjust**:
+- ${LEVER_NAME}: ${CURRENT_VALUE} → ${PROPOSED_VALUE} (${DELTA}%)
+- Rationale: ${WHY_THIS_LEVER}
+
+### Predicted Impact
+
+**Primary Effects** (target metric):
+- ${TARGET_METRIC}: Expected +${PERCENTAGE}% improvement
+- Reasoning: ${EXPLAIN_MECHANISM}
+- Confidence: ${HIGH|MEDIUM|LOW} (${CONFIDENCE_PERCENTAGE}%)
+
+**Secondary Effects** (other metrics):
+- ${METRIC_1}: Expected ${+/-}${PERCENTAGE}% change
+- ${METRIC_2}: Expected ${+/-}${PERCENTAGE}% change
+- Reasoning: ${WHY_THESE_EFFECTS}
+
+**Risk Assessment**:
+- Regression risk: ${HIGH|MEDIUM|LOW}
+- Potential regressions: ${WHICH_METRICS}
+- Mitigation: ${HOW_TO_PREVENT}
+
+### Success Criteria
+
+- Target metric improves by >= ${MIN_THRESHOLD}%
+- No metric regresses by > 2%
+- All tests pass
+
+### Learning Objectives
+
+What will this iteration teach us about:
+- ${QUESTION_1}
+- ${QUESTION_2}
+```
+
+**Guidelines for estimates**:
+- Be specific: Give percentage predictions, not vague "should improve"
+- State confidence: HIGH (>80%), MEDIUM (50-80%), LOW (<50%)
+- Explain mechanism: WHY will this change improve the metric?
+- Predict secondary effects: What else might change?
+- Document assumptions: What are you assuming about the system?
+
+### Step 6: Propose Weight Changes
+
+Based on lever analysis and estimates, propose specific changes to `inc/algorithm_config.h`:
 
 Example proposals:
 ```cpp
@@ -113,7 +200,7 @@ Guidelines:
 - Stay within reasonable bounds (0.0 to 1.0 for floats)
 - Document rationale based on sensitivity data
 
-### Step 6: Create Iteration Branch
+### Step 7: Create Iteration Branch
 
 ```bash
 # Generate iteration ID using dedicated script
@@ -123,7 +210,7 @@ ITER_ID=$(node scripts/iterate/generate-iteration-id.js)
 git checkout -b feature/iterate-${ITER_ID}
 ```
 
-### Step 7: Apply Changes
+### Step 8: Apply Changes
 
 Edit `inc/algorithm_config.h` with proposed weight changes.
 
@@ -132,7 +219,7 @@ Verify changes compile:
 make pattern-viz
 ```
 
-### Step 8: Run Evaluation
+### Step 9: Run Evaluation
 
 Run evals to capture new metrics:
 
@@ -144,7 +231,7 @@ Run evals to capture new metrics:
 npm run evals 2>&1 | tee /tmp/new-metrics.txt
 ```
 
-### Step 9: Compare Metrics
+### Step 10: Compare Metrics
 
 Compare before (baseline.json) vs after (new metrics):
 
@@ -166,7 +253,7 @@ Compare before (baseline.json) vs after (new metrics):
 - Max regression: density -1.2% ✓ (<= 2% threshold)
 ```
 
-### Step 10: Success Criteria
+### Step 11: Success Criteria
 
 Evaluate success:
 
@@ -177,9 +264,9 @@ SUCCESS if:
   AND all_tests_pass
 ```
 
-### Step 11: Log Iteration
+### Step 12: Log Iteration with Estimate Accuracy
 
-Create iteration log at `docs/design/iterations/${ITER_ID}.md`:
+Create iteration log at `docs/design/iterations/${ITER_ID}.md` with **prediction vs actual comparison**:
 
 ```markdown
 ---
@@ -191,6 +278,7 @@ completed_at: ${TIMESTAMP}
 branch: feature/iterate-${ITER_ID}
 commit: ${COMMIT_HASH}
 pr: null
+estimate_accuracy: ${ACCURACY_SCORE}  # NEW: 0-100 scale
 ---
 
 # Iteration ${ITER_ID}: ${GOAL}
@@ -206,11 +294,66 @@ Based on sensitivity matrix, selected:
 - Primary: ${LEVER} (sensitivity: ${VALUE})
 - Rationale: ${WHY}
 
+## Estimates (Prediction Phase)
+
+### Predicted Impact
+**Target Metric**: ${TARGET_METRIC}
+- Predicted: ${PREDICTED_DELTA}% improvement
+- Confidence: ${CONFIDENCE_LEVEL} (${CONFIDENCE_PCT}%)
+
+**Secondary Effects**:
+- ${METRIC_1}: Predicted ${PREDICTED_DELTA_1}%
+- ${METRIC_2}: Predicted ${PREDICTED_DELTA_2}%
+
+**Risks Identified**:
+- ${RISK_1}
+- ${RISK_2}
+
 ## Proposed Changes
 ${CHANGES_TO_ALGORITHM_CONFIG}
 
 ## Result Metrics
 ${NEW_METRICS_TABLE}
+
+## Prediction Accuracy Analysis
+
+### Target Metric Accuracy
+| Aspect | Predicted | Actual | Error | Accuracy |
+|--------|-----------|--------|-------|----------|
+| ${TARGET_METRIC} | ${PRED}% | ${ACTUAL}% | ${ERROR}% | ${ACCURACY}% |
+
+### Secondary Metrics Accuracy
+| Metric | Predicted | Actual | Error | Accuracy |
+|--------|-----------|--------|-------|----------|
+| ${METRIC_1} | ${PRED}% | ${ACTUAL}% | ${ERROR}% | ${ACCURACY}% |
+| ${METRIC_2} | ${PRED}% | ${ACTUAL}% | ${ERROR}% | ${ACCURACY}% |
+
+**Overall Estimate Accuracy**: ${OVERALL_ACCURACY}% (higher is better)
+
+**Calculation**:
+```
+accuracy = 100 - abs((predicted - actual) / predicted * 100)
+overall = avg(target_accuracy, secondary_accuracies)
+```
+
+## Lessons Learned
+
+### What We Got Right
+- ${CORRECT_PREDICTION_1}
+- ${CORRECT_PREDICTION_2}
+
+### What Surprised Us
+- ${UNEXPECTED_RESULT_1}
+- ${UNEXPECTED_RESULT_2}
+
+### Why Predictions Were Off
+- ${REASON_FOR_ERROR_1}
+- ${REASON_FOR_ERROR_2}
+
+### Implications for Future Iterations
+- Calibration adjustment: ${HOW_TO_IMPROVE_ESTIMATES}
+- New hypotheses: ${NEW_THEORIES}
+- Sensitivity updates: ${WHAT_TO_MEASURE}
 
 ## Evaluation
 - Target metric: ${DELTA} ${PASS_FAIL}
@@ -219,9 +362,28 @@ ${NEW_METRICS_TABLE}
 
 ## Decision
 ${SUCCESS | FAILED} - ${REASON}
+
+## Narration
+
+${LEGIBLE_NARRATION_OF_WHAT_HAPPENED}
+
+This section should read like a story:
+- What we tried to do and why
+- What we expected to happen
+- What actually happened
+- Why the results make sense (or don't)
+- What we learned for next time
+
+Make it accessible to someone reading this 6 months from now.
 ```
 
-### Step 12: Handle Outcome
+**Key additions to logging**:
+1. **estimate_accuracy** frontmatter field for tracking
+2. **Prediction Accuracy Analysis** table comparing predictions to reality
+3. **Lessons Learned** section documenting calibration insights
+4. **Narration** section for human-readable summary
+
+### Step 13: Handle Outcome
 
 **If SUCCESS**:
 1. Run all tests: `make test`

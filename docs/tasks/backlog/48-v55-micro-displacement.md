@@ -176,3 +176,44 @@ The design critique suggests clarifying that micro-displacement REPLACES rotatio
 ## Estimated Effort
 
 3-4 hours
+
+## Relevancy Assessment (2026-01-19)
+
+**Status**: MEDIUM RELEVANCE - Refinement over current rotation
+
+**Current System Impact**:
+- Full pattern rotation shifts ALL hits by up to patternLength/4
+- At low SHAPE, this can move beat 1 off the downbeat
+- Violates stable zone contract: "stable = downbeat-focused"
+- Applied even in stable zone (SHAPE < 0.3) where it shouldn't
+
+**Why This Matters**:
+- More subtle than full rotation (per-hit vs whole-pattern)
+- Better preserves pattern character while adding variation
+- Zone-restricted (only syncopated zone 0.3-0.7)
+- Protects beat 1 from displacement
+
+**Design Question**:
+- Is this better than current rotation, or just different?
+- Micro-displacement may be TOO subtle to meaningfully improve variation metrics
+
+## Improvement Estimates
+
+**Pattern Variation** (uniqueness):
+- Current: Rotation provides bulk variation
+- Expected: +10-15% improvement (more nuanced variation)
+
+**Stable Zone Consistency**:
+- Current: Rotation can disrupt stable patterns
+- Expected: +10-15% improvement (no displacement in stable zone)
+
+**Syncopated Zone Quality**:
+- Current: Rotation is coarse
+- Expected: +5-10% improvement (subtle per-hit variation)
+
+**Overall Metric Impact**:
+- Pattern uniqueness: +8-12%
+- Stable zone predictability: +10-15%
+- Groove quality: +5% (subtle effect)
+
+**Confidence**: 60% - Unclear if displacement is better than rotation for metrics
