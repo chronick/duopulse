@@ -219,7 +219,14 @@ function renderOverviewView() {
 
   // Render metrics timeline if available
   const timelineHtml = data.metricsHistory
-    ? `<div class="metrics-timeline-section">${renderTimelineChart(data.metricsHistory, 1000, 300)}</div>`
+    ? `<div class="metrics-timeline-section">
+        ${renderTimelineChart(data.metricsHistory, 1000, 300)}
+        <div style="text-align: center; margin-top: 1rem;">
+          <a href="iterations/index.html" style="color: var(--accent-color, #64b5f6); text-decoration: none; font-size: 0.95rem;">
+            View All Iterations →
+          </a>
+        </div>
+      </div>`
     : '';
 
   container.innerHTML = `
