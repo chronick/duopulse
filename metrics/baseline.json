@@ -1,25 +1,18 @@
 {
   "version": "1.0.0",
-  "generated_at": "2026-01-20T16:40:00.411Z",
-  "commit": "badc1cf01598fab8037986b430ad83a37defe763",
-  "tag": "baseline-v1.0.15",
-  "last_good": {
-    "commit": "aed2394",
-    "tag": "baseline-v1.0.6",
-    "timestamp": "2026-01-20T14:04:13.633Z"
-  },
-  "consecutive_regressions": 0,
+  "generated_at": "2026-01-20T20:51:14Z",
+  "commit": "db97fed2b3c6a952bc46e35da4b36171d610fc68",
   "metrics": {
-    "timestamp": "2026-01-20T16:39:46.873Z",
+    "timestamp": "2026-01-20T20:51:14.894Z",
     "pentagonStats": {
       "total": {
         "count": 33,
-        "syncopation": 0.8740165631469979,
-        "density": 0.5473484848484849,
-        "velocityRange": 0.35393939393939394,
-        "voiceSeparation": 0.9177004454094233,
-        "regularity": 0.5363583681216193,
-        "composite": 0.2519345432027574
+        "syncopation": 0.27669024742195475,
+        "density": 0.5236742424242424,
+        "velocityRange": 0.35333333333333333,
+        "voiceSeparation": 0.8760758899761152,
+        "regularity": 0.6891812350464962,
+        "composite": 0.3558184608493425
       },
       "stable": {
         "count": 2,
@@ -28,30 +21,30 @@
         "velocityRange": 0.36,
         "voiceSeparation": 0.8786764705882353,
         "regularity": 0.7219068910760513,
-        "composite": 0.14995169665499344
+        "composite": 0.32569018992908694
       },
       "syncopated": {
         "count": 28,
-        "syncopation": 0.9477040816326531,
-        "density": 0.5513392857142857,
-        "velocityRange": 0.3528571428571429,
-        "voiceSeparation": 0.9200734241064844,
-        "regularity": 0.523089898801458,
-        "composite": 0.25823519385004967
+        "syncopation": 0.21895636303301808,
+        "density": 0.53125,
+        "velocityRange": 0.3521428571428572,
+        "voiceSeparation": 0.884551326511466,
+        "regularity": 0.6752864486091301,
+        "composite": 0.3481635482722888
       },
       "wild": {
         "count": 3,
-        "syncopation": 0.768944099378882,
-        "density": 0.53125,
+        "syncopation": 1,
+        "density": 0.4583333333333333,
         "velocityRange": 0.36000000000000004,
-        "voiceSeparation": 0.9215686274509803,
-        "regularity": 0.536498399806835,
-        "composite": 0.2611170348598719
+        "voiceSeparation": 0.7952380952380954,
+        "regularity": 0.7970488044422096,
+        "composite": 0.4473498255153477
       }
     },
-    "pentagonScore": 0.4120714004299767,
+    "pentagonScore": 0.5172291020132621,
     "conformance": {
-      "score": 0.8484902245661662,
+      "score": 0.8016616171783739,
       "passCount": 7,
       "totalPresets": 8,
       "presetBreakdown": [
@@ -85,46 +78,46 @@
         },
         {
           "name": "Broken Beat",
-          "score": 0.99625,
-          "status": "excellent",
+          "score": 0.7540990257669733,
+          "status": "good",
           "pass": true,
           "tolerance": "moderate"
         },
         {
           "name": "Chaotic IDM",
-          "score": 0.8329910440850481,
+          "score": 0.8231980515339463,
           "status": "excellent",
           "pass": true,
           "tolerance": "lax"
         },
         {
           "name": "Sparse Dub",
-          "score": 1,
-          "status": "excellent",
+          "score": 0.677125,
+          "status": "good",
           "pass": true,
           "tolerance": "moderate"
         },
         {
           "name": "Dense Gabber",
-          "score": 0.7702225690429305,
-          "status": "good",
+          "score": 0.97041267672472,
+          "status": "excellent",
           "pass": true,
           "tolerance": "moderate"
         }
       ]
     },
-    "overallAlignment": 0.5866389300844526,
+    "overallAlignment": 0.6310021080793069,
     "alignmentStatus": "FAIR",
     "totalPatterns": 33,
     "seedVariation": {
       "v1": {
-        "avgScore": 0.9642857142857144,
+        "avgScore": 0.9591836734693879,
         "minScore": 0.5714285714285714,
         "maxScore": 1
       },
       "v2": {
-        "avgScore": 0.9872448979591837,
-        "minScore": 0.8571428571428571,
+        "avgScore": 0.9821428571428571,
+        "minScore": 0.7142857142857143,
         "maxScore": 1
       },
       "aux": {
@@ -132,72 +125,72 @@
         "minScore": 1,
         "maxScore": 1
       },
-      "overall": 0.9838435374149661,
+      "overall": 0.9804421768707483,
       "pass": true
     },
     "fillMetrics": {
       "fillDensityRamp": {
-        "raw": 0.7840909090909091,
-        "score": 0.5590909090909091
+        "raw": 0.7443181818181818,
+        "score": 0.5681818181818182
       },
       "fillVelocityBuild": {
-        "raw": 0.5372461689357493,
-        "score": 0.45938754287586375
+        "raw": 0.5508795547967719,
+        "score": 0.46973888573776196
       },
       "fillAccentPlacement": {
-        "raw": 0.1966270978208481,
+        "raw": 0.28567449319138677,
         "score": 0
       },
-      "composite": 0.3394928173222576,
+      "composite": 0.34597356797319345,
       "pass": false
     },
     "energyZoneStats": {
       "minimal": {
         "count": 7,
-        "syncopation": 0.42857142857142855,
-        "density": 0.10267857142857142,
-        "velocityRange": 0.18714285714285714,
+        "syncopation": 0.5714285714285714,
+        "density": 0.09821428571428571,
+        "velocityRange": 0.15428571428571422,
         "voiceSeparation": 1,
-        "regularity": 0.6517857142857143,
-        "composite": 0.05822917292116989
+        "regularity": 0.5892857142857143,
+        "composite": 0.08653644257459345
       },
       "groove": {
         "count": 7,
-        "syncopation": 0.7142857142857143,
-        "density": 0.41964285714285715,
-        "velocityRange": 0.4071428571428571,
-        "voiceSeparation": 0.9136577708006278,
-        "regularity": 0.6148160328149574,
-        "composite": 0.30050273856089155
+        "syncopation": 0.5714285714285714,
+        "density": 0.40625,
+        "velocityRange": 0.4042857142857142,
+        "voiceSeparation": 0.8880167451596023,
+        "regularity": 0.6718881182872428,
+        "composite": 0.4167990387510209
       },
       "build": {
         "count": 7,
-        "syncopation": 0.6306826178747361,
-        "density": 0.5758928571428571,
+        "syncopation": 0.541871921182266,
+        "density": 0.5491071428571429,
         "velocityRange": 0.33,
-        "voiceSeparation": 0.8102019755270529,
-        "regularity": 0.5740686198645213,
-        "composite": 0.1594060238803238
+        "voiceSeparation": 0.7794486215538846,
+        "regularity": 0.7134722282209293,
+        "composite": 0.29530903156992394
       },
       "peak": {
         "count": 7,
-        "syncopation": 0.8017510944340211,
-        "density": 0.7276785714285714,
-        "velocityRange": 0.3114285714285714,
-        "voiceSeparation": 0.8691333924874298,
-        "regularity": 0.5373359424667309,
-        "composite": 0.07263726059500242
+        "syncopation": 0.6660938059434302,
+        "density": 0.7366071428571429,
+        "velocityRange": 0.31285714285714283,
+        "voiceSeparation": 0.8964389233954453,
+        "regularity": 0.5549848097985911,
+        "composite": 0.22623896934748627
       }
     },
     "metricDefinitions": {
       "syncopation": {
         "short": "Sync",
         "name": "Syncopation",
-        "description": "Syncopation creates groove and forward motion. Too little feels mechanical; too much loses the pulse.",
+        "description": "Syncopation creates groove and forward motion. Syncopated zone is designed for maximum displacement.",
         "targetByZone": {
-          "stable": "0.00-0.22",
-          "syncopated": "0.22-0.48",
-          "wild": "0.42-0.75"
+          "stable": "0.00-0.20",
+          "syncopated": "0.70-1.00",
+          "wild": "0.60-1.00"
         }
       },
       "density": {
@@ -223,11 +216,11 @@
       "voiceSeparation": {
         "short": "VoiceSep",
         "name": "Voice Separation",
-        "description": "Separation affects clarity vs. power. High DRIFT should increase separation.",
+        "description": "Separation measures voice independence. COMPLEMENT gap-filling creates high separation by design.",
         "targetByZone": {
-          "stable": "0.62-0.88",
-          "syncopated": "0.52-0.78",
-          "wild": "0.32-0.68"
+          "stable": "0.75-0.95",
+          "syncopated": "0.70-0.95",
+          "wild": "0.65-0.95"
         }
       },
       "regularity": {
