@@ -175,11 +175,12 @@ int FindWeakestHit(uint64_t mask, const float* weights, int patternLength)
 
 int FindRescueCandidate(uint64_t mask,
                         uint64_t rescueMask,
+                        uint64_t eligibility,
                         const float* weights,
                         int patternLength)
 {
-    // Find the step in rescueMask that isn't in mask and has highest weight
-    uint64_t candidates = rescueMask & ~mask;
+    // Find the step in rescueMask that isn't in mask, is eligible, and has highest weight
+    uint64_t candidates = rescueMask & ~mask & eligibility;
 
     if (candidates == 0)
     {
@@ -211,6 +212,7 @@ int SoftRepairPass(uint64_t& anchorMask,
                    uint64_t& shimmerMask,
                    const float* anchorWeights,
                    const float* shimmerWeights,
+                   uint64_t anchorEligibility,
                    EnergyZone zone,
                    int patternLength)
 {
@@ -224,9 +226,9 @@ int SoftRepairPass(uint64_t& anchorMask,
 
     if (gapMidpoints != 0)
     {
-        // There's a large gap - try to rescue
+        // There's a large gap - try to rescue (only to eligible positions)
         int weakest = FindWeakestHit(anchorMask, anchorWeights, clampedLength);
-        int rescue = FindRescueCandidate(anchorMask, gapMidpoints, anchorWeights, clampedLength);
+        int rescue = FindRescueCandidate(anchorMask, gapMidpoints, anchorEligibility, anchorWeights, clampedLength);
 
         if (weakest >= 0 && rescue >= 0 && rescue != weakest)
         {
@@ -327,7 +329,7 @@ bool EnforceDownbeat(uint64_t& anchorMask, EnergyZone zone, int patternLength)
     return true;
 }
 
-int EnforceMaxGap(uint64_t& anchorMask, EnergyZone zone, int patternLength)
+int EnforceMaxGap(uint64_t& anchorMask, uint64_t eligibility, EnergyZone zone, int patternLength)
 {
     int maxGap = GetMaxGapForZone(zone);
 
@@ -339,7 +341,7 @@ int EnforceMaxGap(uint64_t& anchorMask, EnergyZone zone, int patternLength)
     int clampedLength = std::min(patternLength, 64);
     int corrections = 0;
 
-    // Find gaps and add hits to break them
+    // Find gaps and add hits to break them (only on eligible positions)
     while (true)
     {
         uint64_t gapMidpoints = FindGapMidpoints(anchorMask, maxGap + 1, clampedLength);
@@ -349,16 +351,49 @@ int EnforceMaxGap(uint64_t& anchorMask, EnergyZone zone, int patternLength)
             break;  // No more gaps exceeding limit
         }
 
-        // Add hit at first midpoint
+        // Find the first gap midpoint and search for nearest eligible position
+        int midpoint = -1;
         for (int step = 0; step < clampedLength; ++step)
         {
             if ((gapMidpoints & (1ULL << step)) != 0)
             {
-                anchorMask |= (1ULL << step);
-                corrections++;
+                midpoint = step;
                 break;
             }
         }
+
+        if (midpoint < 0)
+        {
+            break;
+        }
+
+        // Find nearest eligible position to the midpoint (search outward)
+        int fillStep = -1;
+        for (int offset = 0; offset < clampedLength / 2; ++offset)
+        {
+            int before = (midpoint - offset + clampedLength) % clampedLength;
+            int after = (midpoint + offset) % clampedLength;
+
+            // Check if position is eligible AND not already occupied
+            if ((eligibility & (1ULL << before)) != 0 && (anchorMask & (1ULL << before)) == 0)
+            {
+                fillStep = before;
+                break;
+            }
+            if ((eligibility & (1ULL << after)) != 0 && (anchorMask & (1ULL << after)) == 0)
+            {
+                fillStep = after;
+                break;
+            }
+        }
+
+        if (fillStep < 0)
+        {
+            break;  // No eligible position found to break this gap
+        }
+
+        anchorMask |= (1ULL << fillStep);
+        corrections++;
 
         // Safety limit to prevent infinite loop
         if (corrections >= 8)
@@ -491,6 +526,7 @@ int EnforceGenreRules(uint64_t anchorMask,
 
 int ApplyHardGuardRails(uint64_t& anchorMask,
                         uint64_t& shimmerMask,
+                        uint64_t anchorEligibility,
                         EnergyZone zone,
                         Genre genre,
                         int patternLength)
@@ -503,8 +539,8 @@ int ApplyHardGuardRails(uint64_t& anchorMask,
         corrections++;
     }
 
-    // 2. Max gap enforcement
-    corrections += EnforceMaxGap(anchorMask, zone, patternLength);
+    // 2. Max gap enforcement (eligibility-aware)
+    corrections += EnforceMaxGap(anchorMask, anchorEligibility, zone, patternLength);
 
     // 3. Consecutive shimmer limit
     corrections += EnforceConsecutiveShimmer(anchorMask, shimmerMask, zone, patternLength);

@@ -54,6 +54,7 @@ constexpr int kMaxConsecutiveShimmerPeak = 6;
  * @param shimmerMask Shimmer hit mask (will be modified)
  * @param anchorWeights Weight of each anchor hit (for finding weakest)
  * @param shimmerWeights Weight of each shimmer hit
+ * @param anchorEligibility Mask of eligible positions for anchor rescue
  * @param zone Current energy zone (affects thresholds)
  * @param patternLength Pattern length in steps
  * @return Number of repairs made
@@ -62,6 +63,7 @@ int SoftRepairPass(uint64_t& anchorMask,
                    uint64_t& shimmerMask,
                    const float* anchorWeights,
                    const float* shimmerWeights,
+                   uint64_t anchorEligibility,
                    EnergyZone zone,
                    int patternLength);
 
@@ -80,12 +82,14 @@ int FindWeakestHit(uint64_t mask, const float* weights, int patternLength);
  *
  * @param mask Current hit mask
  * @param rescueMask Mask of acceptable rescue positions
+ * @param eligibility Mask of eligible positions (candidates must be eligible)
  * @param weights Step weights (higher = better candidate)
  * @param patternLength Pattern length
  * @return Step index of best rescue, or -1 if none found
  */
 int FindRescueCandidate(uint64_t mask,
                         uint64_t rescueMask,
+                        uint64_t eligibility,
                         const float* weights,
                         int patternLength);
 
@@ -104,6 +108,7 @@ int FindRescueCandidate(uint64_t mask,
  *
  * @param anchorMask Anchor hit mask (will be modified)
  * @param shimmerMask Shimmer hit mask (will be modified)
+ * @param anchorEligibility Mask of eligible positions for anchor fills
  * @param zone Current energy zone
  * @param genre Current genre (affects some rules)
  * @param patternLength Pattern length
@@ -111,6 +116,7 @@ int FindRescueCandidate(uint64_t mask,
  */
 int ApplyHardGuardRails(uint64_t& anchorMask,
                         uint64_t& shimmerMask,
+                        uint64_t anchorEligibility,
                         EnergyZone zone,
                         Genre genre,
                         int patternLength);
@@ -131,13 +137,15 @@ bool EnforceDownbeat(uint64_t& anchorMask, EnergyZone zone, int patternLength);
  * Enforce maximum gap rule
  *
  * Adds anchor hits to break up gaps that exceed the zone's maximum.
+ * Only adds hits on eligible positions.
  *
  * @param anchorMask Anchor mask to modify
+ * @param eligibility Mask of eligible positions for new hits
  * @param zone Energy zone (affects max gap)
  * @param patternLength Pattern length
  * @return Number of hits added
  */
-int EnforceMaxGap(uint64_t& anchorMask, EnergyZone zone, int patternLength);
+int EnforceMaxGap(uint64_t& anchorMask, uint64_t eligibility, EnergyZone zone, int patternLength);
 
 /**
  * Enforce consecutive shimmer limit

@@ -480,11 +480,14 @@ TEST_CASE("Downbeat is forced in GROOVE+ zones", "[guard-rails]")
 
 TEST_CASE("Max gap is enforced", "[guard-rails]")
 {
+    // Full eligibility mask for 32 steps
+    uint64_t fullEligibility = 0xFFFFFFFF;
+
     SECTION("Large gap gets filled")
     {
         uint64_t anchor = 0x00000001;  // Only step 0
 
-        int added = EnforceMaxGap(anchor, EnergyZone::GROOVE, 32);
+        int added = EnforceMaxGap(anchor, fullEligibility, EnergyZone::GROOVE, 32);
 
         // Should have added at least one hit to break up the gap
         REQUIRE(added >= 1);
@@ -495,7 +498,7 @@ TEST_CASE("Max gap is enforced", "[guard-rails]")
     {
         uint64_t anchor = 0x11111111;  // Every 4 steps
 
-        int added = EnforceMaxGap(anchor, EnergyZone::GROOVE, 32);
+        int added = EnforceMaxGap(anchor, fullEligibility, EnergyZone::GROOVE, 32);
 
         REQUIRE(added == 0);
     }
@@ -504,9 +507,24 @@ TEST_CASE("Max gap is enforced", "[guard-rails]")
     {
         uint64_t anchor = 0x00000001;
 
-        int added = EnforceMaxGap(anchor, EnergyZone::MINIMAL, 32);
+        int added = EnforceMaxGap(anchor, fullEligibility, EnergyZone::MINIMAL, 32);
 
         REQUIRE(added == 0);
+    }
+
+    SECTION("Eligibility constrains fill positions")
+    {
+        uint64_t anchor = 0x00000001;  // Only step 0
+        // Only even positions eligible (quarter notes in 32-step pattern)
+        uint64_t quarterNoteEligibility = 0x11111111;
+
+        int added = EnforceMaxGap(anchor, quarterNoteEligibility, EnergyZone::GROOVE, 32);
+
+        REQUIRE(added >= 1);
+
+        // Verify all added hits are on eligible positions
+        uint64_t addedHits = anchor & ~0x00000001;  // Remove original hit
+        REQUIRE((addedHits & ~quarterNoteEligibility) == 0);
     }
 }
 
@@ -571,12 +589,15 @@ TEST_CASE("CountMaxConsecutiveShimmer is accurate", "[guard-rails]")
 
 TEST_CASE("ApplyHardGuardRails applies all rules", "[guard-rails]")
 {
+    // Full eligibility for testing
+    uint64_t fullEligibility = 0xFFFFFFFF;
+
     SECTION("Multiple violations are corrected")
     {
         uint64_t anchor = 0x00000100;  // Step 8 only (no downbeat, gaps)
         uint64_t shimmer = 0xFFFFFF00; // Steps 8-31 (long consecutive)
 
-        int corrections = ApplyHardGuardRails(anchor, shimmer,
+        int corrections = ApplyHardGuardRails(anchor, shimmer, fullEligibility,
                                                EnergyZone::GROOVE, Genre::TECHNO, 32);
 
         REQUIRE(corrections > 0);
@@ -587,6 +608,26 @@ TEST_CASE("ApplyHardGuardRails applies all rules", "[guard-rails]")
         // Gaps should be filled
         int gap = FindLargestGap(anchor, 32);
         REQUIRE(gap <= kMaxGapGroove);
+    }
+
+    SECTION("Eligibility constrains fill positions")
+    {
+        uint64_t anchor = 0x00000000;  // No hits
+        uint64_t shimmer = 0x00000000;
+        // Only quarter notes eligible
+        uint64_t quarterNoteEligibility = 0x11111111;
+
+        int corrections = ApplyHardGuardRails(anchor, shimmer, quarterNoteEligibility,
+                                               EnergyZone::BUILD, Genre::TECHNO, 32);
+
+        REQUIRE(corrections > 0);
+
+        // Downbeat at step 0 is quarter note, so should be set
+        REQUIRE((anchor & 0x00000001) != 0);
+
+        // All fills should be on eligible positions (except step 0 which is always valid for downbeat)
+        uint64_t fillHits = anchor & ~0x00000001;
+        REQUIRE((fillHits & ~quarterNoteEligibility) == 0);
     }
 }
 
@@ -623,9 +664,10 @@ TEST_CASE("Soft repair swaps weak hit for rescue", "[guard-rails]")
         anchor |= (1ULL << 16);          // Add weak step 16
 
         uint64_t shimmer = 0;
+        uint64_t fullEligibility = 0xFFFFFFFF;
 
         int repairs = SoftRepairPass(anchor, shimmer, anchorWeights, shimmerWeights,
-                                     EnergyZone::GROOVE, 32);
+                                     fullEligibility, EnergyZone::GROOVE, 32);
 
         // With gap detection, might move the weak hit
         // The exact behavior depends on gap thresholds
@@ -658,10 +700,20 @@ TEST_CASE("FindRescueCandidate finds best option", "[guard-rails]")
     weights[5] = 0.9f;  // Best rescue candidate
 
     uint64_t mask = 0x00000001;        // Already have step 0
-    uint32_t rescue = 0x00000030;      // Steps 4 and 5 are rescue options
+    uint64_t rescue = 0x00000030;      // Steps 4 and 5 are rescue options
+    uint64_t fullEligibility = 0xFFFFFFFF;
 
-    int best = FindRescueCandidate(mask, rescue, weights, 32);
+    int best = FindRescueCandidate(mask, rescue, fullEligibility, weights, 32);
     REQUIRE(best == 5);  // Highest weight in rescue mask
+
+    SECTION("Eligibility constrains rescue candidates")
+    {
+        // Make only step 4 eligible (not step 5)
+        uint64_t limitedEligibility = 0x00000010;  // Only step 4
+
+        int bestLimited = FindRescueCandidate(mask, rescue, limitedEligibility, weights, 32);
+        REQUIRE(bestLimited == 4);  // Step 5 has higher weight but not eligible
+    }
 }
 
 // =============================================================================
@@ -712,8 +764,9 @@ TEST_CASE("Full generation flow produces valid pattern", "[integration]")
         // V5: ApplyVoiceRelationship removed - use ApplyComplementRelationship instead
         // For this test, shimmer is used directly without voice relationship
 
-        // Apply guard rails
-        (void)ApplyHardGuardRails(anchor, shimmer, EnergyZone::GROOVE, Genre::TECHNO, 32);
+        // Apply guard rails (pass anchor eligibility for fills)
+        uint64_t anchorEligibility = ComputeAnchorEligibility(0.5f, 0.3f, EnergyZone::GROOVE, 32);
+        (void)ApplyHardGuardRails(anchor, shimmer, anchorEligibility, EnergyZone::GROOVE, Genre::TECHNO, 32);
 
         // Verify constraints
         REQUIRE((anchor & 0x00000001) != 0);  // Has downbeat

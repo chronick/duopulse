@@ -149,12 +149,14 @@ void GeneratePattern(const PatternParams& params, PatternResult& result)
         SoftRepairPass(
             result.anchorMask, result.shimmerMask,
             anchorWeights, shimmerWeights,
+            budget.anchorEligibility,
             zone, params.patternLength
         );
     }
 
-    // Apply guard rails
-    ApplyHardGuardRails(result.anchorMask, result.shimmerMask, zone,
+    // Apply guard rails (eligibility-aware)
+    ApplyHardGuardRails(result.anchorMask, result.shimmerMask,
+                        budget.anchorEligibility, zone,
                         params.genre, params.patternLength);
 
     // V5 Task 44: Apply seed-based rotation for anchor variation (AFTER guard rails)
