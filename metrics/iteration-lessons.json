@@ -18,7 +18,9 @@
         "description": "Makefile doesn't track algorithm_config.h dependencies",
         "symptom": "Changed header but binary wasn't rebuilt",
         "workaround": "Manually delete AlgorithmWeights.o to force rebuild",
-        "fix_needed": "Add header dependencies to Makefile"
+        "fix_needed": "Add header dependencies to Makefile",
+        "status": "FIXED",
+        "fix_commit": "c9b9561"
       },
       "deeper_bug_discovered": {
         "description": "Hit count suppression - patterns have far fewer hits than euclidean k values",

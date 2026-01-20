@@ -319,6 +319,7 @@ $(GENERATED_HEADER): $(CONFIG) scripts/generate-weights-header.py
 HOST_CXX := g++
 HOST_CXXFLAGS := -std=c++17 -Wall -Wextra -g -O0
 HOST_CXXFLAGS += -DHOST_BUILD  # Define for host-side builds
+HOST_CXXFLAGS += -MMD -MP  # Generate dependency files for header tracking
 HOST_CXXFLAGS += -I$(INC_DIR)
 HOST_CXXFLAGS += -I$(SRC_DIR)
 HOST_CXXFLAGS += -I$(DAISYSP_PATH)/Source
@@ -640,7 +641,12 @@ help:
 # Dependency Tracking
 ###############################################################################
 
+# Include firmware build dependencies
 -include $(OBJS:.o=.d)
+
+# Include host build dependencies (for tests and pattern_viz)
+-include $(TEST_APP_OBJS:.o=.d)
+-include $(TEST_OBJS:.o=.d)
 
 $(OBJ_DIR)/%.d: $(SRC_DIR)/%.cpp | $(OBJ_DIR)
 	@mkdir -p $(dir $@)
