@@ -1,16 +1,16 @@
 {
   "version": "1.0.0",
-  "generated_at": "2026-01-20T14:04:13.633Z",
-  "commit": "aed2394eda29be5779ce4a373b0de4e6c04497c2",
-  "tag": "baseline-v1.0.6",
+  "generated_at": "2026-01-20T16:40:00.411Z",
+  "commit": "badc1cf01598fab8037986b430ad83a37defe763",
+  "tag": "baseline-v1.0.15",
   "last_good": {
-    "commit": "26804ba",
-    "tag": "baseline-v1.0.5",
-    "timestamp": "2026-01-20T13:28:34.563Z"
+    "commit": "aed2394",
+    "tag": "baseline-v1.0.6",
+    "timestamp": "2026-01-20T14:04:13.633Z"
   },
   "consecutive_regressions": 0,
   "metrics": {
-    "timestamp": "2026-01-20T13:58:50.923Z",
+    "timestamp": "2026-01-20T16:39:46.873Z",
     "pentagonStats": {
       "total": {
         "count": 33,
@@ -51,21 +51,21 @@
     },
     "pentagonScore": 0.4120714004299767,
     "conformance": {
-      "score": 0.8459180256695904,
-      "passCount": 6,
+      "score": 0.8484902245661662,
+      "passCount": 7,
       "totalPresets": 8,
       "presetBreakdown": [
         {
           "name": "Minimal Techno",
-          "score": 0.6528679656440357,
+          "score": 0.7562882692912616,
           "status": "good",
-          "pass": false,
+          "pass": true,
           "tolerance": "strict"
         },
         {
           "name": "Four on Floor",
-          "score": 0.67,
-          "status": "good",
+          "score": 0.5871572875253811,
+          "status": "fair",
           "pass": false,
           "tolerance": "strict"
         },
@@ -113,7 +113,7 @@
         }
       ]
     },
-    "overallAlignment": 0.5856100505258222,
+    "overallAlignment": 0.5866389300844526,
     "alignmentStatus": "FAIR",
     "totalPatterns": 33,
     "seedVariation": {
