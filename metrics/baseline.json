@@ -1,55 +1,119 @@
 {
   "version": "1.0.0",
-  "generated_at": "2026-01-19T14:24:41.403Z",
-  "commit": "fefbf8a9549102c6b3fd1592116d7ea333010474",
-  "tag": "baseline-v1.0.2",
+  "generated_at": "2026-01-20T02:41:14.420Z",
+  "commit": "6a6b7add0aa31edc38dc5b146c2019fcdabccfca",
+  "tag": "baseline-v1.0.3",
   "last_good": {
-    "commit": "5240ebf8c0b87826761888e65694f4b345ec1fef",
-    "tag": "baseline-v1.0.1",
-    "timestamp": "2026-01-19T14:22:44.681Z"
+    "commit": "fefbf8a9549102c6b3fd1592116d7ea333010474",
+    "tag": "baseline-v1.0.2",
+    "timestamp": "2026-01-19T14:24:41.403Z"
   },
   "consecutive_regressions": 0,
   "metrics": {
-    "timestamp": "2026-01-19T03:57:52.881Z",
+    "timestamp": "2026-01-20T02:36:02.909Z",
     "pentagonStats": {
       "total": {
         "count": 33,
-        "syncopation": 0.3167914933766031,
-        "density": 0.5615530303030303,
-        "velocityRange": 0.3527272727272727,
-        "voiceSeparation": 0.8508254664014243,
-        "regularity": 0.5056817269826563,
-        "composite": 0.24034613757088938
+        "syncopation": 0.9346226237530586,
+        "density": 0.5028409090909091,
+        "velocityRange": 0.3460606060606059,
+        "voiceSeparation": 0.9178106808911762,
+        "regularity": 0.4879084607178932,
+        "composite": 0.15577222730031573
       },
       "stable": {
         "count": 2,
-        "syncopation": 0,
-        "density": 0.59375,
+        "syncopation": 1,
+        "density": 0.5,
         "velocityRange": 0.35,
-        "voiceSeparation": 0.8947368421052632,
-        "regularity": 0.5580582617584078,
+        "voiceSeparation": 0.9375,
+        "regularity": 0.5514781220497711,
         "composite": 0.08165680473372783
       },
       "syncopated": {
         "count": 28,
-        "syncopation": 0.28585260628604287,
-        "density": 0.5524553571428571,
-        "velocityRange": 0.35214285714285726,
-        "voiceSeparation": 0.8370630966798744,
-        "regularity": 0.4912283274572521,
-        "composite": 0.26420296053103337
+        "syncopation": 0.9477040816326531,
+        "density": 0.4955357142857143,
+        "velocityRange": 0.3442857142857142,
+        "voiceSeparation": 0.9134585413112613,
+        "regularity": 0.47816170572037225,
+        "composite": 0.15439233762607193
       },
       "wild": {
         "count": 3,
-        "syncopation": 0.8167487684729062,
-        "density": 0.625,
+        "syncopation": 0.768944099378882,
+        "density": 0.5729166666666666,
         "velocityRange": 0.36000000000000004,
-        "voiceSeparation": 0.9499999999999998,
-        "regularity": 0.6056624327025936,
-        "composite": 0.12347534516765295
+        "voiceSeparation": 0.9453044375644994,
+        "regularity": 0.536498399806835,
+        "composite": 0.21806147930431638
       }
     },
-    "overallAlignment": 0.3955691511625635,
+    "pentagonScore": 0.32647144650009585,
+    "conformance": {
+      "score": 0.6228029267678534,
+      "passCount": 5,
+      "totalPresets": 8,
+      "presetBreakdown": [
+        {
+          "name": "Minimal Techno",
+          "score": 0.32958980337503146,
+          "status": "poor",
+          "pass": false,
+          "tolerance": "strict"
+        },
+        {
+          "name": "Four on Floor",
+          "score": 0.02784916430648356,
+          "status": "poor",
+          "pass": false,
+          "tolerance": "strict"
+        },
+        {
+          "name": "Driving Techno",
+          "score": 0.08458333333333334,
+          "status": "poor",
+          "pass": false,
+          "tolerance": "strict"
+        },
+        {
+          "name": "Syncopated Groove",
+          "score": 1,
+          "status": "excellent",
+          "pass": true,
+          "tolerance": "moderate"
+        },
+        {
+          "name": "Broken Beat",
+          "score": 0.99625,
+          "status": "excellent",
+          "pass": true,
+          "tolerance": "moderate"
+        },
+        {
+          "name": "Chaotic IDM",
+          "score": 0.8329910440850481,
+          "status": "excellent",
+          "pass": true,
+          "tolerance": "lax"
+        },
+        {
+          "name": "Sparse Dub",
+          "score": 0.9409375,
+          "status": "excellent",
+          "pass": true,
+          "tolerance": "moderate"
+        },
+        {
+          "name": "Dense Gabber",
+          "score": 0.7702225690429305,
+          "status": "good",
+          "pass": true,
+          "tolerance": "moderate"
+        }
+      ]
+    },
+    "overallAlignment": 0.4450040386071989,
     "alignmentStatus": "POOR",
     "totalPatterns": 33,
     "seedVariation": {
@@ -59,7 +123,7 @@
         "maxScore": 1
       },
       "v2": {
-        "avgScore": 0.9961734693877551,
+        "avgScore": 0.985969387755102,
         "minScore": 0.8571428571428571,
         "maxScore": 1
       },
@@ -68,23 +132,23 @@
         "minScore": 1,
         "maxScore": 1
       },
-      "overall": 0.9987244897959183,
+      "overall": 0.9953231292517007,
       "pass": true
     },
     "fillMetrics": {
       "fillDensityRamp": {
-        "raw": 0.7471590909090909,
-        "score": 0.4886363636363637
+        "raw": 0.75,
+        "score": 0.509090909090909
       },
       "fillVelocityBuild": {
-        "raw": 0.6418484482908492,
-        "score": 0.6472289446785487
+        "raw": 0.575279246182026,
+        "score": 0.5681351665462855
       },
       "fillAccentPlacement": {
-        "raw": 0.2175994382849353,
+        "raw": 0.21789179972677808,
         "score": 0
       },
-      "composite": 0.3786217694383041,
+      "composite": 0.3590753585457315,
       "pass": false
     },
     "metricDefinitions": {
