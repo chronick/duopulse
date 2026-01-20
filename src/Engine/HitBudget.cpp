@@ -263,12 +263,12 @@ void ComputeBarBudget(float energy,
     outBudget.shimmerHits = std::min(outBudget.shimmerHits, maxHits);
     outBudget.auxHits     = std::min(outBudget.auxHits, clampedLength);
 
-    // Initialize eligibility to full pattern (will be refined by caller)
-    // Avoid UB: (1U << 32) is undefined behavior
-    uint64_t fullMask = (clampedLength >= 64) ? 0xFFFFFFFFFFFFFFFFULL : ((1ULL << clampedLength) - 1);
-    outBudget.anchorEligibility  = fullMask;
-    outBudget.shimmerEligibility = fullMask;
-    outBudget.auxEligibility     = fullMask;
+    // Compute eligibility masks based on zone
+    // Note: flavor=0.0 for evaluation (firmware handles flavor separately via CV)
+    const float flavor = 0.0f;
+    outBudget.anchorEligibility  = ComputeAnchorEligibility(energy, flavor, zone, clampedLength);
+    outBudget.shimmerEligibility = ComputeShimmerEligibility(energy, flavor, zone, clampedLength);
+    outBudget.auxEligibility     = ComputeAuxEligibility(energy, flavor, zone, clampedLength);
 }
 
 // =============================================================================
