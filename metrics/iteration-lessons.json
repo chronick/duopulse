@@ -1,0 +1,88 @@
+{
+  "version": "1.0.0",
+  "generated_at": "2026-01-19T00:30:00.000Z",
+  "lessons": [
+    {
+      "iteration_id": "2026-01-19-002",
+      "date": "2026-01-19",
+      "goal": "Improve regularity in stable zone",
+      "lever_attempted": "kEuclideanFadeEnd",
+      "change": "0.70 → 0.77 (+10%)",
+      "result": "FAILED",
+      "prediction_accuracy": 14,
+      "target_metric_delta": "+0.4% (predicted +10%)",
+      "critical_error": "ENERGY vs SHAPE domain confusion",
+      "what_went_wrong": "Lever operates on SHAPE parameter (0.70-0.77), but stable zone defined by ENERGY parameter (0.0-0.3). These don't overlap - low ENERGY patterns can have any SHAPE value.",
+      "key_insight": "SHAPE levers don't affect ENERGY-defined zones. For zone-specific improvements, use levers that operate in the same parameter domain as the zone definition.",
+      "parameter_domain_mapping": {
+        "ENERGY_zones": {
+          "stable": "0.0-0.3",
+          "syncopated": "0.3-0.7",
+          "wild": "0.7-1.0"
+        },
+        "SHAPE_levers": [
+          "kEuclideanFadeStart",
+          "kEuclideanFadeEnd",
+          "kSyncopationCenter",
+          "kSyncopationWidth",
+          "kRandomFadeStart",
+          "kRandomFadeEnd"
+        ],
+        "ENERGY_levers": [
+          "kAnchorKMin",
+          "kAnchorKMax",
+          "kShimmerKMin",
+          "kShimmerKMax",
+          "kAuxKMin",
+          "kAuxKMax"
+        ]
+      },
+      "recommended_retry": {
+        "lever": "kAnchorKMin or kAnchorKMax",
+        "rationale": "These scale with ENERGY, directly affecting stable zone patterns",
+        "confidence": "3/5 (untested hypothesis)"
+      },
+      "bootstrap_heuristic_updates": [
+        {
+          "metric": "regularity",
+          "old_confidence": 4,
+          "new_confidence": 2,
+          "reason": "Failed iteration proved SHAPE levers don't affect ENERGY zones"
+        }
+      ],
+      "calibration_lessons": [
+        "Don't assume linear scaling (10% lever ≠ 10% metric, actual: 25x weaker)",
+        "Sensitivity R²<0.5 indicates unreliable signal (70%+ unexplained variance)",
+        "Bootstrap heuristics need empirical validation before trusting"
+      ],
+      "docs": {
+        "estimate": "docs/design/iterations/estimate-2026-01-19-002.md",
+        "full_log": "docs/design/iterations/2026-01-19-002.md",
+        "pr": "https://github.com/chronick/duopulse/pull/4"
+      }
+    }
+  ],
+  "patterns": {
+    "zone_vs_parameter_confusion": {
+      "description": "Attempting to improve a zone-specific metric with a lever that operates in a different parameter domain",
+      "examples": [
+        "2026-01-19-002: SHAPE lever for ENERGY zone"
+      ],
+      "prevention": "Always verify: lever operating range ∩ target zone parameter range ≠ ∅",
+      "checklist": [
+        "What parameter does the target zone use? (ENERGY, SHAPE, DRIFT, etc.)",
+        "What parameter does the lever affect?",
+        "Do these parameter spaces overlap?",
+        "If not, find a lever in the correct domain"
+      ]
+    },
+    "bootstrap_overconfidence": {
+      "description": "Bootstrap heuristics with high confidence but low empirical validation",
+      "examples": [
+        "2026-01-19-002: 4/5 confidence, 14% actual accuracy"
+      ],
+      "prevention": "Downgrade confidence when sensitivity R²<0.5",
+      "rule": "confidence = min(bootstrap_confidence, sensitivity_r_squared * 5)"
+    }
+  }
+}

@@ -104,11 +104,13 @@ constexpr int kSyncopationConfidence = 4;
 // Primary: kEuclideanFadeEnd (+) - euclidean persists to higher SHAPE values
 //          More euclidean = more regular, structured patterns
 // Secondary: kSyncopationWidth (-) - narrower bell = more predictable middle zone
-// Confidence: 4/5 - euclidean is inherently regular
+// Confidence: 2/5 - DOWNGRADED after iteration 2026-01-19-002 failure
+// WARNING: SHAPE lever - does NOT affect ENERGY zones (stable/syncopated/wild)
+// For zone-specific regularity, use kAnchorKMin/Max instead (ENERGY levers)
 constexpr const char* kRegularityPrimary = "kEuclideanFadeEnd";
 constexpr const char* kRegularityDirection = "+";
 constexpr const char* kRegularitySecondary = "kSyncopationWidth";
-constexpr int kRegularityConfidence = 4;
+constexpr int kRegularityConfidence = 2;  // Downgraded from 4/5
 
 // ---------------------------------------------------------------------------
 // Voice Separation Improvement

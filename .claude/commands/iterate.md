@@ -141,9 +141,18 @@ cat metrics/baseline.json
 # Sensitivity analysis (lever recommendations)
 cat metrics/sensitivity-matrix.json
 
+# Iteration lessons learned (CRITICAL - read first!)
+cat metrics/iteration-lessons.json
+
 # Current algorithm weights
 cat inc/algorithm_config.h
 ```
+
+**IMPORTANT**: Review iteration lessons BEFORE proposing changes:
+- Check if similar goal has been attempted before
+- Look for parameter domain mismatches (ENERGY vs SHAPE confusion)
+- Apply calibration lessons to predictions
+- Check bootstrap heuristic confidence adjustments
 
 ### Step 2: Auto-Detect Goal (if needed)
 
@@ -186,6 +195,66 @@ Select 1-2 levers to adjust based on:
 - Sensitivity magnitude (higher = more impact)
 - R-squared value (higher = more predictable effect)
 - Direction of sensitivity (match to improvement goal)
+
+### Step 4.5: Check Iteration Lessons (CRITICAL)
+
+**BEFORE proposing changes, consult iteration-lessons.json for known pitfalls:**
+
+```javascript
+// From iteration-lessons.json
+const lessons = iterationLessons.lessons;
+const patterns = iterationLessons.patterns;
+
+// Check for similar failed attempts
+for (const lesson of lessons) {
+  if (lesson.goal.includes(targetMetric) && lesson.result === "FAILED") {
+    console.warn(`⚠️ Similar goal failed: ${lesson.iteration_id}`);
+    console.warn(`  Problem: ${lesson.critical_error}`);
+    console.warn(`  Recommendation: ${lesson.recommended_retry.rationale}`);
+  }
+}
+
+// Check for parameter domain mismatches (CRITICAL!)
+if (targetZone && selectedLever) {
+  const leverDomain = getLeverParameterDomain(selectedLever); // ENERGY or SHAPE?
+  const zoneDomain = getZoneParameterDomain(targetZone); // ENERGY or SHAPE?
+
+  if (leverDomain !== zoneDomain) {
+    console.error(`❌ DOMAIN MISMATCH: Lever operates on ${leverDomain}, zone defined by ${zoneDomain}`);
+    console.error(`   This will NOT affect the target zone!`);
+    console.error(`   Use ${zoneDomain}-domain levers instead.`);
+    // See iteration 2026-01-19-002 for example
+  }
+}
+
+// Apply confidence calibration
+if (bootstrapConfidence && sensitivityRSquared < 0.5) {
+  const adjustedConfidence = Math.min(bootstrapConfidence, sensitivityRSquared * 5);
+  console.warn(`⚠️ Downgrading confidence: ${bootstrapConfidence}/5 → ${adjustedConfidence}/5`);
+  console.warn(`   Reason: Sensitivity R²=${sensitivityRSquared} < 0.5 (weak signal)`);
+}
+```
+
+**Parameter Domain Reference** (from lessons):
+- **ENERGY levers**: kAnchorKMin/Max, kShimmerKMin/Max, kAuxKMin/Max
+  - These scale with ENERGY parameter (0.0-1.0)
+  - Affect zone-specific behavior (stable/syncopated/wild zones)
+
+- **SHAPE levers**: kEuclidean*, kSyncopation*, kRandom*
+  - These operate on SHAPE parameter (0.0-1.0)
+  - Affect global algorithm blending, NOT zone-specific
+
+**Zone Definitions** (from lessons):
+- **ENERGY zones**: stable (0.0-0.3), syncopated (0.3-0.7), wild (0.7-1.0)
+- **SHAPE zones**: N/A (SHAPE is a continuous parameter, not zone-based)
+
+**Validation Checklist**:
+- [ ] Lever parameter domain matches target zone domain
+- [ ] Similar goal hasn't failed recently with same approach
+- [ ] Bootstrap confidence adjusted for sensitivity R²
+- [ ] Prediction magnitude scaled by sensitivity slope (not assumed linear)
+
+If validation fails, STOP and select a different lever or approach.
 
 ### Step 5: Estimate Improvement (NEW)
 
@@ -939,3 +1008,76 @@ See: docs/design/iterations/ensemble-${TIMESTAMP}.md
 ### Next Steps
 ${RECOMMENDED_ACTIONS}
 ```
+
+---
+
+## Quick Reference: Lessons Learned
+
+### Parameter Domain Mapping (Updated from Iteration Lessons)
+
+**ENERGY-Domain Levers** (affect zone-specific behavior):
+```cpp
+kAnchorKMin/Max   // Anchor (kick) hit density at different ENERGY levels
+kShimmerKMin/Max  // Shimmer (hi-hat) hit density at different ENERGY levels
+kAuxKMin/Max      // Aux (perc) hit density at different ENERGY levels
+```
+Use these when targeting **ENERGY zones** (stable/syncopated/wild).
+
+**SHAPE-Domain Levers** (affect global algorithm blending):
+```cpp
+kEuclideanFadeStart/End    // Euclidean algorithm influence curve
+kSyncopationCenter/Width   // Syncopation algorithm bell curve
+kRandomFadeStart/End       // Random algorithm influence curve
+```
+Use these for **SHAPE-based goals** (e.g., "make SHAPE=0.5 more syncopated").
+
+**Zone Definitions**:
+- **ENERGY zones**: stable (0.0-0.3), syncopated (0.3-0.7), wild (0.7-1.0)
+- Defined in code by ENERGY parameter mapping
+- To improve zone-specific metrics, use ENERGY-domain levers
+
+### Common Pitfalls (from Failed Iterations)
+
+**1. Parameter Domain Confusion** (iteration 2026-01-19-002):
+```
+❌ BAD:  Use kEuclideanFadeEnd to improve stable zone regularity
+          (SHAPE lever for ENERGY zone - domains don't overlap!)
+
+✅ GOOD: Use kAnchorKMin to improve stable zone regularity
+          (ENERGY lever for ENERGY zone - correct domain)
+```
+
+**2. Bootstrap Overconfidence**:
+```
+❌ BAD:  Trust bootstrap 4/5 confidence when sensitivity R²=0.3
+          (70% unexplained variance = weak signal)
+
+✅ GOOD: Downgrade confidence = min(4, 0.3 * 5) = 1.5/5
+          (adjust for low R²)
+```
+
+**3. Linear Scaling Assumption**:
+```
+❌ BAD:  10% lever change → predict 10% metric change
+          (actual: often 25x weaker due to nonlinear relationships)
+
+✅ GOOD: Use sensitivity slope to scale predictions
+          e.g., sensitivity=0.008 → predict 0.8% change per 10% lever
+```
+
+### Pre-Flight Checklist
+
+Before proposing any change:
+- [ ] Read `metrics/iteration-lessons.json` for similar failed attempts
+- [ ] Verify lever parameter domain matches target zone domain
+- [ ] Adjust bootstrap confidence for sensitivity R² < 0.5
+- [ ] Scale predictions using sensitivity slope (not linear assumption)
+- [ ] Check if similar goal failed recently - learn from mistakes!
+
+### When to Consult Lessons
+
+- **Step 1**: Load lessons alongside baseline/sensitivity
+- **Step 4**: Before selecting levers, check for failed attempts
+- **Step 4.5**: Validate parameter domain match (CRITICAL!)
+- **Step 5**: Reference calibration lessons when making predictions
+- **Step 13C**: After failure, update lessons.json with new insights
