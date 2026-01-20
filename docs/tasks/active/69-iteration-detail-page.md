@@ -2,9 +2,10 @@
 id: 69
 slug: iteration-detail-page
 title: "Iteration Detail Page with Timeline and Logs"
-status: in_progress
+status: completed
 created_date: 2026-01-19
 updated_date: 2026-01-19
+completed_date: 2026-01-19
 branch: feature/iteration-detail-page
 spec_refs: []
 depends_on: []
@@ -206,14 +207,14 @@ Add steps:
 
 - [x] Create feature branch
 - [x] Create task file and plan
-- [ ] Create `scripts/iterate/parse-iterations.js`
-- [ ] Create `tools/evals/public/iterations/index.html`
-- [ ] Create `tools/evals/public/css/iterations.css`
-- [ ] Create `tools/evals/public/js/iterations.js`
-- [ ] Add link from overview page to iterations page
-- [ ] Add CI workflow steps
-- [ ] Test with sample iteration logs
-- [ ] All tests pass
+- [x] Create `scripts/iterate/parse-iterations.js`
+- [x] Create `tools/evals/public/iterations/index.html`
+- [x] Create `tools/evals/public/css/iterations.css`
+- [x] Create `tools/evals/public/js/iterations.js`
+- [x] Add link from overview page to iterations page
+- [x] Add CI workflow steps
+- [x] Test with sample iteration logs
+- [x] All tests pass
 
 ## Acceptance Criteria
 
