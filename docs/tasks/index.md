@@ -73,3 +73,6 @@
 | 67 | dashboard-improvements | Dashboard UX Improvements | completed | 2026-01-19 | 2026-01-19 | completed/67-dashboard-improvements.md |
 | 68 | preset-conformance-metrics | Preset Conformance Metrics | completed | 2026-01-19 | 2026-01-19 | completed/68-preset-conformance-metrics.md |
 | 69 | iteration-detail-page | Iteration Detail Page with Timeline and Logs | completed | 2026-01-19 | 2026-01-19 | completed/69-iteration-detail-page.md |
+| 70 | eligibility-aware-guard-rails | Eligibility-Aware Guard Rails | done | 2026-01-20 | 2026-01-20 | done/70-eligibility-aware-guard-rails.md |
+| 71 | energy-zone-eval-coverage | Energy Zone Eval Coverage | done | 2026-01-20 | 2026-01-20 | done/71-energy-zone-eval-coverage.md |
+| 72 | pentagon-target-revision | Pentagon Eval Metric Target Revision | backlog | 2026-01-20 | 2026-01-20 | backlog/72-pentagon-target-revision.md |
