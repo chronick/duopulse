@@ -146,6 +146,9 @@ cat metrics/iteration-lessons.json
 
 # Current algorithm weights
 cat inc/algorithm_config.h
+
+# Recent iteration logs (check for investigation notes!)
+ls -t docs/design/iterations/*.md | head -5
 ```
 
 **IMPORTANT**: Review iteration lessons BEFORE proposing changes:
@@ -153,6 +156,13 @@ cat inc/algorithm_config.h
 - Look for parameter domain mismatches (ENERGY vs SHAPE confusion)
 - Apply calibration lessons to predictions
 - Check bootstrap heuristic confidence adjustments
+
+**CRITICAL**: Check recent iteration logs for investigation notes:
+- Read the most recent 2-3 iteration logs in `docs/design/iterations/`
+- Look for "Remaining Issues" or "Investigation Needed" sections
+- If your auto-detected goal matches a documented remaining issue, READ that section first
+- Apply any hypotheses or candidate approaches documented there
+- Don't repeat failed approaches without addressing the documented blockers
 
 ### Step 2: Auto-Detect Goal (if needed)
 
@@ -167,6 +177,17 @@ const zones = ["stable", "syncopated", "wild"];
 // Find metrics furthest from their target ranges
 // Suggest: "improve {metric} in {zone} zone"
 ```
+
+**Before finalizing the auto-detected goal**:
+1. Check if this metric/zone combination has a "Remaining Issues" section in recent iteration logs
+2. If yes, read the investigation notes to understand:
+   - Why previous attempts may have failed or been deferred
+   - What hypotheses exist for the root cause
+   - What candidate approaches are suggested
+3. If the issue requires investigation (not a lever change), report this to the user and ask if they want to:
+   - Proceed with investigation
+   - Choose a different goal
+   - Attempt a documented candidate approach
 
 Report the auto-detected goal before proceeding.
 
