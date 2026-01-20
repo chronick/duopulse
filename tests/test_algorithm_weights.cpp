@@ -9,8 +9,10 @@
 #include <catch2/catch_approx.hpp>
 
 #include "../src/Engine/AlgorithmWeights.h"
+#include "../inc/algorithm_config.h"
 
 using namespace daisysp_idm_grids;
+using namespace AlgorithmConfig;
 using Catch::Approx;
 
 // =============================================================================
@@ -193,25 +195,25 @@ TEST_CASE("Channel euclidean k scales with ENERGY", "[AlgorithmWeights][euclidea
     SECTION("At ENERGY=0, all k values are at minimum")
     {
         ChannelEuclideanParams params = ComputeChannelEuclidean(0.0f, 0xDEADBEEF, 32);
-        REQUIRE(params.anchorK == 4);   // kAnchorKMin
-        REQUIRE(params.shimmerK == 6);  // kShimmerKMin
-        REQUIRE(params.auxK == 2);      // kAuxKMin
+        REQUIRE(params.anchorK == AlgorithmConfig::kAnchorKMin);
+        REQUIRE(params.shimmerK == AlgorithmConfig::kShimmerKMin);
+        REQUIRE(params.auxK == AlgorithmConfig::kAuxKMin);
     }
 
     SECTION("At ENERGY=1, all k values are at maximum")
     {
         ChannelEuclideanParams params = ComputeChannelEuclidean(1.0f, 0xDEADBEEF, 32);
-        REQUIRE(params.anchorK == 12);  // kAnchorKMax
-        REQUIRE(params.shimmerK == 16); // kShimmerKMax
-        REQUIRE(params.auxK == 8);      // kAuxKMax
+        REQUIRE(params.anchorK == AlgorithmConfig::kAnchorKMax);
+        REQUIRE(params.shimmerK == AlgorithmConfig::kShimmerKMax);
+        REQUIRE(params.auxK == AlgorithmConfig::kAuxKMax);
     }
 
     SECTION("At ENERGY=0.5, k values are at midpoint")
     {
         ChannelEuclideanParams params = ComputeChannelEuclidean(0.5f, 0xDEADBEEF, 32);
-        REQUIRE(params.anchorK == 8);   // (4 + 12) / 2
-        REQUIRE(params.shimmerK == 11); // (6 + 16) / 2
-        REQUIRE(params.auxK == 5);      // (2 + 8) / 2
+        REQUIRE(params.anchorK == (kAnchorKMin + kAnchorKMax) / 2);
+        REQUIRE(params.shimmerK == (kShimmerKMin + kShimmerKMax) / 2);
+        REQUIRE(params.auxK == (kAuxKMin + kAuxKMax) / 2);
     }
 }
 
@@ -264,12 +266,12 @@ TEST_CASE("Debug structure contains all expected fields", "[AlgorithmWeights][de
 
     SECTION("Config values are populated")
     {
-        REQUIRE(debug.euclideanFadeStart == 0.3f);
-        REQUIRE(debug.euclideanFadeEnd == 0.7f);
-        REQUIRE(debug.syncopationCenter == 0.5f);
-        REQUIRE(debug.syncopationWidth == 0.3f);
-        REQUIRE(debug.randomFadeStart == 0.5f);
-        REQUIRE(debug.randomFadeEnd == 0.9f);
+        REQUIRE(debug.euclideanFadeStart == kEuclideanFadeStart);
+        REQUIRE(debug.euclideanFadeEnd == kEuclideanFadeEnd);
+        REQUIRE(debug.syncopationCenter == kSyncopationCenter);
+        REQUIRE(debug.syncopationWidth == kSyncopationWidth);
+        REQUIRE(debug.randomFadeStart == kRandomFadeStart);
+        REQUIRE(debug.randomFadeEnd == kRandomFadeEnd);
     }
 
     SECTION("Raw weights are computed")

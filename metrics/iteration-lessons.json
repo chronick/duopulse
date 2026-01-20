@@ -3,6 +3,42 @@
   "generated_at": "2026-01-19T00:30:00.000Z",
   "lessons": [
     {
+      "iteration_id": "2026-01-19-003",
+      "date": "2026-01-20",
+      "goal": "Improve regularity in stable zone",
+      "lever_attempted": "kAnchorKMin",
+      "change": "4 → 3 (-25%)",
+      "result": "FAILED",
+      "prediction_accuracy": 0,
+      "target_metric_delta": "-1.2% (predicted +3-8%)",
+      "critical_error": "Flawed hypothesis: sparser ≠ more regular",
+      "what_went_wrong": "Hypothesis assumed sparser anchor patterns (fewer hits) would improve regularity. Reality: regularity measures gap uniformity, not sparseness. euclidean(16,4) has even 4-step gaps; euclidean(16,3) has uneven 5,5,6-step gaps.",
+      "key_insight": "Regularity requires uniform gap spacing, not fewer hits. euclidean(n,k) where n/k is an integer produces most regular patterns. 16/4=4 is better than 16/3=5.33.",
+      "regularity_theory": {
+        "definition": "Gap uniformity between hits, not pattern sparseness",
+        "optimal_k_values": "k values where n/k is an integer (for n=16: k=1,2,4,8,16)",
+        "why_4_is_good": "euclidean(16,4) = gaps of [4,4,4,4] = perfectly uniform",
+        "why_3_is_worse": "euclidean(16,3) = gaps of [5,5,6] or similar = non-uniform"
+      },
+      "recommended_retry": {
+        "approach": "Investigate root cause of low stable zone regularity",
+        "questions": [
+          "Why is regularity 0.56 when euclidean(16,4) should be ~1.0?",
+          "Is SHAPE varying within 'stable zone' test patterns?",
+          "Are shimmer/aux patterns reducing overall regularity?"
+        ],
+        "confidence": "N/A (requires investigation, not lever change)"
+      },
+      "side_effects_discovered": {
+        "voiceSeparation": "+4.8% (unexpected improvement)",
+        "reason": "Sparser anchor created more gaps for shimmer to fill"
+      },
+      "docs": {
+        "estimate": "docs/design/iterations/estimate-2026-01-19-003.md",
+        "full_log": "docs/design/iterations/2026-01-19-003.md"
+      }
+    },
+    {
       "iteration_id": "2026-01-19-002",
       "date": "2026-01-19",
       "goal": "Improve regularity in stable zone",
@@ -63,6 +99,18 @@
     }
   ],
   "patterns": {
+    "regularity_misconception": {
+      "description": "Confusing pattern sparseness with regularity (gap uniformity)",
+      "examples": [
+        "2026-01-19-003: Assumed fewer hits = more regular"
+      ],
+      "prevention": "Remember: regularity = uniform gaps, not fewer hits",
+      "checklist": [
+        "Does changing this lever affect gap uniformity or hit count?",
+        "For euclidean, check if n/k produces integer (uniform gaps)",
+        "Test specific patterns to verify gap uniformity effect"
+      ]
+    },
     "zone_vs_parameter_confusion": {
       "description": "Attempting to improve a zone-specific metric with a lever that operates in a different parameter domain",
       "examples": [
