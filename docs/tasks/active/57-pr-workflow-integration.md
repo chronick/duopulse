@@ -2,14 +2,15 @@
 id: 57
 slug: pr-workflow-integration
 title: "PR Workflow Integration for Claude Feedback"
-status: pending
+status: active
 created_date: 2026-01-18
-updated_date: 2026-01-18
+updated_date: 2026-01-19
 branch: feature/pr-workflow-integration
+completion_percentage: 65
 spec_refs:
   - "docs/SDD_WORKFLOW.md"
 depends_on:
-  - 55  # Iteration command system
+  - 55  # Iteration command system (completed)
 ---
 
 # Task 57: PR Workflow Integration for Claude Feedback
@@ -62,10 +63,10 @@ Enable full PR workflow integration where Claude can receive feedback via PR com
 - [ ] Add PR label-based workflow (improvement/tradeoff/retry)
 
 ### PR Type Detection
-- [ ] Add PR template for task PRs (`.github/PULL_REQUEST_TEMPLATE/task.md`)
-- [ ] Add PR template for iteration PRs (`.github/PULL_REQUEST_TEMPLATE/iteration.md`)
-- [ ] Detect PR type from labels or template usage
-- [ ] Display appropriate workflow guidance in PR description
+- [x] Add PR template for task PRs (`.github/PULL_REQUEST_TEMPLATE/task.md`)
+- [x] Add PR template for iteration PRs (`.github/PULL_REQUEST_TEMPLATE/iteration.md`)
+- [ ] Detect PR type from labels or template usage (requires claude.yml implementation)
+- [x] Display appropriate workflow guidance in PR description (templates include guidance)
 
 ### Feedback Handling
 - [ ] Parse user feedback comments for actionable items
@@ -117,27 +118,36 @@ Enable full PR workflow integration where Claude can receive feedback via PR com
 
 ## Acceptance Criteria
 
-- [ ] Claude responds to @mentions on PRs within 2 minutes
-- [ ] Task PRs show task checklist in description
-- [ ] Iteration PRs show metric diff table
-- [ ] User feedback triggers appropriate responses
-- [ ] Conversation history maintained in PR
-- [ ] PR type correctly detected from template/labels
-- [ ] Iteration PRs can spawn follow-up iterations
-- [ ] All existing tests pass
+**Phase 2 (Artifacts) - ✅ COMPLETED**:
+- [x] PR templates created (task.md, iteration.md)
+- [x] Task PRs show task checklist in description (via template)
+- [x] Iteration PRs show metric diff table (via template)
+- [x] Claude prompts created for PR interactions
+- [x] PR commands documented and specified
+
+**Phase 3 (Implementation) - ⏳ REMAINING**:
+- [ ] Claude responds to @mentions on PRs within 2 minutes (needs claude.yml)
+- [ ] User feedback triggers appropriate responses (needs claude.yml)
+- [ ] Conversation history maintained in PR (GitHub native)
+- [ ] PR type correctly detected from template/labels (needs claude.yml)
+- [ ] Iteration PRs can spawn follow-up iterations (needs iterate-suggest.yml)
+- [ ] All existing tests pass (after implementation)
 
 ## Implementation Notes
 
 ### Files to Create
 
 Templates:
-- `.github/PULL_REQUEST_TEMPLATE/task.md`
-- `.github/PULL_REQUEST_TEMPLATE/iteration.md`
+- [x] `.github/PULL_REQUEST_TEMPLATE/task.md`
+- [x] `.github/PULL_REQUEST_TEMPLATE/iteration.md`
 
 Prompts:
-- `.claude/prompts/pr-respond.md` - Handle PR comments
-- `.claude/prompts/pr-status.md` - Report PR status
-- `.claude/prompts/pr-compare.md` - Compare metrics
+- [x] `.claude/prompts/pr-respond.md` - Handle PR comments
+- [x] `.claude/prompts/pr-status.md` - Report PR status
+- [x] `.claude/prompts/pr-compare.md` - Compare metrics
+
+GitHub Actions:
+- [ ] `.github/workflows/iterate-suggest.yml` - Auto-suggest next iteration on merge
 
 ### Files to Modify
 
@@ -263,24 +273,51 @@ Claude: Creating commit with option A changes...
 
 ## Progress Log (2026-01-19)
 
-### Completed
+### Completed (2026-01-19)
+
+**Phase 1: Specification & Design**
 - ✅ Updated `/iterate` command with full CI/CD loop workflow
 - ✅ Added git hygiene confirmation (feature branches, structured commits)
 - ✅ Implemented ALWAYS-CREATE-PR policy (success/tradeoff/failure)
 - ✅ Added regression tradeoff policy with acceptable scenarios
-- ✅ Integrated design-critic agent at strategic points:
-  - After estimate phase (optional, recommended for low confidence)
-  - After failed iterations (mandatory for post-mortem)
+- ✅ Integrated design-critic agent at strategic points
 - ✅ Documented PR commands (@claude /status, /critique, /retry, etc.)
 - ✅ Added continuous improvement loop vision (PR merge → suggest next)
-- ✅ Updated Task 57 with iteration enhancements
 
-### Remaining
-- ⏳ Implement GitHub Action for iteration suggestion on PR merge
-- ⏳ Implement PR command handlers in claude.yml
-- ⏳ Create PR templates (iteration.md, task.md)
+**Phase 2: Artifacts Creation**
+- ✅ Created PR template for task PRs (`.github/PULL_REQUEST_TEMPLATE/task.md`)
+- ✅ Created PR template for iteration PRs (`.github/PULL_REQUEST_TEMPLATE/iteration.md`)
+- ✅ Created pr-respond.md prompt (handles PR comments and commands)
+- ✅ Created pr-status.md prompt (reports PR status for task/iteration PRs)
+- ✅ Created pr-compare.md prompt (detailed metric comparison)
+- ✅ Updated Task 57 with progress tracking
+
+### Remaining (Phase 3: GitHub Actions Implementation)
+
+**Critical Path**:
+- ⏳ Create `.github/workflows/iterate-suggest.yml`:
+  - Trigger on PR merge to main with "iteration" label
+  - Update metrics/baseline.json
+  - Post issue suggesting next iteration goal
+  - Optional: Auto-trigger `/iterate auto`
+
+**Enhanced PR Handling**:
+- ⏳ Update `claude.yml` for PR command handling:
+  - Parse commands: /status, /critique, /explain, /retry, /compare, /tradeoff
+  - Load appropriate prompt (pr-respond, pr-status, pr-compare)
+  - Invoke design-critic for /critique command
+  - Post response as PR comment
+
+**Automation**:
 - ⏳ Add PR label-based automation (improvement/tradeoff/retry)
+- ⏳ Auto-close failed iteration PRs with analysis
+- ⏳ Track prediction accuracy across iterations
+
+**Testing**:
 - ⏳ Test full workflow end-to-end
+- ⏳ Verify PR type detection
+- ⏳ Verify command parsing
+- ⏳ Verify @mention responses
 
 ### Key Design Decisions
 
@@ -307,3 +344,27 @@ Claude: Creating commit with option A changes...
                                         ↓
                               [label: retry] → [close, log, suggest retry]
 ```
+
+## Current Status Summary
+
+**Task is 65% complete**:
+
+✅ **DONE** (Phase 1 & 2):
+- Specification complete
+- `/iterate` command fully documented
+- PR templates created and ready to use
+- Claude prompts created and ready for integration
+- Design decisions documented
+
+⏳ **TODO** (Phase 3):
+- GitHub Actions implementation (`iterate-suggest.yml`)
+- `claude.yml` updates for PR command handling
+- End-to-end testing
+
+**Next Steps**:
+1. Implement `iterate-suggest.yml` workflow
+2. Update `claude.yml` to parse PR commands and invoke prompts
+3. Test with a real iteration PR
+4. Mark task complete
+
+**Estimated Remaining Effort**: 2-3 hours (GitHub Actions implementation)
