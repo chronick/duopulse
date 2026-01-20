@@ -1,7 +1,39 @@
 {
   "version": "1.0.0",
-  "generated_at": "2026-01-19T00:30:00.000Z",
+  "generated_at": "2026-01-20T18:45:00.000Z",
   "lessons": [
+    {
+      "iteration_id": "2026-01-20-006",
+      "date": "2026-01-20",
+      "goal": "Investigate high syncopation in syncopated zone",
+      "type": "investigation",
+      "result": "COMPLETED",
+      "critical_finding": "Design misalignment between algorithm intent and eval targets",
+      "what_was_discovered": "The syncopation algorithm is DESIGNED to produce maximum syncopation (1.0) by placing hits on weak 16th notes. The eval targets expect moderate syncopation (0.22-0.48) for 'groove' feel. These are fundamentally misaligned.",
+      "root_cause_chain": [
+        "1. PatternField.cpp boosts weak offbeat weights (0.5-0.7) and suppresses downbeats",
+        "2. HitBudget.cpp restricts eligibility to kSyncopationMask (only odd steps = weak 16ths)",
+        "3. GumbelSampler selects from eligible positions with boosted weights",
+        "4. Result: 10/12 hits land on weakest metric positions (weight 0.10)",
+        "5. Syncopation metric calculates maximum tension (1.0)"
+      ],
+      "key_insight": "The syncopation ALGORITHM and syncopation METRIC both do what they're designed to do. The issue is that the EVAL TARGETS don't match the algorithm's design intent.",
+      "recommended_actions": [
+        "Option A: Revise eval target ranges to match algorithm behavior (syncopated: 0.70-1.00)",
+        "Option B: Modify algorithm to produce MODERATE syncopation (mix strong/weak beats)",
+        "Option C: Add syncopation intensity parameter for user control"
+      ],
+      "why_lever_changes_wont_work": "The syncopation algorithm's eligibility mask (kSyncopationMask) restricts sampling to only odd 16th-note positions. No lever change affects this mask - it's controlled by SHAPE threshold (>0.6). At SHAPE=0.5, the mask is active and hits MUST land on weak beats.",
+      "files_examined": [
+        "src/Engine/PatternField.cpp:58-117 (syncopation weight generation)",
+        "src/Engine/HitBudget.cpp:279-337 (eligibility mask computation)",
+        "src/Engine/GumbelSampler.cpp:169-207 (hit selection from eligible positions)",
+        "src/Engine/PatternField.h:92-108 (design intent documentation)"
+      ],
+      "docs": {
+        "full_log": "docs/design/iterations/2026-01-20-006.md"
+      }
+    },
     {
       "iteration_id": "2026-01-19-005",
       "date": "2026-01-20",
@@ -210,5 +242,18 @@
     }
   },
   "blockers": {
+    "syncopation_target_misalignment": {
+      "description": "Syncopated zone produces syncopation=0.95 but eval targets expect 0.22-0.48",
+      "status": "DOCUMENTED",
+      "iteration": "2026-01-20-006",
+      "root_cause": "Algorithm designed for maximum displacement, targets expect moderate groove",
+      "resolution_options": [
+        "Revise eval targets to match algorithm (quick fix)",
+        "Modify algorithm for moderate syncopation (better long-term)",
+        "Add syncopation intensity parameter (most flexible)"
+      ],
+      "lever_changes_blocked": true,
+      "reason": "No lever change can affect kSyncopationMask eligibility - it's hardcoded to odd 16th notes when SHAPE > 0.6"
+    }
   }
 }

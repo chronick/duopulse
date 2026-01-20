@@ -40,6 +40,10 @@ constexpr uint64_t kOffbeatMask = 0x4444444444444444ULL;
 /// Syncopated positions: "e" and "a" of beat (steps 1,3,5,7,9,11,13,15,17,19,21,23,25,27,29,31)
 constexpr uint64_t kSyncopationMask = 0xAAAAAAAAAAAAAAAAULL;
 
+/// Anticipation positions only: just before each beat (steps 3,7,11,15,19,23,27,31,...)
+/// These create forward motion without excessive syncopation
+constexpr uint64_t kAnticipationMask = 0x8888888888888888ULL;
+
 // =============================================================================
 // BarBudget Structure
 // =============================================================================

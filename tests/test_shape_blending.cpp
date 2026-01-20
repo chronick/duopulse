@@ -133,19 +133,23 @@ TEST_CASE("GenerateSyncopationPattern suppresses downbeats", "[shape][syncopatio
 
     GenerateSyncopationPattern(1.0f, seed, 16, weights);
 
-    SECTION("Downbeat (step 0) is suppressed to 50-70%")
+    SECTION("Downbeat (step 0) is strong for moderate groove")
     {
-        // With energy=1.0 and baseScale=1.0, downbeat should be 0.5-0.7
-        REQUIRE(weights[0] >= 0.5f);
-        REQUIRE(weights[0] <= 0.75f);  // Allow small margin
+        // With energy=1.0 and baseScale=1.0, downbeat should be 0.85-0.95
+        // (minimal suppression for moderate syncopation)
+        REQUIRE(weights[0] >= 0.80f);
+        REQUIRE(weights[0] <= 1.0f);
     }
 
-    SECTION("Anticipation positions are boosted")
+    SECTION("Anticipation positions have moderate weight")
     {
         // Step 15 (before step 0 wrap) and step 3 (before step 4)
-        // should have boosted weights
-        REQUIRE(weights[15] >= 0.6f);
-        REQUIRE(weights[3] >= 0.6f);
+        // should have moderate weights (0.40-0.60) to allow ~40% selection
+        // This targets syncopation metric 0.22-0.48
+        REQUIRE(weights[15] >= 0.35f);
+        REQUIRE(weights[15] <= 0.65f);
+        REQUIRE(weights[3] >= 0.35f);
+        REQUIRE(weights[3] <= 0.65f);
     }
 
     SECTION("Different seeds produce different patterns")
@@ -285,15 +289,18 @@ TEST_CASE("ComputeShapeBlendedWeights zone transitions", "[shape][blending]")
         REQUIRE(midIsBetween >= patternLength * 0.8);
     }
 
-    SECTION("Zone 2a (0.32 - 0.48) produces syncopation pattern")
+    SECTION("Zone 2a (0.32 - 0.48) produces moderate syncopation pattern")
     {
         ComputeShapeBlendedWeights(0.40f, energy, seed, patternLength, weights);
 
-        // Downbeat should be suppressed (50-70% of normal)
-        REQUIRE(weights[0] < 0.85f);  // Not as strong as stable
+        // Downbeat should remain strong for moderate groove
+        // With energy=0.7, baseScale=0.82, raw 0.85-0.95 -> 0.70-0.78
+        REQUIRE(weights[0] >= 0.65f);
+        REQUIRE(weights[0] <= 0.90f);
 
-        // Anticipation positions should be boosted
-        REQUIRE(weights[15] > weights[2]);  // Step before downbeat > random 8th
+        // On-beat positions (8th notes) should be stronger than offbeats
+        // This ensures moderate syncopation, not maximum displacement
+        REQUIRE(weights[2] > weights[15]);  // 8th note > anticipation
     }
 
     SECTION("Zone 3 (0.72 - 1.0) produces wild pattern")

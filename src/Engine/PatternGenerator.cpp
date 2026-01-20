@@ -160,16 +160,18 @@ void GeneratePattern(const PatternParams& params, PatternResult& result)
                         params.genre, params.patternLength);
 
     // V5 Task 44: Apply seed-based rotation for anchor variation (AFTER guard rails)
-    // Skip rotation in stable zone (SHAPE < 0.3) to preserve zone-appropriate positions
-    // and in MINIMAL zone to preserve eligibility constraints
-    bool shouldRotate = params.shape >= 0.3f &&  // not stable zone by SHAPE
-                        params.shape < 0.7f &&   // not wild zone
+    // Rotation ONLY applies in WILD zone where syncopation is expected to be high
+    // Syncopated zone uses weight-based selection instead (eligibility includes odd positions)
+    bool shouldRotate = params.shape >= 0.7f &&   // wild zone only
                         zone != EnergyZone::MINIMAL;  // not MINIMAL by ENERGY
     if (shouldRotate) {
-        int maxRotation = std::max(1, params.patternLength / 4);
+        // Wild zone: use rotation for chaotic displacement
+        int maxRotation = 4;
         int rotation = static_cast<int>(HashToFloat(params.seed, 2000) * maxRotation);
-        result.anchorMask = RotateWithPreserve(result.anchorMask, rotation,
-                                                params.patternLength, 0);
+        if (rotation > 0) {
+            result.anchorMask = RotateWithPreserve(result.anchorMask, rotation,
+                                                    params.patternLength, 0);
+        }
     }
 
     // Generate aux hits
