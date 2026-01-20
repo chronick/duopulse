@@ -58,8 +58,8 @@
 | 54 | fill-gates-evals | Fill Gate Evaluation in Pentagon Metrics | completed | 2026-01-18 | 2026-01-18 | completed/54-fill-gates-evals.md |
 | 55 | iterate-command | Iteration Command System for Hill-Climbing | completed | 2026-01-18 | 2026-01-18 | completed/55-iterate-command.md |
 | 56 | weight-based-blending | Weight-Based Algorithm Blending System | completed | 2026-01-18 | 2026-01-18 | completed/56-weight-based-blending.md |
-| 57 | pr-workflow-integration | PR Workflow Integration for Claude Feedback | pending | 2026-01-18 | 2026-01-18 | active/57-pr-workflow-integration.md |
-| 58 | website-iteration-timeline | Website Iteration Timeline and Progress Tracking | pending | 2026-01-18 | 2026-01-18 | active/58-website-iteration-timeline.md |
+| 57 | pr-workflow-integration | PR Workflow Integration for Claude Feedback | active | 2026-01-18 | 2026-01-19 | active/57-pr-workflow-integration.md |
+| 58 | website-iteration-timeline | Website Iteration Timeline and Progress Tracking | completed | 2026-01-18 | 2026-01-19 | completed/58-website-iteration-timeline.md |
 | 59 | algorithm-weight-config | Algorithm Weight Configuration System | completed | 2026-01-18 | 2026-01-18 | completed/59-algorithm-weight-config.md |
 | 60 | audio-preview-player | Audio Preview Player for Pattern Evaluation | completed | 2026-01-18 | 2026-01-18 | completed/60-audio-preview-player.md |
 | 61 | regression-detection | Full Regression Detection + Rollback | completed | 2026-01-18 | 2026-01-18 | completed/61-regression-detection.md |

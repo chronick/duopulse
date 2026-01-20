@@ -2,8 +2,8 @@
 
 **Target Platform**: Daisy Patch.init() (Electro-Smith)
 **Version**: 5.0
-**Status**: Complete
-**Last Updated**: 2026-01-06
+**Status**: Legacy (see [00-index.md](00-index.md) for current modular spec)
+**Last Updated**: 2026-01-19
 
 ### Pending Changes (Backlog)
 
@@ -19,6 +19,9 @@
 
 | Task | Date | Changes |
 |------|------|---------|
+| **Task 66** | 2026-01-18 | Runtime zone threshold configuration for PatternField |
+| **Task 56** | 2026-01-18 | Weight-based algorithm blending system |
+| **Task 53** | 2026-01-18 | Grid expansion to 64 steps with flam resolution |
 | **Task 45** | 2026-01-08 | Pattern generator extraction (shared firmware/viz module) |
 | **Task 44** | 2026-01-07 | Anchor seed variation fix |
 | **Task 43** | 2026-01-07 | Shimmer seed variation fix |
