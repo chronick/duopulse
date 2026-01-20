@@ -36,12 +36,14 @@ const METRIC_WEIGHTS_64 = [
 ];
 
 // Pentagon metric definitions (matching Python PENTAGON_METRICS)
+// Target ranges aligned with spec design intent (06-shape.md, 08-complement.md)
 const PENTAGON_METRICS = {
   syncopation: {
     short: 'Sync',
     name: 'Syncopation',
-    description: 'Syncopation creates groove and forward motion. Too little feels mechanical; too much loses the pulse.',
-    targetByZone: { stable: '0.00-0.22', syncopated: '0.22-0.48', wild: '0.42-0.75' },
+    // Spec: Syncopated zone (30-70%) designed for "funk, displaced, tension" - HIGH syncopation
+    description: 'Syncopation creates groove and forward motion. Syncopated zone is designed for maximum displacement.',
+    targetByZone: { stable: '0.00-0.20', syncopated: '0.70-1.00', wild: '0.60-1.00' },
   },
   density: {
     short: 'Dens',
@@ -58,8 +60,9 @@ const PENTAGON_METRICS = {
   voiceSeparation: {
     short: 'VoiceSep',
     name: 'Voice Separation',
-    description: 'Separation affects clarity vs. power. High DRIFT should increase separation.',
-    targetByZone: { stable: '0.62-0.88', syncopated: '0.52-0.78', wild: '0.32-0.68' },
+    // Spec: COMPLEMENT relationship fills gaps, preventing overlap by design - HIGH separation expected
+    description: 'Separation measures voice independence. COMPLEMENT gap-filling creates high separation by design.',
+    targetByZone: { stable: '0.75-0.95', syncopated: '0.70-0.95', wild: '0.65-0.95' },
   },
   regularity: {
     short: 'Reg',

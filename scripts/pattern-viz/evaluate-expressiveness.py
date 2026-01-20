@@ -328,15 +328,22 @@ def compute_regularity(hits: list[bool], pattern_length: int = 32) -> float:
 
 
 def score_syncopation(raw: float, shape: float) -> float:
-    """Score syncopation relative to SHAPE zone expectation."""
-    # Tighter ranges for more discriminating evaluation
-    # Stable: 0.00-0.22, Syncopated: 0.22-0.48, Wild: 0.42-0.75
+    """Score syncopation relative to SHAPE zone expectation.
+
+    Spec alignment (06-shape.md):
+    - Stable zone: Euclidean patterns with minimal metric displacement
+    - Syncopated zone: "Funk, displaced, tension" - designed for HIGH syncopation
+    - Wild zone: High syncopation with chaos/randomness
+    """
     if shape < 0.3:
-        target_center, target_width = 0.11, 0.14  # center=0.11, range=0.00-0.22
+        # Stable: euclidean patterns, minimal displacement (range 0.00-0.20)
+        target_center, target_width = 0.10, 0.12
     elif shape < 0.7:
-        target_center, target_width = 0.35, 0.16  # center=0.35, range=0.22-0.48
+        # Syncopated: maximum displacement by design (range 0.70-1.00)
+        target_center, target_width = 0.85, 0.18
     else:
-        target_center, target_width = 0.58, 0.20  # center=0.58, range=0.42-0.75
+        # Wild: high displacement with chaos (range 0.60-1.00)
+        target_center, target_width = 0.80, 0.24
 
     distance = abs(raw - target_center)
     return max(0.0, 1.0 - (distance / target_width) ** 2)
@@ -377,14 +384,22 @@ def score_velocity_range(raw: float, accent: float) -> float:
 
 
 def score_voice_separation(raw: float, shape: float) -> float:
-    """Score voice separation."""
-    # Tighter ranges: Stable: 0.62-0.88, Syncopated: 0.52-0.78, Wild: 0.32-0.68
+    """Score voice separation.
+
+    Spec alignment (08-complement.md):
+    - COMPLEMENT relationship: "Voice 2 (shimmer) fills gaps in Voice 1 (anchor)"
+    - Gap-filling by design prevents overlap, so high separation is expected
+    - Wild zone may have slightly lower separation due to chaotic patterns
+    """
     if shape < 0.3:
-        target_center, width = 0.75, 0.16  # center=0.75, range=0.62-0.88
+        # Stable: clean gap-filling, high separation (range 0.75-0.95)
+        target_center, width = 0.85, 0.12
     elif shape < 0.7:
-        target_center, width = 0.65, 0.16  # center=0.65, range=0.52-0.78
+        # Syncopated: still gap-filling, high separation (range 0.70-0.95)
+        target_center, width = 0.825, 0.15
     else:
-        target_center, width = 0.50, 0.22  # center=0.50, range=0.32-0.68
+        # Wild: chaos may cause slight reduction (range 0.65-0.95)
+        target_center, width = 0.80, 0.18
 
     distance = abs(raw - target_center)
     return max(0.0, 1.0 - (distance / width) ** 2)
