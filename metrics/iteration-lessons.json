@@ -20,21 +20,33 @@
         "workaround": "Manually delete AlgorithmWeights.o to force rebuild",
         "fix_needed": "Add header dependencies to Makefile",
         "status": "FIXED",
-        "fix_commit": "c9b9561"
+        "fix_commit": "4d3983a"
       },
-      "deeper_bug_discovered": {
-        "description": "Hit count suppression - patterns have far fewer hits than euclidean k values",
-        "example": "At ENERGY=0.1, k=4 but only 2 anchor hits appear",
-        "impact": "Sparse patterns with hits on weak beats = high syncopation regardless of algorithm",
-        "investigation_needed": "Why does k=4 produce only 2 hits?"
+      "misconception_resolved": {
+        "description": "Euclidean k vs HitBudget are separate concepts",
+        "initial_observation": "At ENERGY=0.1, k=4 but only 2 anchor hits appear",
+        "resolution": "NOT A BUG - HitBudget computes actual hits (2 at MINIMAL zone), k is just an algorithm parameter",
+        "key_insight": "HitBudget.ComputeAnchorBudget() determines actual hit count, not euclidean k value"
       },
       "recommended_retry": {
-        "approach": "Don't retry syncopation tuning until hit count bug is fixed",
-        "investigation_tasks": [
-          "Trace pattern generation from k value to final output",
-          "Check hit budget constraints at low ENERGY",
-          "Verify euclidean algorithm is actually producing k hits"
+        "approach": "Investigate WHY syncopation = 1.0 when eligibility already constrains to strong beats",
+        "note": "MINIMAL zone eligibility already uses kDownbeatMask | kQuarterNoteMask (strong beats)",
+        "investigation_needed": [
+          "Check FLAVOR parameter in test fixtures (if > 0.6, adds syncopation mask)",
+          "Check if syncopation is calculated on multi-voice combined pattern",
+          "Verify test fixture ENERGY/SHAPE values match expected zone",
+          "Add diagnostic trace for single pattern from generation through metric"
+        ],
+        "alternative_approaches": [
+          "Increase MINIMAL zone hit budgets (more hits → more statistical coverage of strong beats)",
+          "Revise syncopation target range if 0.00-0.22 is unachievable for sparse patterns"
         ]
+      },
+      "zone_terminology_note": {
+        "description": "ENERGY zones and SHAPE zones are INDEPENDENT systems",
+        "ENERGY_zones": "MINIMAL (0-0.20), GROOVE (0.20-0.50), BUILD (0.50-0.75), PEAK (0.75-1.0)",
+        "SHAPE_zones": "stable (0.0-0.3), syncopated (0.3-0.7), wild (0.7-1.0) - used for metric TARGETS",
+        "key_insight": "A pattern at ENERGY=0.1 (MINIMAL) can have any SHAPE value. Metric targets are SHAPE-zone-based, eligibility masks are ENERGY-zone-based."
       },
       "docs": {
         "estimate": "docs/design/iterations/estimate-2026-01-19-005.md",
@@ -183,27 +195,20 @@
         "Spot-check a single pattern before running full eval"
       ]
     },
-    "hit_count_suppression": {
-      "description": "Patterns have fewer hits than euclidean k values suggest",
+    "euclidean_k_vs_hit_budget": {
+      "description": "Debug shows euclidean k value, but actual hits come from HitBudget",
       "examples": [
-        "2026-01-19-005: k=4 but only 2 anchor hits appeared"
+        "2026-01-19-005: debug showed k=4 but only 2 hits - HitBudget was 2, not a bug"
       ],
-      "status": "BUG - investigation needed",
-      "impact": "Blocks all metric improvements until fixed",
-      "investigation": [
-        "Trace GenerationPipeline hit output",
-        "Check HitBudget at low ENERGY",
-        "Verify PatternField isn't suppressing hits"
+      "status": "RESOLVED - understanding issue",
+      "impact": "Misleading debug output can cause confusion",
+      "prevention": [
+        "Understand that euclidean k is algorithm parameter, not hit count",
+        "Check HitBudget.ComputeAnchorBudget() for actual target hits",
+        "Sparse patterns at MINIMAL zone are by design"
       ]
     }
   },
   "blockers": {
-    "hit_count_suppression": {
-      "severity": "HIGH",
-      "description": "Patterns have far fewer hits than expected at low ENERGY",
-      "affected_metrics": ["syncopation", "density", "regularity"],
-      "blocking_iterations": true,
-      "discovered_in": "2026-01-19-005"
-    }
   }
 }
