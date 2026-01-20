@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DuoPulse - Iteration History</title>
+  <link rel="stylesheet" href="../css/app.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <link rel="stylesheet" href="../css/iterations.css">
+</head>
+<body>
+  <nav class="main-nav">
+    <div class="nav-brand">
+      <h1><a href="../index.html">DuoPulse</a></h1>
+      <span class="nav-subtitle">Iteration History</span>
+    </div>
+    <div class="nav-links">
+      <a href="../index.html">Dashboard</a>
+      <a href="../index.html#overview">Overview</a>
+      <a href="index.html" class="active">Iterations</a>
+    </div>
+  </nav>
+
+  <main class="iterations-page">
+    <header class="page-header">
+      <h1>Iteration History</h1>
+      <p class="subtitle">Hill-climbing iterations and algorithm improvements</p>
+    </header>
+
+    <!-- Summary Statistics -->
+    <section class="iteration-summary">
+      <div class="stat-card">
+        <div class="stat-value" id="stat-total">0</div>
+        <div class="stat-label">Total Iterations</div>
+      </div>
+      <div class="stat-card success">
+        <div class="stat-value" id="stat-success">0</div>
+        <div class="stat-label">Successful</div>
+      </div>
+      <div class="stat-card failed">
+        <div class="stat-value" id="stat-failed">0</div>
+        <div class="stat-label">Failed</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-rate">0%</div>
+        <div class="stat-label">Success Rate</div>
+      </div>
+    </section>
+
+    <!-- Timeline Chart -->
+    <section class="timeline-section">
+      <h2>Metrics Progress Over Time</h2>
+      <p class="section-description">Overall alignment score from baseline tag history</p>
+      <div id="timeline-chart-container">
+        <div id="timeline-chart"></div>
+      </div>
+    </section>
+
+    <!-- Filters and Search -->
+    <section class="iteration-controls">
+      <div class="search-box">
+        <input type="search" id="search-iterations" placeholder="Search iterations..." />
+      </div>
+      <div class="filters">
+        <label>
+          Status:
+          <select id="filter-status">
+            <option value="all">All</option>
+            <option value="success">Success</option>
+            <option value="failed">Failed</option>
+            <option value="pending">Pending</option>
+          </select>
+        </label>
+        <label>
+          Sort:
+          <select id="sort-iterations">
+            <option value="newest">Newest First</option>
+            <option value="oldest">Oldest First</option>
+            <option value="impact">Highest Impact</option>
+          </select>
+        </label>
+      </div>
+    </section>
+
+    <!-- Iteration Cards -->
+    <section class="iteration-cards">
+      <div id="iterations-list">
+        <div class="no-iterations">
+          <p>No iterations logged yet.</p>
+          <p class="hint">Run <code>/iterate "goal"</code> to start hill-climbing.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="main-footer">
+    <p>
+      Generated with <a href="https://claude.ai/code" target="_blank">Claude Code</a>
+      | <a href="https://github.com/chronick/duopulse" target="_blank">GitHub</a>
+    </p>
+  </footer>
+
+  <script type="module" src="../js/iterations.js"></script>
+</body>
+</html>
