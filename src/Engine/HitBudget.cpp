@@ -264,8 +264,9 @@ void ComputeBarBudget(float energy,
     outBudget.auxHits     = std::min(outBudget.auxHits, clampedLength);
 
     // Compute eligibility masks based on zone
-    // Note: flavor=0.0 for evaluation (firmware handles flavor separately via CV)
-    const float flavor = 0.0f;
+    // Derive flavor from SHAPE: high SHAPE allows syncopation positions
+    // This ensures evaluation patterns have position eligibility matching algorithm blending
+    const float flavor = shape;
     outBudget.anchorEligibility  = ComputeAnchorEligibility(energy, flavor, zone, clampedLength);
     outBudget.shimmerEligibility = ComputeShimmerEligibility(energy, flavor, zone, clampedLength);
     outBudget.auxEligibility     = ComputeAuxEligibility(energy, flavor, zone, clampedLength);
