@@ -1,16 +1,16 @@
 {
   "version": "1.0.0",
-  "generated_at": "2026-01-20T13:28:34.563Z",
-  "commit": "26804ba",
-  "tag": "baseline-v1.0.5",
+  "generated_at": "2026-01-20T14:04:13.633Z",
+  "commit": "aed2394eda29be5779ce4a373b0de4e6c04497c2",
+  "tag": "baseline-v1.0.6",
   "last_good": {
-    "commit": "261b14e1452bb1fa6cab854438faf2175f9d62d2",
-    "tag": "baseline-v1.0.4",
-    "timestamp": "2026-01-20T13:18:35.966Z"
+    "commit": "26804ba",
+    "tag": "baseline-v1.0.5",
+    "timestamp": "2026-01-20T13:28:34.563Z"
   },
   "consecutive_regressions": 0,
   "metrics": {
-    "timestamp": "2026-01-20T13:28:34.563Z",
+    "timestamp": "2026-01-20T13:58:50.923Z",
     "pentagonStats": {
       "total": {
         "count": 33,
@@ -51,8 +51,8 @@
     },
     "pentagonScore": 0.4120714004299767,
     "conformance": {
-      "score": 0.7762491732326817,
-      "passCount": 5,
+      "score": 0.8459180256695904,
+      "passCount": 6,
       "totalPresets": 8,
       "presetBreakdown": [
         {
@@ -71,9 +71,9 @@
         },
         {
           "name": "Driving Techno",
-          "score": 0.28766180708943917,
-          "status": "poor",
-          "pass": false,
+          "score": 0.8450126265847083,
+          "status": "excellent",
+          "pass": true,
           "tolerance": "strict"
         },
         {
@@ -113,7 +113,7 @@
         }
       ]
     },
-    "overallAlignment": 0.5577425095510588,
+    "overallAlignment": 0.5856100505258222,
     "alignmentStatus": "FAIR",
     "totalPatterns": 33,
     "seedVariation": {
