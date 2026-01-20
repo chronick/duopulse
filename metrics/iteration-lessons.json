@@ -1,7 +1,45 @@
 {
   "version": "1.0.0",
-  "generated_at": "2026-01-20T18:45:00.000Z",
+  "generated_at": "2026-01-20T19:45:00.000Z",
   "lessons": [
+    {
+      "iteration_id": "2026-01-20-007",
+      "date": "2026-01-20",
+      "goal": "Investigate high voice separation in wild zone",
+      "type": "investigation",
+      "result": "COMPLETED",
+      "critical_finding": "Design misalignment + statistical artifact from sparse patterns",
+      "what_was_discovered": "Voice separation is high (0.92) because: 1) COMPLEMENT design places shimmer in anchor's GAPS (preventing overlap by design), 2) Sparse MINIMAL-zone patterns inflate the average (voiceSep=1.0 when 4 hits can't overlap)",
+      "root_cause_chain": [
+        "1. COMPLEMENT relationship: shimmer fills GAPS in anchor (spec section 7)",
+        "2. Gap-filling prevents overlap regardless of SHAPE or DRIFT",
+        "3. DRIFT only varies WHERE in gap, not WHETHER to overlap",
+        "4. MINIMAL zone (ENERGY=0.10) has 4 total hits → no overlap possible → voiceSep=1.0",
+        "5. Averaging across ENERGY levels inflates wild zone metric"
+      ],
+      "key_insight": "The eval targets assume wild zone should have 32-68% voice overlap for 'power', but the COMPLEMENT spec designs for gap-filling (HIGH separation). Both syncopation (006) and voice separation (007) have targets that don't match spec design intent.",
+      "why_lever_changes_wont_work": "No config lever can change the COMPLEMENT relationship. DRIFT varies placement within gaps but doesn't create overlap. Testing showed DRIFT 0→1 only changes voiceSep by 4% (0.85→0.89).",
+      "statistical_artifact": {
+        "description": "Sparse patterns at low ENERGY inflate voiceSeparation average",
+        "example": "ENERGY=0.10 + SHAPE=0.85: 4 total hits (V1:2, V2:2, Aux:0) on different steps → voiceSep=1.0",
+        "impact": "Wild zone average is 0.92, but at ENERGY>0.35 it's 0.82-0.87"
+      },
+      "recommended_actions": [
+        "Revise voiceSeparation targets to match COMPLEMENT design: stable 0.75-0.95, syncopated 0.70-0.92, wild 0.65-0.95",
+        "Consider making targets ENERGY-dependent since sparse patterns inflate metric",
+        "Combine with syncopation target revision from iteration 006"
+      ],
+      "files_examined": [
+        "tools/evals/evaluate-expressiveness.js:197-208 (voiceSeparation calculation)",
+        "tools/evals/evaluate-expressiveness.js:58-62 (target ranges)",
+        "docs/specs/main.md:434-466 (COMPLEMENT gap-filling design)",
+        "tools/evals/public/data/energy-zone-metrics.json (ENERGY=0.10 → voiceSep=1.0)"
+      ],
+      "docs": {
+        "estimate": "docs/design/iterations/estimate-2026-01-20-007.md",
+        "full_log": "docs/design/iterations/2026-01-20-007.md"
+      }
+    },
     {
       "iteration_id": "2026-01-20-006",
       "date": "2026-01-20",
@@ -239,6 +277,32 @@
         "Check HitBudget.ComputeAnchorBudget() for actual target hits",
         "Sparse patterns at MINIMAL zone are by design"
       ]
+    },
+    "sparse_pattern_statistical_artifacts": {
+      "description": "Averaging metrics across ENERGY zones can be skewed by sparse MINIMAL-zone patterns",
+      "examples": [
+        "2026-01-20-007: voiceSep=1.0 at ENERGY=0.10 because 4 hits can't overlap"
+      ],
+      "prevention": "When analyzing zone averages, check if MINIMAL zone is inflating metrics",
+      "checklist": [
+        "Does the metric depend on overlap/collision that sparse patterns prevent?",
+        "Check individual ENERGY levels, not just zone averages",
+        "Consider ENERGY-dependent targets for metrics affected by density"
+      ]
+    },
+    "eval_target_design_misalignment": {
+      "description": "Eval targets set aspirationally rather than based on algorithm capabilities",
+      "examples": [
+        "2026-01-20-006: Syncopation targets expect 0.22-0.48, algorithm produces 0.95",
+        "2026-01-20-007: VoiceSep targets expect 0.32-0.68, COMPLEMENT produces 0.92"
+      ],
+      "prevention": "Review spec design intent before accepting eval target failures",
+      "checklist": [
+        "Does the spec explain WHY the algorithm behaves this way?",
+        "Is the target based on musical assumptions that contradict the spec?",
+        "Could the target be revised rather than the algorithm?",
+        "Run investigation iteration before attempting lever changes"
+      ]
     }
   },
   "blockers": {
@@ -254,6 +318,19 @@
       ],
       "lever_changes_blocked": true,
       "reason": "No lever change can affect kSyncopationMask eligibility - it's hardcoded to odd 16th notes when SHAPE > 0.6"
+    },
+    "voice_separation_target_misalignment": {
+      "description": "Wild zone produces voiceSeparation=0.92 but eval targets expect 0.32-0.68",
+      "status": "DOCUMENTED",
+      "iteration": "2026-01-20-007",
+      "root_cause": "COMPLEMENT design places shimmer in anchor's gaps, preventing overlap by spec design",
+      "resolution_options": [
+        "Revise eval targets to match COMPLEMENT design (stable: 0.75-0.95, syncopated: 0.70-0.92, wild: 0.65-0.95)",
+        "Make targets ENERGY-dependent (sparse patterns inflate metric)",
+        "Accept high separation as a feature (clarity) not a bug"
+      ],
+      "lever_changes_blocked": true,
+      "reason": "No config lever can change COMPLEMENT gap-filling behavior. DRIFT only varies placement within gaps (4% effect)."
     }
   }
 }
