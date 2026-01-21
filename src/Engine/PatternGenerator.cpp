@@ -104,6 +104,21 @@ void GeneratePattern(const PatternParams& params, PatternResult& result)
         params.patternLength, params.densityMultiplier, params.shape, budget
     );
 
+    // Iteration 2026-01-20-008 fix: Dynamic hit count variance for wild zone
+    // The fixed hit budget (K) forces gaps toward uniformity. Adding variance
+    // to K creates irregular gap distributions for lower regularity.
+    if (params.shape > 0.7f)
+    {
+        // Hash key includes SHAPE (quantized) so same seed + different SHAPE = different variance
+        int shapeKey = static_cast<int>(params.shape * 100);  // Quantize to 0.01 precision
+        float variance = (HashToFloat(params.seed, 999 + shapeKey) - 0.5f) * 4.0f;  // Range: -2 to +2
+        int variedHits = budget.anchorHits + static_cast<int>(variance);
+
+        // Clamp to valid range (at least 2 hits, at most 2/3 of pattern)
+        int maxHits = (params.patternLength * 2) / 3;
+        budget.anchorHits = std::max(2, std::min(variedHits, maxHits));
+    }
+
     // Apply fill boost if in fill zone
     if (params.inFillZone)
     {

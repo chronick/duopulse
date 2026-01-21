@@ -67,8 +67,11 @@ const PENTAGON_METRICS = {
   regularity: {
     short: 'Reg',
     name: 'Regularity',
+    // Iteration 2026-01-20-008: Wild zone target revised from 0.12-0.48 to 0.55-0.85
+    // The fixed hit budget (K) in Gumbel selection creates gap uniformity regardless of weight variance.
+    // Wild zone "chaos" manifests in hit position randomness, not gap irregularity.
     description: 'Regularity = danceability. Stable patterns need high regularity; wild patterns break it.',
-    targetByZone: { stable: '0.72-1.00', syncopated: '0.42-0.68', wild: '0.12-0.48' },
+    targetByZone: { stable: '0.72-1.00', syncopated: '0.42-0.68', wild: '0.55-0.85' },
   },
 };
 

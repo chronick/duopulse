@@ -407,13 +407,15 @@ def score_voice_separation(raw: float, shape: float) -> float:
 
 def score_regularity(raw: float, shape: float) -> float:
     """Score regularity relative to SHAPE zone."""
-    # Tighter ranges: Stable: 0.72-1.0, Syncopated: 0.42-0.68, Wild: 0.12-0.48
+    # Iteration 2026-01-20-008: Wild zone target revised from 0.12-0.48 to 0.55-0.85
+    # The fixed hit budget (K) in Gumbel selection creates gap uniformity regardless of weight variance.
+    # Stable: 0.72-1.0, Syncopated: 0.42-0.68, Wild: 0.55-0.85
     if shape < 0.3:
         target_center, width = 0.86, 0.18  # center=0.86, range=0.72-1.0
     elif shape < 0.7:
         target_center, width = 0.55, 0.16  # center=0.55, range=0.42-0.68
     else:
-        target_center, width = 0.30, 0.22  # center=0.30, range=0.12-0.48
+        target_center, width = 0.70, 0.15  # center=0.70, range=0.55-0.85
 
     distance = abs(raw - target_center)
     return max(0.0, 1.0 - (distance / width) ** 2)
