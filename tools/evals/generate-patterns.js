@@ -47,6 +47,7 @@ function runPatternViz(params = {}) {
     `--accent=${p.accent.toFixed(2)}`,
     `--seed=${p.seed}`,
     `--length=${p.length}`,
+    '--euclidean=auto',  // Task 73: Use genre-aware euclidean for proper four-on-floor
     '--format=csv',
   ];
 

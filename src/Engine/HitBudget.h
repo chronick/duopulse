@@ -90,11 +90,54 @@ struct BarBudget
 };
 
 // =============================================================================
+// Euclidean K / HitBudget Fade System (Task 73)
+// =============================================================================
+
+/**
+ * Compute euclidean K for anchor voice from ENERGY
+ * Uses kAnchorKMin/kAnchorKMax from algorithm_config.h
+ *
+ * @param energy ENERGY parameter (0.0-1.0)
+ * @param patternLength Steps per bar
+ * @return Euclidean K value (number of evenly-spaced hits)
+ */
+int ComputeAnchorEuclideanK(float energy, int patternLength);
+
+/**
+ * Compute euclidean K for shimmer voice from ENERGY
+ *
+ * @param energy ENERGY parameter (0.0-1.0)
+ * @param patternLength Steps per bar
+ * @return Euclidean K value
+ */
+int ComputeShimmerEuclideanK(float energy, int patternLength);
+
+/**
+ * Compute effective hit count by fading between euclidean K and budget
+ * based on SHAPE parameter.
+ *
+ * At SHAPE <= 0.15: pure euclidean K (grid-locked hits)
+ * At SHAPE = 1.0: pure budget-based (density-driven)
+ *
+ * This ensures SHAPE=0 produces clean four-on-floor patterns where
+ * ENERGY scales the number of evenly-spaced hits directly.
+ *
+ * @param euclideanK Hit count from euclidean algorithm
+ * @param budgetK Hit count from density-based budget
+ * @param shape SHAPE parameter (0.0-1.0)
+ * @return Effective hit count (blended based on SHAPE)
+ */
+int ComputeEffectiveHitCount(int euclideanK, int budgetK, float shape);
+
+// =============================================================================
 // Budget Computation Functions
 // =============================================================================
 
 /**
  * Compute hit budget for anchor voice based on energy and zone
+ *
+ * At SHAPE <= 0.15: Returns euclidean K (grid-locked four-on-floor)
+ * At SHAPE > 0.15: Fades toward density-based budget (Task 73)
  *
  * @param energy ENERGY parameter (0.0-1.0)
  * @param zone Current energy zone
