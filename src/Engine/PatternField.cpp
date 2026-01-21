@@ -123,26 +123,34 @@ void GenerateWildPattern(float energy, uint32_t seed, int patternLength, float* 
     energy = std::max(0.0f, std::min(1.0f, energy));
     patternLength = std::max(1, std::min(static_cast<int>(kMaxSteps), patternLength));
 
-    // Energy affects both base level and variation range
-    float baseLevel = 0.3f + energy * 0.3f;   // 0.3-0.6 base
-    float variation = 0.3f + energy * 0.4f;   // 0.3-0.7 variation range
+    // Iteration 2026-01-20-008: Create CLUSTERED weights for irregular gaps
+    // Instead of independent random weights, use momentum so high weights cluster together.
+    // This creates hit clusters, producing small intra-cluster gaps and large inter-cluster gaps.
+    float baseLevel = 0.5f;
+    float momentum = 0.0f;
+    const float momentumDecay = 0.6f;   // How fast momentum fades
+    const float momentumStrength = 0.4f; // How much momentum affects weight
 
     for (int step = 0; step < patternLength; ++step)
     {
         // Get deterministic random value for this step
         float randomValue = HashToFloat(seed, step);
 
-        // Apply variation around base level
-        float weight = baseLevel + (randomValue - 0.5f) * variation * 2.0f;
+        // Base weight with wide variance
+        float weight = baseLevel + (randomValue - 0.5f) * 1.2f;
 
-        // Add slight structural hint: downbeats more likely
-        if (step == 0 || step == 16)
+        // Add momentum for clustering (high follows high)
+        weight += momentum * momentumStrength;
+
+        // Update momentum: decays toward the current random value
+        // If randomValue > 0.5, positive momentum builds (cluster of highs)
+        // If randomValue < 0.5, negative momentum builds (cluster of lows)
+        momentum = momentum * momentumDecay + (randomValue - 0.5f) * 0.8f;
+
+        // Minimal structural hint (only beat 1)
+        if (step == 0)
         {
-            weight += 0.15f;  // Small downbeat bias
-        }
-        else if (step % 4 == 0)
-        {
-            weight += 0.08f;  // Smaller quarter note bias
+            weight += 0.1f;
         }
 
         // Clamp to valid range
@@ -242,14 +250,18 @@ void ComputeShapeBlendedWeights(float shape, float energy,
         // Zone 3 pure: Wild with chaos injection
         GenerateWildPattern(energy, seed, patternLength, outWeights);
 
-        // Add chaos injection that increases as shape approaches 100%
-        // Chaos factor: 0 at 0.72, up to 0.15 at 1.0
-        float chaosFactor = ((shape - config.shapeCrossfade3End) / (1.0f - config.shapeCrossfade3End)) * 0.15f;
+        // Iteration 2026-01-20-008: STRONG chaos injection for irregular gaps
+        // Previous: 0.15 max chaos was too weak to affect Gumbel selection
+        // New: 0.6 max chaos ensures different SHAPE values produce different patterns
+        float chaosFactor = ((shape - config.shapeCrossfade3End) / (1.0f - config.shapeCrossfade3End)) * 0.6f;
+
+        // Use SHAPE-dependent offset so different SHAPE values get different chaos patterns
+        int shapeOffset = static_cast<int>(shape * 1000);
 
         for (int step = 0; step < patternLength; ++step)
         {
-            // Add seed-based chaos variation
-            float chaos = (HashToFloat(seed, step + 500) - 0.5f) * chaosFactor * 2.0f;
+            // Add seed+shape-based chaos variation
+            float chaos = (HashToFloat(seed, step + 500 + shapeOffset) - 0.5f) * chaosFactor * 2.0f;
             outWeights[step] = ClampWeight(outWeights[step] + chaos);
         }
     }
