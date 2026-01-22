@@ -38,26 +38,28 @@ int ComputeShimmerEuclideanK(float energy, int patternLength)
  * Compute effective hit count by fading between euclidean K and budget
  * based on SHAPE parameter.
  *
- * At SHAPE <= 0.15: pure euclidean K (grid-locked hits)
+ * At SHAPE <= 0.15: use minimum of euclideanK and budgetK (preserve baseline sparsity)
  * At SHAPE = 1.0: pure budget-based (density-driven)
  *
- * This ensures SHAPE=0 produces clean four-on-floor patterns where
- * ENERGY scales the number of evenly-spaced hits directly.
+ * Using min() at low SHAPE ensures we don't ADD hits compared to baseline,
+ * while still preferring euclidean-style placement when hit counts match.
  */
 int ComputeEffectiveHitCount(int euclideanK, int budgetK, float shape)
 {
-    // No fade until SHAPE > 0.15 (pure euclidean zone)
+    // At low SHAPE, use minimum to preserve baseline sparsity
+    // This prevents euclideanK from inflating hit count beyond budget
     if (shape <= 0.15f) {
-        return euclideanK;
+        return std::min(euclideanK, budgetK);
     }
 
     // Linear fade from 0.15 to 1.0
     float fadeProgress = (shape - 0.15f) / 0.85f;
     fadeProgress = std::min(1.0f, fadeProgress);
 
-    // Blend: low fadeProgress = more euclidean, high = more budget
+    // Blend toward budgetK
+    int baseK = std::min(euclideanK, budgetK);
     return static_cast<int>(
-        euclideanK + fadeProgress * (budgetK - euclideanK) + 0.5f
+        baseK + fadeProgress * (budgetK - baseK) + 0.5f
     );
 }
 

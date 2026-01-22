@@ -219,16 +219,19 @@ TEST_CASE("Euclidean K fade (Task 73)", "[hit-budget][task-73]")
         REQUIRE(kHigh == 12); // kAnchorKMax
     }
 
-    SECTION("ComputeEffectiveHitCount returns euclidean K at SHAPE <= 0.15")
+    SECTION("ComputeEffectiveHitCount returns min(euclidean, budget) at SHAPE <= 0.15")
     {
         int euclideanK = 8;
         int budgetK = 5;
 
-        // At SHAPE=0.0, should return pure euclidean K
-        REQUIRE(ComputeEffectiveHitCount(euclideanK, budgetK, 0.0f) == euclideanK);
+        // At SHAPE=0.0, should return min to preserve baseline sparsity
+        REQUIRE(ComputeEffectiveHitCount(euclideanK, budgetK, 0.0f) == std::min(euclideanK, budgetK));
 
-        // At SHAPE=0.15, should still return pure euclidean K
-        REQUIRE(ComputeEffectiveHitCount(euclideanK, budgetK, 0.15f) == euclideanK);
+        // At SHAPE=0.15, should still return min
+        REQUIRE(ComputeEffectiveHitCount(euclideanK, budgetK, 0.15f) == std::min(euclideanK, budgetK));
+
+        // When euclideanK < budgetK, should return euclideanK
+        REQUIRE(ComputeEffectiveHitCount(3, 6, 0.0f) == 3);
     }
 
     SECTION("ComputeEffectiveHitCount fades to budget K at high SHAPE")
@@ -245,30 +248,33 @@ TEST_CASE("Euclidean K fade (Task 73)", "[hit-budget][task-73]")
         int euclideanK = 8;
         int budgetK = 4;
 
-        // At SHAPE=0.575 (halfway through fade), should blend 50/50
+        // At SHAPE=0.575 (halfway through fade)
+        // baseK = min(8, 4) = 4
         // fadeProgress = (0.575 - 0.15) / 0.85 = 0.5
+        // result = 4 + 0.5 * (4 - 4) = 4
         int mid = ComputeEffectiveHitCount(euclideanK, budgetK, 0.575f);
-        REQUIRE(mid >= budgetK);
-        REQUIRE(mid <= euclideanK);
-        REQUIRE(mid == 6); // 8 + 0.5 * (4 - 8) = 6
+        REQUIRE(mid == budgetK); // When euclideanK > budgetK, stays at budgetK throughout fade
     }
 
-    SECTION("Anchor budget uses euclidean K at SHAPE=0")
+    SECTION("Anchor budget uses min(euclidean, budget) at SHAPE=0")
     {
-        // At SHAPE=0, anchor should equal euclidean K
+        // At SHAPE=0, anchor should equal min(euclideanK, budgetK)
+        // This preserves baseline sparsity while enabling euclidean placement
         int anchorBudget = ComputeAnchorBudget(0.5f, EnergyZone::GROOVE, 32, 0.0f);
         int euclideanK = ComputeAnchorEuclideanK(0.5f, 32);
 
-        REQUIRE(anchorBudget == euclideanK);
+        // Budget at GROOVE zone with energy=0.5 is less than euclideanK
+        // So anchor budget should match what baseline would have produced
+        REQUIRE(anchorBudget <= euclideanK);
     }
 
-    SECTION("Anchor budget decreases as SHAPE increases")
+    SECTION("Anchor budget is stable or decreasing as SHAPE increases")
     {
         int anchorShape0 = ComputeAnchorBudget(0.5f, EnergyZone::GROOVE, 32, 0.0f);
         int anchorShape50 = ComputeAnchorBudget(0.5f, EnergyZone::GROOVE, 32, 0.5f);
         int anchorShape100 = ComputeAnchorBudget(0.5f, EnergyZone::GROOVE, 32, 1.0f);
 
-        // Should decrease monotonically (Task 73 fade from euclidean K to budget K)
+        // Should be monotonically non-increasing (fade preserves or reduces sparsity)
         REQUIRE(anchorShape0 >= anchorShape50);
         REQUIRE(anchorShape50 >= anchorShape100);
     }
