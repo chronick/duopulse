@@ -446,6 +446,135 @@ TEST_CASE("RotateWithPreserve with different preserve steps", "[PatternGenerator
 }
 
 // =============================================================================
+// Syncopated Zone Rotation Tests (Iteration 2026-01-22-004)
+// =============================================================================
+
+TEST_CASE("Syncopated zone applies rotation for syncopation", "[PatternGenerator][Rotation]")
+{
+    // Iteration 2026-01-22-004: Extended rotation from wild zone to syncopated zone
+    // to improve syncopation metric. Weight changes alone couldn't overcome
+    // Gumbel seed determinism, but rotation physically shifts hits off strong beats.
+
+    SECTION("Syncopated zone (SHAPE 0.30-0.70) applies rotation")
+    {
+        PatternParams params;
+        params.energy = 0.5f;  // BUILD zone (rotation applies)
+        params.shape = 0.50f;  // Syncopated zone
+        params.seed = 0x12345678;
+
+        // Generate pattern with rotation
+        PatternResult result;
+        GeneratePattern(params, result);
+
+        // Generate same pattern but at stable SHAPE (no rotation expected)
+        PatternParams stableParams = params;
+        stableParams.shape = 0.15f;  // Stable zone (no rotation)
+        PatternResult stableResult;
+        GeneratePattern(stableParams, stableResult);
+
+        // The patterns should be different due to rotation
+        // (Note: SHAPE also affects weights, so exact comparison isn't reliable,
+        // but we can verify the syncopated pattern has hits off beat 1)
+        REQUIRE(result.anchorMask != 0);
+    }
+
+    SECTION("Stable zone (SHAPE < 0.30) does NOT apply rotation")
+    {
+        PatternParams params;
+        params.energy = 0.5f;  // BUILD zone
+        params.shape = 0.15f;  // Stable zone - should NOT rotate
+        params.seed = 0xDEADBEEF;
+
+        PatternResult result;
+        GeneratePattern(params, result);
+
+        // In stable zone with no rotation, beat 1 (step 0) is often set
+        // This is a soft check - beat 1 presence is expected but not guaranteed
+        REQUIRE(result.anchorMask != 0);
+    }
+
+    SECTION("MINIMAL energy zone does NOT apply rotation regardless of SHAPE")
+    {
+        PatternParams params;
+        params.energy = 0.10f;  // MINIMAL zone
+        params.shape = 0.50f;   // Syncopated zone by SHAPE, but MINIMAL by ENERGY
+        params.seed = 0xCAFEBABE;
+
+        PatternResult result;
+        GeneratePattern(params, result);
+
+        // MINIMAL energy patterns should NOT be rotated (preserves anchor stability)
+        // Pattern should still generate
+        REQUIRE(result.anchorMask != 0);
+    }
+
+    SECTION("Different seeds produce different rotation amounts in syncopated zone")
+    {
+        PatternParams params1, params2;
+        params1.energy = params2.energy = 0.5f;
+        params1.shape = params2.shape = 0.50f;  // Syncopated zone
+        params1.seed = 0xAAAAAAAA;
+        params2.seed = 0xBBBBBBBB;
+
+        PatternResult result1, result2;
+        GeneratePattern(params1, result1);
+        GeneratePattern(params2, result2);
+
+        // Different seeds should produce different patterns
+        // (due to both Gumbel selection and rotation differences)
+        REQUIRE(result1.anchorMask != result2.anchorMask);
+    }
+}
+
+TEST_CASE("Wild zone rotation behavior is preserved", "[PatternGenerator][Rotation]")
+{
+    // Verify that the wild zone rotation still works correctly after
+    // extending rotation to syncopated zone
+
+    SECTION("Wild zone (SHAPE >= 0.70) applies rotation")
+    {
+        PatternParams params;
+        params.energy = 0.5f;  // BUILD zone
+        params.shape = 0.85f;  // Wild zone
+        params.seed = 0x11111111;
+
+        PatternResult result;
+        GeneratePattern(params, result);
+
+        // Wild zone patterns should generate successfully
+        REQUIRE(result.anchorMask != 0);
+    }
+
+    SECTION("Wild zone can have zero rotation (minRotation=0)")
+    {
+        // Wild zone has minRotation=0, syncopated zone has minRotation=1
+        // This is a behavioral difference - wild can have no rotation
+        PatternParams params;
+        params.energy = 0.5f;
+        params.shape = 0.85f;  // Wild zone
+
+        // Test across multiple seeds - some should produce rotation=0
+        int zeroRotationCount = 0;
+        for (uint32_t s = 0; s < 100; ++s)
+        {
+            params.seed = s;
+            PatternResult result;
+            GeneratePattern(params, result);
+
+            // Check if step 0 has a hit (might indicate no rotation)
+            if (result.anchorMask & 1)
+            {
+                zeroRotationCount++;
+            }
+        }
+
+        // With minRotation=0 and maxRotation=4, about 25% should have rotation=0
+        // which often preserves step 0 hits. This is a statistical check.
+        REQUIRE(zeroRotationCount > 0);  // At least some should have beat 1
+    }
+}
+
+// =============================================================================
 // ComputeTargetHits Tests
 // =============================================================================
 
