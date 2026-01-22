@@ -321,6 +321,168 @@ function computePentagonMetrics(pattern) {
 }
 
 // ============================================================================
+// Multi-Seed Evaluation Functions
+// ============================================================================
+
+/**
+ * Compute average of an array
+ */
+function average(arr) {
+  if (!arr || arr.length === 0) return 0;
+  return arr.reduce((a, b) => a + b, 0) / arr.length;
+}
+
+/**
+ * Compute standard deviation of an array
+ */
+function stddev(arr) {
+  if (!arr || arr.length < 2) return 0;
+  const avg = average(arr);
+  const squaredDiffs = arr.map(x => (x - avg) ** 2);
+  return Math.sqrt(average(squaredDiffs));
+}
+
+/**
+ * Compute pentagon metrics for raw step data (used for seed patterns)
+ * Similar to computePentagonMetrics but takes raw data structure
+ */
+function computePentagonMetricsFromSteps(steps, params) {
+  const length = params.length || 64;
+  const shape = params.shape;
+  const energy = params.energy;
+  const accent = params.accent || 0.5;
+
+  const v1Hits = new Array(length).fill(false);
+  const v2Hits = new Array(length).fill(false);
+  const auxHits = new Array(length).fill(false);
+
+  for (const s of steps) {
+    v1Hits[s.step] = s.v1;
+    v2Hits[s.step] = s.v2;
+    auxHits[s.step] = s.aux;
+  }
+
+  const raw = {
+    syncopation: computeSyncopation(v1Hits, length),
+    density: computeDensity(v1Hits, v2Hits, auxHits, length),
+    velocityRange: computeVelocityRange(steps),
+    voiceSeparation: computeVoiceSeparation(v1Hits, v2Hits, auxHits, length),
+    regularity: computeRegularity(v1Hits, length),
+  };
+
+  const zone = getShapeZone(shape);
+
+  // Get target ranges
+  const targets = {
+    syncopation: parseTargetRange(PENTAGON_METRICS.syncopation.targetByZone[zone]),
+    density: parseTargetRange(PENTAGON_METRICS.density.targetByZone[zone]),
+    velocityRange: parseTargetRange(PENTAGON_METRICS.velocityRange.targetByZone[zone]),
+    voiceSeparation: parseTargetRange(PENTAGON_METRICS.voiceSeparation.targetByZone[zone]),
+    regularity: parseTargetRange(PENTAGON_METRICS.regularity.targetByZone[zone]),
+  };
+
+  // Adjust density target based on energy
+  const densityRange = targets.density[1] - targets.density[0];
+  const densityTarget = targets.density[0] + energy * densityRange;
+  targets.density = [densityTarget - densityRange / 2.2, densityTarget + densityRange / 2.2];
+
+  // Adjust velocity range based on accent
+  const velZone = accent < 0.3 ? 'stable' : accent < 0.7 ? 'syncopated' : 'wild';
+  targets.velocityRange = parseTargetRange(PENTAGON_METRICS.velocityRange.targetByZone[velZone]);
+
+  const scores = {
+    syncopation: scoreMetric(raw.syncopation, targets.syncopation),
+    density: scoreMetric(raw.density, targets.density),
+    velocityRange: scoreMetric(raw.velocityRange, targets.velocityRange),
+    voiceSeparation: scoreMetric(raw.voiceSeparation, targets.voiceSeparation),
+    regularity: scoreMetric(raw.regularity, targets.regularity),
+  };
+
+  const composite = (
+    0.30 * scores.syncopation +
+    0.25 * scores.velocityRange +
+    0.25 * scores.voiceSeparation +
+    0.20 * scores.regularity
+  );
+
+  return { raw, scores, composite, zone, targets };
+}
+
+/**
+ * Compute pentagon metrics averaged across multiple seeds
+ * Also computes stability (inverse of variance) for each metric
+ */
+function computeMultiSeedPentagonMetrics(pattern) {
+  const { seedPatterns, params } = pattern;
+
+  // If no seedPatterns, fall back to single-seed computation
+  if (!seedPatterns || seedPatterns.length === 0) {
+    return {
+      ...computePentagonMetrics(pattern),
+      stability: null,
+      perSeed: null,
+    };
+  }
+
+  // Compute metrics for each seed's pattern
+  const seedMetrics = seedPatterns.map(sp =>
+    computePentagonMetricsFromSteps(sp.steps, params)
+  );
+
+  // Average raw metrics across seeds
+  const avgRaw = {
+    syncopation: average(seedMetrics.map(m => m.raw.syncopation)),
+    density: average(seedMetrics.map(m => m.raw.density)),
+    velocityRange: average(seedMetrics.map(m => m.raw.velocityRange)),
+    voiceSeparation: average(seedMetrics.map(m => m.raw.voiceSeparation)),
+    regularity: average(seedMetrics.map(m => m.raw.regularity)),
+  };
+
+  // Average scores across seeds
+  const avgScores = {
+    syncopation: average(seedMetrics.map(m => m.scores.syncopation)),
+    density: average(seedMetrics.map(m => m.scores.density)),
+    velocityRange: average(seedMetrics.map(m => m.scores.velocityRange)),
+    voiceSeparation: average(seedMetrics.map(m => m.scores.voiceSeparation)),
+    regularity: average(seedMetrics.map(m => m.scores.regularity)),
+  };
+
+  const avgComposite = average(seedMetrics.map(m => m.composite));
+
+  // Compute stability (1 - normalized stddev) for each metric
+  // High stability (close to 1) means the metric is consistent across seeds
+  const stability = {
+    syncopation: Math.max(0, 1 - stddev(seedMetrics.map(m => m.raw.syncopation)) * 2),
+    density: Math.max(0, 1 - stddev(seedMetrics.map(m => m.raw.density)) * 2),
+    velocityRange: Math.max(0, 1 - stddev(seedMetrics.map(m => m.raw.velocityRange)) * 2),
+    voiceSeparation: Math.max(0, 1 - stddev(seedMetrics.map(m => m.raw.voiceSeparation)) * 2),
+    regularity: Math.max(0, 1 - stddev(seedMetrics.map(m => m.raw.regularity)) * 2),
+  };
+  stability.overall = average(Object.values(stability));
+
+  // Per-seed breakdown
+  const perSeed = seedPatterns.map((sp, i) => ({
+    seed: sp.seed,
+    seedHex: sp.seedHex,
+    composite: seedMetrics[i].composite,
+    raw: seedMetrics[i].raw,
+  }));
+
+  const zone = seedMetrics[0]?.zone || getShapeZone(params.shape);
+
+  return {
+    raw: avgRaw,
+    scores: avgScores,
+    composite: avgComposite,
+    zone,
+    targets: seedMetrics[0]?.targets,
+    stability,
+    perSeed,
+    numSeeds: seedPatterns.length,
+  };
+}
+
+// ============================================================================
 // Fill Metric Computation Functions
 // ============================================================================
 
@@ -469,23 +631,23 @@ console.log('Loading pattern data...');
 const sweeps = JSON.parse(readFileSync(sweepsPath, 'utf-8'));
 const presets = JSON.parse(readFileSync(presetsPath, 'utf-8'));
 
-// Compute metrics for all sweeps
-console.log('Computing Pentagon metrics for sweeps...');
+// Compute metrics for all sweeps (multi-seed averaging)
+console.log('Computing Pentagon metrics for sweeps (multi-seed)...');
 
 const sweepMetrics = {};
 for (const [paramName, patterns] of Object.entries(sweeps)) {
   sweepMetrics[paramName] = patterns.map(pattern => ({
     params: pattern.params,
     hits: pattern.hits,
-    pentagon: computePentagonMetrics(pattern),
+    pentagon: computeMultiSeedPentagonMetrics(pattern),
   }));
 }
 
 writeFileSync(join(DATA_DIR, 'sweep-metrics.json'), JSON.stringify(sweepMetrics, null, 2));
 console.log('  Written sweep-metrics.json');
 
-// Compute metrics for ENERGY zone sweeps
-console.log('Computing Pentagon metrics for ENERGY zones...');
+// Compute metrics for ENERGY zone sweeps (multi-seed averaging)
+console.log('Computing Pentagon metrics for ENERGY zones (multi-seed)...');
 
 const energyZoneSweepsPath = join(DATA_DIR, 'energy-zone-sweeps.json');
 let energyZoneMetrics = null;
@@ -498,7 +660,7 @@ if (existsSync(energyZoneSweepsPath)) {
     energyZoneMetrics[zoneName] = patterns.map(pattern => ({
       params: pattern.params,
       hits: pattern.hits,
-      pentagon: computePentagonMetrics(pattern),
+      pentagon: computeMultiSeedPentagonMetrics(pattern),
     }));
   }
 
@@ -506,11 +668,11 @@ if (existsSync(energyZoneSweepsPath)) {
   console.log('  Written energy-zone-metrics.json');
 }
 
-// Compute metrics for presets
-console.log('Computing Pentagon metrics for presets...');
+// Compute metrics for presets (multi-seed averaging)
+console.log('Computing Pentagon metrics for presets (multi-seed)...');
 
 const presetMetrics = presets.map(preset => {
-  const pentagon = computePentagonMetrics(preset.pattern);
+  const pentagon = computeMultiSeedPentagonMetrics(preset.pattern);
   const conformance = computePresetConformance(preset.name, preset.pattern, pentagon);
   return {
     name: preset.name,
@@ -556,6 +718,45 @@ const pentagonStats = {
   syncopated: avgMetrics(byZone.syncopated),
   wild: avgMetrics(byZone.wild),
 };
+
+// Compute aggregate stability metrics across all patterns
+console.log('Computing metric stability across seeds...');
+
+function avgStability(metricsList, metricKey) {
+  const stabilityValues = metricsList
+    .filter(m => m.stability && m.stability[metricKey] !== undefined)
+    .map(m => m.stability[metricKey]);
+  if (stabilityValues.length === 0) return null;
+  return stabilityValues.reduce((a, b) => a + b, 0) / stabilityValues.length;
+}
+
+const metricStability = {
+  syncopation: avgStability(allMetrics, 'syncopation'),
+  density: avgStability(allMetrics, 'density'),
+  velocityRange: avgStability(allMetrics, 'velocityRange'),
+  voiceSeparation: avgStability(allMetrics, 'voiceSeparation'),
+  regularity: avgStability(allMetrics, 'regularity'),
+};
+metricStability.overall = avgStability(allMetrics, 'overall');
+
+// Compute per-seed pentagon scores (average composite per seed across all patterns)
+const numSeeds = allMetrics[0]?.numSeeds || 1;
+const perSeedPentagonScore = [];
+if (numSeeds > 1) {
+  for (let i = 0; i < numSeeds; i++) {
+    const seedComposites = allMetrics
+      .filter(m => m.perSeed && m.perSeed[i])
+      .map(m => m.perSeed[i].composite);
+    if (seedComposites.length > 0) {
+      const avgComposite = seedComposites.reduce((a, b) => a + b, 0) / seedComposites.length;
+      const seedInfo = allMetrics.find(m => m.perSeed && m.perSeed[i])?.perSeed[i];
+      perSeedPentagonScore.push({
+        seed: seedInfo?.seedHex || `Seed ${i}`,
+        score: avgComposite,
+      });
+    }
+  }
+}
 
 // Compute alignment scores for each zone/metric combo
 // Note: Density excluded from SHAPE zone alignment (iteration 2026-01-21-001)
@@ -677,6 +878,12 @@ const expressiveness = {
   overallAlignment,
   alignmentStatus: overallAlignment >= 0.7 ? 'GOOD' : overallAlignment >= 0.5 ? 'FAIR' : 'POOR',
   totalPatterns: allMetrics.length,
+  multiSeed: {
+    enabled: numSeeds > 1,
+    numSeeds,
+    metricStability,
+    perSeedPentagonScore,
+  },
   seedVariation: seedSummary,
   fillMetrics: fillMetrics?.summary ?? null,
   energyZoneStats,
@@ -729,6 +936,25 @@ if (seedSummary) {
   console.log(`  V1: ${(seedSummary.v1.avgScore * 100).toFixed(1)}%`);
   console.log(`  V2: ${(seedSummary.v2.avgScore * 100).toFixed(1)}%`);
   console.log(`  AUX: ${(seedSummary.aux.avgScore * 100).toFixed(1)}%`);
+}
+
+// Multi-seed stability metrics
+if (numSeeds > 1 && metricStability.overall !== null) {
+  console.log(`\nMETRIC STABILITY (across ${numSeeds} seeds):`);
+  const fmtPct = (v) => v !== null ? `${(v * 100).toFixed(0)}%` : 'N/A';
+  console.log(`  Syncopation:      ${fmtPct(metricStability.syncopation).padStart(4)} stable`);
+  console.log(`  Density:          ${fmtPct(metricStability.density).padStart(4)} stable`);
+  console.log(`  Velocity Range:   ${fmtPct(metricStability.velocityRange).padStart(4)} stable`);
+  console.log(`  Voice Separation: ${fmtPct(metricStability.voiceSeparation).padStart(4)} stable`);
+  console.log(`  Regularity:       ${fmtPct(metricStability.regularity).padStart(4)} stable`);
+  console.log(`  Overall:          ${fmtPct(metricStability.overall).padStart(4)} stable`);
+
+  if (perSeedPentagonScore.length > 0) {
+    console.log('\nPER-SEED PENTAGON SCORES:');
+    for (const { seed, score } of perSeedPentagonScore) {
+      console.log(`  ${seed.padEnd(12)} ${(score * 100).toFixed(1)}%`);
+    }
+  }
 }
 
 if (fillMetrics) {
