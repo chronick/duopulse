@@ -467,14 +467,16 @@ TEST_CASE("ComputeShapeBlendedWeights is deterministic", "[shape][determinism]")
 
 TEST_CASE("Zone boundaries are correct", "[shape][zones]")
 {
-    SECTION("Constants match spec")
+    SECTION("Constants match eval zones")
     {
-        REQUIRE(kShapeZone1End == Approx(0.28f));
-        REQUIRE(kShapeCrossfade1End == Approx(0.32f));
+        // Zone boundaries aligned with eval SHAPE zones:
+        // - stable [0, 0.30), syncopated [0.30, 0.70), wild [0.70, 1.0]
+        REQUIRE(kShapeZone1End == Approx(0.26f));
+        REQUIRE(kShapeCrossfade1End == Approx(0.30f));  // Crossfade ends at syncopated zone start
         REQUIRE(kShapeZone2aEnd == Approx(0.48f));
         REQUIRE(kShapeCrossfade2End == Approx(0.52f));
-        REQUIRE(kShapeZone2bEnd == Approx(0.68f));
-        REQUIRE(kShapeCrossfade3End == Approx(0.72f));
+        REQUIRE(kShapeZone2bEnd == Approx(0.66f));
+        REQUIRE(kShapeCrossfade3End == Approx(0.70f));  // Crossfade ends at wild zone start
     }
 
     SECTION("Crossfade zones are 4% wide")
