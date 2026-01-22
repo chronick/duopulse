@@ -1,24 +1,24 @@
 {
-  "version": "1.0.0",
-  "generated_at": "2026-01-21T02:11:38.506Z",
-  "commit": "f5185ba1d9a56ca181e3ad840a39bc82e4f70897",
-  "tag": "baseline-v1.0.0",
+  "version": "1.0.19",
+  "generated_at": "2026-01-22T03:16:44.000Z",
+  "commit": "7d2cbf21edaf3e06addb36c363f1aff0ad8a7e11",
+  "tag": "baseline-v1.0.19",
   "last_good": {
-    "commit": "db97fed2b3c6a952bc46e35da4b36171d610fc68",
-    "timestamp": "2026-01-20T20:51:14Z"
+    "commit": "7d2cbf21edaf3e06addb36c363f1aff0ad8a7e11",
+    "timestamp": "2026-01-22T03:16:44.000Z"
   },
   "consecutive_regressions": 0,
   "metrics": {
-    "timestamp": "2026-01-21T01:58:30.499Z",
+    "timestamp": "2026-01-22T03:06:04.193Z",
     "pentagonStats": {
       "total": {
         "count": 33,
-        "syncopation": 0.27669024742195475,
-        "density": 0.521780303030303,
-        "velocityRange": 0.35333333333333333,
-        "voiceSeparation": 0.8752100891103143,
-        "regularity": 0.6863719267632616,
-        "composite": 0.36954977707742653
+        "syncopation": 0.273015873015873,
+        "density": 0.5142045454545454,
+        "velocityRange": 0.3551515151515151,
+        "voiceSeparation": 0.8713539992060492,
+        "regularity": 0.6900264842939231,
+        "composite": 0.43284687328119253
       },
       "stable": {
         "count": 2,
@@ -27,16 +27,16 @@
         "velocityRange": 0.36,
         "voiceSeparation": 0.8786764705882353,
         "regularity": 0.7219068910760513,
-        "composite": 0.32569018992908694
+        "composite": 0.3975464108807464
       },
       "syncopated": {
         "count": 28,
-        "syncopation": 0.21895636303301808,
-        "density": 0.53125,
-        "velocityRange": 0.3521428571428572,
-        "voiceSeparation": 0.884551326511466,
-        "regularity": 0.6752864486091301,
-        "composite": 0.3481635482722888
+        "syncopation": 0.21462585034013607,
+        "density": 0.5223214285714286,
+        "velocityRange": 0.35428571428571437,
+        "voiceSeparation": 0.8800066491242963,
+        "regularity": 0.6795936056988384,
+        "composite": 0.4239928614209641
       },
       "wild": {
         "count": 3,
@@ -45,12 +45,12 @@
         "velocityRange": 0.36000000000000004,
         "voiceSeparation": 0.7857142857142857,
         "regularity": 0.7661464133266286,
-        "composite": 0.5983943040242728
+        "composite": 0.5390179589102904
       }
     },
-    "pentagonScore": 0.5628714093932995,
+    "pentagonScore": 0.6099742583982728,
     "conformance": {
-      "score": 0.8246490249158779,
+      "score": 0.8273526232141888,
       "passCount": 7,
       "totalPresets": 8,
       "presetBreakdown": [
@@ -63,15 +63,15 @@
         },
         {
           "name": "Four on Floor",
-          "score": 0.5871572875253811,
-          "status": "fair",
+          "score": 0.6750510257216823,
+          "status": "good",
           "pass": false,
           "tolerance": "strict"
         },
         {
           "name": "Driving Techno",
-          "score": 0.8450126265847083,
-          "status": "excellent",
+          "score": 0.7625126265847083,
+          "status": "good",
           "pass": true,
           "tolerance": "strict"
         },
@@ -98,31 +98,31 @@
         },
         {
           "name": "Sparse Dub",
-          "score": 0.677125,
+          "score": 0.7689999999999999,
           "status": "good",
           "pass": true,
           "tolerance": "moderate"
         },
         {
           "name": "Dense Gabber",
-          "score": 0.97041267672472,
+          "score": 0.8947727249149062,
           "status": "excellent",
           "pass": true,
           "tolerance": "moderate"
         }
       ]
     },
-    "overallAlignment": 0.6675824556023309,
+    "overallAlignment": 0.6969256043246392,
     "alignmentStatus": "FAIR",
     "totalPatterns": 33,
     "seedVariation": {
       "v1": {
-        "avgScore": 0.9591836734693879,
-        "minScore": 0.5714285714285714,
+        "avgScore": 0.9693877551020409,
+        "minScore": 0.7142857142857143,
         "maxScore": 1
       },
       "v2": {
-        "avgScore": 0.9783163265306122,
+        "avgScore": 0.985969387755102,
         "minScore": 0.7142857142857143,
         "maxScore": 1
       },
@@ -131,61 +131,61 @@
         "minScore": 1,
         "maxScore": 1
       },
-      "overall": 0.9791666666666666,
+      "overall": 0.9851190476190476,
       "pass": true
     },
     "fillMetrics": {
       "fillDensityRamp": {
-        "raw": 0.7443181818181818,
-        "score": 0.5681818181818182
+        "raw": 0.7670454545454546,
+        "score": 0.5318181818181819
       },
       "fillVelocityBuild": {
-        "raw": 0.5508795547967719,
-        "score": 0.46973888573776196
+        "raw": 0.5186676885711435,
+        "score": 0.4029170352763098
       },
       "fillAccentPlacement": {
-        "raw": 0.28567449319138677,
+        "raw": 0.29139948769334956,
         "score": 0
       },
-      "composite": 0.34597356797319345,
+      "composite": 0.3115784056981639,
       "pass": false
     },
     "energyZoneStats": {
       "minimal": {
         "count": 7,
         "syncopation": 0.5714285714285714,
-        "density": 0.09375,
-        "velocityRange": 0.09999999999999998,
+        "density": 0.08035714285714286,
+        "velocityRange": 0.08142857142857143,
         "voiceSeparation": 1,
-        "regularity": 0.6964285714285714,
-        "composite": 0.06540549019364109
+        "regularity": 0.9821428571428571,
+        "composite": 5.709718412357947E-17
       },
       "groove": {
         "count": 7,
-        "syncopation": 0.5714285714285714,
-        "density": 0.41517857142857145,
-        "velocityRange": 0.4042857142857142,
-        "voiceSeparation": 0.8784929356357928,
-        "regularity": 0.6350114280011443,
-        "composite": 0.47863385633475514
+        "syncopation": 0.42857142857142855,
+        "density": 0.3794642857142857,
+        "velocityRange": 0.4042857142857143,
+        "voiceSeparation": 0.9027472527472529,
+        "regularity": 0.6818355011013935,
+        "composite": 0.39103434409248033
       },
       "build": {
         "count": 7,
-        "syncopation": 0.541871921182266,
-        "density": 0.5580357142857143,
+        "syncopation": 0.47044334975369456,
+        "density": 0.5491071428571429,
         "velocityRange": 0.33,
-        "voiceSeparation": 0.7906531033466017,
-        "regularity": 0.6404231200904572,
-        "composite": 0.3493460218178796
+        "voiceSeparation": 0.7791783380018674,
+        "regularity": 0.6423345918261326,
+        "composite": 0.31215951200657477
       },
       "peak": {
         "count": 7,
-        "syncopation": 0.6942648829866875,
-        "density": 0.7098214285714286,
-        "velocityRange": 0.31285714285714283,
-        "voiceSeparation": 0.8708655319835443,
-        "regularity": 0.5300839397175909,
-        "composite": 0.37936537301156925
+        "syncopation": 0.8120574545607717,
+        "density": 0.6919642857142857,
+        "velocityRange": 0.3157142857142857,
+        "voiceSeparation": 0.8696122717861848,
+        "regularity": 0.5953951127009394,
+        "composite": 0.39265796420438176
       }
     },
     "metricDefinitions": {
@@ -202,7 +202,7 @@
       "density": {
         "short": "Dens",
         "name": "Density",
-        "description": "Density sets the energy level. Match it to ENERGY parameter for zone compliance.",
+        "description": "Density is controlled by ENERGY parameter. Excluded from SHAPE zone scoring - see ENERGY zone metrics.",
         "targetByZone": {
           "stable": "0.15-0.32",
           "syncopated": "0.25-0.48",
