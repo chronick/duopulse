@@ -583,7 +583,7 @@ int main(int argc, char* argv[])
     if (autoEuclidean)
     {
         EnergyZone zone = GetEnergyZone(params.energy);
-        params.euclideanRatio = GetGenreEuclideanRatio(params.genre, params.axisX, zone);
+        params.euclideanRatio = GetGenreEuclideanRatio(params.genre, params.axisX, zone, params.shape);
     }
 
     // Setup output stream
@@ -629,7 +629,7 @@ int main(int argc, char* argv[])
             {
                 EnergyZone zone = GetEnergyZone(fillParams.energy);
                 fillParams.euclideanRatio = GetGenreEuclideanRatio(
-                    fillParams.genre, fillParams.axisX, zone);
+                    fillParams.genre, fillParams.axisX, zone, fillParams.shape);
             }
 
             PatternResult pattern;
@@ -674,7 +674,7 @@ int main(int argc, char* argv[])
             {
                 EnergyZone zone = GetEnergyZone(sweepParams.energy);
                 sweepParams.euclideanRatio = GetGenreEuclideanRatio(
-                    sweepParams.genre, sweepParams.axisX, zone);
+                    sweepParams.genre, sweepParams.axisX, zone, sweepParams.shape);
             }
 
             PatternResult pattern;

@@ -24,11 +24,15 @@ uint64_t GenerateEuclidean(int hits, int steps)
     // We use a simple bucket-fill approach:
     // For each step i, accumulate (hits / steps).
     // When accumulator >= 1, place a hit and decrement.
+    //
+    // Initialize accumulator to (1.0 - step_size) so the first hit lands at step 0.
+    // This ensures euclidean(64,16) produces hits at 0,4,8,12... (quarter notes)
+    // rather than 3,7,11,15... (offset by rounding error).
 
     uint64_t pattern = 0;
     int placedHits = 0;
-    float accumulator = 0.0f;
     float step_size = static_cast<float>(hits) / static_cast<float>(steps);
+    float accumulator = 1.0f - step_size;  // Start so first hit lands at position 0
 
     for (int i = 0; i < steps; ++i)
     {
@@ -103,7 +107,18 @@ uint64_t BlendEuclideanWithWeights(
     if (euclideanRatio > 0.99f)
     {
         uint64_t euclidean = GenerateEuclidean(budget, steps);
-        // Rotate by seed-derived offset
+
+        // For four-on-floor patterns (budget = quarter notes), skip rotation
+        // to preserve alignment with quarter-note eligibility mask
+        // euclidean(64,16) or euclidean(32,8) should land on 0,4,8,12...
+        int quarterNotes = steps / 4;
+        if (budget == quarterNotes)
+        {
+            // No rotation - pure quarter-note grid
+            return euclidean & eligibility;
+        }
+
+        // Rotate by seed-derived offset for other euclidean patterns
         int rotation = static_cast<int>(seed % static_cast<uint32_t>(steps));
         uint64_t rotated = RotatePattern(euclidean, rotation, steps);
         // Apply eligibility mask
@@ -133,11 +148,17 @@ uint64_t BlendEuclideanWithWeights(
 // Genre-Specific Euclidean Ratios
 // =============================================================================
 
-float GetGenreEuclideanRatio(Genre genre, float fieldX, EnergyZone zone)
+float GetGenreEuclideanRatio(Genre genre, float fieldX, EnergyZone zone, float shape)
 {
     // Only active in MINIMAL and GROOVE zones
     if (zone != EnergyZone::MINIMAL && zone != EnergyZone::GROOVE)
         return 0.0f;
+
+    // At very low SHAPE (pure euclidean mode), return 1.0 for four-on-floor patterns
+    // euclidean(64,16) produces perfect quarter-note grid
+    shape = Clamp(shape, 0.0f, 1.0f);
+    if (shape <= 0.05f)
+        return 1.0f;
 
     // Clamp Field X
     fieldX = Clamp(fieldX, 0.0f, 1.0f);

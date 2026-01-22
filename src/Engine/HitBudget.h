@@ -125,9 +125,10 @@ int ComputeShimmerEuclideanK(float energy, int patternLength);
  * @param euclideanK Hit count from euclidean algorithm
  * @param budgetK Hit count from density-based budget
  * @param shape SHAPE parameter (0.0-1.0)
+ * @param patternLength Pattern length in steps (needed for quarter-note floor calculation)
  * @return Effective hit count (blended based on SHAPE)
  */
-int ComputeEffectiveHitCount(int euclideanK, int budgetK, float shape);
+int ComputeEffectiveHitCount(int euclideanK, int budgetK, float shape, int patternLength);
 
 // =============================================================================
 // Budget Computation Functions

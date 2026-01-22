@@ -244,7 +244,7 @@ function generateFillSweep() {
  */
 const PRESETS = [
   { name: 'Minimal Techno', description: 'Sparse, meditative patterns', energy: 0.20, shape: 0.0, axisX: 0.0, axisY: 0.3, drift: 0.0, accent: 0.4 },
-  { name: 'Four on Floor', description: 'Classic house kick pattern', energy: 0.23, shape: 0.0, axisX: 0.0, axisY: 0.3, drift: 0.0, accent: 0.5 },
+  { name: 'Four on Floor', description: 'Classic house kick pattern', energy: 0.0, shape: 0.0, axisX: 0.0, axisY: 0.3, drift: 0.0, accent: 0.5 },
   { name: 'Driving Techno', description: 'Energetic but controlled patterns', energy: 0.30, shape: 0.2, axisX: 0.6, axisY: 0.4, drift: 0.1, accent: 0.6 },
   { name: 'Syncopated Groove', description: 'Off-beat emphasis', energy: 0.5, shape: 0.5, axisX: 0.4, axisY: 0.6, drift: 0.3, accent: 0.5 },
   { name: 'Broken Beat', description: 'IDM-style complexity', energy: 0.6, shape: 0.7, axisX: 0.5, axisY: 0.7, drift: 0.5, accent: 0.6 },

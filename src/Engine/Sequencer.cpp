@@ -285,7 +285,7 @@ void Sequencer::GenerateBar()
     // Compute Euclidean blend ratio (genre-aware)
     const float fieldX = state_.controls.GetEffectiveAxisX();
     const float euclideanRatio = GetGenreEuclideanRatio(
-        state_.controls.genre, fieldX, state_.controls.energyZone);
+        state_.controls.genre, fieldX, state_.controls.energyZone, state_.controls.shape);
 
     // Populate parameters for GeneratePattern
     PatternParams params;
