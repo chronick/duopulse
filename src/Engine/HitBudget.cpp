@@ -1,8 +1,67 @@
 #include "HitBudget.h"
+#include "../../inc/algorithm_config.h"
 #include <algorithm>
 
 namespace daisysp_idm_grids
 {
+
+// =============================================================================
+// Euclidean K / HitBudget Fade System (Task 73)
+// =============================================================================
+
+/**
+ * Compute euclidean K for anchor voice from ENERGY
+ * Uses kAnchorKMin/kAnchorKMax from algorithm_config.h
+ */
+int ComputeAnchorEuclideanK(float energy, int patternLength)
+{
+    using namespace AlgorithmConfig;
+
+    energy = std::max(0.0f, std::min(1.0f, energy));
+    int k = kAnchorKMin + static_cast<int>(energy * (kAnchorKMax - kAnchorKMin));
+    return std::min(k, patternLength);
+}
+
+/**
+ * Compute euclidean K for shimmer voice from ENERGY
+ */
+int ComputeShimmerEuclideanK(float energy, int patternLength)
+{
+    using namespace AlgorithmConfig;
+
+    energy = std::max(0.0f, std::min(1.0f, energy));
+    int k = kShimmerKMin + static_cast<int>(energy * (kShimmerKMax - kShimmerKMin));
+    return std::min(k, patternLength);
+}
+
+/**
+ * Compute effective hit count by fading between euclidean K and budget
+ * based on SHAPE parameter.
+ *
+ * At SHAPE <= 0.15: use minimum of euclideanK and budgetK (preserve baseline sparsity)
+ * At SHAPE = 1.0: pure budget-based (density-driven)
+ *
+ * Using min() at low SHAPE ensures we don't ADD hits compared to baseline,
+ * while still preferring euclidean-style placement when hit counts match.
+ */
+int ComputeEffectiveHitCount(int euclideanK, int budgetK, float shape)
+{
+    // At low SHAPE, use minimum to preserve baseline sparsity
+    // This prevents euclideanK from inflating hit count beyond budget
+    if (shape <= 0.15f) {
+        return std::min(euclideanK, budgetK);
+    }
+
+    // Linear fade from 0.15 to 1.0
+    float fadeProgress = (shape - 0.15f) / 0.85f;
+    fadeProgress = std::min(1.0f, fadeProgress);
+
+    // Blend toward budgetK
+    int baseK = std::min(euclideanK, budgetK);
+    return static_cast<int>(
+        baseK + fadeProgress * (budgetK - baseK) + 0.5f
+    );
+}
 
 // =============================================================================
 // Utility Functions
@@ -85,6 +144,16 @@ int ComputeAnchorBudget(float energy, EnergyZone zone, int patternLength, float 
 {
     // Clamp energy to valid range
     energy = std::max(0.0f, std::min(1.0f, energy));
+    shape = std::max(0.0f, std::min(1.0f, shape));
+
+    // ==========================================================================
+    // Task 73: Euclidean K / HitBudget Fade
+    // At SHAPE <= 0.15: use euclidean K directly (grid-locked four-on-floor)
+    // At SHAPE > 0.15: fade toward density-based budget
+    // ==========================================================================
+
+    // Compute euclidean K from ENERGY (what SHAPE=0 should produce)
+    int euclideanK = ComputeAnchorEuclideanK(energy, patternLength);
 
     // Get shape multiplier for density adjustment (V5 Spec 5.4)
     float shapeMult = GetAnchorBudgetMultiplier(shape);
@@ -151,8 +220,12 @@ int ComputeAnchorBudget(float energy, EnergyZone zone, int patternLength, float 
     }
     zoneProgress = std::max(0.0f, std::min(1.0f, zoneProgress));
 
-    int hits = minHits + static_cast<int>((typicalHits - minHits) * zoneProgress + 0.5f);
-    return std::max(1, std::min(hits, maxHits));
+    int budgetK = minHits + static_cast<int>((typicalHits - minHits) * zoneProgress + 0.5f);
+    budgetK = std::max(1, std::min(budgetK, maxHits));
+
+    // Fade between euclidean K and budget K based on SHAPE
+    int effectiveK = ComputeEffectiveHitCount(euclideanK, budgetK, shape);
+    return std::max(1, std::min(effectiveK, maxHits));
 }
 
 int ComputeShimmerBudget(float energy, float balance, EnergyZone zone, int patternLength, float shape)
