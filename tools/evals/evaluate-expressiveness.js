@@ -48,7 +48,9 @@ const PENTAGON_METRICS = {
   density: {
     short: 'Dens',
     name: 'Density',
-    description: 'Density sets the energy level. Match it to ENERGY parameter for zone compliance.',
+    // Note: Density is ENERGY-dependent, not SHAPE-dependent (iteration 2026-01-21-001)
+    // It's excluded from SHAPE zone scoring and evaluated in ENERGY zones instead.
+    description: 'Density is controlled by ENERGY parameter. Excluded from SHAPE zone scoring - see ENERGY zone metrics.',
     targetByZone: { stable: '0.15-0.32', syncopated: '0.25-0.48', wild: '0.32-0.65' },
   },
   velocityRange: {
@@ -304,12 +306,15 @@ function computePentagonMetrics(pattern) {
     regularity: scoreMetric(raw.regularity, targets.regularity),
   };
 
+  // Note: Density excluded from SHAPE zone composite scoring (iteration 2026-01-21-001)
+  // Density is controlled by ENERGY parameter, not SHAPE. Including it in SHAPE zone
+  // scoring was a design misalignment - SHAPE sweeps at ENERGY=0.5 always have ~0.50 density
+  // regardless of SHAPE zone. Density is evaluated separately in ENERGY zone metrics.
   const composite = (
-    0.25 * scores.syncopation +
-    0.15 * scores.density +
-    0.20 * scores.velocityRange +
-    0.20 * scores.voiceSeparation +
-    0.20 * scores.regularity
+    0.30 * scores.syncopation +    // was 0.25, now carries density's weight
+    0.25 * scores.velocityRange +  // was 0.20
+    0.25 * scores.voiceSeparation + // was 0.20
+    0.20 * scores.regularity        // unchanged
   );
 
   return { raw, scores, composite, zone, targets };
@@ -553,8 +558,10 @@ const pentagonStats = {
 };
 
 // Compute alignment scores for each zone/metric combo
+// Note: Density excluded from SHAPE zone alignment (iteration 2026-01-21-001)
+// Density is ENERGY-dependent and is evaluated separately in ENERGY zone metrics.
 const allAlignmentScores = [];
-const metricKeys = ['syncopation', 'density', 'velocityRange', 'voiceSeparation', 'regularity'];
+const metricKeys = ['syncopation', 'velocityRange', 'voiceSeparation', 'regularity'];
 
 for (const zone of ['stable', 'syncopated', 'wild']) {
   const zoneData = pentagonStats[zone];
