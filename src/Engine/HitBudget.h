@@ -116,19 +116,21 @@ int ComputeShimmerEuclideanK(float energy, int patternLength);
  * Compute effective hit count by fading between euclidean K and budget
  * based on SHAPE parameter.
  *
- * At SHAPE <= 0.15: pure euclidean K (grid-locked hits)
+ * At SHAPE <= 0.05 AND ENERGY <= 0.05: quarter-note floor (Four on Floor mode)
+ * At SHAPE <= 0.15: use minimum of euclideanK and budgetK (preserve sparsity)
  * At SHAPE = 1.0: pure budget-based (density-driven)
  *
- * This ensures SHAPE=0 produces clean four-on-floor patterns where
- * ENERGY scales the number of evenly-spaced hits directly.
+ * This ensures SHAPE=0 + ENERGY=0 produces clean four-on-floor patterns,
+ * while SHAPE=0 + ENERGY>0.05 produces sparse euclidean patterns.
  *
  * @param euclideanK Hit count from euclidean algorithm
  * @param budgetK Hit count from density-based budget
  * @param shape SHAPE parameter (0.0-1.0)
+ * @param energy ENERGY parameter (0.0-1.0), used for four-on-floor detection
  * @param patternLength Pattern length in steps (needed for quarter-note floor calculation)
  * @return Effective hit count (blended based on SHAPE)
  */
-int ComputeEffectiveHitCount(int euclideanK, int budgetK, float shape, int patternLength);
+int ComputeEffectiveHitCount(int euclideanK, int budgetK, float shape, float energy, int patternLength);
 
 // =============================================================================
 // Budget Computation Functions

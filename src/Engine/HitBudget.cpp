@@ -38,20 +38,26 @@ int ComputeShimmerEuclideanK(float energy, int patternLength)
  * Compute effective hit count by fading between euclidean K and budget
  * based on SHAPE parameter.
  *
- * At SHAPE <= 0.05: pure euclidean mode with floor (for four-on-floor patterns)
+ * At SHAPE <= 0.05 AND ENERGY <= 0.05: pure four-on-floor mode with quarter-note floor
  * At SHAPE 0.05-0.15: use minimum of euclideanK and budgetK (preserve baseline sparsity)
  * At SHAPE = 1.0: pure budget-based (density-driven)
  *
  * Using min() at low SHAPE ensures we don't ADD hits compared to baseline,
  * while still preferring euclidean-style placement when hit counts match.
+ *
+ * The ENERGY check prevents the quarter-note floor from activating for
+ * sparse presets like Minimal Techno (ENERGY=0.20, SHAPE=0) that should
+ * follow the normal euclideanK-based hit count.
  */
-int ComputeEffectiveHitCount(int euclideanK, int budgetK, float shape, int patternLength)
+int ComputeEffectiveHitCount(int euclideanK, int budgetK, float shape, float energy, int patternLength)
 {
     using namespace AlgorithmConfig;
 
-    // At very low SHAPE (pure euclidean mode), use quarter-note count for four-on-floor patterns
+    // At very low SHAPE AND very low ENERGY (Four on Floor mode), use quarter-note count
     // euclidean(64,16) or euclidean(32,8) produces perfect quarter-note grid
-    if (shape <= 0.05f) {
+    // Only activate for true Four on Floor patterns (ENERGY=0, SHAPE=0), not for
+    // sparse techno patterns like Minimal Techno (ENERGY=0.20, SHAPE=0)
+    if (shape <= 0.05f && energy <= 0.05f) {
         int quarterNoteCount = patternLength / 4;  // Quarter notes for this pattern length
         return std::max(euclideanK, quarterNoteCount);
     }
@@ -233,8 +239,8 @@ int ComputeAnchorBudget(float energy, EnergyZone zone, int patternLength, float 
     int budgetK = minHits + static_cast<int>((typicalHits - minHits) * zoneProgress + 0.5f);
     budgetK = std::max(1, std::min(budgetK, maxHits));
 
-    // Fade between euclidean K and budget K based on SHAPE
-    int effectiveK = ComputeEffectiveHitCount(euclideanK, budgetK, shape, patternLength);
+    // Fade between euclidean K and budget K based on SHAPE (and ENERGY for four-on-floor)
+    int effectiveK = ComputeEffectiveHitCount(euclideanK, budgetK, shape, energy, patternLength);
     return std::max(1, std::min(effectiveK, maxHits));
 }
 

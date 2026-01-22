@@ -219,52 +219,59 @@ TEST_CASE("Euclidean K fade (Task 73)", "[hit-budget][task-73]")
         REQUIRE(kHigh == 12); // kAnchorKMax
     }
 
-    SECTION("ComputeEffectiveHitCount uses quarter-note floor at SHAPE <= 0.05")
+    SECTION("ComputeEffectiveHitCount uses quarter-note floor only at SHAPE <= 0.05 AND ENERGY <= 0.05")
     {
         int euclideanK = 4;  // From ComputeAnchorEuclideanK at low ENERGY
         int budgetK = 1;     // Minimal zone budget
 
-        // At SHAPE=0.0 with 64 steps, should return max(4, 64/4=16) = 16 for four-on-floor
-        REQUIRE(ComputeEffectiveHitCount(euclideanK, budgetK, 0.0f, 64) == 16);
+        // At SHAPE=0.0 AND ENERGY=0.0 with 64 steps, should return max(4, 64/4=16) = 16 for four-on-floor
+        REQUIRE(ComputeEffectiveHitCount(euclideanK, budgetK, 0.0f, 0.0f, 64) == 16);
 
-        // At SHAPE=0.0 with 32 steps, should return max(4, 32/4=8) = 8
-        REQUIRE(ComputeEffectiveHitCount(euclideanK, budgetK, 0.0f, 32) == 8);
+        // At SHAPE=0.0 AND ENERGY=0.0 with 32 steps, should return max(4, 32/4=8) = 8
+        REQUIRE(ComputeEffectiveHitCount(euclideanK, budgetK, 0.0f, 0.0f, 32) == 8);
+
+        // At SHAPE=0.0 BUT ENERGY=0.20 (Minimal Techno case), should NOT use quarter-note floor
+        // Should fall through to the min(euclideanK, budgetK) logic
+        REQUIRE(ComputeEffectiveHitCount(euclideanK, budgetK, 0.0f, 0.20f, 64) == std::min(euclideanK, budgetK));
     }
 
     SECTION("ComputeEffectiveHitCount returns min(euclidean, budget) at SHAPE 0.06-0.15")
     {
         int euclideanK = 8;
         int budgetK = 5;
+        float energy = 0.5f;  // Non-zero energy for normal path testing
 
         // At SHAPE=0.10, should return min to preserve baseline sparsity
-        REQUIRE(ComputeEffectiveHitCount(euclideanK, budgetK, 0.10f, 32) == std::min(euclideanK, budgetK));
+        REQUIRE(ComputeEffectiveHitCount(euclideanK, budgetK, 0.10f, energy, 32) == std::min(euclideanK, budgetK));
 
         // At SHAPE=0.15, should still return min
-        REQUIRE(ComputeEffectiveHitCount(euclideanK, budgetK, 0.15f, 32) == std::min(euclideanK, budgetK));
+        REQUIRE(ComputeEffectiveHitCount(euclideanK, budgetK, 0.15f, energy, 32) == std::min(euclideanK, budgetK));
 
         // When euclideanK < budgetK, should return euclideanK
-        REQUIRE(ComputeEffectiveHitCount(3, 6, 0.10f, 32) == 3);
+        REQUIRE(ComputeEffectiveHitCount(3, 6, 0.10f, energy, 32) == 3);
     }
 
     SECTION("ComputeEffectiveHitCount fades to budget K at high SHAPE")
     {
         int euclideanK = 8;
         int budgetK = 4;
+        float energy = 0.5f;  // Non-zero energy for normal path testing
 
         // At SHAPE=1.0, should return pure budget K
-        REQUIRE(ComputeEffectiveHitCount(euclideanK, budgetK, 1.0f, 32) == budgetK);
+        REQUIRE(ComputeEffectiveHitCount(euclideanK, budgetK, 1.0f, energy, 32) == budgetK);
     }
 
     SECTION("ComputeEffectiveHitCount blends at mid SHAPE")
     {
         int euclideanK = 8;
         int budgetK = 4;
+        float energy = 0.5f;  // Non-zero energy for normal path testing
 
         // At SHAPE=0.575 (halfway through fade)
         // baseK = min(8, 4) = 4
         // fadeProgress = (0.575 - 0.15) / 0.85 = 0.5
         // result = 4 + 0.5 * (4 - 4) = 4
-        int mid = ComputeEffectiveHitCount(euclideanK, budgetK, 0.575f, 32);
+        int mid = ComputeEffectiveHitCount(euclideanK, budgetK, 0.575f, energy, 32);
         REQUIRE(mid == budgetK); // When euclideanK > budgetK, stays at budgetK throughout fade
     }
 
