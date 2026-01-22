@@ -208,8 +208,22 @@ void ComputeShapeBlendedWeights(float shape, float energy,
     }
     else if (shape < config.shapeZone2aEnd)
     {
-        // Zone 2a: Pure syncopation (lower)
-        GenerateSyncopationPattern(energy, seed, patternLength, outWeights);
+        // Zone 2a: Dual-seed syncopation blend for position diversity
+        // Iteration 2026-01-22-004: Single-seed syncopation produced syncopation=0 at SHAPE=0.30
+        // because Gumbel seed determinism placed hits on strong beats regardless of weights.
+        // Blending two seeds creates position diversity, which is why SHAPE=0.50 works.
+        GenerateSyncopationPattern(energy, seed, patternLength, syncopationWeights);
+        GenerateSyncopationPattern(energy, seed + 0x87654321, patternLength, stableWeights);
+
+        // Blend factor varies across zone: 0.3 at start (favor primary), 0.7 at end (favor alt)
+        // This creates gradual variation as SHAPE increases through zone
+        float t = (shape - config.shapeCrossfade1End) / (config.shapeZone2aEnd - config.shapeCrossfade1End);
+        t = 0.3f + t * 0.4f;  // Range: 0.3 to 0.7
+
+        for (int step = 0; step < patternLength; ++step)
+        {
+            outWeights[step] = ClampWeight(LerpWeight(syncopationWeights[step], stableWeights[step], t));
+        }
     }
     else if (shape < config.shapeCrossfade2End)
     {

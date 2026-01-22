@@ -175,14 +175,32 @@ void GeneratePattern(const PatternParams& params, PatternResult& result)
                         params.genre, params.patternLength);
 
     // V5 Task 44: Apply seed-based rotation for anchor variation (AFTER guard rails)
-    // Rotation ONLY applies in WILD zone where syncopation is expected to be high
-    // Syncopated zone uses weight-based selection instead (eligibility includes odd positions)
-    bool shouldRotate = params.shape >= 0.7f &&   // wild zone only
+    // Iteration 2026-01-22-004: Extended rotation to syncopated zone
+    // Weight-based selection alone couldn't overcome Gumbel seed determinism.
+    // Rotation physically shifts hits off strong beats to create syncopation.
+    bool inSyncopatedZone = params.shape >= 0.30f && params.shape < 0.70f;
+    bool inWildZone = params.shape >= 0.70f;
+    bool shouldRotate = (inSyncopatedZone || inWildZone) &&
                         zone != EnergyZone::MINIMAL;  // not MINIMAL by ENERGY
+
     if (shouldRotate) {
-        // Wild zone: use rotation for chaotic displacement
-        int maxRotation = 4;
-        int rotation = static_cast<int>(HashToFloat(params.seed, 2000) * maxRotation);
+        int maxRotation;
+        int minRotation;
+        int hashKey;
+        if (inWildZone) {
+            // Wild zone: stronger rotation for chaotic displacement
+            maxRotation = 4;
+            minRotation = 0;  // Can be 0-3
+            hashKey = 2000;
+        } else {
+            // Syncopated zone: guaranteed rotation for syncopation feel
+            // Iteration 2026-01-22-004: minRotation=1 ensures hits shift off strong beats
+            maxRotation = 3;
+            minRotation = 1;  // Guaranteed 1-3 step rotation
+            hashKey = 3000;
+        }
+        int rotationRange = maxRotation - minRotation;
+        int rotation = minRotation + static_cast<int>(HashToFloat(params.seed, hashKey) * rotationRange);
         if (rotation > 0) {
             result.anchorMask = RotateWithPreserve(result.anchorMask, rotation,
                                                     params.patternLength, 0);
