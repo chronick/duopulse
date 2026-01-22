@@ -1,36 +1,42 @@
 {
   "version": "1.0.0",
-  "generated_at": "2026-01-22T14:23:16Z",
-  "commit": "979e69ac37229517c10c96714b67521dc2a8940a",
+  "generated_at": "2026-01-22T17:31:58.607Z",
+  "commit": "a0c2d18511552ba7ecf0749aedb7af236b61e902",
+  "tag": "baseline-v1.0.0",
+  "last_good": {
+    "commit": "979e69ac37229517c10c96714b67521dc2a8940a",
+    "timestamp": "2026-01-22T14:23:16Z"
+  },
+  "consecutive_regressions": 0,
   "metrics": {
-    "timestamp": "2026-01-22T14:23:16.407Z",
+    "timestamp": "2026-01-22T17:19:44.990Z",
     "pentagonStats": {
       "total": {
         "count": 33,
         "syncopation": 0.273015873015873,
-        "density": 0.5227272727272727,
+        "density": 0.5151515151515151,
         "velocityRange": 0.3551515151515151,
-        "voiceSeparation": 0.869081271933322,
-        "regularity": 0.6850392691789405,
-        "composite": 0.42910730927377144
+        "voiceSeparation": 0.8734336189327276,
+        "regularity": 0.6900264842939231,
+        "composite": 0.43457581203435275
       },
       "stable": {
         "count": 2,
         "syncopation": 0,
-        "density": 0.65625,
+        "density": 0.515625,
         "velocityRange": 0.36,
-        "voiceSeparation": 0.8411764705882353,
-        "regularity": 0.6396178416788388,
-        "composite": 0.33584360475829744
+        "voiceSeparation": 0.8786764705882353,
+        "regularity": 0.7219068910760513,
+        "composite": 0.3975464108807464
       },
       "syncopated": {
         "count": 28,
         "syncopation": 0.21462585034013607,
-        "density": 0.5223214285714286,
+        "density": 0.5234375,
         "velocityRange": 0.35428571428571437,
-        "voiceSeparation": 0.8800066491242963,
+        "voiceSeparation": 0.882457629516453,
         "regularity": 0.6795936056988384,
-        "composite": 0.4239928614209641
+        "composite": 0.42603053923718864
       },
       "wild": {
         "count": 3,
@@ -42,17 +48,17 @@
         "composite": 0.5390179589102904
       }
     },
-    "pentagonScore": 0.5937555287107271,
+    "pentagonScore": 0.6091572649342206,
     "conformance": {
-      "score": 0.8284352113375708,
-      "passCount": 7,
+      "score": 0.8476539613375708,
+      "passCount": 8,
       "totalPresets": 8,
       "presetBreakdown": [
         {
           "name": "Minimal Techno",
-          "score": 0.6399999999999999,
+          "score": 0.7899999999999999,
           "status": "good",
-          "pass": false,
+          "pass": true,
           "tolerance": "strict"
         },
         {
@@ -78,7 +84,7 @@
         },
         {
           "name": "Broken Beat",
-          "score": 0.937998287667005,
+          "score": 0.9417482876670049,
           "status": "excellent",
           "pass": true,
           "tolerance": "moderate"
@@ -106,80 +112,80 @@
         }
       ]
     },
-    "overallAlignment": 0.6876274017614646,
-    "alignmentStatus": "FAIR",
+    "overallAlignment": 0.7045559434955606,
+    "alignmentStatus": "GOOD",
     "totalPatterns": 33,
     "seedVariation": {
       "v1": {
-        "avgScore": 0.9081632653061226,
+        "avgScore": 0.9030612244897961,
         "minScore": 0,
         "maxScore": 1
       },
       "v2": {
-        "avgScore": 0.9502551020408163,
-        "minScore": 0.2857142857142857,
+        "avgScore": 0.979591836734694,
+        "minScore": 0.5714285714285714,
         "maxScore": 1
       },
       "aux": {
-        "avgScore": 1,
-        "minScore": 1,
+        "avgScore": 0.9974489795918368,
+        "minScore": 0.8571428571428571,
         "maxScore": 1
       },
-      "overall": 0.9528061224489797,
+      "overall": 0.9600340136054423,
       "pass": true
     },
     "fillMetrics": {
       "fillDensityRamp": {
-        "raw": 0.7670454545454546,
-        "score": 0.5318181818181819
+        "raw": 0.7556818181818182,
+        "score": 0.5227272727272728
       },
       "fillVelocityBuild": {
-        "raw": 0.5186676885711435,
-        "score": 0.4029170352763098
+        "raw": 0.5407222065826228,
+        "score": 0.4265833679504874
       },
       "fillAccentPlacement": {
-        "raw": 0.29139948769334956,
+        "raw": 0.2865088592760136,
         "score": 0
       },
-      "composite": 0.3115784056981639,
+      "composite": 0.31643688022592004,
       "pass": false
     },
     "energyZoneStats": {
       "minimal": {
         "count": 7,
         "syncopation": 0.5714285714285714,
-        "density": 0.13839285714285715,
-        "velocityRange": 0.12142857142857143,
+        "density": 0.07589285714285714,
+        "velocityRange": 0.09,
         "voiceSeparation": 1,
-        "regularity": 0.9821428571428571,
+        "regularity": 0.9107142857142857,
         "composite": 5.709718412357947e-17
       },
       "groove": {
         "count": 7,
         "syncopation": 0.42857142857142855,
-        "density": 0.39732142857142855,
+        "density": 0.3794642857142857,
         "velocityRange": 0.4057142857142857,
-        "voiceSeparation": 0.8610805860805862,
+        "voiceSeparation": 0.9027472527472529,
         "regularity": 0.732343128329004,
-        "composite": 0.3730950184608469
+        "composite": 0.39293628830211685
       },
       "build": {
         "count": 7,
         "syncopation": 0.47044334975369456,
-        "density": 0.5848214285714286,
+        "density": 0.5535714285714286,
         "velocityRange": 0.33,
-        "voiceSeparation": 0.7926237161531279,
-        "regularity": 0.6268500374052001,
-        "composite": 0.33894522629228907
+        "voiceSeparation": 0.7889822595704948,
+        "regularity": 0.6423345918261326,
+        "composite": 0.32031022327147285
       },
       "peak": {
         "count": 7,
-        "syncopation": 0.7896484909753375,
-        "density": 0.7098214285714286,
-        "velocityRange": 0.3142857142857142,
-        "voiceSeparation": 0.8835982857721989,
-        "regularity": 0.5726086026468389,
-        "composite": 0.3576077871087501
+        "syncopation": 0.8040016006402562,
+        "density": 0.6875,
+        "velocityRange": 0.3157142857142857,
+        "voiceSeparation": 0.8618819069129627,
+        "regularity": 0.588351385477082,
+        "composite": 0.40062273345398475
       }
     },
     "metricDefinitions": {

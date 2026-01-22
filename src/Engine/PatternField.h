@@ -31,33 +31,35 @@ constexpr float kMinStepWeight = 0.05f;
 /**
  * Zone boundaries for SHAPE parameter (0.0-1.0 range)
  *
- * The SHAPE parameter maps to a 7-zone system:
- *   Zone 1 pure:       [0.00, 0.28) - Stable humanized euclidean
- *   Crossfade 1->2a:   [0.28, 0.32) - Blend stable to syncopation
- *   Zone 2a:           [0.32, 0.48) - Pure syncopation (lower)
+ * The SHAPE parameter maps to a 7-zone system, aligned with eval SHAPE zones:
+ *   Zone 1 pure:       [0.00, 0.26) - Stable humanized euclidean
+ *   Crossfade 1->2a:   [0.26, 0.30) - Blend stable to syncopation
+ *   Zone 2a:           [0.30, 0.48) - Pure syncopation (lower)
  *   Crossfade 2a->2b:  [0.48, 0.52) - Mid syncopation transition
- *   Zone 2b:           [0.52, 0.68) - Pure syncopation (upper)
- *   Crossfade 2->3:    [0.68, 0.72) - Blend syncopation to wild
- *   Zone 3 pure:       [0.72, 1.00] - Wild weighted random
+ *   Zone 2b:           [0.52, 0.66) - Pure syncopation (upper)
+ *   Crossfade 2->3:    [0.66, 0.70) - Blend syncopation to wild
+ *   Zone 3 pure:       [0.70, 1.00] - Wild weighted random
+ *
+ * Eval zones: stable [0, 0.30), syncopated [0.30, 0.70), wild [0.70, 1.0]
  */
-constexpr float kShapeZone1End = 0.28f;        // End of pure stable zone
-constexpr float kShapeCrossfade1End = 0.32f;   // End of stable->syncopation crossfade
+constexpr float kShapeZone1End = 0.26f;        // End of pure stable zone
+constexpr float kShapeCrossfade1End = 0.30f;   // End of stable->syncopation crossfade
 constexpr float kShapeZone2aEnd = 0.48f;       // End of lower syncopation zone
 constexpr float kShapeCrossfade2End = 0.52f;   // End of mid syncopation crossfade
-constexpr float kShapeZone2bEnd = 0.68f;       // End of upper syncopation zone
-constexpr float kShapeCrossfade3End = 0.72f;   // End of syncopation->wild crossfade
+constexpr float kShapeZone2bEnd = 0.66f;       // End of upper syncopation zone
+constexpr float kShapeCrossfade3End = 0.70f;   // End of syncopation->wild crossfade
 
 /**
  * Runtime-configurable zone thresholds for SHAPE parameter.
- * Default values match the original constexpr constants for backward compatibility.
+ * Default values align with eval SHAPE zones for correct metric targeting.
  */
 struct PatternFieldConfig {
-    float shapeZone1End = 0.28f;        // End of pure stable zone
-    float shapeCrossfade1End = 0.32f;   // End of stable->syncopation crossfade
+    float shapeZone1End = 0.26f;        // End of pure stable zone
+    float shapeCrossfade1End = 0.30f;   // End of stable->syncopation crossfade
     float shapeZone2aEnd = 0.48f;       // End of lower syncopation zone
     float shapeCrossfade2End = 0.52f;   // End of mid syncopation crossfade
-    float shapeZone2bEnd = 0.68f;       // End of upper syncopation zone
-    float shapeCrossfade3End = 0.72f;   // End of syncopation->wild crossfade
+    float shapeZone2bEnd = 0.66f;       // End of upper syncopation zone
+    float shapeCrossfade3End = 0.70f;   // End of syncopation->wild crossfade
 
     /// Validate that thresholds are monotonically increasing
     bool IsValid() const {
