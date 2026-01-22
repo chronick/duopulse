@@ -494,9 +494,19 @@ TEST_CASE("ComputeTargetHits respects shape parameter", "[PatternGenerator]")
     {
         int stableShimmer = ComputeTargetHits(0.5f, 32, Voice::SHIMMER, 0.15f);
         int wildShimmer = ComputeTargetHits(0.5f, 32, Voice::SHIMMER, 0.85f);
+        int stableAnchor = ComputeTargetHits(0.5f, 32, Voice::ANCHOR, 0.15f);
+        int wildAnchor = ComputeTargetHits(0.5f, 32, Voice::ANCHOR, 0.85f);
 
-        // V5 spec: shimmer increases with SHAPE
-        REQUIRE(wildShimmer >= stableShimmer);
+        // Task 73: Shimmer MULTIPLIER increases with SHAPE, but anchor decreases.
+        // So absolute shimmer hits may not increase. What we can test:
+        // At wild SHAPE, shimmer ratio to anchor should be higher than at stable.
+        REQUIRE(stableShimmer >= 1);
+        REQUIRE(wildShimmer >= 1);
+
+        // Shimmer to anchor ratio increases with SHAPE
+        float stableRatio = (stableAnchor > 0) ? static_cast<float>(stableShimmer) / stableAnchor : 1.0f;
+        float wildRatio = (wildAnchor > 0) ? static_cast<float>(wildShimmer) / wildAnchor : 1.0f;
+        REQUIRE(wildRatio >= stableRatio);
     }
 }
 
