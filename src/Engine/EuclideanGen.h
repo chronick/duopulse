@@ -109,11 +109,15 @@ uint64_t BlendEuclideanWithWeights(
  *
  * Only active in MINIMAL and GROOVE zones. Returns 0 for BUILD/PEAK.
  *
+ * At very low SHAPE (<=0.05), returns 1.0 for pure euclidean mode.
+ * This enables four-on-floor patterns where euclidean(64,16) = quarter notes.
+ *
  * @param genre Current genre setting
  * @param fieldX Field X position (0.0-1.0, syncopation axis)
  * @param zone Current energy zone
+ * @param shape SHAPE parameter (0.0-1.0), optional, default 0.5
  * @return Euclidean blend ratio (0.0-1.0)
  */
-float GetGenreEuclideanRatio(Genre genre, float fieldX, EnergyZone zone);
+float GetGenreEuclideanRatio(Genre genre, float fieldX, EnergyZone zone, float shape = 0.5f);
 
 } // namespace daisysp_idm_grids
