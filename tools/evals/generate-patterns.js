@@ -16,6 +16,16 @@ const PROJECT_ROOT = join(__dirname, '../..');
 const PATTERN_VIZ = process.env.PATTERN_VIZ || join(PROJECT_ROOT, 'build/pattern_viz');
 const OUTPUT_DIR = join(__dirname, 'public/data');
 
+// Multi-seed evaluation configuration
+// Using 4 diverse seeds removes single-seed bias from metrics
+const EVAL_SEEDS = [
+  0xDEADBEEF,  // Original seed (preserve for comparison)
+  0xCAFEBABE,
+  0x12345678,
+  0xABCD1234,
+];
+const NUM_EVAL_SEEDS = EVAL_SEEDS.length;
+
 // Ensure output directory exists
 if (!existsSync(OUTPUT_DIR)) {
   mkdirSync(OUTPUT_DIR, { recursive: true });
@@ -177,15 +187,33 @@ function parseCSV(csv, params) {
 }
 
 /**
- * Generate parameter sweep data
+ * Generate parameter sweep data with multi-seed support
+ * Each sweep entry contains patterns for all EVAL_SEEDS
  */
-function generateSweep(paramName, values, baseParams = {}) {
-  console.log(`  Generating ${paramName} sweep...`);
+function generateSweep(paramName, values, baseParams = {}, seeds = EVAL_SEEDS) {
+  console.log(`  Generating ${paramName} sweep (${seeds.length} seeds per point)...`);
 
   return values.map(val => {
-    const params = { ...baseParams };
-    params[paramName] = val;
-    return runPatternViz(params);
+    const params = { ...baseParams, [paramName]: val };
+
+    // Generate pattern for each seed
+    const seedPatterns = seeds.map(seed => {
+      const pattern = runPatternViz({ ...params, seed });
+      return {
+        seed,
+        seedHex: `0x${seed.toString(16).toUpperCase()}`,
+        masks: pattern.masks,
+        hits: pattern.hits,
+        steps: pattern.steps,
+      };
+    });
+
+    // Return primary pattern (first seed) with seedPatterns array
+    const primaryPattern = runPatternViz({ ...params, seed: seeds[0] });
+    return {
+      ...primaryPattern,
+      seedPatterns,
+    };
   });
 }
 
@@ -299,23 +327,61 @@ const energyZoneNames = ['minimal', 'groove', 'build', 'peak'];
 for (let i = 0; i < ENERGY_ZONE_VALUES.length; i++) {
   const energy = ENERGY_ZONE_VALUES[i];
   const zoneName = energyZoneNames[i];
-  console.log(`  Generating ${zoneName} zone sweep (energy=${energy})...`);
+  console.log(`  Generating ${zoneName} zone sweep (energy=${energy}, ${EVAL_SEEDS.length} seeds per point)...`);
 
   energyZoneSweeps[zoneName] = SHAPE_VALUES.map(shape => {
-    return runPatternViz({ energy, shape });
+    const params = { energy, shape };
+
+    // Generate pattern for each seed
+    const seedPatterns = EVAL_SEEDS.map(seed => {
+      const pattern = runPatternViz({ ...params, seed });
+      return {
+        seed,
+        seedHex: `0x${seed.toString(16).toUpperCase()}`,
+        masks: pattern.masks,
+        hits: pattern.hits,
+        steps: pattern.steps,
+      };
+    });
+
+    // Return primary pattern with seedPatterns array
+    const primaryPattern = runPatternViz({ ...params, seed: EVAL_SEEDS[0] });
+    return {
+      ...primaryPattern,
+      seedPatterns,
+    };
   });
 }
 
 writeFileSync(join(OUTPUT_DIR, 'energy-zone-sweeps.json'), JSON.stringify(energyZoneSweeps, null, 2));
 console.log('  Written energy-zone-sweeps.json');
 
-// 2. Generate presets
-console.log('Generating presets...');
+// 2. Generate presets with multi-seed support
+console.log(`Generating presets (${EVAL_SEEDS.length} seeds each)...`);
 
-const presets = PRESETS.map(preset => ({
-  ...preset,
-  pattern: runPatternViz(preset),
-}));
+const presets = PRESETS.map(preset => {
+  // Generate pattern for each seed
+  const seedPatterns = EVAL_SEEDS.map(seed => {
+    const pattern = runPatternViz({ ...preset, seed });
+    return {
+      seed,
+      seedHex: `0x${seed.toString(16).toUpperCase()}`,
+      masks: pattern.masks,
+      hits: pattern.hits,
+      steps: pattern.steps,
+    };
+  });
+
+  // Primary pattern with seedPatterns array
+  const primaryPattern = runPatternViz({ ...preset, seed: EVAL_SEEDS[0] });
+  return {
+    ...preset,
+    pattern: {
+      ...primaryPattern,
+      seedPatterns,
+    },
+  };
+});
 
 writeFileSync(join(OUTPUT_DIR, 'presets.json'), JSON.stringify(presets, null, 2));
 console.log('  Written presets.json');
@@ -373,11 +439,13 @@ console.log('Generating metadata...');
 const metadata = {
   generated: new Date().toISOString(),
   patternViz: PATTERN_VIZ,
-  version: '1.0.0',
+  version: '1.1.0',  // Multi-seed evaluation version
   patternLength: 64,
   numPresets: presets.length,
   numSeedTests: seedTests.length,
   sweepParams: Object.keys(sweeps),
+  evalSeeds: EVAL_SEEDS.map(s => `0x${s.toString(16).toUpperCase()}`),
+  numEvalSeeds: NUM_EVAL_SEEDS,
 };
 
 writeFileSync(join(OUTPUT_DIR, 'metadata.json'), JSON.stringify(metadata, null, 2));

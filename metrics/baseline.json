@@ -1,63 +1,63 @@
 {
   "version": "1.0.0",
-  "generated_at": "2026-01-22T18:21:36.484Z",
-  "commit": "8c274138b757f8fae8d5bceeebb067627069557b",
-  "tag": "baseline-v1.0.1",
+  "generated_at": "2026-01-23T03:43:39.030Z",
+  "commit": "c827bd20b134967da6bc1a37a568a4695fb44a09",
+  "tag": "baseline-v1.0.2",
   "last_good": {
     "commit": "a0c2d18511552ba7ecf0749aedb7af236b61e902",
     "tag": "baseline-v1.0.0",
     "timestamp": "2026-01-22T17:31:58.607Z"
   },
-  "consecutive_regressions": 0,
+  "consecutive_regressions": 1,
   "metrics": {
-    "timestamp": "2026-01-22T18:21:31.267Z",
+    "timestamp": "2026-01-22T22:04:37.409Z",
     "pentagonStats": {
       "total": {
         "count": 33,
-        "syncopation": 0.637916233808711,
-        "density": 0.5378787878787878,
-        "velocityRange": 0.3572727272727273,
-        "voiceSeparation": 0.8539977902136644,
-        "regularity": 0.635711696184266,
-        "composite": 0.48549062526821457
+        "syncopation": 0.4434955913715821,
+        "density": 0.4666193181818182,
+        "velocityRange": 0.3385606060606062,
+        "voiceSeparation": 0.8389593889144175,
+        "regularity": 0.6642053930008333,
+        "composite": 0.3196631522574658
       },
       "stable": {
         "count": 2,
         "syncopation": 0,
-        "density": 0.515625,
-        "velocityRange": 0.36,
-        "voiceSeparation": 0.8786764705882353,
-        "regularity": 0.7219068910760513,
-        "composite": 0.3975464108807464
+        "density": 0.44921875,
+        "velocityRange": 0.3425,
+        "voiceSeparation": 0.765822963800905,
+        "regularity": 0.697223547295958,
+        "composite": 0.22631684967103816
       },
       "syncopated": {
         "count": 28,
-        "syncopation": 0.6446869898459807,
-        "density": 0.5502232142857143,
-        "velocityRange": 0.3567857142857144,
-        "voiceSeparation": 0.859551117097557,
-        "regularity": 0.6155797482838853,
-        "composite": 0.4860372834056685
+        "syncopation": 0.42859782609452945,
+        "density": 0.4693080357142857,
+        "velocityRange": 0.33767857142857155,
+        "voiceSeparation": 0.8360452145505111,
+        "regularity": 0.6551504693858499,
+        "composite": 0.32033842179946
       },
       "wild": {
         "count": 3,
-        "syncopation": 1,
-        "density": 0.4375,
-        "velocityRange": 0.36000000000000004,
-        "voiceSeparation": 0.7857142857142857,
-        "regularity": 0.7661464133266286,
-        "composite": 0.5390179589102904
+        "syncopation": 0.8782051282051282,
+        "density": 0.453125,
+        "velocityRange": 0.34416666666666673,
+        "voiceSeparation": 0.9149159663865546,
+        "regularity": 0.7267059105439263,
+        "composite": 0.375591504923138
       }
     },
-    "pentagonScore": 0.6644132547409903,
+    "pentagonScore": 0.6078465621371779,
     "conformance": {
-      "score": 0.8714846833707816,
+      "score": 0.8699752955607102,
       "passCount": 8,
       "totalPresets": 8,
       "presetBreakdown": [
         {
           "name": "Minimal Techno",
-          "score": 0.7899999999999999,
+          "score": 0.7999999999999998,
           "status": "good",
           "pass": true,
           "tolerance": "strict"
@@ -71,7 +71,7 @@
         },
         {
           "name": "Driving Techno",
-          "score": 0.7625126265847083,
+          "score": 0.7999999999999999,
           "status": "good",
           "pass": true,
           "tolerance": "strict"
@@ -85,37 +85,67 @@
         },
         {
           "name": "Broken Beat",
-          "score": 0.9417482876670049,
+          "score": 0.8908312325904639,
           "status": "excellent",
           "pass": true,
           "tolerance": "moderate"
         },
         {
           "name": "Chaotic IDM",
-          "score": 0.8231980515339463,
-          "status": "excellent",
+          "score": 0.776025327699414,
+          "status": "good",
           "pass": true,
           "tolerance": "lax"
         },
         {
           "name": "Sparse Dub",
-          "score": 0.9409375,
+          "score": 1,
           "status": "excellent",
           "pass": true,
           "tolerance": "moderate"
         },
         {
           "name": "Dense Gabber",
-          "score": 0.9134810011805937,
+          "score": 0.8929458041958043,
           "status": "excellent",
           "pass": true,
           "tolerance": "moderate"
         }
       ]
     },
-    "overallAlignment": 0.7472418261929068,
+    "overallAlignment": 0.7126980555065908,
     "alignmentStatus": "GOOD",
     "totalPatterns": 33,
+    "multiSeed": {
+      "enabled": true,
+      "numSeeds": 4,
+      "metricStability": {
+        "syncopation": 0.37272716208711737,
+        "density": 0.8754498477638374,
+        "velocityRange": 0.957816141482988,
+        "voiceSeparation": 0.7848495637054874,
+        "regularity": 0.8664435824250961,
+        "overall": 0.7714572594929052
+      },
+      "perSeedPentagonScore": [
+        {
+          "seed": "0xDEADBEEF",
+          "score": 0.47903554189005426
+        },
+        {
+          "seed": "0xCAFEBABE",
+          "score": 0.2814521635513887
+        },
+        {
+          "seed": "0x12345678",
+          "score": 0.25785321820162543
+        },
+        {
+          "seed": "0xABCD1234",
+          "score": 0.26031168538679456
+        }
+      ]
+    },
     "seedVariation": {
       "v1": {
         "avgScore": 0.903061224489796,
@@ -154,39 +184,39 @@
     "energyZoneStats": {
       "minimal": {
         "count": 7,
-        "syncopation": 0.5714285714285714,
-        "density": 0.07589285714285714,
-        "velocityRange": 0.09,
+        "syncopation": 0.32142857142857145,
+        "density": 0.07700892857142858,
+        "velocityRange": 0.1442857142857143,
         "voiceSeparation": 1,
-        "regularity": 0.9107142857142857,
-        "composite": 5.709718412357947e-17
+        "regularity": 0.8638392857142857,
+        "composite": 0.008983236151603518
       },
       "groove": {
         "count": 7,
-        "syncopation": 0.6285714285714287,
-        "density": 0.39732142857142855,
-        "velocityRange": 0.4085714285714285,
-        "voiceSeparation": 0.9304029304029305,
-        "regularity": 0.7065584171129319,
-        "composite": 0.40060479217895756
+        "syncopation": 0.6214285714285713,
+        "density": 0.3482142857142857,
+        "velocityRange": 0.3796428571428571,
+        "voiceSeparation": 0.8893137616351902,
+        "regularity": 0.7084166795894464,
+        "composite": 0.3701360628764499
       },
       "build": {
         "count": 7,
-        "syncopation": 0.5408320493066257,
-        "density": 0.5625,
-        "velocityRange": 0.33,
-        "voiceSeparation": 0.783969728242174,
-        "regularity": 0.625716397118452,
-        "composite": 0.3023975840504984
+        "syncopation": 0.5291018673233574,
+        "density": 0.5167410714285714,
+        "velocityRange": 0.3171428571428571,
+        "voiceSeparation": 0.8085184951173451,
+        "regularity": 0.6821791798881555,
+        "composite": 0.2696029832801849
       },
       "peak": {
         "count": 7,
-        "syncopation": 0.6827144784412799,
-        "density": 0.6696428571428571,
-        "velocityRange": 0.3157142857142857,
-        "voiceSeparation": 0.8463203463203464,
-        "regularity": 0.571446523457557,
-        "composite": 0.3492075561082677
+        "syncopation": 0.6907842364716712,
+        "density": 0.6462053571428571,
+        "velocityRange": 0.31214285714285717,
+        "voiceSeparation": 0.8555273028703888,
+        "regularity": 0.6108595414216721,
+        "composite": 0.3001808839427037
       }
     },
     "metricDefinitions": {
