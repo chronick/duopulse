@@ -103,11 +103,13 @@ const FILL_METRICS = {
   fillAccentPlacement: {
     short: 'AccPlace',
     name: 'Fill Accent Placement',
-    description: 'Accents should land on strong beats, especially near end',
+    // Target revised 2026-01-23: Fills are intentionally syncopated - accents on offbeats
+    // create tension that resolves when the main pattern returns. This is a valid musical choice.
+    description: 'Accent placement ratio (downbeat accents / total accents). Syncopated fills add tension.',
     targetByZone: {
-      stable: '0.70-0.95',
-      syncopated: '0.55-0.80',
-      wild: '0.40-0.70',
+      stable: '0.15-0.45',
+      syncopated: '0.10-0.40',
+      wild: '0.05-0.35',
     },
   },
 };

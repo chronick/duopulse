@@ -2,9 +2,10 @@
 id: 73
 slug: euclidean-hitbudget-fade
 title: "Euclidean K / HitBudget Fade System"
-status: active
+status: completed
 created_date: 2026-01-21
-updated_date: 2026-01-21
+updated_date: 2026-01-23
+completed_date: 2026-01-23
 branch: feature/euclidean-hitbudget-fade
 spec_refs: ["06-shape", "algorithm_config"]
 ---
