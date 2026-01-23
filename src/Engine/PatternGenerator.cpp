@@ -197,9 +197,9 @@ void GeneratePattern(const PatternParams& params, PatternResult& result)
             // Iteration 2026-01-22-004: minRotation=1 ensures hits shift off strong beats
             // Iteration 2026-01-23-001: increased to min=2 for stronger displacement
             // Iteration 2026-01-23-002: increased to min=3 to push toward 0.70 target
-            // Iteration 2026-01-23-003: increased to min=4 for final push toward 0.70 target
-            maxRotation = 6;
-            minRotation = 4;  // Guaranteed 4-5 step rotation
+            // Iteration 2026-01-23-003: min=5 is optimal (min=6 caused regression)
+            maxRotation = 7;
+            minRotation = 5;  // Guaranteed 5-6 step rotation
             hashKey = 3000;
         }
         int rotationRange = maxRotation - minRotation;
