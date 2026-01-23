@@ -103,11 +103,11 @@ const FILL_METRICS = {
   fillAccentPlacement: {
     short: 'AccPlace',
     name: 'Fill Accent Placement',
-    description: 'Accents should land on strong beats, especially near end',
+    description: 'Accents should land on strong beats. Fills build toward downbeats.',
     targetByZone: {
-      stable: '0.70-0.95',
-      syncopated: '0.55-0.80',
-      wild: '0.40-0.70',
+      stable: '0.80-1.00',
+      syncopated: '0.70-1.00',
+      wild: '0.55-0.95',
     },
   },
 };
@@ -554,7 +554,8 @@ function computeFillVelocityBuild(fillPatterns) {
  * Returns 0-1 value where higher = better accent placement
  */
 function computeFillAccentPlacement(fillPatterns) {
-  const DOWNBEATS = new Set([0, 4, 8, 12, 16, 20, 24, 28]);
+  // Include downbeats for both 32-step and 64-step patterns
+  const DOWNBEATS = new Set([0, 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60]);
   const ACCENT_THRESHOLD = 0.8;
 
   // Check late fill (progress 0.75 and 1.0)
