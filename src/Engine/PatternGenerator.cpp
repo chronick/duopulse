@@ -195,8 +195,9 @@ void GeneratePattern(const PatternParams& params, PatternResult& result)
         } else {
             // Syncopated zone: guaranteed rotation for syncopation feel
             // Iteration 2026-01-22-004: minRotation=1 ensures hits shift off strong beats
-            maxRotation = 3;
-            minRotation = 1;  // Guaranteed 1-3 step rotation
+            // Iteration 2026-01-23-001: increased to min=2 for stronger displacement
+            maxRotation = 4;
+            minRotation = 2;  // Guaranteed 2-3 step rotation
             hashKey = 3000;
         }
         int rotationRange = maxRotation - minRotation;
