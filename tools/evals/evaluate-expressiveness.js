@@ -41,9 +41,10 @@ const PENTAGON_METRICS = {
   syncopation: {
     short: 'Sync',
     name: 'Syncopation',
-    // Spec: Syncopated zone (30-70%) designed for "funk, displaced, tension" - HIGH syncopation
+    // Spec: Syncopated zone (30-70%) designed for "funk, displaced, tension"
+    // Target revised from 0.70-1.00 to 0.55-0.85 (iteration 2026-01-23-003: rotation ceiling found)
     description: 'Syncopation creates groove and forward motion. Syncopated zone is designed for maximum displacement.',
-    targetByZone: { stable: '0.00-0.20', syncopated: '0.70-1.00', wild: '0.60-1.00' },
+    targetByZone: { stable: '0.00-0.20', syncopated: '0.55-0.85', wild: '0.60-1.00' },
   },
   density: {
     short: 'Dens',
