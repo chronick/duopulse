@@ -310,8 +310,10 @@ void GenerateFillPattern(const PatternParams& params, PatternResult& result)
             {
                 result.anchorVelocity[step] = std::max(result.anchorVelocity[step], forceAccentVelocity);
             }
-            // Force shimmer accents on all hits when fillProgress > 0.85
-            if ((result.shimmerMask & (1ULL << step)) != 0)
+            // Force shimmer accents on DOWNBEATS only when fillProgress > 0.85
+            // (shimmer fills gaps via COMPLEMENT, so most hits are offbeats -
+            //  accenting all shimmer hits floods the mix with offbeat accents)
+            if ((result.shimmerMask & (1ULL << step)) != 0 && (step % 4 == 0))
             {
                 result.shimmerVelocity[step] = std::max(result.shimmerVelocity[step], forceAccentVelocity * 0.9f);
             }
