@@ -302,8 +302,46 @@ console.log();
 // 1. Generate parameter sweeps
 console.log('Generating parameter sweeps...');
 
+// SHAPE sweep with correlated ENERGY values
+// Stable zone (SHAPE 0-0.3) uses lower ENERGY for appropriate density
+// Wild zone (SHAPE 0.7-1.0) uses higher ENERGY for appropriate density
+// Formula: ENERGY = 0.20 + 0.60 * SHAPE (ranges 0.20 to 0.80)
+const SHAPE_SWEEP_VALUES = [0.0, 0.15, 0.30, 0.50, 0.70, 0.85, 1.0];
+
+function generateShapeSweepWithCorrelatedEnergy(seeds = EVAL_SEEDS) {
+  console.log(`  Generating shape sweep with correlated energy (${seeds.length} seeds per point)...`);
+
+  return SHAPE_SWEEP_VALUES.map(shape => {
+    // Correlate ENERGY with SHAPE to match zone expectations
+    // stable (SHAPE 0-0.3): ENERGY 0.20-0.38 → density 0.15-0.30
+    // syncopated (SHAPE 0.3-0.7): ENERGY 0.38-0.62 → density 0.30-0.50
+    // wild (SHAPE 0.7-1.0): ENERGY 0.62-0.80 → density 0.50-0.65
+    const energy = 0.20 + 0.60 * shape;
+    const params = { shape, energy };
+
+    // Generate pattern for each seed
+    const seedPatterns = seeds.map(seed => {
+      const pattern = runPatternViz({ ...params, seed });
+      return {
+        seed,
+        seedHex: `0x${seed.toString(16).toUpperCase()}`,
+        masks: pattern.masks,
+        hits: pattern.hits,
+        steps: pattern.steps,
+      };
+    });
+
+    // Return primary pattern (first seed) with seedPatterns array
+    const primaryPattern = runPatternViz({ ...params, seed: seeds[0] });
+    return {
+      ...primaryPattern,
+      seedPatterns,
+    };
+  });
+}
+
 const sweeps = {
-  shape: generateSweep('shape', [0.0, 0.15, 0.30, 0.50, 0.70, 0.85, 1.0], { energy: 0.5 }),
+  shape: generateShapeSweepWithCorrelatedEnergy(),
   energy: generateSweep('energy', [0.0, 0.2, 0.4, 0.6, 0.8, 1.0], { shape: 0.3 }),
   axisX: generateSweep('axisX', [0.0, 0.25, 0.5, 0.75, 1.0], { energy: 0.5, shape: 0.4 }),
   axisY: generateSweep('axisY', [0.0, 0.25, 0.5, 0.75, 1.0], { energy: 0.5, shape: 0.4 }),

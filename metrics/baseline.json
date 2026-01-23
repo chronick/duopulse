@@ -1,57 +1,57 @@
 {
   "version": "1.0.0",
-  "generated_at": "2026-01-23T03:43:39.030Z",
-  "commit": "c827bd20b134967da6bc1a37a568a4695fb44a09",
-  "tag": "baseline-v1.0.2",
+  "generated_at": "2026-01-23T23:42:47.674Z",
+  "commit": "9b3ff291c71b090c44da88e91f918ffb97eb8708",
+  "tag": "baseline-v1.0.3",
   "last_good": {
     "commit": "a0c2d18511552ba7ecf0749aedb7af236b61e902",
     "tag": "baseline-v1.0.0",
     "timestamp": "2026-01-22T17:31:58.607Z"
   },
-  "consecutive_regressions": 1,
+  "consecutive_regressions": 0,
   "metrics": {
-    "timestamp": "2026-01-22T22:04:37.409Z",
+    "timestamp": "2026-01-23T23:42:40.219Z",
     "pentagonStats": {
       "total": {
         "count": 33,
-        "syncopation": 0.4434955913715821,
-        "density": 0.4666193181818182,
-        "velocityRange": 0.3385606060606062,
-        "voiceSeparation": 0.8389593889144175,
-        "regularity": 0.6642053930008333,
-        "composite": 0.3196631522574658
+        "syncopation": 0.5742320563338676,
+        "density": 0.47040719696969696,
+        "velocityRange": 0.3415909090909091,
+        "voiceSeparation": 0.897451669087091,
+        "regularity": 0.6472484676600091,
+        "composite": 0.3232550919123258
       },
       "stable": {
         "count": 2,
         "syncopation": 0,
-        "density": 0.44921875,
-        "velocityRange": 0.3425,
-        "voiceSeparation": 0.765822963800905,
-        "regularity": 0.697223547295958,
-        "composite": 0.22631684967103816
+        "density": 0.30078125,
+        "velocityRange": 0.41,
+        "voiceSeparation": 0.8844155844155843,
+        "regularity": 0.8733383751206943,
+        "composite": 0.3760561114358546
       },
       "syncopated": {
         "count": 28,
-        "syncopation": 0.42859782609452945,
-        "density": 0.4693080357142857,
-        "velocityRange": 0.33767857142857155,
-        "voiceSeparation": 0.8360452145505111,
-        "regularity": 0.6551504693858499,
-        "composite": 0.32033842179946
+        "syncopation": 0.6083682469051132,
+        "density": 0.470703125,
+        "velocityRange": 0.3403571428571429,
+        "voiceSeparation": 0.9047223129162216,
+        "regularity": 0.6323624137444596,
+        "composite": 0.31415915546526085
       },
       "wild": {
         "count": 3,
-        "syncopation": 0.8782051282051282,
-        "density": 0.453125,
-        "velocityRange": 0.34416666666666673,
-        "voiceSeparation": 0.9149159663865546,
-        "regularity": 0.7267059105439263,
-        "composite": 0.375591504923138
+        "syncopation": 0.6384489818914877,
+        "density": 0.5807291666666666,
+        "velocityRange": 0.3075,
+        "voiceSeparation": 0.8382830497962077,
+        "regularity": 0.6354583658980149,
+        "composite": 0.37294981906924624
       }
     },
-    "pentagonScore": 0.6078465621371779,
+    "pentagonScore": 0.676771561205476,
     "conformance": {
-      "score": 0.8699752955607102,
+      "score": 0.8589000100475532,
       "passCount": 8,
       "totalPresets": 8,
       "presetBreakdown": [
@@ -106,49 +106,49 @@
         },
         {
           "name": "Dense Gabber",
-          "score": 0.8929458041958043,
+          "score": 0.8043435200905489,
           "status": "excellent",
           "pass": true,
           "tolerance": "moderate"
         }
       ]
     },
-    "overallAlignment": 0.7126980555065908,
+    "overallAlignment": 0.749622940742307,
     "alignmentStatus": "GOOD",
     "totalPatterns": 33,
     "multiSeed": {
       "enabled": true,
       "numSeeds": 4,
       "metricStability": {
-        "syncopation": 0.37272716208711737,
-        "density": 0.8754498477638374,
-        "velocityRange": 0.957816141482988,
-        "voiceSeparation": 0.7848495637054874,
-        "regularity": 0.8664435824250961,
-        "overall": 0.7714572594929052
+        "syncopation": 0.36428284527032406,
+        "density": 0.8902984064219926,
+        "velocityRange": 0.9593062359595836,
+        "voiceSeparation": 0.885424922509786,
+        "regularity": 0.8499901619483982,
+        "overall": 0.789860514422017
       },
       "perSeedPentagonScore": [
         {
           "seed": "0xDEADBEEF",
-          "score": 0.47903554189005426
+          "score": 0.36828644814058875
         },
         {
           "seed": "0xCAFEBABE",
-          "score": 0.2814521635513887
+          "score": 0.294382392212549
         },
         {
           "seed": "0x12345678",
-          "score": 0.25785321820162543
+          "score": 0.18231100560250432
         },
         {
           "seed": "0xABCD1234",
-          "score": 0.26031168538679456
+          "score": 0.4480405216936612
         }
       ]
     },
     "seedVariation": {
       "v1": {
-        "avgScore": 0.903061224489796,
+        "avgScore": 0.9081632653061226,
         "minScore": 0,
         "maxScore": 1
       },
@@ -162,24 +162,24 @@
         "minScore": 0.8571428571428571,
         "maxScore": 1
       },
-      "overall": 0.9600340136054423,
+      "overall": 0.9617346938775512,
       "pass": true
     },
     "fillMetrics": {
       "fillDensityRamp": {
-        "raw": 0.7443181818181818,
-        "score": 0.4
+        "raw": 0.9943181818181818,
+        "score": 0.32272727272727253
       },
       "fillVelocityBuild": {
-        "raw": 0.5474544823222076,
-        "score": 0.3925001581484875
+        "raw": 0.7578063471300646,
+        "score": 0.7543523002120609
       },
       "fillAccentPlacement": {
-        "raw": 0.21285751285751286,
-        "score": 0
+        "raw": 1,
+        "score": 0.5
       },
-      "composite": 0.26416671938282915,
-      "pass": false
+      "composite": 0.5256931909797778,
+      "pass": true
     },
     "energyZoneStats": {
       "minimal": {
@@ -189,34 +189,34 @@
         "velocityRange": 0.1442857142857143,
         "voiceSeparation": 1,
         "regularity": 0.8638392857142857,
-        "composite": 0.008983236151603518
+        "composite": 0.01113281250000003
       },
       "groove": {
         "count": 7,
-        "syncopation": 0.6214285714285713,
-        "density": 0.3482142857142857,
-        "velocityRange": 0.3796428571428571,
-        "voiceSeparation": 0.8893137616351902,
-        "regularity": 0.7084166795894464,
-        "composite": 0.3701360628764499
+        "syncopation": 0.5925324675324675,
+        "density": 0.34486607142857145,
+        "velocityRange": 0.3764285714285714,
+        "voiceSeparation": 0.8919391124748268,
+        "regularity": 0.6802688154088805,
+        "composite": 0.38007415750475193
       },
       "build": {
         "count": 7,
-        "syncopation": 0.5291018673233574,
-        "density": 0.5167410714285714,
-        "velocityRange": 0.3171428571428571,
-        "voiceSeparation": 0.8085184951173451,
-        "regularity": 0.6821791798881555,
-        "composite": 0.2696029832801849
+        "syncopation": 0.5687675206791901,
+        "density": 0.5133928571428571,
+        "velocityRange": 0.3185714285714285,
+        "voiceSeparation": 0.8236765978321153,
+        "regularity": 0.6761207270929095,
+        "composite": 0.2824990590666237
       },
       "peak": {
         "count": 7,
-        "syncopation": 0.6907842364716712,
-        "density": 0.6462053571428571,
-        "velocityRange": 0.31214285714285717,
-        "voiceSeparation": 0.8555273028703888,
-        "regularity": 0.6108595414216721,
-        "composite": 0.3001808839427037
+        "syncopation": 0.7626777358620416,
+        "density": 0.6328125,
+        "velocityRange": 0.31285714285714283,
+        "voiceSeparation": 0.8473475764343599,
+        "regularity": 0.6040014040124115,
+        "composite": 0.3116901157465025
       }
     },
     "metricDefinitions": {
@@ -226,7 +226,7 @@
         "description": "Syncopation creates groove and forward motion. Syncopated zone is designed for maximum displacement.",
         "targetByZone": {
           "stable": "0.00-0.20",
-          "syncopated": "0.70-1.00",
+          "syncopated": "0.55-0.85",
           "wild": "0.60-1.00"
         }
       },
@@ -265,7 +265,7 @@
         "name": "Regularity",
         "description": "Regularity = danceability. Stable patterns need high regularity; wild patterns break it.",
         "targetByZone": {
-          "stable": "0.72-1.00",
+          "stable": "0.68-1.00",
           "syncopated": "0.42-0.68",
           "wild": "0.55-0.85"
         }
@@ -295,14 +295,14 @@
       "fillAccentPlacement": {
         "short": "AccPlace",
         "name": "Fill Accent Placement",
-        "description": "Accents should land on strong beats, especially near end",
+        "description": "Accents should land on strong beats. Fills build toward downbeats.",
         "targetByZone": {
-          "stable": "0.70-0.95",
-          "syncopated": "0.55-0.80",
-          "wild": "0.40-0.70"
+          "stable": "0.80-1.00",
+          "syncopated": "0.70-1.00",
+          "wild": "0.55-0.95"
         }
       }
     },
-    "pass": false
+    "pass": true
   }
 }
