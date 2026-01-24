@@ -523,7 +523,7 @@ $(EVALS_DIR)/public/data/metadata.json: $(PATTERN_VIZ)
 	@$(MAKE) evals-generate
 
 # Deploy to GitHub Pages (builds to docs/evals/)
-evals-deploy: evals-generate
+evals-deploy: evals-generate metrics-history
 	@echo "Deploying evaluation dashboard to docs/evals/..."
 	@mkdir -p docs/evals
 	@cp -r $(EVALS_DIR)/public/* docs/evals/
