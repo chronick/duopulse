@@ -23,7 +23,11 @@ let data = {
   sensitivity: null,
   fills: null,
   metricsHistory: null,
+  iterations: null,
 };
+
+// Iterations state
+let filteredIterations = [];
 
 let currentView = 'overview';
 let player = null;
@@ -95,6 +99,17 @@ async function loadData() {
       }
     } catch (e) {
       console.log('Metrics history not available (run "make metrics-history" to generate)');
+    }
+
+    // Try to load iterations data (optional - may not exist yet)
+    try {
+      const iterationsRes = await fetch('data/iterations.json');
+      if (iterationsRes.ok) {
+        data.iterations = await iterationsRes.json();
+        filteredIterations = data.iterations.iterations || [];
+      }
+    } catch (e) {
+      console.log('Iterations data not available');
     }
 
     return true;
@@ -824,6 +839,283 @@ function renderFillsView() {
 }
 
 // ============================================================================
+// Iterations View
+// ============================================================================
+
+function renderIterationsView() {
+  // Render summary stats
+  const summary = data.iterations?.summary || { total: 0, successful: 0, failed: 0, successRate: 0 };
+  $('#stat-total').textContent = summary.total;
+  $('#stat-success').textContent = summary.successful;
+  $('#stat-failed').textContent = summary.failed;
+  $('#stat-rate').textContent = `${(summary.successRate * 100).toFixed(1)}%`;
+
+  // Render timeline
+  renderIterationsTimeline();
+
+  // Render iteration cards
+  renderIterationCards();
+
+  // Setup event listeners
+  setupIterationsEventListeners();
+}
+
+function renderIterationsTimeline() {
+  const container = $('#iterations-timeline-chart');
+
+  if (!data.metricsHistory || !data.metricsHistory.timeline || data.metricsHistory.timeline.length < 2) {
+    container.innerHTML = `
+      <div class="no-timeline-data">
+        <p>Not enough historical data to display timeline</p>
+        <p class="hint">Run evaluations and tag baselines to track progress over time</p>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = renderTimelineChart(data.metricsHistory, 900, 280);
+}
+
+function renderIterationCards() {
+  const container = $('#iterations-list');
+
+  if (!filteredIterations || filteredIterations.length === 0) {
+    container.innerHTML = `
+      <div class="no-iterations">
+        <p>No iterations found.</p>
+        <p class="hint">Run <code>/iterate "goal"</code> to start hill-climbing.</p>
+      </div>
+    `;
+    return;
+  }
+
+  const cards = filteredIterations.map(createIterationCard).join('');
+  container.innerHTML = cards;
+
+  // Add event listeners to cards
+  $$('.card-header').forEach(header => {
+    header.addEventListener('click', toggleIterationCardDetails);
+  });
+
+  $$('.toggle-details').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleIterationCardDetails.call(btn.closest('.card-header'), e);
+    });
+  });
+}
+
+function createIterationCard(iteration) {
+  const statusClass = iteration.status || 'unknown';
+  const statusLabel = iteration.status || 'Unknown';
+
+  // Lever info
+  const leverInfo = iteration.lever ? `
+    <div class="card-lever">
+      ${iteration.lever.primary}: ${iteration.lever.oldValue !== null ? iteration.lever.oldValue.toFixed(2) : '?'}
+      → ${iteration.lever.newValue !== null ? iteration.lever.newValue.toFixed(2) : '?'}
+      ${iteration.lever.delta ? `(${iteration.lever.delta})` : ''}
+    </div>
+  ` : '';
+
+  // Metrics info
+  const metricsInfo = iteration.metrics ? `
+    <div class="card-metrics">
+      ${iteration.metrics.target ? `
+        <div class="metric-item">
+          <div class="metric-label">Target Metric</div>
+          <div class="metric-value ${iteration.metrics.target.delta?.startsWith('+') ? 'positive' : (iteration.metrics.target.delta?.startsWith('-') ? 'negative' : '')}">
+            ${iteration.metrics.target.delta}
+          </div>
+        </div>
+      ` : ''}
+      ${iteration.metrics.maxRegression ? `
+        <div class="metric-item">
+          <div class="metric-label">Max Regression</div>
+          <div class="metric-value ${iteration.metrics.maxRegression.startsWith('-') ? 'negative' : 'positive'}">
+            ${iteration.metrics.maxRegression}
+          </div>
+        </div>
+      ` : ''}
+    </div>
+  ` : '';
+
+  // Links
+  const links = [];
+  if (iteration.pr && iteration.pr !== 'null') {
+    links.push(`<a href="https://github.com/chronick/duopulse/pull/${iteration.pr.replace('#', '')}" class="card-link" target="_blank">View PR ${iteration.pr}</a>`);
+  }
+  if (iteration.commit && iteration.commit !== 'null') {
+    links.push(`<a href="https://github.com/chronick/duopulse/commit/${iteration.commit}" class="card-link" target="_blank"><code>${iteration.commit.substring(0, 7)}</code></a>`);
+  }
+  if (iteration.branch && iteration.branch !== 'null') {
+    links.push(`<span class="card-link"><code>${iteration.branch}</code></span>`);
+  }
+
+  return `
+    <div class="iteration-card ${statusClass}" id="${iteration.id}">
+      <div class="card-header">
+        <div class="card-title-row">
+          <div class="card-id">#${iteration.id}</div>
+          <div class="card-status ${statusClass}">${statusLabel}</div>
+        </div>
+        <h3 class="card-goal">${escapeHTML(iteration.goal)}</h3>
+        ${leverInfo}
+        ${metricsInfo}
+        ${links.length > 0 ? `<div class="card-links">${links.join('')}</div>` : ''}
+      </div>
+
+      <div class="card-details" id="details-${iteration.id}">
+        ${createIterationCardDetails(iteration)}
+      </div>
+
+      <button class="toggle-details">
+        <span class="toggle-text">Show Details</span>
+        <span class="toggle-icon">▼</span>
+      </button>
+    </div>
+  `;
+}
+
+function createIterationCardDetails(iteration) {
+  const sections = [];
+
+  if (iteration.sections?.goal) {
+    sections.push(`
+      <div class="card-details-section">
+        <h4>Goal</h4>
+        <pre>${escapeHTML(iteration.sections.goal)}</pre>
+      </div>
+    `);
+  }
+
+  if (iteration.sections?.decision) {
+    sections.push(`
+      <div class="card-details-section">
+        <h4>Decision</h4>
+        <pre>${escapeHTML(iteration.sections.decision)}</pre>
+      </div>
+    `);
+  }
+
+  if (iteration.sections?.notes) {
+    sections.push(`
+      <div class="card-details-section">
+        <h4>Notes</h4>
+        <pre>${escapeHTML(iteration.sections.notes)}</pre>
+      </div>
+    `);
+  }
+
+  if (sections.length === 0) {
+    return '<p>No additional details available</p>';
+  }
+
+  return sections.join('');
+}
+
+function toggleIterationCardDetails(e) {
+  const card = e.currentTarget.closest('.iteration-card');
+  const details = card.querySelector('.card-details');
+  const toggleBtn = card.querySelector('.toggle-details');
+  const toggleText = toggleBtn.querySelector('.toggle-text');
+  const toggleIcon = toggleBtn.querySelector('.toggle-icon');
+
+  if (details.classList.contains('expanded')) {
+    details.classList.remove('expanded');
+    toggleText.textContent = 'Show Details';
+    toggleIcon.classList.remove('expanded');
+  } else {
+    details.classList.add('expanded');
+    toggleText.textContent = 'Hide Details';
+    toggleIcon.classList.add('expanded');
+  }
+}
+
+function setupIterationsEventListeners() {
+  const searchInput = $('#search-iterations');
+  const filterStatus = $('#filter-status');
+  const sortSelect = $('#sort-iterations');
+
+  // Remove existing listeners by replacing elements (simple approach)
+  if (searchInput && !searchInput.dataset.listenerAttached) {
+    searchInput.addEventListener('input', applyIterationsFilters);
+    searchInput.dataset.listenerAttached = 'true';
+  }
+
+  if (filterStatus && !filterStatus.dataset.listenerAttached) {
+    filterStatus.addEventListener('change', applyIterationsFilters);
+    filterStatus.dataset.listenerAttached = 'true';
+  }
+
+  if (sortSelect && !sortSelect.dataset.listenerAttached) {
+    sortSelect.addEventListener('change', applyIterationsSort);
+    sortSelect.dataset.listenerAttached = 'true';
+  }
+}
+
+function applyIterationsFilters() {
+  const searchTerm = ($('#search-iterations')?.value || '').toLowerCase();
+  const statusFilter = $('#filter-status')?.value || 'all';
+
+  filteredIterations = (data.iterations?.iterations || []).filter(iteration => {
+    // Status filter
+    if (statusFilter !== 'all' && iteration.status !== statusFilter) {
+      return false;
+    }
+
+    // Search filter
+    if (searchTerm) {
+      const searchableText = [
+        iteration.id,
+        iteration.goal,
+        iteration.lever?.primary,
+        iteration.sections?.goal,
+        iteration.sections?.decision,
+        iteration.sections?.notes
+      ].filter(Boolean).join(' ').toLowerCase();
+
+      if (!searchableText.includes(searchTerm)) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+
+  applyIterationsSort();
+}
+
+function applyIterationsSort() {
+  const sortBy = $('#sort-iterations')?.value || 'newest';
+
+  switch (sortBy) {
+    case 'oldest':
+      filteredIterations.sort((a, b) => a.id.localeCompare(b.id));
+      break;
+    case 'impact':
+      filteredIterations.sort((a, b) => {
+        const deltaA = parseFloat(a.metrics?.target?.delta?.replace('%', '') || '0');
+        const deltaB = parseFloat(b.metrics?.target?.delta?.replace('%', '') || '0');
+        return deltaB - deltaA;
+      });
+      break;
+    case 'newest':
+    default:
+      filteredIterations.sort((a, b) => b.id.localeCompare(a.id));
+      break;
+  }
+
+  renderIterationCards();
+}
+
+function escapeHTML(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+// ============================================================================
 // Navigation
 // ============================================================================
 
@@ -841,7 +1133,7 @@ function showView(viewName) {
       case 'sweeps': renderSweepsView(); break;
       case 'seeds': renderSeedsView(); break;
       case 'fills': renderFillsView(); break;
-      case 'sensitivity': renderSensitivityView(); break;
+      case 'iterations': renderIterationsView(); break;
     }
   }
 
@@ -865,7 +1157,7 @@ function showView(viewName) {
 
 function getViewFromHash() {
   const hash = window.location.hash.slice(1); // Remove the '#'
-  const validViews = ['overview', 'presets', 'sweeps', 'seeds', 'fills', 'sensitivity'];
+  const validViews = ['overview', 'presets', 'sweeps', 'seeds', 'fills', 'iterations'];
   return validViews.includes(hash) ? hash : 'overview';
 }
 

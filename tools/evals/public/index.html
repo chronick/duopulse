@@ -24,8 +24,7 @@
         <button class="nav-btn" data-view="sweeps">Parameter Sweeps</button>
         <button class="nav-btn" data-view="seeds">Seed Variation</button>
         <button class="nav-btn" data-view="fills">Fills</button>
-        <button class="nav-btn" data-view="sensitivity">Sensitivity</button>
-        <a href="iterations/" class="nav-btn nav-link-btn">Iterations</a>
+        <button class="nav-btn" data-view="iterations">Iterations</button>
       </nav>
     </header>
 
@@ -99,11 +98,65 @@
           <div id="fill-grid-container"></div>
         </section>
 
-        <!-- Sensitivity Analysis -->
-        <section id="view-sensitivity" class="view" hidden>
-          <h2>Parameter Sensitivity Analysis</h2>
-          <p class="description">How algorithm weights affect Pentagon metrics. Click a cell to see the sweep curve.</p>
-          <div id="sensitivity-container"></div>
+        <!-- Iterations -->
+        <section id="view-iterations" class="view" hidden>
+          <h2>Iteration History</h2>
+          <p class="description">Track hill-climbing iterations and algorithm improvements over time.</p>
+
+          <!-- Summary Statistics -->
+          <div class="iteration-summary">
+            <div class="stat-card">
+              <div class="stat-value" id="stat-total">0</div>
+              <div class="stat-label">Total Iterations</div>
+            </div>
+            <div class="stat-card success">
+              <div class="stat-value" id="stat-success">0</div>
+              <div class="stat-label">Successful</div>
+            </div>
+            <div class="stat-card failed">
+              <div class="stat-value" id="stat-failed">0</div>
+              <div class="stat-label">Failed</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="stat-rate">0%</div>
+              <div class="stat-label">Success Rate</div>
+            </div>
+          </div>
+
+          <!-- Timeline Chart -->
+          <div class="timeline-section">
+            <h3>Metrics Progress Over Time</h3>
+            <div id="iterations-timeline-chart"></div>
+          </div>
+
+          <!-- Filters and Search -->
+          <div class="iteration-controls">
+            <div class="search-box">
+              <input type="search" id="search-iterations" placeholder="Search iterations..." />
+            </div>
+            <div class="filters">
+              <label>
+                Status:
+                <select id="filter-status">
+                  <option value="all">All</option>
+                  <option value="success">Success</option>
+                  <option value="failed">Failed</option>
+                  <option value="pending">Pending</option>
+                </select>
+              </label>
+              <label>
+                Sort:
+                <select id="sort-iterations">
+                  <option value="newest">Newest First</option>
+                  <option value="oldest">Oldest First</option>
+                  <option value="impact">Highest Impact</option>
+                </select>
+              </label>
+            </div>
+          </div>
+
+          <!-- Iteration Cards -->
+          <div id="iterations-list"></div>
         </section>
       </main>
 

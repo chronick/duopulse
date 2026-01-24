@@ -21,13 +21,15 @@ export function renderTimelineChart(history, width = 800, height = 300) {
   }
 
   const timeline = history.timeline;
-  const padding = { top: 20, right: 60, bottom: 60, left: 60 };
+  const padding = { top: 20, right: 60, bottom: 50, left: 60 };
   const chartWidth = width - padding.left - padding.right;
   const chartHeight = height - padding.top - padding.bottom;
 
+  // Generate unique ID for this chart instance
+  const chartId = `timeline-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
   // Extract alignment scores (primary metric)
   const alignmentScores = timeline.map(d => d.overallAlignment * 100); // Convert to percentage
-  const timestamps = timeline.map(d => d.timestamp);
 
   // Scale functions
   const minScore = Math.min(...alignmentScores);
@@ -61,7 +63,7 @@ export function renderTimelineChart(history, width = 800, height = 300) {
     `);
   }
 
-  // Generate data points
+  // Generate data points with data attributes for tooltip
   const dataPoints = timeline.map((d, i) => {
     const x = xScale(i);
     const y = yScale(d.overallAlignment * 100);
@@ -69,33 +71,40 @@ export function renderTimelineChart(history, width = 800, height = 300) {
       : d.alignmentStatus === 'FAIR' ? '#ffaa44' : '#ff4444';
 
     return `
-      <circle cx="${x}" cy="${y}" r="4" fill="${color}" stroke="#1a1a1a" stroke-width="2"
-              class="timeline-point" data-index="${i}">
-        <title>${d.tag || d.hash}
-Date: ${new Date(d.date).toLocaleDateString()}
-Score: ${(d.overallAlignment * 100).toFixed(1)}%</title>
-      </circle>
+      <circle cx="${x}" cy="${y}" r="5" fill="${color}" stroke="#1a1a1a" stroke-width="2"
+              class="timeline-point"
+              data-index="${i}"
+              data-tag="${d.tag || ''}"
+              data-hash="${d.hash || ''}"
+              data-fullhash="${d.fullHash || ''}"
+              data-date="${d.date || ''}"
+              data-score="${(d.overallAlignment * 100).toFixed(1)}"
+              data-status="${d.alignmentStatus || ''}"
+              style="cursor: pointer;" />
     `;
   }).join('');
 
-  // Generate x-axis labels (tags or hashes)
-  const xAxisLabels = timeline.map((d, i) => {
-    const x = xScale(i);
+  // Generate x-axis date labels (show ~5 evenly spaced dates)
+  const numDateLabels = Math.min(5, timeline.length);
+  const dateLabels = [];
+  for (let i = 0; i < numDateLabels; i++) {
+    const idx = Math.floor(i * (timeline.length - 1) / (numDateLabels - 1));
+    const d = timeline[idx];
+    const x = xScale(idx);
     const y = height - padding.bottom + 20;
-    const label = d.tag || d.hash || `v${d.version}`;
-    const rotation = timeline.length > 10 ? 'rotate(-45)' : '';
+    const date = new Date(d.date);
+    const label = `${date.getMonth() + 1}/${date.getDate()}`;
 
-    return `
-      <text x="${x}" y="${y}" fill="#888" font-size="10" text-anchor="${timeline.length > 10 ? 'end' : 'middle'}"
-            transform="${rotation ? `${rotation} ${x} ${y}` : ''}">
+    dateLabels.push(`
+      <text x="${x}" y="${y}" fill="#888" font-size="11" text-anchor="middle">
         ${label}
       </text>
-    `;
-  }).join('');
+    `);
+  }
 
   // Chart title and axis labels
   const svg = `
-    <svg width="${width}" height="${height}" class="timeline-chart">
+    <svg width="${width}" height="${height}" class="timeline-chart" id="${chartId}">
       <!-- Grid lines -->
       ${gridLines.join('')}
 
@@ -115,8 +124,8 @@ Score: ${(d.overallAlignment * 100).toFixed(1)}%</title>
             x2="${padding.left}" y2="${padding.top + chartHeight}"
             stroke="#444" stroke-width="2" />
 
-      <!-- X-axis labels -->
-      ${xAxisLabels}
+      <!-- X-axis date labels -->
+      ${dateLabels.join('')}
 
       <!-- Y-axis title -->
       <text x="${padding.left - 45}" y="${padding.top + chartHeight / 2}"
@@ -161,7 +170,101 @@ Score: ${(d.overallAlignment * 100).toFixed(1)}%</title>
     </div>
   `;
 
-  return `<div class="timeline-container">${svg}${summary}</div>`;
+  // Tooltip HTML
+  const tooltip = `
+    <div class="timeline-tooltip" id="tooltip-${chartId}" style="
+      position: absolute;
+      display: none;
+      background: rgba(0, 0, 0, 0.95);
+      border: 1px solid #444;
+      border-radius: 6px;
+      padding: 12px 16px;
+      font-size: 12px;
+      pointer-events: none;
+      z-index: 100;
+      min-width: 180px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    "></div>
+  `;
+
+  // Interactive script for tooltip
+  const script = `
+    <script type="module">
+      (function() {
+        const chart = document.getElementById('${chartId}');
+        const tooltip = document.getElementById('tooltip-${chartId}');
+        if (!chart || !tooltip) return;
+
+        chart.querySelectorAll('.timeline-point').forEach(point => {
+          point.addEventListener('mouseenter', (e) => {
+            const tag = point.dataset.tag;
+            const hash = point.dataset.hash;
+            const fullHash = point.dataset.fullhash;
+            const date = point.dataset.date;
+            const score = point.dataset.score;
+            const status = point.dataset.status;
+
+            const statusColor = status === 'GOOD' ? '#44ff44' : status === 'FAIR' ? '#ffaa44' : '#ff4444';
+            const formattedDate = new Date(date).toLocaleDateString('en-US', {
+              year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+            });
+
+            const githubUrl = fullHash ? \`https://github.com/chronick/duopulse/commit/\${fullHash}\` : '';
+
+            tooltip.innerHTML = \`
+              <div style="margin-bottom: 8px;">
+                <div style="color: #fff; font-weight: 600; font-size: 13px;">\${tag || 'Commit'}</div>
+                <div style="color: #888; font-size: 11px;">\${formattedDate}</div>
+              </div>
+              <div style="margin-bottom: 8px;">
+                <span style="color: #aaa;">Score:</span>
+                <span style="color: \${statusColor}; font-weight: 600;"> \${score}%</span>
+                <span style="color: \${statusColor}; font-size: 10px;"> [\${status}]</span>
+              </div>
+              \${hash ? \`
+                <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #333;">
+                  <a href="\${githubUrl}" target="_blank" rel="noopener"
+                     style="color: #64b5f6; text-decoration: none; font-family: monospace; font-size: 12px;"
+                     onclick="event.stopPropagation();">
+                    \${hash} ↗
+                  </a>
+                </div>
+              \` : ''}
+            \`;
+            tooltip.style.display = 'block';
+            tooltip.style.pointerEvents = 'auto';
+          });
+
+          point.addEventListener('mousemove', (e) => {
+            const container = chart.closest('.timeline-container');
+            const rect = container.getBoundingClientRect();
+            const x = e.clientX - rect.left + 15;
+            const y = e.clientY - rect.top - 10;
+            tooltip.style.left = x + 'px';
+            tooltip.style.top = y + 'px';
+          });
+
+          point.addEventListener('mouseleave', (e) => {
+            // Delay hiding to allow clicking the link
+            setTimeout(() => {
+              if (!tooltip.matches(':hover')) {
+                tooltip.style.display = 'none';
+                tooltip.style.pointerEvents = 'none';
+              }
+            }, 100);
+          });
+        });
+
+        // Hide tooltip when mouse leaves it
+        tooltip.addEventListener('mouseleave', () => {
+          tooltip.style.display = 'none';
+          tooltip.style.pointerEvents = 'none';
+        });
+      })();
+    <\/script>
+  `;
+
+  return `<div class="timeline-container" style="position: relative;">${svg}${tooltip}${summary}${script}</div>`;
 }
 
 /**
